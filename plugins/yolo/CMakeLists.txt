@@ -24,6 +24,7 @@ set_target_properties(libdarknet PROPERTIES IMPORTED_LOCATION ${DARKNET_DIR}/lib
 
 include_directories(/opt/intel/ipp/include)
 include_directories(${LIGHTDB_INCLUDES})
+message("Darknet include: ${CMAKE_CURRENT_SOURCE_DIR}/darknet/include")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/darknet/include)
 
 link_directories(/opt/intel/ipp/lib/intel64)

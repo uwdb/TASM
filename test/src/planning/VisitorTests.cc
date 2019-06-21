@@ -41,18 +41,11 @@ TEST_F(VisitorTestFixture, testFoo) {
     //printf( "Could not open file : %s\n", dlerror() );
     auto yolo = lightdb::extensibility::Load("yolo"); //, "/home/bhaynes/projects/yolo/cmake-build-debug");
 
-    auto name = "red10"; //std::getenv("TLFNAME");
-    auto input = Scan(name);
-    auto continuous = input.Interpolate(Dimension::Theta, interpolation::Linear());
-    auto smalltheta = continuous.Discretize(Dimension::Theta, rational_times_real({2, 416}, PI));
-    auto small = smalltheta.Discretize(Dimension::Phi, rational_times_real({1, 416}, PI));
-//    auto gray = small.Map(yolo);
-    auto gray = small.Map(lightdb::Greyscale);
-    //auto gray = input.Map(yolo);
-    //auto encoded = gray.Encode(Codec::boxes());
-    auto encoded = gray.Encode(); //Codec::boxes());
+    auto input = Load("/home/maureen/MVI_20052/sampled_frames/sampled.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto boxes = input.Map(yolo);
+    auto boxesOnInput = boxes.Union(input).Store("boxes_on_input");
 
-    Coordinator().execute(encoded);
+    Coordinator().execute(boxes);
 }
 
 TEST_F(VisitorTestFixture, testBar) {

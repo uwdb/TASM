@@ -2,6 +2,8 @@
 #include "ipp.h"
 #include "Rectangle.h"
 
+#include <iostream>
+
 using namespace lightdb;
 
 static unsigned int frame_index = 0;
@@ -19,7 +21,12 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
     std::vector<char> output;
     auto &data = dynamic_cast<physical::CPUDecodedFrameData&>(input);
 
+    // Build map from type -> rectangles.
+    // Then we can convert the rectangles into cropping parameters.
+    // Then
+
     for(auto& frame: data.frames()) {
+        std::cout << "Processing frame number " << frame_index << std::endl;
         frame_index++;
         Allocate(frame->height(), frame->width(), channels);
 
@@ -60,6 +67,7 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
             for(auto j = 0u; j < metadata_.classes; j++)
                 if(probabilities_[i][j] > 0.001)
                     {
+                    std::cout << metadata_.names[j] << std::endl;
                     box = {frame_index - 1,
                            static_cast<unsigned int>(boxes_[i].x - boxes_[i].w / 2),
                            static_cast<unsigned int>(boxes_[i].y - boxes_[i].h / 2),

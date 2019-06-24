@@ -44,16 +44,27 @@ TEST_F(VisitorTestFixture, testFoo) {
     //printf( "Could not open file : %s\n", dlerror() );
     auto yolo = lightdb::extensibility::Load("yolo"); //, "/home/bhaynes/projects/yolo/cmake-build-debug");
 
-    auto input = Load("/home/maureen/MVI_20052/sampled_frames/sampled.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto boxes = input.Map(yolo);
-//    auto selectedBoxes = boxes.Select(MetadataSpecification("labels", "label", "car"));
+//    auto input = Load("/home/maureen/MVI_20052/sampled_frames/sampled.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto input = Scan("uadetrac");
+
+    auto continuous = input.Interpolate(Dimension::Theta, interpolation::Linear());
+    auto smallTheta = continuous.Discretize(Dimension::Theta, rational_times_real({2, 416}, PI));
+    auto smallPhi = smallTheta.Discretize(Dimension::Phi, rational_times_real({1, 416}, PI));
+    Coordinator().execute(smallPhi.Store("discretizedUA"));
+
+//    auto boxes = smallTheta.Map(yolo);
 
     // Now if we union the selectedBoxes with the input, we should only draw boxes around cars.
     // Union of boxes with input should draw boxes around cars and people.
     // Need to get just that working first.
-    auto boxesOnInput = boxes.Union(input);
+//    auto boxesOnInput = boxes.Union(smallTheta);
+//
+//    Coordinator().execute(boxesOnInput.Save("/home/maureen/boxes_on_input.hevc"));
+}
 
-    Coordinator().execute(boxesOnInput.Save("/home/maureen/boxes_on_input.hevc"));
+TEST_F(VisitorTestFixture, testSaveToCatalog) {
+    auto input = Load("/home/maureen/MVI_20052/sampled_frames/sampled.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Store("uadetrac"));
 }
 
 TEST_F(VisitorTestFixture, testBar) {

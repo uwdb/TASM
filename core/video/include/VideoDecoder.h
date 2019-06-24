@@ -46,6 +46,10 @@ public:
   }
 
   virtual ~CudaDecoder() {
+      // FIXME: This chokes when doing:
+      // input = Load(file)
+      // input2 = Load(file)
+      // input.Map(yolo).Union(input2).Save()
       if(handle() != nullptr)
           cuvidDestroyDecoder(handle());
   }

@@ -64,7 +64,11 @@ class Runtime: public runtime::UnaryRuntime<CPUMap, CPUDecodedFrameData> {
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if(iterator() != iterator().eos()) {
+//                while (!(*iterator()).frames().size() && iterator() != iterator().eos())
+//                    iterator()++;
+
                 auto data = iterator()++;
+
                 auto &transform = physical().transform()(DeviceType::CPU);
 
                 auto output = transform(data);

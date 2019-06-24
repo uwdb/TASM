@@ -20,6 +20,8 @@
 #include "SinkOperators.h"
 #include "Rectangle.h"
 
+#include <iostream>
+
 namespace lightdb::optimization {
     class ChooseMaterializedScans : public OptimizerRule {
     public:
@@ -219,18 +221,34 @@ namespace lightdb::optimization {
                 leafs0.pop_back();
             }*/
 
+            std::cout << "***here!" << std::endl;
+
+            bool shouldPerformBoxesUnion = true;
+
             if(leafs0.size() != 1 || leafs1.size() != 1)
                 return false;
-            //TODO shouldn't arbitrarily require a shallow union
-            else if(!node.parents()[0].is<logical::ScannedLightField>() || !node.parents()[1].is<logical::ScannedLightField>())
-                return false;
-            //TODO should pay attention to all streams
-            else if(node.parents()[0].downcast<logical::ScannedLightField>().entry().sources()[0].codec() != Codec::boxes())
-                return false;
-            else if(node.parents()[1].downcast<logical::ScannedLightField>().entry().sources()[0].codec() != Codec::h264() &&
-                    node.parents()[1].downcast<logical::ScannedLightField>().entry().sources()[0].codec() != Codec::hevc())
-                return false;
-            else {
+            else if (!shouldPerformBoxesUnion) {
+                //TODO shouldn't arbitrarily require a shallow union
+                if (!node.parents()[0].is<logical::ScannedLightField>() ||
+                    !node.parents()[1].is<logical::ScannedLightField>())
+                    return false;
+                    //TODO should pay attention to all streams
+                else if (node.parents()[0].downcast<logical::ScannedLightField>().entry().sources()[0].codec() !=
+                         Codec::boxes())
+                    return false;
+                else if (node.parents()[1].downcast<logical::ScannedLightField>().entry().sources()[0].codec() !=
+                         Codec::h264() &&
+                         node.parents()[1].downcast<logical::ScannedLightField>().entry().sources()[0].codec() !=
+                         Codec::hevc())
+                    return false;
+            } else {
+                if (!node.parents()[0].is<logical::TransformedLightField>() || !node.parents()[1].is<logical::ExternalLightField>())
+                    return false;
+                else if (node.parents()[1].downcast<logical::ExternalLightField>().sources()[0].codec() != Codec::hevc())
+                    return false;
+                // Assume that the transformed light field returns boxes.
+            }
+
                 auto unioned = plan().emplace<physical::GPUBoxOverlayUnion>(
                         plan().lookup(node),
                         std::vector<PhysicalOperatorReference>{leafs0[0], leafs1[0]});
@@ -250,7 +268,7 @@ namespace lightdb::optimization {
                 }
                 
                 return true;
-            }
+
         }
 
         bool visit(const logical::CompositeLightField &node) override {

@@ -6,6 +6,8 @@
 #include <experimental/filesystem>
 #include <mutex>
 
+#include <iostream>
+
 namespace lightdb::video {
 
 class CudaKernel {
@@ -19,6 +21,8 @@ protected:
               function_(nullptr),
               owned_(true) {
         CUresult result;
+
+        std::cout << "Looking for file at " << std::experimental::filesystem::absolute(module_path / module_filename).c_str() << std::endl;
 
         if((result = cuModuleLoad(&module_, std::experimental::filesystem::absolute(module_path / module_filename).c_str())) != CUDA_SUCCESS)
             throw GpuCudaRuntimeError("Could not load module", result);

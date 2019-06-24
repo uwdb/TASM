@@ -1,6 +1,7 @@
 #include "HeuristicOptimizer.h"
 #include "Greyscale.h"
 #include "Display.h"
+#include "Metadata.h"
 #include "extension.h"
 #include <gtest/gtest.h>
 
@@ -43,9 +44,14 @@ TEST_F(VisitorTestFixture, testFoo) {
 
     auto input = Load("/home/maureen/MVI_20052/sampled_frames/sampled.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
     auto boxes = input.Map(yolo);
-    auto boxesOnInput = boxes.Union(input).Store("boxes_on_input");
+//    auto selectedBoxes = boxes.Select(MetadataSpecification("labels", "label", "car"));
 
-    Coordinator().execute(boxes);
+    // Now if we union the selectedBoxes with the input, we should only draw boxes around cars.
+    // Union of boxes with input should draw boxes around cars and people.
+    // Need to get just that working first.
+    auto boxesOnInput = boxes.Union(input);
+
+    Coordinator().execute(boxesOnInput.Save("/home/maureen/boxes_on_input.hevc"));
 }
 
 TEST_F(VisitorTestFixture, testBar) {

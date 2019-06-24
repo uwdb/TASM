@@ -5,6 +5,7 @@
 #include "Catalog.h"
 #include "Geometry.h"
 #include "Interpolation.h"
+#include "Metadata.h"
 #include "options.h"
 #include <filesystem>
 
@@ -29,6 +30,14 @@ namespace lightdb {
             LightFieldReference Select(const ThetaRange&);
             LightFieldReference Select(const PhiRange&);
             LightFieldReference Select(const TemporalRange&);
+
+            // Metadata select.
+            // Specify table name, column name, and column value.
+            // For now just support equality.
+            // Can create a class, like the ranges, to enable specifying all this.
+            LightFieldReference Select(const MetadataSpecification&);
+
+
             LightFieldReference Union(std::vector<LightFieldReference>); //TODO needs merge function
             LightFieldReference Union(LightFieldReference); //TODO needs merge function
             LightFieldReference Rotate(angle theta, angle phi);

@@ -3,7 +3,10 @@
 
 #include "PhysicalOperators.h"
 #include "EncodeOperators.h"
+#include "MetadataLightField.h"
 #include "Rectangles.h"
+
+#include <iostream>
 
 namespace lightdb::physical {
 
@@ -119,7 +122,8 @@ private:
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
-            if(!this->any_parent_eos()) {
+            // FIXME: iterators().back() shouldn't be hardcoded maybe?
+            if(this->iterators().back() != this->iterators().back().eos() && groups_.hasMoreValues()) {
                 auto video = (this->iterators().back()++).template downcast<GPUDecodedFrameData>();
                 GPUDecodedFrameData output{video.configuration(), video.geometry()};
 
@@ -146,6 +150,8 @@ private:
             { }
 
             const std::vector<Data> operator++(int) {
+                std::cout << "Finding boxes for frame " << current_id_ << std::endl;
+
                 std::optional<Data> value;
                 std::vector<Data> values;
 
@@ -158,25 +164,61 @@ private:
                 return values;
             }
 
+            bool hasMoreValues() {
+                return peek().has_value();
+            }
+
         private:
             Data next() {
+                std::cout << "Returning value at index " << index_ << " for frame " << current_id_ << std::endl;
                 auto value = peek().value();
                 index_++;
                 return value;
             }
 
             std::optional<Data> peek() {
-                if(index_ >= frames().size()) {
-                    buffer_ = iterator_++;
-                    index_ = 0u;
+                if (buffer_.is<CPUDecodedFrameData>()) {
+                    if (index_ >= frames().size()) {
+                        buffer_ = iterator_++;
+
+                        while (buffer_.is<MetadataLightField>() && !buffer_.downcast<MetadataLightField>().rectanglesForLabel("car").size() && iterator_ != iterator_.eos()) {
+                            buffer_ = iterator_++;
+                        }
+
+                        index_ = 0u;
+                    }
+                } else if (buffer_.is<MetadataLightField>()) {
+                    if (index_ >= buffer_.downcast<MetadataLightField>().rectanglesForLabel("car").size()) {
+                        if (iterator_ == iterator_.eos()) {
+                            return std::nullopt;
+                        } else {
+                            buffer_ = iterator_++;
+                        }
+                        index_ = 0u;
+                    }
+                } else {
+                    assert(0);
                 }
 
-                if(!frames().empty())
-                    return *reinterpret_cast<const Data*>(frames().at(index_)->data().data());
-                else
-                    return std::nullopt;
+                if (buffer_.is<MetadataLightField>()) {
+                    MetadataLightField data = buffer_.downcast<MetadataLightField>();
+                    Metadata metadata = data.metadata();
+                    std::vector<Rectangle> rectangles = data.rectanglesForLabel("car");
+                    if (rectangles.empty())
+                        return std::nullopt;
+                    else
+                        return rectangles[index_];
+                } else if (buffer_.is<CPUDecodedFrameData>()) {
+                    if (!frames().empty())
+                        return *reinterpret_cast<const Data *>(frames().at(index_)->data().data());
+                    else
+                        return std::nullopt;
+                } else {
+                    assert(0);
+                }
             }
 
+            // How to expose buffer as CPUEncodedFrameData?
             inline std::vector<LocalFrameReference>& frames() { return data().frames(); }
             inline CPUDecodedFrameData& data() { return buffer_.downcast<CPUDecodedFrameData>(); }
 

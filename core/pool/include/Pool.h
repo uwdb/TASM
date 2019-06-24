@@ -1,14 +1,14 @@
 #ifndef LIGHTDB_POOL_H
 #define LIGHTDB_POOL_H
 
-#include "MaterializedLightField.h"
+//#include "MaterializedLightField.h"
 #include <shared_mutex>
 
 namespace lightdb {
 
-    namespace physical {
-        class MaterializedLightField;
-    } // namespace physical
+//    namespace physical {
+//        class MaterializedLightField;
+//    } // namespace physical
 
     namespace pool {
         template<typename T>

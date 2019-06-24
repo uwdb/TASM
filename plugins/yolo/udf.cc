@@ -1,8 +1,10 @@
 #include "udf.h"
 #include "ipp.h"
+#include "MetadataLightField.h"
 #include "Rectangle.h"
 
 #include <iostream>
+#include <map>
 
 using namespace lightdb;
 
@@ -21,6 +23,8 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
     std::vector<char> output;
     auto &data = dynamic_cast<physical::CPUDecodedFrameData&>(input);
 
+    std::multimap<std::string, Rectangle> labels;
+
     // Build map from type -> rectangles.
     // Then we can convert the rectangles into cropping parameters.
     // Then
@@ -30,20 +34,20 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
         frame_index++;
         Allocate(frame->height(), frame->width(), channels);
 
-        auto y_data = reinterpret_cast<const unsigned char*>(frame->data().data());
+        auto y_data = reinterpret_cast<const unsigned char *>(frame->data().data());
         auto uv_data = y_data + frame_size_;
         IppiSize size{static_cast<int>(frame->width()), static_cast<int>(frame->height())};
         //IppiSize size{pow2_ceiling(frame->width()), pow2_ceiling(frame->height())};
 
         // NV12 -> RGB
         //assert(
-                ippiYCbCr420ToRGB_8u_P2C3R(y_data, frame->width(), uv_data, frame->width(), rgb_.data(), channels * frame->width(), size)
-                ;//== ippStsNoErr);
+        ippiYCbCr420ToRGB_8u_P2C3R(y_data, frame->width(), uv_data, frame->width(), rgb_.data(),
+                                   channels * frame->width(), size);//== ippStsNoErr);
 
         // RGBRGBRGB -> RRRBBBGGG
-        assert(ippiCopy_8u_C3P3R(rgb_.data(), 3 * frame->width(), std::initializer_list<unsigned char*>(
-                {planes_.data(), planes_.data() + frame_size_, planes_.data() + 2*frame_size_}).begin(),
-                frame->width(), size) == ippStsNoErr);
+        assert(ippiCopy_8u_C3P3R(rgb_.data(), 3 * frame->width(), std::initializer_list<unsigned char *>(
+                {planes_.data(), planes_.data() + frame_size_, planes_.data() + 2 * frame_size_}).begin(),
+                                 frame->width(), size) == ippStsNoErr);
 
         // uchar -> float
         assert(ippsConvert_8u32f(planes_.data(), scaled_.data(), total_size_) == ippStsNoErr);
@@ -60,25 +64,29 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
                        probabilities_);
 
         Rectangle box{frame_index - 1, 0, 0, 0, 0};
-        output.insert(output.end(), reinterpret_cast<char*>(&box),
-                                    reinterpret_cast<char*>(&box) + sizeof(Rectangle));
+        output.insert(output.end(), reinterpret_cast<char *>(&box),
+                      reinterpret_cast<char *>(&box) + sizeof(Rectangle));
 
-        for(auto i = 0u; i < box_count_; i++)
-            for(auto j = 0u; j < metadata_.classes; j++)
-                if(probabilities_[i][j] > 0.001)
-                    {
-                    std::cout << metadata_.names[j] << std::endl;
+        for (auto i = 0u; i < box_count_; i++) {
+            for (auto j = 0u; j < metadata_.classes; j++) {
+                if (probabilities_[i][j] > 0.001) {
+//                    std::cout << metadata_.names[j] << std::endl;
                     box = {frame_index - 1,
                            static_cast<unsigned int>(boxes_[i].x - boxes_[i].w / 2),
                            static_cast<unsigned int>(boxes_[i].y - boxes_[i].h / 2),
                            static_cast<unsigned int>(boxes_[i].w),
                            static_cast<unsigned int>(boxes_[i].h)};
-                    output.insert(output.end(), reinterpret_cast<char*>(&box),
-                                                reinterpret_cast<char*>(&box) + sizeof(Rectangle));
-                    }
-        }
 
-    return physical::CPUEncodedFrameData(Codec::boxes(), data.configuration(), data.geometry(), output);
+                    labels.emplace(std::make_pair(metadata_.names[j], box));
+                    output.insert(output.end(), reinterpret_cast<char *>(&box),
+                                  reinterpret_cast<char *>(&box) + sizeof(Rectangle));
+                }
+            }
+        }
+    }
+
+    return physical::MetadataLightField({{"labels", labels}}, data.configuration(), data.geometry());
+//    return physical::CPUEncodedFrameData(Codec::boxes(), data.configuration(), data.geometry(), output);
 }
 
 YOLO yolo;

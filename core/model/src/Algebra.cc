@@ -1,5 +1,8 @@
 #include "Algebra.h"
+#include "MetadataLightField.h"
 #include "Model.h"
+
+#include <iostream>
 
 using namespace lightdb::catalog;
 
@@ -55,6 +58,12 @@ namespace lightdb::logical {
         Volume volume(this_->volume().bounding());
         volume.t(range);
         return LightFieldReference::make<SubsetLightField>(this_, volume);
+    }
+
+    LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification) {
+        std::cout << "Selecting metadata specification" << std::endl;
+        return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification);
+//        return this_;
     }
 
     LightFieldReference Algebra::Store(const std::string &name, const Codec &codec,

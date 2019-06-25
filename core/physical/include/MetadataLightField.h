@@ -20,7 +20,7 @@ namespace lightdb::physical {
     class MetadataLightField;
     using MetadataLightFieldReference = shared_reference<MetadataLightField, pool::BufferPoolEntry<MetadataLightField>>;
 
-    using Metadata = std::unordered_map<std::string, std::multimap<std::string, Rectangle>>;
+    using Metadata = std::unordered_map<std::string, std::vector<Rectangle>>;
 
 
     class MetadataLightField: public MaterializedLightField  {
@@ -40,7 +40,7 @@ namespace lightdb::physical {
 
         inline Metadata metadata() { return metadata_; }
 
-        std::vector<Rectangle> rectanglesForLabel(const std::string&);
+        std::vector<Rectangle> allRectangles();
 
     private:
         // Store metadata.

@@ -44,22 +44,18 @@ TEST_F(VisitorTestFixture, testFoo) {
     //printf( "Could not open file : %s\n", dlerror() );
     auto yolo = lightdb::extensibility::Load("yolo"); //, "/home/bhaynes/projects/yolo/cmake-build-debug");
 
-//    auto input = Load("/home/maureen/MVI_20052/sampled_frames/sampled.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto input = Scan("uadetrac");
+    auto input = Load("/home/maureen/dog_videos/dog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto boxes = Load("/home/maureen/dog_videos/dog_boxes.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(boxes.Union(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
 
-    auto continuous = input.Interpolate(Dimension::Theta, interpolation::Linear());
-    auto smallTheta = continuous.Discretize(Dimension::Theta, rational_times_real({2, 416}, PI));
-    auto smallPhi = smallTheta.Discretize(Dimension::Phi, rational_times_real({1, 416}, PI));
-    Coordinator().execute(smallPhi.Store("discretizedUA"));
+//    auto input = Load("/home/maureen/dog_videos/dogBoxes.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+//    Coordinator().execute(input);
 
-//    auto boxes = smallTheta.Map(yolo);
+//    auto boxesOnInput = input.Map(yolo).Union(input).Save("/home/maureen/boxes_on_dog.hevc");
+//    auto boxes = input.Map(yolo);
+//    Coordinator().execute(boxes.Save("/home/maureen/lightdb/dogBoxes.boxes"));
 
-    // Now if we union the selectedBoxes with the input, we should only draw boxes around cars.
-    // Union of boxes with input should draw boxes around cars and people.
-    // Need to get just that working first.
-//    auto boxesOnInput = boxes.Union(smallTheta);
-//
-//    Coordinator().execute(boxesOnInput.Save("/home/maureen/boxes_on_input.hevc"));
+//    Coordinator().execute(boxes.Union(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
 }
 
 TEST_F(VisitorTestFixture, testSaveToCatalog) {

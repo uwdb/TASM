@@ -123,14 +123,19 @@ private:
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             // FIXME: iterators().back() shouldn't be hardcoded maybe?
+            // FIXME: If the boxes iterator is done, but the video one isn't, we should continue
+            // and just output the remaining video frames.
             if(this->iterators().back() != this->iterators().back().eos() && groups_.hasMoreValues()) {
                 auto video = (this->iterators().back()++).template downcast<GPUDecodedFrameData>();
                 GPUDecodedFrameData output{video.configuration(), video.geometry()};
 
                 for(auto &frame: video.frames()) {
                     auto values = groups_++;
-                    auto unioned = transform_.nv12().draw(this->lock(), frame->cuda(), values);
-                    output.frames().emplace_back(unioned);
+                    if (values.size()) {
+                        auto unioned = transform_.nv12().draw(this->lock(), frame->cuda(), values);
+                        output.frames().emplace_back(unioned);
+                    } else
+                        output.frames().emplace_back(frame);
                 }
 
                 return {output};
@@ -158,8 +163,10 @@ private:
                 while((value = peek()).has_value() && value.value().id == current_id_)
                     values.emplace_back(next());
 
-                if((value = peek()).has_value())
-                    current_id_ = value.value().id;
+                // This doesn't work when there aren't boxes for every frame.
+                current_id_++;
+//                if((value = peek()).has_value())
+//                    current_id_ = value.value().id;
 
                 return values;
             }
@@ -181,18 +188,20 @@ private:
                     if (index_ >= frames().size()) {
                         buffer_ = iterator_++;
 
-                        while (buffer_.is<MetadataLightField>() && !buffer_.downcast<MetadataLightField>().rectanglesForLabel("car").size() && iterator_ != iterator_.eos()) {
+                        while (buffer_.is<MetadataLightField>() && !buffer_.downcast<MetadataLightField>().allRectangles().size() && iterator_ != iterator_.eos()) {
                             buffer_ = iterator_++;
                         }
 
                         index_ = 0u;
                     }
                 } else if (buffer_.is<MetadataLightField>()) {
-                    if (index_ >= buffer_.downcast<MetadataLightField>().rectanglesForLabel("car").size()) {
+                    if (index_ >= buffer_.downcast<MetadataLightField>().allRectangles().size()) {
                         if (iterator_ == iterator_.eos()) {
                             return std::nullopt;
                         } else {
                             buffer_ = iterator_++;
+                            while (buffer_.is<MetadataLightField>() && !buffer_.downcast<MetadataLightField>().allRectangles().size() && iterator_ != iterator_.eos())
+                                buffer_ = iterator_++;
                         }
                         index_ = 0u;
                     }
@@ -203,7 +212,7 @@ private:
                 if (buffer_.is<MetadataLightField>()) {
                     MetadataLightField data = buffer_.downcast<MetadataLightField>();
                     Metadata metadata = data.metadata();
-                    std::vector<Rectangle> rectangles = data.rectanglesForLabel("car");
+                    std::vector<Rectangle> rectangles = data.allRectangles();
                     if (rectangles.empty())
                         return std::nullopt;
                     else

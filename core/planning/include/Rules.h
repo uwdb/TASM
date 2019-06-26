@@ -124,8 +124,9 @@ namespace lightdb::optimization {
                             //plan().emplace<physical::GPUOperatorAdapter>(tees->physical(index), decode);
                     }
                 } else if(node.codec() == Codec::boxes()) {
-                    auto &scan = plan().emplace<physical::ScanSingleFile<sizeof(Rectangle) * 8192>>(logical, node.source());
-                    auto decode = plan().emplace<physical::CPUFixedLengthRecordDecode<Rectangle>>(logical, scan);
+                    plan().emplace<physical::ScanSingleBoxesFile>(logical, node.source());
+//                    auto &scan = plan().emplace<physical::ScanSingleFile<sizeof(Rectangle) * 8192>>(logical, node.source());
+//                    auto decode = plan().emplace<physical::CPUFixedLengthRecordDecode<Rectangle>>(logical, scan);
                 }
 
                 return true;
@@ -242,9 +243,11 @@ namespace lightdb::optimization {
                          Codec::hevc())
                     return false;
             } else {
-                if (!node.parents()[0].is<logical::TransformedLightField>() || !node.parents()[1].is<logical::ExternalLightField>())
+                if (!(node.parents()[0].is<logical::TransformedLightField>() || node.parents()[0].is<logical::ExternalLightField>()) || !node.parents()[1].is<logical::ExternalLightField>())
                     return false;
                 else if (node.parents()[1].downcast<logical::ExternalLightField>().sources()[0].codec() != Codec::hevc())
+                    return false;
+                else if (node.parents()[0].is<logical::ExternalLightField>() && node.parents()[0].downcast<logical::ExternalLightField>().sources()[0].codec() != Codec::boxes())
                     return false;
                 // Assume that the transformed light field returns boxes.
             }
@@ -783,10 +786,13 @@ namespace lightdb::optimization {
             } else if(parent.is<physical::CPUMap>() && parent.downcast<physical::CPUMap>().transform()(physical::DeviceType::CPU).codec().name() == node.codec().name()) {
                 return plan().emplace<physical::CPUIdentity>(logical, parent);
                 //TODO this is silly -- every physical operator should declare an output type and we should just use that
+            } else if (parent.is<physical::CPUMap>() && node.filename().extension() == ".boxes") {
+                return plan().emplace<physical::CPUIdentity>(logical, parent);
             } else if(parent.is<physical::TeedPhysicalOperatorAdapter::TeedPhysicalOperator>() && parent->parents()[0].is<physical::CPUMap>() && parent->parents()[0].downcast<physical::CPUMap>().transform()(physical::DeviceType::CPU).codec().name() == node.codec().name()) {
                 return plan().emplace<physical::CPUIdentity>(logical, parent);
             } else if(parent.is<physical::TeedPhysicalOperatorAdapter::TeedPhysicalOperator>() && parent->parents()[0].is<physical::GPUAngularSubquery>()) {
                 return plan().emplace<physical::CPUIdentity>(logical, parent);
+
             } else if(parent->device() != physical::DeviceType::GPU) {
                 //auto gpu = plan().environment().gpus()[0];
                 auto gpu = plan().allocator().gpu();
@@ -810,8 +816,13 @@ namespace lightdb::optimization {
                     return false;
 
                 auto encode = Encode(node, physical_parents.front());
-                plan().emplace<physical::SaveToFile>(plan().lookup(node), encode);
-                return true;
+
+               if (physical_parents.front().is<physical::CPUMap>() && node.filename().extension() == ".boxes") {
+                   plan().emplace<physical::SaveBoxes>(plan().lookup(node), encode);
+               } else {
+                   plan().emplace<physical::SaveToFile>(plan().lookup(node), encode);
+               }
+               return true;
             }
             return false;
         }

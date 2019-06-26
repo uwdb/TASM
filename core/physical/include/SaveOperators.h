@@ -5,6 +5,58 @@
 
 namespace lightdb::physical {
 
+class SaveBoxes: public PhysicalOperator {
+public:
+//        explicit SaveBoxes(const LightFieldReference &logical)
+//            : PhysicalOperator(logical, {}, physical::DeviceType::CPU, runtime::make<Runtime>(*this))
+//        { }
+
+    explicit SaveBoxes(const LightFieldReference &logical, PhysicalOperatorReference &parent)
+            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this))
+    { }
+
+private:
+    class Runtime: public runtime::Runtime<> {
+    public:
+        explicit Runtime(PhysicalOperator &physical)
+                : runtime::Runtime<>(physical)
+        { }
+
+        std::optional<physical::MaterializedLightFieldReference> read() override {
+            if (!all_parent_eos()) {
+                assert(iterators().size() == 1);
+                MaterializedLightFieldReference input = *(iterators().front());
+                assert(input.is<MetadataLightField>());
+                MetadataLightField metadataLightField = input.downcast<MetadataLightField>();
+                std::vector<Rectangle> rectangles = metadataLightField.allRectangles();
+                rectangles_.insert(rectangles_.end(), rectangles.begin(), rectangles.end());
+                return iterators().front()++;
+            } else {
+                // Write rectangles to file.
+                std::filesystem::path outputFile = physical().logical().downcast<logical::SavedLightField>().filename();
+                std::ofstream ofs(outputFile, std::ios::binary);
+                // FIXME: This doesn't work, e.g. when size is 234.
+                ofs.put((char)rectangles_.size());
+                ofs.write(reinterpret_cast<char*>(rectangles_.data()), rectangles_.size() * sizeof(Rectangle));
+                ofs.close();
+
+//                std::ifstream ifs("/home/maureen/lightdb/carRectangles.boxes", std::ios::binary);
+//                char sizeChar;
+//                ifs.get(sizeChar);
+//                auto size = static_cast<size_t>(sizeChar);
+//
+//                std::vector<Rectangle> readRectangles;
+//                ifs.read(reinterpret_cast<char *>(&readRectangles), size * sizeof(Rectangle));
+
+                return std::nullopt;
+            }
+        }
+
+    private:
+        std::vector<Rectangle> rectangles_;
+    };
+};
+
 class SaveToFile: public PhysicalOperator {
 public:
     explicit SaveToFile(const LightFieldReference &logical,

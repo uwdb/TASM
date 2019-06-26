@@ -85,6 +85,9 @@ namespace lightdb::catalog {
             throw CatalogError("Volume must be supplied for external files with no metadata", filename());
         else if(!geometry.has_value())
             throw CatalogError("Geometry must be supplied for external files with no metadata", filename());
+        else if (filename().extension() == ".boxes") {
+            return { Source{0, filename(), Codec::boxes(), Configuration(), volume.value(), geometry.value()} };
+        }
         else
             return functional::transform<Source>(video::ffmpeg::GetStreamConfigurations(filename(), true),
                     [this, &volume, &geometry](const auto &configuration) {

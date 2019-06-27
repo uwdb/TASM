@@ -39,6 +39,9 @@ namespace lightdb {
             physical::DeviceType device() const { return deviceType_; }
             bool determistic() const { return determistic_; }
 
+            // Default do nothing.
+            virtual void handleAllDataHasBeenProcessed() { }
+
         private:
             const physical::DeviceType deviceType_;
             const Codec codec_;

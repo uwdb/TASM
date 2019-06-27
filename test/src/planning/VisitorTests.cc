@@ -52,7 +52,7 @@ TEST_F(VisitorTestFixture, testMapAndBoxThings) {
     auto yolo = lightdb::extensibility::Load("yolo"); //, "/home/bhaynes/projects/yolo/cmake-build-debug");
 
     auto input = Load("/home/maureen/dog_videos/dog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Map(yolo).Save("/home/maureen/dog_videos/dog_labels/dog_labels.boxes"));
+    Coordinator().execute(input.Map(DropFrames).Save("/home/maureen/dog_videos/dog_dog.hevc"));
 //    auto boxes = Load("/home/maureen/dog_videos/short_dog_labels/dog_short_dog_labels.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
 //    Coordinator().execute(boxes.Union(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
 

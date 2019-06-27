@@ -73,8 +73,11 @@ class Runtime: public runtime::UnaryRuntime<CPUMap, CPUDecodedFrameData> {
 
                 auto output = transform(data);
                 return dynamic_cast<MaterializedLightField&>(*output).ref();
-            } else
+            } else {
+                auto &transform = physical().transform()(DeviceType::CPU);
+                transform.handleAllDataHasBeenProcessed();
                 return {};
+            }
         }
     };
 

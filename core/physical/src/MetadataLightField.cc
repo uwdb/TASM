@@ -7,7 +7,12 @@
 namespace lightdb::physical {
 
     std::vector<Rectangle> MetadataLightField::allRectangles() {
-        return metadata_.at("labels");
+        std::vector<Rectangle> allRectangles;
+        std::for_each(metadata_.begin(), metadata_.end(), [&](std::pair<std::string, std::vector<Rectangle>> labelAndRectangles) {
+           allRectangles.insert(allRectangles.end(), labelAndRectangles.second.begin(), labelAndRectangles.second.end());
+        });
+
+        return allRectangles;
     }
 
 } // namespace lightdb::physical

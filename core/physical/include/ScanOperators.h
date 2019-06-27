@@ -63,13 +63,22 @@ private:
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if (!reader_.eof()) {
-                char size;
-                reader_.get(size);
+                char numDigits;
+                reader_.get(numDigits);
 
-                auto realSize = 234; // Number of rectangles in dob_boxes.boxes.
-                std::vector<Rectangle> rectangles(static_cast<unsigned int>(realSize));
-                reader_.read(reinterpret_cast<char *>(rectangles.data()), realSize * sizeof(Rectangle));
-                reader_.get(size);
+                std::string sizeAsString;
+                for (int i = 0; i < (int)numDigits; i++) {
+                    char next;
+                    reader_.get(next);
+                    sizeAsString += next;
+                }
+
+                int size = std::stoi(sizeAsString);
+//
+//                auto realSize = 234; // Number of rectangles in dob_boxes.boxes.
+                std::vector<Rectangle> rectangles(size);
+                reader_.read(reinterpret_cast<char *>(rectangles.data()), size * sizeof(Rectangle));
+                reader_.get(numDigits);
                 assert(reader_.eof());
 
                 return {MetadataLightField({{"labels", rectangles}}, physical().source().configuration(), physical().source().geometry()).ref()};

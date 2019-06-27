@@ -28,32 +28,46 @@ private:
                 MaterializedLightFieldReference input = *(iterators().front());
                 assert(input.is<MetadataLightField>());
                 MetadataLightField metadataLightField = input.downcast<MetadataLightField>();
-                std::vector<Rectangle> rectangles = metadataLightField.allRectangles();
-                rectangles_.insert(rectangles_.end(), rectangles.begin(), rectangles.end());
+
+                Metadata lfMetadata = metadataLightField.metadata();
+                std::for_each(lfMetadata.begin(), lfMetadata.end(), [&](auto labelAndRectangles) {
+                    std::vector<Rectangle> &rectanglesForLabel = metadata_[labelAndRectangles.first];
+                    rectanglesForLabel.insert(rectanglesForLabel.end(), labelAndRectangles.second.begin(), labelAndRectangles.second.end());
+                });
+
+//                std::vector<Rectangle> rectangles = metadataLightField.allRectangles();
+//                rectangles_.insert(rectangles_.end(), rectangles.begin(), rectangles.end());
                 return iterators().front()++;
             } else {
                 // Write rectangles to file.
                 std::filesystem::path outputFile = physical().logical().downcast<logical::SavedLightField>().filename();
-                std::ofstream ofs(outputFile, std::ios::binary);
-                // FIXME: This doesn't work, e.g. when size is 234.
-                ofs.put((char)rectangles_.size());
-                ofs.write(reinterpret_cast<char*>(rectangles_.data()), rectangles_.size() * sizeof(Rectangle));
-                ofs.close();
+                for (auto iter = metadata_.begin(); iter != metadata_.end(); iter++) {
+                    std::string label = iter->first;
+                    std::vector<Rectangle> boxes = iter->second;
 
-//                std::ifstream ifs("/home/maureen/lightdb/carRectangles.boxes", std::ios::binary);
-//                char sizeChar;
-//                ifs.get(sizeChar);
-//                auto size = static_cast<size_t>(sizeChar);
-//
-//                std::vector<Rectangle> readRectangles;
-//                ifs.read(reinterpret_cast<char *>(&readRectangles), size * sizeof(Rectangle));
+                    std::filesystem::path pathForLabel = outputFile.parent_path().append(label + "_" + outputFile.filename().string());
+                    std::ofstream ofs(pathForLabel, std::ios::binary);
+
+                    std::string sizeAsString = std::to_string(boxes.size());
+                    ofs.put((char)sizeAsString.length());
+                    ofs.write(sizeAsString.data(), sizeAsString.length());
+
+                    ofs.write(reinterpret_cast<char *>(boxes.data()), boxes.size() * sizeof(Rectangle));
+                }
+
+//                std::ofstream ofs(outputFile, std::ios::binary);
+//                // FIXME: This doesn't work, e.g. when size is 234.
+//                ofs.put((char)rectangles_.size());
+//                ofs.write(reinterpret_cast<char*>(rectangles_.data()), rectangles_.size() * sizeof(Rectangle));
+//                ofs.close();
 
                 return std::nullopt;
             }
         }
 
     private:
-        std::vector<Rectangle> rectangles_;
+        Metadata metadata_;
+//        std::vector<Rectangle> rectangles_;
     };
 };
 

@@ -24,7 +24,8 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
     std::vector<char> output;
     auto &data = dynamic_cast<physical::CPUDecodedFrameData&>(input);
 
-    std::vector<Rectangle> carBoxes;
+    std::unordered_map<std::string, std::vector<Rectangle>> allBoxes;
+//    std::vector<Rectangle> carBoxes;
 
     // Build map from type -> rectangles.
     // Then we can convert the rectangles into cropping parameters.
@@ -33,6 +34,10 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
     for(auto& frame: data.frames()) {
         std::cout << "Processing frame number " << frame_index << std::endl;
         frame_index++;
+
+//        if (frame_index > 2)
+//            break;
+
         Allocate(frame->height(), frame->width(), channels);
 
         auto y_data = reinterpret_cast<const unsigned char *>(frame->data().data());
@@ -83,14 +88,15 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
                                   reinterpret_cast<char *>(&box) + sizeof(Rectangle));
 
 //                    if (std::string(metadata_.names[j]) == "car")
-                    std::cout << metadata_.names[j] << std::endl;
-                    carBoxes.emplace_back(box);
+//                    std::cout << metadata_.names[j] << std::endl;
+//                    carBoxes.emplace_back(box);
+                    allBoxes[metadata_.names[j]].emplace_back(box);
                 }
             }
         }
     }
 
-    return physical::MetadataLightField({{"labels", carBoxes}}, data.configuration(), data.geometry());
+    return physical::MetadataLightField(allBoxes, data.configuration(), data.geometry());
 //    return physical::CPUEncodedFrameData(Codec::boxes(), data.configuration(), data.geometry(), output);
 }
 

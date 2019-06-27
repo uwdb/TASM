@@ -1,4 +1,5 @@
 #include "AssertVideo.h"
+#include "DropFrames.h"
 #include "HeuristicOptimizer.h"
 #include "Greyscale.h"
 #include "Display.h"
@@ -34,7 +35,13 @@ TEST_F(VisitorTestFixture, testBaz) {
     Coordinator().execute(encoded);
 }
 
-TEST_F(VisitorTestFixture, testFoo) {
+TEST_F(VisitorTestFixture, testDropFrames) {
+    auto input = Load("/home/maureen/dog_videos/dog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto shortened = input.Map(DropFrames).Save("/home/maureen/dog_videos/dog_with_dropped_frames.hevc");
+    Coordinator().execute(shortened);
+}
+
+TEST_F(VisitorTestFixture, testMapAndBoxThings) {
 /*    auto left = Scan("red10");
     auto right = Scan("red10");
     auto unioned = left.Union(right);
@@ -45,8 +52,9 @@ TEST_F(VisitorTestFixture, testFoo) {
     auto yolo = lightdb::extensibility::Load("yolo"); //, "/home/bhaynes/projects/yolo/cmake-build-debug");
 
     auto input = Load("/home/maureen/dog_videos/dog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto boxes = Load("/home/maureen/dog_videos/dog_boxes.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(boxes.Union(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
+    Coordinator().execute(input.Map(yolo).Save("/home/maureen/dog_videos/dog_labels/dog_labels.boxes"));
+//    auto boxes = Load("/home/maureen/dog_videos/short_dog_labels/dog_short_dog_labels.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+//    Coordinator().execute(boxes.Union(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
 
 //    auto input = Load("/home/maureen/dog_videos/dogBoxes.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
 //    Coordinator().execute(input);

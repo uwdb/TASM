@@ -3,6 +3,9 @@
 
 #include "PhysicalOperators.h"
 
+#include "timer.h"
+#include <iostream>
+
 namespace lightdb::physical {
 
 class GPUtoCPUTransfer: public PhysicalOperator {
@@ -20,6 +23,7 @@ private:
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            timer_.startSection();
             if(iterators()[0] != iterators()[0].eos()) {
                 auto input = iterators()[0]++;
                 auto data = input.downcast<GPUDecodedFrameData>();
@@ -28,10 +32,15 @@ private:
                 for(auto &frame: data.frames())
                     output.frames().emplace_back(LocalFrame{*frame->cuda(), data.configuration()});
 
+                timer_.endSection();
                 return {output};
-            } else
+            } else {
+                std::cout << "ANALYSIS GPUToCPUTransfer took " << timer_.totalTimeInMillis() << " ms\n";
                 return {};
+            }
         }
+    private:
+        Timer timer_;
     };
 };
 
@@ -54,16 +63,23 @@ private:
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if(iterators().front() != iterators().front().eos()) {
                 auto input = iterators().front()++;
+                timer_.startSection();
+
                 auto data = input.downcast<CPUDecodedFrameData>();
                 GPUDecodedFrameData output{data.configuration(), data.geometry()};
 
                 for(LocalFrameReference &frame: data.frames())
                     output.frames().emplace_back(std::make_shared<CudaFrame>(*frame));
 
+                timer_.endSection();
                 return {output};
-            } else
+            } else {
+                std::cout << "ANALYSIS CPUToGPUTransfer took " << timer_.totalTimeInMillis() << " ms\n";
                 return {};
+            }
         }
+    private:
+        Timer timer_;
     };
 };
 

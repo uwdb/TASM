@@ -6,6 +6,13 @@ namespace lightdb {
         unsigned int id;
         unsigned int x, y;
         unsigned int width, height;
+
+        bool containsPoint(const unsigned int &posX, const unsigned int &posY) const {
+            return x <= posX
+                && y <= posY
+                && x + width >= posX
+                && y + height >= posY;
+        }
     };
 } // namespace lightdb
 

@@ -6,6 +6,9 @@
 #include "EncodeOperators.h"
 #include "Functor.h"
 
+#include "timer.h"
+#include <iostream>
+
 namespace lightdb::physical {
 
 //TODO CPUMap and GPU map can be combined into one templated class
@@ -36,8 +39,10 @@ private:
                 auto &transform = physical().transform()(DeviceType::GPU);
                 auto output = transform(input);
                 return dynamic_cast<MaterializedLightField&>(*output).ref();
-            } else
+            } else {
+                physical().transform()(DeviceType::GPU).handleAllDataHasBeenProcessed();
                 return {};
+            }
         }
     };
 
@@ -69,16 +74,21 @@ class Runtime: public runtime::UnaryRuntime<CPUMap, CPUDecodedFrameData> {
 
                 auto data = iterator()++;
 
+                timer_.startSection();
+
                 auto &transform = physical().transform()(DeviceType::CPU);
 
                 auto output = transform(data);
+                timer_.endSection();
                 return dynamic_cast<MaterializedLightField&>(*output).ref();
             } else {
-                auto &transform = physical().transform()(DeviceType::CPU);
-                transform.handleAllDataHasBeenProcessed();
+                physical().transform()(DeviceType::CPU).handleAllDataHasBeenProcessed();
+                std::cout << "ANALYSIS CPUMap took " << timer_.totalTimeInMillis() << " ms\n";
                 return {};
             }
         }
+    private:
+        Timer timer_;
     };
 
     const functor::unaryfunctor transform_;

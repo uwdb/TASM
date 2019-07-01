@@ -7,6 +7,9 @@
 #include "Display.h"
 #include "progress.h"
 
+#include "timer.h"
+#include <iostream>
+
 namespace lightdb::execution {
 
 class Coordinator {
@@ -41,7 +44,11 @@ public:
     }
 
     void execute(const LightFieldReference &query) {
+        Timer timer;
+        timer.startSection();
         execute(query, optimization::Optimizer::instance());
+        timer.endSection();
+        std::cout << "ANALYSIS query took " << timer.totalTimeInMillis() << " ms\n";
     }
 
     void execute(const LightFieldReference &query, const optimization::Optimizer& optimizer) {

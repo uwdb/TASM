@@ -4,9 +4,13 @@
 #include "Greyscale.h"
 #include "Display.h"
 #include "Metadata.h"
+#include "SelectPixels.h"
 #include "TestResources.h"
 #include "extension.h"
 #include <gtest/gtest.h>
+
+#include "timer.h"
+#include <iostream>
 
 using namespace lightdb;
 using namespace lightdb::logical;
@@ -36,9 +40,23 @@ TEST_F(VisitorTestFixture, testBaz) {
 }
 
 TEST_F(VisitorTestFixture, testDropFrames) {
-    auto input = Load("/home/maureen/dog_videos/dog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto shortened = input.Map(DropFrames).Save("/home/maureen/dog_videos/dog_with_dropped_frames.hevc");
+    // "/home/maureen/dog_videos/dog.hevc"
+    auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto shortened = input.Map(DropFrames).Save("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011_bus_frames.hevc");
     Coordinator().execute(shortened);
+}
+
+TEST_F(VisitorTestFixture, testSelectPixels) {
+    auto input = Load("/home/maureen/dog_videos/dog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto selected = input.Map(SelectPixels).Save("/home/maureen/dog_videos/dog_with_selected_pixels_fast.hevc");
+    Coordinator().execute(selected);
+}
+
+TEST_F(VisitorTestFixture, testMakeBoxes) {
+    auto yolo = lightdb::extensibility::Load("yolo");
+    auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto query = input.Map(yolo).Save("/home/maureen/uadetrac_videos/MVI_20011/labels/mvi_20011_boxes.boxes");
+    Coordinator().execute(query);
 }
 
 TEST_F(VisitorTestFixture, testMapAndBoxThings) {

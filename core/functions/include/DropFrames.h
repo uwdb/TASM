@@ -14,16 +14,76 @@
 #include <fstream>
 #include <iostream>
 
+#include "timer.h"
+
 namespace lightdb {
 class DropFrames : public functor::unaryfunctor {
+//    class GPU : public functor::unaryfunction {
+//    public:
+//        GPU() : GPU("/home/maureen/dog_videos/dog_labels/dog_dog_labels.boxes") { }
+//        GPU(const std::filesystem::path &pathToBoxes)
+//            : functor::unaryfunction(physical::DeviceType::GPU, lightdb::Codec::raw(), true),
+//            frameIndex_(0),
+//            numberOfFramesWithObject_(0)
+//        {
+//            Timer timer;
+//            timer.startSection();
+//
+//            std::ifstream ifs(pathToBoxes, std::ios::binary);
+//
+//            char numDigits;
+//            ifs.get(numDigits);
+//            std::string sizeAsString;
+//            for (int i = 0; i < (int)numDigits; i++) {
+//                char next;
+//                ifs.get(next);
+//                sizeAsString += next;
+//            }
+//            int size = std::stoi(sizeAsString);
+//
+//            std::vector<Rectangle> rectangles(size);
+//            ifs.read(reinterpret_cast<char *>(rectangles.data()), size * sizeof(Rectangle));
+//
+//            std::vector<bool> framesWithObject(rectangles[size-1].id, false);
+//            std::for_each(rectangles.begin(), rectangles.end(), [&](const Rectangle &rectangle) {
+//                if (!framesWithObject[rectangle.id])
+//                    numberOfFramesWithObject_++;
+//
+//                framesWithObject[rectangle.id] = true;
+//            });
+//
+//            framesWithObject_ = framesWithObject;
+//
+//            timer.endSection();
+//            std::cout << "ANALYSIS DropFrames-GPU-set-up took: " << timer.totalTimeInMillis() << " ms\n";
+//        }
+//
+//        shared_reference<LightField> operator()(LightField &input) override {
+//            auto &data = dynamic_cast<physical::GPUDecodedFrameData&>(input);
+//
+//
+//        }
+//
+//    private:
+//        std::vector<bool> framesWithObject_;
+//        unsigned int frameIndex_;
+//        unsigned int numberOfFramesWithObject_;
+//    };
+
     class CPU : public functor::unaryfunction {
     public:
-        CPU() : CPU("/home/maureen/dog_videos/dog_labels/dog_dog_labels.boxes") { }
+        CPU() : CPU("/home/maureen/uadetrac_videos/MVI_20011/labels/bus_mvi_20011_boxes.boxes") { }
         CPU(const std::filesystem::path &pathToBoxes)
             : lightdb::functor::unaryfunction(physical::DeviceType::CPU, lightdb::Codec::raw(), true),
             frameIndex_(0),
-            numberOfDroppedFrames_(0)
+            numberOfFramesWithObject_(0),
+            shouldRemoveFrames_(true),
+            frameWidth_(0),
+            frameHeight_(0)
         {
+            Timer timer;
+            timer.startSection();
+
             std::ifstream ifs(pathToBoxes, std::ios::binary);
 
             char numDigits;
@@ -41,10 +101,16 @@ class DropFrames : public functor::unaryfunctor {
 
             std::vector<bool> framesWithObject(rectangles[size-1].id, false);
             std::for_each(rectangles.begin(), rectangles.end(), [&](const Rectangle &rectangle) {
+                if (!framesWithObject[rectangle.id])
+                    numberOfFramesWithObject_++;
+
                 framesWithObject[rectangle.id] = true;
             });
 
             framesWithObject_ = framesWithObject;
+
+            timer.endSection();
+            std::cout << "ANALYSIS DropFrames-CPU-set-up took: " << timer.totalTimeInMillis() << " ms\n";
         }
 
         shared_reference<LightField> operator()(LightField &input) override {
@@ -52,16 +118,31 @@ class DropFrames : public functor::unaryfunctor {
             physical::CPUDecodedFrameData output(data.configuration(), data.geometry());
 
             for (auto& frame: data.frames()) {
+                if (!frameWidth_) {
+                    frameWidth_ = frame->width();
+                    frameHeight_ = frame->height();
+                }
+
                 if (frameIndex_ >= framesWithObject_.size()) {
-                    numberOfDroppedFrames_++;
-                    break;
+                    if (!shouldRemoveFrames_) {
+                        bytestring droppedFrameData(frame->data());
+                        memset(droppedFrameData.data(), 0, frame->width() * frame->height());
+                        output.frames().push_back(std::move(LocalFrameReference::make<LocalFrame>(*frame, droppedFrameData)));
+                        ++frameIndex_;
+                        continue;
+                    } else
+                        break;
                 }
 
                 if (framesWithObject_[frameIndex_])
                     output.frames().emplace_back(frame);
-                else
-                    numberOfDroppedFrames_++;
-
+                else {
+                    if (!shouldRemoveFrames_) {
+                        bytestring droppedFrameData(frame->data());
+                        memset(droppedFrameData.data(), 0, frame->width() * frame->height());
+                        output.frames().push_back(std::move(LocalFrameReference::make<LocalFrame>(*frame, droppedFrameData)));
+                    }
+                }
                 ++frameIndex_;
             }
 
@@ -69,13 +150,21 @@ class DropFrames : public functor::unaryfunctor {
         }
 
         void handleAllDataHasBeenProcessed() override {
-            std::cout << "Total number of processed frames: " << frameIndex_ << ", number of dropped frames: " << numberOfDroppedFrames_ << std::endl;
+            std::cout << "ANALYSIS-VIDEO Total number of processed frames: " << frameIndex_
+                << ", number of frames with object: " << numberOfFramesWithObject_
+                << ", removed frames without objects: " << shouldRemoveFrames_
+                << ", frame width: " << frameWidth_
+                << ", frame height: " << frameHeight_
+                << std::endl;
         }
 
     private:
         std::vector<bool> framesWithObject_;
         unsigned int frameIndex_;
-        unsigned int numberOfDroppedFrames_;
+        unsigned int numberOfFramesWithObject_;
+        bool shouldRemoveFrames_;
+        unsigned int frameWidth_;
+        unsigned int frameHeight_;
     };
 
 public:

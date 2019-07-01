@@ -3,6 +3,9 @@
 
 #include "PhysicalOperators.h"
 
+#include "timer.h"
+#include <iostream>
+
 namespace lightdb::physical {
 
 class SaveBoxes: public PhysicalOperator {
@@ -93,19 +96,24 @@ private:
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            timer_.startSection();
             if(!all_parent_eos()) {
                 auto &input = *iterator();
                 auto &output = outputs_.front().get();
 
                 std::copy(input.value().begin(), input.value().end(),
                           std::ostreambuf_iterator<char>(output.stream()));
+                timer_.endSection();
                 return iterator()++;
-            } else
+            } else {
+                std::cout << "ANALYSIS SaveToFile took " << timer_.totalTimeInMillis() << " ms\n";
                 return std::nullopt;
+            }
         }
 
     private:
         std::vector<std::reference_wrapper<transactions::OutputStream>> outputs_;
+        Timer timer_;
     };
 };
 

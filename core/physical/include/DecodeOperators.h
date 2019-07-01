@@ -8,6 +8,9 @@
 #include "VideoDecoderSession.h"
 #include "Runtime.h"
 
+#include "timer.h"
+#include <iostream>
+
 extern "C" {
 #include <libavformat/avio.h>
 #include <libavformat/avformat.h>
@@ -62,20 +65,28 @@ private:
             LOG_IF(WARNING, configuration_.output_surfaces < 8)
                 << "Decode configuration output surfaces is low, limiting throughput";
 
-            if(!decoder_.frame_queue().isComplete())
+            timer_.startSection();
+
+            if(!decoder_.frame_queue().isComplete()) {
                 do {
                     auto frame = session_.decode(physical().poll_duration());
                     if (frame.has_value())
                         frames.emplace_back(frame.value());
-                } while(!decoder_.frame_queue().isEmpty() &&
-                        !decoder_.frame_queue().isEndOfDecode() &&
-                        frames.size() <= configuration_.output_surfaces / 4);
+                } while (!decoder_.frame_queue().isEmpty() &&
+                         !decoder_.frame_queue().isEndOfDecode() &&
+                         frames.size() <= configuration_.output_surfaces / 4);
+            }
 
-            if(!frames.empty() || !decoder_.frame_queue().isComplete())
-                return std::optional<physical::MaterializedLightFieldReference>{
-                          GPUDecodedFrameData(configuration_, geometry_, frames)};
-            else
+            if(!frames.empty() || !decoder_.frame_queue().isComplete()) {
+                auto returnValue = std::optional<physical::MaterializedLightFieldReference>{
+                        GPUDecodedFrameData(configuration_, geometry_, frames)};
+                timer_.endSection();
+                return returnValue;
+            }
+            else {
+                std::cout << "ANALYSIS GPUDecodeFromCPU took " << timer_.totalTimeInMillis() << " ms" << std::endl;
                 return std::nullopt;
+            }
         }
 
     private:
@@ -84,6 +95,7 @@ private:
         CUVIDFrameQueue queue_;
         CudaDecoder decoder_;
         VideoDecoderSession<Runtime::downcast_iterator<CPUEncodedFrameData>> session_;
+        Timer timer_;
     };
 
     const std::chrono::microseconds poll_duration_;

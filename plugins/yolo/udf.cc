@@ -34,7 +34,7 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
     for(auto& frame: data.frames()) {
         std::cout << "Processing frame number " << frame_index << std::endl;
         frame_index++;
-
+//
 //        if (frame_index > 2)
 //            break;
 

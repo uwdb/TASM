@@ -5,6 +5,9 @@
 #include "PhysicalOperators.h"
 #include "Rectangle.h"
 
+#include "timer.h"
+#include <iostream>
+
 namespace lightdb::physical {
 
 class ScanSingleFileDecodeReader: public PhysicalOperator {
@@ -26,18 +29,27 @@ private:
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            timer_.startSection();
+
             auto packet = reader_.read();
-            return packet.has_value()
-                   ? std::optional<physical::MaterializedLightFieldReference>{
-                            physical::MaterializedLightFieldReference::make<CPUEncodedFrameData>(
-                                    physical().source().codec(),
-                                    physical().source().configuration(),
-                                    physical().source().geometry(),
-                                    packet.value())}
-                   : std::nullopt;
+            if (packet.has_value()) {
+                 auto returnValue = std::optional<physical::MaterializedLightFieldReference>{
+                        physical::MaterializedLightFieldReference::make<CPUEncodedFrameData>(
+                                physical().source().codec(),
+                                physical().source().configuration(),
+                                physical().source().geometry(),
+                                packet.value())};
+                 timer_.endSection();
+                 return returnValue;
+            } else {
+                std::cout << "ANALYSIS ScanSingleFileDecodeReader took " << timer_.totalTimeInMillis() << " ms" << std::endl;
+                return std::nullopt;
+            }
         }
 
         FileDecodeReader reader_;
+    private:
+        Timer timer_;
     };
 
     const catalog::Source source_;

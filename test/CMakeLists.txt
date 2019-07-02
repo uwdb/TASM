@@ -2,6 +2,9 @@ enable_testing()
 
 include(${PROJECT_SOURCE_DIR}/cmake/gtest.cmake)
 
+#set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-new-ttp-matching")
+#set (CMAKE_CXX_STANDARD 14)
+
 # Include test header directories
 file(GLOB LIGHTDB_TEST_INCLUDE_DIRS "include/*")
 include_directories(${LIGHTDB_TEST_INCLUDE_DIRS})

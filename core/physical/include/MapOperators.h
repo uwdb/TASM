@@ -36,14 +36,20 @@ private:
             if(iterator() != iterator().eos()) {
                 auto input = iterator()++;
 
+                timer_.startSection();
+
                 auto &transform = physical().transform()(DeviceType::GPU);
                 auto output = transform(input);
+                timer_.endSection();
                 return dynamic_cast<MaterializedLightField&>(*output).ref();
             } else {
                 physical().transform()(DeviceType::GPU).handleAllDataHasBeenProcessed();
+                std::cout << "ANALYSIS GPUMap took " << timer_.totalTimeInMillis() << " ms\n";
                 return {};
             }
         }
+    private:
+        Timer timer_;
     };
 
     const functor::unaryfunctor transform_;

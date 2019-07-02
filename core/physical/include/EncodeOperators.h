@@ -12,6 +12,8 @@
 #include <cstdio>
 #include <utility>
 
+#include "timer.h"
+
 namespace lightdb::physical {
 
 class GPUEncodeToCPU : public PhysicalOperator, public GPUOperator {
@@ -44,6 +46,7 @@ private:
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if (iterator() != iterator().eos()) {
                 auto decoded = iterator()++;
+                timer_.startSection();
 
                 for (const auto &frame: decoded.frames())
                     encodeSession_.Encode(*frame, decoded.configuration().offset.top, decoded.configuration().offset.left);
@@ -54,9 +57,12 @@ private:
                     // If so, flush the encode queue and end this op too
                     encodeSession_.Flush();
 
+                timer_.endSection();
                 return {CPUEncodedFrameData(physical().codec(), decoded.configuration(), decoded.geometry(), writer_.dequeue())};
-            } else
+            } else {
+                std::cout << "ANALYSIS GPUEncodeToCPU took " << timer_.totalTimeInMillis() << " ms\n";
                 return std::nullopt;
+            }
         }
 
     private:
@@ -76,6 +82,7 @@ private:
         VideoEncoder encoder_;
         MemoryEncodeWriter writer_;
         VideoEncoderSession encodeSession_;
+        Timer timer_;
     };
 
     const Codec codec_;

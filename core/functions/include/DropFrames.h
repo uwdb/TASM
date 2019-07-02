@@ -10,65 +10,95 @@
 #define LIGHTDB_DROPFRAMES_H
 
 #include "Functor.h"
+#include "MaterializedLightField.h"
 #include "Rectangle.h"
 #include <fstream>
 #include <iostream>
 
 #include "timer.h"
 
+// "/home/maureen/dog_videos/dog_labels/dog_dog_labels.boxes"
+
 namespace lightdb {
 class DropFrames : public functor::unaryfunctor {
-//    class GPU : public functor::unaryfunction {
-//    public:
-//        GPU() : GPU("/home/maureen/dog_videos/dog_labels/dog_dog_labels.boxes") { }
-//        GPU(const std::filesystem::path &pathToBoxes)
-//            : functor::unaryfunction(physical::DeviceType::GPU, lightdb::Codec::raw(), true),
-//            frameIndex_(0),
-//            numberOfFramesWithObject_(0)
-//        {
-//            Timer timer;
-//            timer.startSection();
-//
-//            std::ifstream ifs(pathToBoxes, std::ios::binary);
-//
-//            char numDigits;
-//            ifs.get(numDigits);
-//            std::string sizeAsString;
-//            for (int i = 0; i < (int)numDigits; i++) {
-//                char next;
-//                ifs.get(next);
-//                sizeAsString += next;
-//            }
-//            int size = std::stoi(sizeAsString);
-//
-//            std::vector<Rectangle> rectangles(size);
-//            ifs.read(reinterpret_cast<char *>(rectangles.data()), size * sizeof(Rectangle));
-//
-//            std::vector<bool> framesWithObject(rectangles[size-1].id, false);
-//            std::for_each(rectangles.begin(), rectangles.end(), [&](const Rectangle &rectangle) {
-//                if (!framesWithObject[rectangle.id])
-//                    numberOfFramesWithObject_++;
-//
-//                framesWithObject[rectangle.id] = true;
-//            });
-//
-//            framesWithObject_ = framesWithObject;
-//
-//            timer.endSection();
-//            std::cout << "ANALYSIS DropFrames-GPU-set-up took: " << timer.totalTimeInMillis() << " ms\n";
-//        }
-//
-//        shared_reference<LightField> operator()(LightField &input) override {
-//            auto &data = dynamic_cast<physical::GPUDecodedFrameData&>(input);
-//
-//
-//        }
-//
-//    private:
-//        std::vector<bool> framesWithObject_;
-//        unsigned int frameIndex_;
-//        unsigned int numberOfFramesWithObject_;
-//    };
+    class GPU : public functor::unaryfunction {
+    public:
+        GPU() : GPU("/home/maureen/uadetrac_videos/MVI_20011/labels/bicycle_mvi_20011_boxes.boxes") { }
+        GPU(const std::filesystem::path &pathToBoxes)
+            : functor::unaryfunction(physical::DeviceType::GPU, lightdb::Codec::raw(), true),
+            frameIndex_(0),
+            numberOfFramesWithObject_(0),
+            shouldRemoveFrames_(true)
+        {
+            Timer timer;
+            timer.startSection();
+
+            std::ifstream ifs(pathToBoxes, std::ios::binary);
+
+            char numDigits;
+            ifs.get(numDigits);
+            std::string sizeAsString;
+            for (int i = 0; i < (int)numDigits; i++) {
+                char next;
+                ifs.get(next);
+                sizeAsString += next;
+            }
+            int size = std::stoi(sizeAsString);
+
+            std::vector<Rectangle> rectangles(size);
+            ifs.read(reinterpret_cast<char *>(rectangles.data()), size * sizeof(Rectangle));
+
+            std::vector<bool> framesWithObject(rectangles[size-1].id, false);
+            std::for_each(rectangles.begin(), rectangles.end(), [&](const Rectangle &rectangle) {
+                if (!framesWithObject[rectangle.id])
+                    numberOfFramesWithObject_++;
+
+                framesWithObject[rectangle.id] = true;
+            });
+
+            framesWithObject_ = framesWithObject;
+
+            timer.endSection();
+            std::cout << "ANALYSIS DropFrames-GPU-set-up took: " << timer.totalTimeInMillis() << " ms\n";
+        }
+
+        shared_reference<LightField> operator()(LightField &input) override {
+            auto &data = dynamic_cast<physical::GPUDecodedFrameData&>(input);
+
+            physical::GPUDecodedFrameData output{data.configuration(), data.geometry()};
+
+            for (auto &frame: data.frames()) {
+                bool frameContainsObject = false;
+                if (frameIndex_ < framesWithObject_.size())
+                    frameContainsObject = framesWithObject_[frameIndex_];
+
+                frameIndex_++;
+
+                if (shouldRemoveFrames_) {
+                    if (frameContainsObject) {
+                        output.frames().emplace_back(frame);
+                    }
+                } else {
+                    if (!frameContainsObject) {
+                        auto cuda = frame->cuda();
+                        CHECK_EQ(cuMemsetD2D8(cuda->handle(),
+                                              cuda->pitch(),
+                                              0,
+                                              cuda->width(),
+                                              cuda->height()), CUDA_SUCCESS);
+                    }
+                }
+            }
+
+            return shouldRemoveFrames_ ? output : data;
+        }
+
+    private:
+        std::vector<bool> framesWithObject_;
+        unsigned int frameIndex_;
+        unsigned int numberOfFramesWithObject_;
+        bool shouldRemoveFrames_;
+    };
 
     class CPU : public functor::unaryfunction {
     public:
@@ -168,7 +198,7 @@ class DropFrames : public functor::unaryfunctor {
     };
 
 public:
-    DropFrames() : functor::unaryfunctor("DropFrames", CPU()) { }
+    DropFrames() : functor::unaryfunctor("DropFrames", GPU()) { }
 };
 
 static DropFrames DropFrames{};

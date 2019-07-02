@@ -22,11 +22,11 @@
 
 //include OpenCV 
 #include "opencv/cv.h"
-#include "opencv/highgui.h"
-#include "opencv/cxcore.h"
+//#include "opencv/highgui.h"
+//#include "opencv/cxcore.h"
 //#include "opencv2/contrib/contrib.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/opencv.hpp"
+//#include "opencv2/imgproc/imgproc.hpp"
+//#include "opencv2/opencv.hpp"
 
 using namespace std;
 using namespace cv;

@@ -9,7 +9,7 @@ class Sink: public PhysicalOperator {
 public:
     explicit Sink(const LightFieldReference &logical,
                    PhysicalOperatorReference &parent)
-        : PhysicalOperator(logical, {parent}, DeviceType::CPU, runtime::make<Runtime>(*this))
+        : PhysicalOperator(logical, {parent}, DeviceType::CPU, runtime::make<Runtime>(*this, "Sink-init"))
     { }
 
 private:

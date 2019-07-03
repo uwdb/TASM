@@ -12,7 +12,7 @@ class GPUtoCPUTransfer: public PhysicalOperator {
 public:
     GPUtoCPUTransfer(const LightFieldReference &logical,
                      PhysicalOperatorReference &parent)
-            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this))
+            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "GPUToCPUTransfer-init"))
     { }
 
 private:
@@ -23,7 +23,7 @@ private:
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
-            timer_.startSection();
+            GLOBAL_TIMER.startSection("GPUtoCPUTransfer");
             if(iterators()[0] != iterators()[0].eos()) {
                 auto input = iterators()[0]++;
                 auto data = input.downcast<GPUDecodedFrameData>();
@@ -32,15 +32,14 @@ private:
                 for(auto &frame: data.frames())
                     output.frames().emplace_back(LocalFrame{*frame->cuda(), data.configuration()});
 
-                timer_.endSection();
+                GLOBAL_TIMER.endSection("GPUtoCPUTransfer");
                 return {output};
             } else {
-                std::cout << "ANALYSIS GPUToCPUTransfer took " << timer_.totalTimeInMillis() << " ms\n";
+                GLOBAL_TIMER.endSection("GPUtoCPUTransfer");
                 return {};
             }
         }
     private:
-        Timer timer_;
     };
 };
 
@@ -49,7 +48,7 @@ public:
     CPUtoGPUTransfer(const LightFieldReference &logical,
                 PhysicalOperatorReference &parent,
                 const execution::GPU &gpu)
-            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this)), //, gpu),
+            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "CPUToGPUTransfer-init")), //, gpu),
               GPUOperator(gpu)
     { }
 
@@ -61,9 +60,9 @@ private:
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            GLOBAL_TIMER.startSection("CPUToGPUTransfer");
             if(iterators().front() != iterators().front().eos()) {
                 auto input = iterators().front()++;
-                timer_.startSection();
 
                 auto data = input.downcast<CPUDecodedFrameData>();
                 GPUDecodedFrameData output{data.configuration(), data.geometry()};
@@ -71,10 +70,10 @@ private:
                 for(LocalFrameReference &frame: data.frames())
                     output.frames().emplace_back(std::make_shared<CudaFrame>(*frame));
 
-                timer_.endSection();
+                GLOBAL_TIMER.endSection("CPUToGPUTransfer");
                 return {output};
             } else {
-                std::cout << "ANALYSIS CPUToGPUTransfer took " << timer_.totalTimeInMillis() << " ms\n";
+                GLOBAL_TIMER.endSection("CPUToGPUTransfer");
                 return {};
             }
         }

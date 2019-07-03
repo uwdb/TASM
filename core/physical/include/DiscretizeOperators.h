@@ -20,7 +20,7 @@ public:
     GPUDownsampleResolution(const LightFieldReference &logical,
                             PhysicalOperatorReference &parent,
                             std::vector<IntervalGeometry> geometries)
-            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUDownsampleResolution-init")),
               GPUOperator(parent),
               geometries_(std::move(geometries))
     { }

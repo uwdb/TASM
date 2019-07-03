@@ -20,7 +20,7 @@ class GPUAngularSubframe: public PhysicalOperator, public GPUOperator, UnaryOper
 public:
     explicit GPUAngularSubframe(const LightFieldReference &logical,
                                 PhysicalOperatorReference &parent)
-            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUAngularSubframe-init")),
               GPUOperator(parent)
     { }
 
@@ -101,7 +101,7 @@ class GPUEnsureFrameCropped : public PhysicalOperator, public GPUOperator {
 public:
     explicit GPUEnsureFrameCropped(const LightFieldReference &logical,
                                    PhysicalOperatorReference &parent)
-            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUEnsureFrameCropped-init")),
               GPUOperator(parent)
     { }
 
@@ -134,14 +134,14 @@ class FrameSubset: public PhysicalOperator, public GPUOperator, UnaryOperator {
 public:
     explicit FrameSubset(const LightFieldReference &logical,
                          PhysicalOperatorReference &parent)
-            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "FrameSubset-init")),
               GPUOperator(parent)
     { }
 
     explicit FrameSubset(const LightFieldReference &logical,
                          PhysicalOperatorReference &parent,
                          unsigned long delay_frames)
-            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, delay_frames)),
+            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "FrameSubset-init", delay_frames)),
               GPUOperator(parent)
     { }
 

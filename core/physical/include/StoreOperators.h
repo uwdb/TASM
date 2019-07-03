@@ -27,7 +27,7 @@ private:
     explicit Store(const LightFieldReference &logical,
                    const logical::StoredLightField &store,
                    const std::vector<PhysicalOperatorReference> &parents)
-            : PhysicalOperator(logical, parents, DeviceType::CPU, runtime::make<Runtime>(*this, store)),
+            : PhysicalOperator(logical, parents, DeviceType::CPU, runtime::make<Runtime>(*this, "Store-init", store)),
               codec_(store.codec()) {
         CHECK_GT(parents.size(), 0);
     }

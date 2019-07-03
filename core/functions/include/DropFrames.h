@@ -32,7 +32,7 @@ class DropFrames : public functor::unaryfunctor {
             std::filesystem::path boxesPath = "/home/maureen/uadetrac_videos/MVI_20011/labels/bicycle_mvi_20011_boxes.boxes";
 
             Timer timer;
-            timer.startSection();
+            timer.startSection("DropFramesSetUp");
 
             std::vector<Rectangle> rectangles(std::move(loadRectangles_(boxesPath)));
 
@@ -46,8 +46,8 @@ class DropFrames : public functor::unaryfunctor {
 
             framesWithObject_ = framesWithObject;
 
-            timer.endSection();
-            std::cout << "ANALYSIS DropFrames-GPU-set-up took: " << timer.totalTimeInMillis() << " ms\n";
+            timer.endSection("DropFramesSetUp");
+            std::cout << "ANALYSIS DropFrames-GPU-set-up took: " << timer.totalTimeInMillis("DropFramesSetUp") << " ms\n";
         }
 
         shared_reference<LightField> operator()(LightField &input) override {
@@ -108,7 +108,7 @@ class DropFrames : public functor::unaryfunctor {
 
     class CPU : public functor::unaryfunction {
     public:
-        CPU() : CPU("/home/maureen/uadetrac_videos/MVI_20011/labels/bus_mvi_20011_boxes.boxes") { }
+        CPU() : CPU("/home/maureen/uadetrac_videos/MVI_20011/labels/person_mvi_20011_boxes.boxes") { }
         CPU(const std::filesystem::path &pathToBoxes)
             : lightdb::functor::unaryfunction(physical::DeviceType::CPU, lightdb::Codec::raw(), true),
             frameIndex_(0),
@@ -118,7 +118,7 @@ class DropFrames : public functor::unaryfunctor {
             frameHeight_(0)
         {
             Timer timer;
-            timer.startSection();
+            timer.startSection("DropFramesCPUSetUp");
 
             std::ifstream ifs(pathToBoxes, std::ios::binary);
 
@@ -145,8 +145,8 @@ class DropFrames : public functor::unaryfunctor {
 
             framesWithObject_ = framesWithObject;
 
-            timer.endSection();
-            std::cout << "ANALYSIS DropFrames-CPU-set-up took: " << timer.totalTimeInMillis() << " ms\n";
+            timer.endSection("DropFramesCPUSetUp");
+            std::cout << "ANALYSIS DropFrames-CPU-set-up took: " << timer.totalTimeInMillis("DropFramesCPUSetUp") << " ms\n";
         }
 
         shared_reference<LightField> operator()(LightField &input) override {

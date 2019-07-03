@@ -67,7 +67,7 @@ public:
         auto context = execution::make<transactions::SingleNodeVolatileTransaction>(plan);
 
         Timer timer;
-        timer.startSection();
+        timer.startSection("query");
 
         auto iterators = functional::transform<runtime::RuntimeIterator>(
                 outputs.begin(), outputs.end(),
@@ -81,8 +81,10 @@ public:
             progress.display(outputs.size() - iterators.size());
         }
 
-        timer.endSection();
-        std::cout << "ANALYSIS query took " << timer.totalTimeInMillis() << " ms\n";
+        timer.endSection("query");
+        std::cout << "ANALYSIS query took " << timer.totalTimeInMillis("query") << " ms\n";
+
+        GLOBAL_TIMER.printAllTimes();
     }
 
     std::string serialize(const LightFieldReference &query) {

@@ -103,7 +103,7 @@ namespace lightdb {
                                    [](auto &it) { return it == iterator::eos(); });
             }
 
-            Timer timer_;
+//            Timer timer_;
 
         private:
             PhysicalOperator &physical_;
@@ -198,7 +198,7 @@ namespace lightdb {
                 typename Physical,
                 typename... Args,
                 typename = typename std::enable_if<(std::is_move_constructible<Args>::value && ...)>::type>
-        static auto make(Physical& physical, Args&&... args) {
+        static auto make(Physical& physical, std::string id, Args&&... args) {
             return lazy<RuntimeReference>{[
                   &physical,
                   args = std::make_tuple(std::forward<Args>(args) ...)]() mutable {
@@ -206,16 +206,16 @@ namespace lightdb {
                     return RuntimeReference::make<Runtime>(physical, args...);
                 }, std::move(args));
             }
-            };
+            , id};
         }
 
         template <typename Runtime,
                 typename Physical,
                 typename... Args,
                 typename = typename std::enable_if<!(std::is_move_constructible<Args>::value && ...)>::type>
-        static auto make(Physical &physical, Args&... args) {
+        static auto make(Physical &physical, std::string id, Args&... args) {
             return lazy<RuntimeReference>{[&physical, args...]() mutable {
-              return RuntimeReference::make<Runtime>(physical, args...); } };
+              return RuntimeReference::make<Runtime>(physical, args...); }, id};
         }
     } // namespace runtime
 } //namespace lightdb

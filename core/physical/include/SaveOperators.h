@@ -15,7 +15,7 @@ public:
 //        { }
 
     explicit SaveBoxes(const LightFieldReference &logical, PhysicalOperatorReference &parent)
-            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this))
+            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "SaveBoxes-init"))
     { }
 
 private:
@@ -79,7 +79,7 @@ public:
     explicit SaveToFile(const LightFieldReference &logical,
                         PhysicalOperatorReference &parent)
             : PhysicalOperator(logical, {parent}, DeviceType::CPU,
-                               runtime::make<Runtime>(*this, logical.downcast<logical::SavedLightField>())) {
+                               runtime::make<Runtime>(*this, "SaveToFile-init", logical.downcast<logical::SavedLightField>())) {
         CHECK_EQ(parents().size(), 1);
     }
 
@@ -94,22 +94,22 @@ private:
                                      return std::reference_wrapper(this->physical().context()->transaction().write(
                                              logical, this->geometry())); }) }
         {
-            timer_.endSection();
+//            timer_.endSection();
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
-            timer_.startSection();
+            GLOBAL_TIMER.startSection("SaveToFile");
             if(!all_parent_eos()) {
                 auto &input = *iterator();
                 auto &output = outputs_.front().get();
 
                 std::copy(input.value().begin(), input.value().end(),
                           std::ostreambuf_iterator<char>(output.stream()));
-                timer_.endSection();
-                return iterator()++;
+                auto returnVal = iterator()++;
+                GLOBAL_TIMER.endSection("SaveToFile");
+                return returnVal;
             } else {
-                timer_.endSection();
-                std::cout << "ANALYSIS SaveToFile took " << timer_.totalTimeInMillis() << " ms\n";
+                GLOBAL_TIMER.endSection("SaveToFile");
                 return std::nullopt;
             }
         }
@@ -136,7 +136,7 @@ public:
     explicit CopyFile(const LightFieldReference &logical,
                       std::vector<std::filesystem::path> destinations,
                       const std::vector<PhysicalOperatorReference> &parents)
-            : PhysicalOperator(logical, parents, DeviceType::CPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, parents, DeviceType::CPU, runtime::make<Runtime>(*this, "CopyFile-init")),
               sources_{functional::transform<std::filesystem::path>(
                           logical.expect_downcast<logical::StreamBackedLightField>().sources(),
                           [](auto &s) { return s.filename(); })},

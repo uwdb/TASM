@@ -36,7 +36,7 @@ public:
                               PhysicalOperatorReference &source,
                               const execution::GPU &gpu,
                               std::chrono::duration<Rep, Period> poll_duration)
-            : PhysicalOperator(logical, {source}, DeviceType::GPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, {source}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUDecodeFromCPU-init")),
               GPUOperator(gpu),
               poll_duration_(poll_duration) {
         CHECK_EQ(source->device(), DeviceType::CPU);
@@ -58,16 +58,15 @@ private:
               decoder_{configuration_, queue_, lock()},
               session_{decoder_, iterator(), iterator().eos()}
         {
-            timer_.endSection();
+//            timer_.endSection();
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            GLOBAL_TIMER.startSection("GPUDecodeFromCPU");
             std::vector<GPUFrameReference> frames;
 
             LOG_IF(WARNING, configuration_.output_surfaces < 8)
                 << "Decode configuration output surfaces is low, limiting throughput";
-
-            timer_.startSection();
 
             if(!decoder_.frame_queue().isComplete()) {
                 do {
@@ -82,12 +81,11 @@ private:
             if(!frames.empty() || !decoder_.frame_queue().isComplete()) {
                 auto returnValue = std::optional<physical::MaterializedLightFieldReference>{
                         GPUDecodedFrameData(configuration_, geometry_, frames)};
-                timer_.endSection();
+                GLOBAL_TIMER.endSection("GPUDecodeFromCPU");
                 return returnValue;
             }
             else {
-                timer_.endSection();
-                std::cout << "ANALYSIS GPUDecodeFromCPU took " << timer_.totalTimeInMillis() << " ms" << std::endl;
+                GLOBAL_TIMER.endSection("GPUDecodeFromCPU");
                 return std::nullopt;
             }
         }
@@ -108,7 +106,7 @@ class CPUDecode : public PhysicalOperator {
 public:
     explicit CPUDecode(const LightFieldReference &logical,
                        const PhysicalOperatorReference &source)
-            : PhysicalOperator(logical, {source}, DeviceType::CPU, runtime::make<Runtime>(*this)) {
+            : PhysicalOperator(logical, {source}, DeviceType::CPU, runtime::make<Runtime>(*this, "CPUDecode-init")) {
         CHECK_EQ(source->device(), DeviceType::CPU);
     }
 
@@ -314,7 +312,7 @@ class CPUFixedLengthRecordDecode : public PhysicalOperator {
 public:
     CPUFixedLengthRecordDecode(const LightFieldReference &logical,
                                const PhysicalOperatorReference &source)
-            : PhysicalOperator(logical, {source}, DeviceType::CPU, runtime::make<Runtime>(*this)) {
+            : PhysicalOperator(logical, {source}, DeviceType::CPU, runtime::make<Runtime>(*this, "CPUFixedLengthRecordDecode-init")) {
         CHECK_EQ(source->device(), DeviceType::CPU);
     }
 

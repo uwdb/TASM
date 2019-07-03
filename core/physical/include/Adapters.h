@@ -50,7 +50,7 @@ public:
             : PhysicalOperator(logical,
                                parents,
                                source->device(),
-                               runtime::make<Runtime>(*this, source))
+                               runtime::make<Runtime>(*this, "oops", source))
     { }
 
     MaterializedToPhysicalOperatorAdapter(const MaterializedToPhysicalOperatorAdapter &) = default;
@@ -134,7 +134,7 @@ public:
                 : PhysicalOperator(source->logical(),
                                      {source},
                                      source->device(),
-                                     runtime::make<Runtime>(*this, mutex, queues, index))
+                                     runtime::make<Runtime>(*this, "oops2", mutex, queues, index))
         { }
 
         TeedPhysicalOperator(const TeedPhysicalOperator&) = delete;

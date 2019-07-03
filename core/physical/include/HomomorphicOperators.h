@@ -11,7 +11,7 @@ public:
     explicit HomomorphicUniformAngularUnion(const LightFieldReference &logical,
                                             std::vector<PhysicalOperatorReference> &parents,
                                             const unsigned int rows, const unsigned int columns)
-            : PhysicalOperator(logical, parents, DeviceType::CPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, parents, DeviceType::CPU, runtime::make<Runtime>(*this, "HomomorphicUniformAngularUnion-init")),
               rows_(rows), columns_(columns) {
         LOG(WARNING) << "Ignored myriad preconditions on homomorphic angular union";
     }

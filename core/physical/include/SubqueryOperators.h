@@ -15,7 +15,7 @@ public:
     GPUAngularSubquery(const LightFieldReference &logical,
                        PhysicalOperatorReference &parent,
                        const optimization::OptimizerReference &optimizer)
-            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUAngularSubquery-init")),
               GPUOperator(parent),
               optimizer_(optimizer),
               subquery_(logical.downcast<logical::SubqueriedLightField>().subquery()),

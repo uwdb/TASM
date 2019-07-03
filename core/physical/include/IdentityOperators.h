@@ -8,11 +8,11 @@ namespace lightdb::physical {
     class CPUIdentity: public PhysicalOperator {
     public:
         explicit CPUIdentity(const LightFieldReference &logical)
-                : PhysicalOperator(logical, {}, physical::DeviceType::CPU, runtime::make<Runtime>(*this))
+                : PhysicalOperator(logical, {}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "CPUIdentity-init"))
         { }
 
         CPUIdentity(const LightFieldReference &logical, PhysicalOperatorReference &parent)
-                : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this))
+                : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "CPUIdentity-init"))
         { }
 
     private:
@@ -35,7 +35,7 @@ namespace lightdb::physical {
     public:
         GPUIdentity(const LightFieldReference &logical,
                     PhysicalOperatorReference &parent)
-                : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this)),
+                : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUIdentity-init")),
                   GPUOperator(parent)
         { }
 

@@ -18,18 +18,18 @@ namespace lightdb {
 class SelectPixels : public functor::unaryfunctor {
     class CPU : public functor::unaryfunction  {
     public:
-        CPU() : CPU("/home/maureen/dog_videos/dog_labels/dog_dog_labels.boxes") { }
+        CPU() : CPU("/home/maureen/uadetrac_videos/MVI_20011/labels/bus_mvi_20011_boxes.boxes") { }
         CPU(const std::filesystem::path &pathToBoxes)
             : functor::unaryfunction(physical::DeviceType::CPU, Codec::raw(), true),
             frameIndex_(0),
-            shouldRemoveFrames_(false),
+            shouldRemoveFrames_(true),
             numberOfPixelsInBoxes_(0),
             frameWidth_(0),
             frameHeight_(0),
             numberOfFramesWithObject_(0)
         {
             Timer timer;
-            timer.startSection();
+            timer.startSection("SelectPixelsSetUp");
 
             std::ifstream ifs(pathToBoxes, std::ios::binary);
 
@@ -51,8 +51,8 @@ class SelectPixels : public functor::unaryfunctor {
                 numberOfPixelsInBoxes_ += rectangle.width * rectangle.height;
             });
 
-            timer.endSection();
-            std::cout << "ANALYSIS SelectPixels-set-up took: " << timer.totalTimeInMillis() << " ms\n";
+            timer.endSection("SelectPixelsSetUp");
+            std::cout << "ANALYSIS SelectPixels-set-up took: " << timer.totalTimeInMillis("SelectPixelsSetUp") << " ms\n";
         }
 
         shared_reference<LightField> operator()(LightField &input) override {
@@ -175,7 +175,7 @@ class SelectPixels : public functor::unaryfunctor {
     // TODO: This can be parallelized by setting all of the rectangular regions to black.
     class GPU : public functor::unaryfunction {
     public:
-        GPU() : GPU("/home/maureen/uadetrac_videos/MVI_20011/labels/car_mvi_20011_boxes.boxes") { }
+        GPU() : GPU("/home/maureen/uadetrac_videos/MVI_20011/labels/person_mvi_20011_boxes.boxes") { }
         GPU(const std::filesystem::path &pathToBoxes)
             : functor::unaryfunction(physical::DeviceType::GPU, Codec::raw(), true),
             frameIndex_(0),

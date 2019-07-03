@@ -13,7 +13,7 @@ namespace lightdb::physical {
 class ScanSingleFileDecodeReader: public PhysicalOperator {
 public:
     explicit ScanSingleFileDecodeReader(const LightFieldReference &logical, catalog::Source source)
-            : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanSingleFileDecodeReader-init")),
               source_(std::move(source))
     { }
 
@@ -27,11 +27,11 @@ private:
             : runtime::Runtime<ScanSingleFileDecodeReader>(physical),
               reader_(physical.source().filename())
         {
-            timer_.endSection();
+//            timer_.endSection();
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
-            timer_.startSection();
+//            timer_.startSection();
 
             auto packet = reader_.read();
             if (packet.has_value()) {
@@ -41,11 +41,11 @@ private:
                                 physical().source().configuration(),
                                 physical().source().geometry(),
                                 packet.value())};
-                 timer_.endSection();
+//                 timer_.endSection();
                  return returnValue;
             } else {
-                timer_.endSection();
-                std::cout << "ANALYSIS ScanSingleFileDecodeReader took " << timer_.totalTimeInMillis() << " ms\n";
+//                timer_.endSection();
+//                std::cout << "ANALYSIS ScanSingleFileDecodeReader took " << timer_.totalTimeInMillis() << " ms\n";
                 return std::nullopt;
             }
         }
@@ -61,7 +61,7 @@ private:
 class ScanSingleBoxesFile: public PhysicalOperator {
 public:
     explicit ScanSingleBoxesFile(const LightFieldReference &logical, catalog::Source source)
-        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this)),
+        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanSingleBoxesFile-init")),
         source_(std::move(source))
     { }
 
@@ -110,7 +110,7 @@ template<size_t Size=131072>
 class ScanSingleFile: public PhysicalOperator {
 public:
     explicit ScanSingleFile(const LightFieldReference &logical, catalog::Source source)
-            : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanSingleFile-init")),
               source_(std::move(source))
     { }
 

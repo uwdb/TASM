@@ -14,7 +14,7 @@ public:
     GPUInterpolate(const LightFieldReference &logical,
                    PhysicalOperatorReference &parent,
                    const interpolation::InterpolatorReference &interpolator)
-            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUInterpolate-init")),
               GPUOperator(parent),
               interpolator_(interpolator)
     { }

@@ -17,7 +17,7 @@ public:
     GPUMap(const LightFieldReference &logical,
            PhysicalOperatorReference &parent,
            const functor::unaryfunctor &transform)
-            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUMap-init")),
               GPUOperator(parent),
               transform_(transform)
     { }
@@ -31,24 +31,23 @@ private:
         explicit Runtime(GPUMap &physical)
             : runtime::GPUUnaryRuntime<GPUMap, GPUDecodedFrameData>(physical)
         {
-            timer_.endSection();
+//            timer_.endSection();
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            GLOBAL_TIMER.startSection("GPUMap");
             if(iterator() != iterator().eos()) {
                 auto input = iterator()++;
-
-                timer_.startSection();
 
                 auto &transform = physical().transform()(DeviceType::GPU);
                 auto output = transform(input);
 
                 auto returnVal = dynamic_cast<MaterializedLightField&>(*output).ref();
-                timer_.endSection();
+                GLOBAL_TIMER.endSection("GPUMap");
                 return returnVal;
             } else {
                 physical().transform()(DeviceType::GPU).handleAllDataHasBeenProcessed();
-                std::cout << "ANALYSIS GPUMap took " << timer_.totalTimeInMillis() << " ms\n";
+                GLOBAL_TIMER.endSection("GPUMap");
                 return {};
             }
         }
@@ -64,7 +63,7 @@ public:
     CPUMap(const LightFieldReference &logical,
            PhysicalOperatorReference &parent,
            const functor::unaryfunctor &transform)
-            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "CPUMap-init")),
               transform_(transform)
     { }
 
@@ -79,26 +78,17 @@ class Runtime: public runtime::UnaryRuntime<CPUMap, CPUDecodedFrameData> {
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if(iterator() != iterator().eos()) {
-//                while (!(*iterator()).frames().size() && iterator() != iterator().eos())
-//                    iterator()++;
-
                 auto data = iterator()++;
-
-                timer_.startSection();
 
                 auto &transform = physical().transform()(DeviceType::CPU);
 
                 auto output = transform(data);
-                timer_.endSection();
                 return dynamic_cast<MaterializedLightField&>(*output).ref();
             } else {
                 physical().transform()(DeviceType::CPU).handleAllDataHasBeenProcessed();
-                std::cout << "ANALYSIS CPUMap took " << timer_.totalTimeInMillis() << " ms\n";
                 return {};
             }
         }
-    private:
-        Timer timer_;
     };
 
     const functor::unaryfunctor transform_;

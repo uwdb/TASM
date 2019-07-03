@@ -23,7 +23,7 @@ public:
     explicit GPUEncodeToCPU(const LightFieldReference &logical,
                             PhysicalOperatorReference &parent,
                             Codec codec)
-            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this)),
+            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUEncodeToCPU-init")),
               GPUOperator(parent),
               codec_(std::move(codec)) {
         if(!codec.nvidiaId().has_value())
@@ -42,13 +42,13 @@ private:
               writer_{encoder_.api()},
               encodeSession_{encoder_, writer_}
         {
-            timer_.endSection();
+//            timer_.endSection();
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            GLOBAL_TIMER.startSection("GPUEncodeToCPU");
             if (iterator() != iterator().eos()) {
                 auto decoded = iterator()++;
-                timer_.startSection();
 
                 for (const auto &frame: decoded.frames())
                     encodeSession_.Encode(*frame, decoded.configuration().offset.top, decoded.configuration().offset.left);
@@ -60,10 +60,10 @@ private:
                     encodeSession_.Flush();
 
                 auto returnVal = CPUEncodedFrameData(physical().codec(), decoded.configuration(), decoded.geometry(), writer_.dequeue());
-                timer_.endSection();
+                GLOBAL_TIMER.endSection("GPUEncodeToCPU");
                 return {returnVal};
             } else {
-                std::cout << "ANALYSIS GPUEncodeToCPU took " << timer_.totalTimeInMillis() << " ms\n";
+                GLOBAL_TIMER.endSection("GPUEncodeToCPU");
                 return std::nullopt;
             }
         }

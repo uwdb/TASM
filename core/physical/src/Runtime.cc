@@ -10,7 +10,7 @@ namespace lightdb::runtime {
                           [](auto &parent) {
                               return parent->runtime()->begin(); }))
     {
-        timer_.startSection();
+//        timer_.startSection();
     }
 
     LightFieldReference Runtime<>::logical() const {

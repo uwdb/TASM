@@ -32,7 +32,8 @@ private:
     public:
         explicit Runtime(GPUDownsampleResolution &physical)
             : runtime::GPUUnaryRuntime<GPUDownsampleResolution, GPUDecodedFrameData>(physical),
-              scaler_(this->context())
+              scaler_(this->context()),
+              frameIndex_(0)
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -42,12 +43,22 @@ private:
                 GPUDecodedFrameData output{outputConfiguration, input.geometry()};
 
                 for(auto &frame: input.frames()) {
-                    auto in = frame->cuda();
-                    CudaFrameReference out = CudaFrameReference::make<CudaFrame>(outputConfiguration.height, outputConfiguration.width, in->type());
+                    if (get_geometry(Dimension::Time)) {
+                        if (shouldIncludeFrame(frameIndex_)) {
+                            output.frames().emplace_back(frame);
+                        }
+                        frameIndex_++;
+                    } else {
 
-                    scaler_.nv12().scale(lock(), in, out);
+                        auto in = frame->cuda();
+                        CudaFrameReference out = CudaFrameReference::make<CudaFrame>(outputConfiguration.height,
+                                                                                     outputConfiguration.width,
+                                                                                     in->type());
 
-                    output.frames().emplace_back(out);
+                        scaler_.nv12().scale(lock(), in, out);
+
+                        output.frames().emplace_back(out);
+                    }
                 }
 
                 return {output};
@@ -80,7 +91,7 @@ private:
             CHECK_LE(theta_samples, std::numeric_limits<unsigned int>::max());
             CHECK_LE(phi_samples, std::numeric_limits<unsigned int>::max());
 
-            LOG(INFO) << "Downsampling to " << theta_samples << 'x' << phi_samples;
+//            LOG(INFO) << "Downsampling to " << theta_samples << 'x' << phi_samples;
 
             return Configuration{static_cast<unsigned int>(theta_samples),
                                  static_cast<unsigned int>(phi_samples),
@@ -88,7 +99,12 @@ private:
                                  base.bitrate, base.framerate, {}};
         }
 
+        bool shouldIncludeFrame(unsigned int index) {
+            return !(int(index) % int(double(get_geometry(Dimension::Time).value().interval())));
+        }
+
         video::GPUScale scaler_;
+        unsigned int frameIndex_;
     };
 
 private:

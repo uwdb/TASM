@@ -30,7 +30,9 @@ private:
     public:
         explicit Runtime(GPUMap &physical)
             : runtime::GPUUnaryRuntime<GPUMap, GPUDecodedFrameData>(physical)
-        { }
+        {
+            timer_.endSection();
+        }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if(iterator() != iterator().eos()) {
@@ -40,8 +42,10 @@ private:
 
                 auto &transform = physical().transform()(DeviceType::GPU);
                 auto output = transform(input);
+
+                auto returnVal = dynamic_cast<MaterializedLightField&>(*output).ref();
                 timer_.endSection();
-                return dynamic_cast<MaterializedLightField&>(*output).ref();
+                return returnVal;
             } else {
                 physical().transform()(DeviceType::GPU).handleAllDataHasBeenProcessed();
                 std::cout << "ANALYSIS GPUMap took " << timer_.totalTimeInMillis() << " ms\n";
@@ -49,7 +53,7 @@ private:
             }
         }
     private:
-        Timer timer_;
+//        Timer timer_;
     };
 
     const functor::unaryfunctor transform_;

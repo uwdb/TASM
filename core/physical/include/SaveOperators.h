@@ -93,7 +93,9 @@ private:
                                  [this, &logical](auto &parent) {
                                      return std::reference_wrapper(this->physical().context()->transaction().write(
                                              logical, this->geometry())); }) }
-        { }
+        {
+            timer_.endSection();
+        }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             timer_.startSection();
@@ -106,6 +108,7 @@ private:
                 timer_.endSection();
                 return iterator()++;
             } else {
+                timer_.endSection();
                 std::cout << "ANALYSIS SaveToFile took " << timer_.totalTimeInMillis() << " ms\n";
                 return std::nullopt;
             }
@@ -113,7 +116,7 @@ private:
 
     private:
         std::vector<std::reference_wrapper<transactions::OutputStream>> outputs_;
-        Timer timer_;
+//        Timer timer_;
     };
 };
 

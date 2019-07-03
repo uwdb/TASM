@@ -9,14 +9,18 @@ namespace lightdb {
 class Timer {
 public:
     Timer()
-        : executionTime_(0)
+        : executionTime_(0),
+        gotNewStart_(false)
     { }
 
     void startSection() {
         start_ = std::chrono::system_clock::now();
+        gotNewStart_ = true;
     }
 
     void endSection() {
+        assert(gotNewStart_);
+        gotNewStart_ = false;
         executionTime_ += (std::chrono::system_clock::now() - start_);
     }
 
@@ -26,6 +30,7 @@ public:
 private:
     std::chrono::system_clock::time_point start_;
     std::chrono::system_clock::duration executionTime_;
+    bool gotNewStart_;
 };
 } // namespace lightdb
 

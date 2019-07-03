@@ -522,6 +522,16 @@ namespace lightdb::optimization {
                     }
                 }
                 //TODO handle case where interval is equal to resolution (by applying identity)
+            } else if (!plan().has_physical_assignment(node) && hardcoded_parent.is<physical::GPUDecodeFromCPU>() && hardcoded_parent->logical().is<logical::ExternalLightField>()) {
+                auto scanned = hardcoded_parent->logical().downcast<logical::ExternalLightField>();
+                auto &parent_geometry = scanned.source().geometry();
+                auto &discrete_geometry = node.geometry();
+                assert(discrete_geometry.is<IntervalGeometry>());
+                assert(parent_geometry.is<EquirectangularGeometry>());
+                assert(discrete_geometry.downcast<IntervalGeometry>().dimension() == Dimension::Time);
+                assert(hardcoded_parent->device() == physical::DeviceType::GPU);
+                plan().emplace<physical::GPUDownsampleResolution>(plan().lookup(node), hardcoded_parent, discrete_geometry.downcast<IntervalGeometry>());
+                return true;
             }
             return false;
         }
@@ -537,6 +547,9 @@ namespace lightdb::optimization {
                     [this](auto &parent) { return plan().assignments(parent); });
 
             if(physical_parents.empty())
+                return false;
+
+            if (node.geometry().is<IntervalGeometry>() && node.geometry().downcast<IntervalGeometry>().dimension() == Dimension::Time)
                 return false;
 
             //TODO clean this up, shouldn't just be randomly picking last parent

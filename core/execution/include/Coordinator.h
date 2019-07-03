@@ -31,12 +31,12 @@ public:
                 [plan](auto &sink) { return plan.unassigned(sink); });
     }
 
-    [[deprecated]]
+//    [[deprecated]]
     void save(const optimization::Plan &plan, const std::string &filename) {
         save(plan, std::vector<std::string>{filename});
     }
 
-    [[deprecated]]
+//    [[deprecated]]
     void save(const optimization::Plan &plan, const std::vector<std::string> &filenames) {
         auto streams = functional::transform<std::ofstream>(filenames.begin(), filenames.end(),
                                                             [](auto &filename) { return std::ofstream(filename); });
@@ -44,11 +44,7 @@ public:
     }
 
     void execute(const LightFieldReference &query) {
-        Timer timer;
-        timer.startSection();
         execute(query, optimization::Optimizer::instance());
-        timer.endSection();
-        std::cout << "ANALYSIS query took " << timer.totalTimeInMillis() << " ms\n";
     }
 
     void execute(const LightFieldReference &query, const optimization::Optimizer& optimizer) {
@@ -69,6 +65,10 @@ public:
 
         auto outputs = submit(plan);
         auto context = execution::make<transactions::SingleNodeVolatileTransaction>(plan);
+
+        Timer timer;
+        timer.startSection();
+
         auto iterators = functional::transform<runtime::RuntimeIterator>(
                 outputs.begin(), outputs.end(),
                 [](auto &out) { return out->runtime()->begin(); });
@@ -80,6 +80,9 @@ public:
                             iterators.end());
             progress.display(outputs.size() - iterators.size());
         }
+
+        timer.endSection();
+        std::cout << "ANALYSIS query took " << timer.totalTimeInMillis() << " ms\n";
     }
 
     std::string serialize(const LightFieldReference &query) {
@@ -126,7 +129,7 @@ public:
         return stream.str();
     }
 
-    [[deprecated]]
+//    [[deprecated]]
     void save(const optimization::Plan &plan, std::vector<std::ostream*> streams) {
         auto outputs = submit(plan);
         auto context = execution::make<transactions::SingleNodeVolatileTransaction>(plan);

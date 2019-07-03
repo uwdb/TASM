@@ -5,6 +5,8 @@
 #include "ExecutionContext.h"
 #include "functional.h"
 
+#include "timer.h"
+
 namespace lightdb {
     class PhysicalOperator;
 
@@ -100,6 +102,8 @@ namespace lightdb {
                                    iterators_.end(),
                                    [](auto &it) { return it == iterator::eos(); });
             }
+
+            Timer timer_;
 
         private:
             PhysicalOperator &physical_;

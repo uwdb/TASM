@@ -57,7 +57,9 @@ private:
               queue_{lock()},
               decoder_{configuration_, queue_, lock()},
               session_{decoder_, iterator(), iterator().eos()}
-        { }
+        {
+            timer_.endSection();
+        }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             std::vector<GPUFrameReference> frames;
@@ -84,6 +86,7 @@ private:
                 return returnValue;
             }
             else {
+                timer_.endSection();
                 std::cout << "ANALYSIS GPUDecodeFromCPU took " << timer_.totalTimeInMillis() << " ms" << std::endl;
                 return std::nullopt;
             }
@@ -95,7 +98,7 @@ private:
         CUVIDFrameQueue queue_;
         CudaDecoder decoder_;
         VideoDecoderSession<Runtime::downcast_iterator<CPUEncodedFrameData>> session_;
-        Timer timer_;
+//        Timer timer_;
     };
 
     const std::chrono::microseconds poll_duration_;

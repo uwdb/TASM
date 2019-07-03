@@ -23,7 +23,7 @@ namespace lightdb::physical {
     using Metadata = std::unordered_map<std::string, std::vector<Rectangle>>;
 
 
-    class MetadataLightField: public MaterializedLightField  {
+    class MetadataLightField: public MaterializedLightField {
     public:
         // Maybe specify default constructors/destructors/operators.
         // Similar to FrameData, except without DeviceType.

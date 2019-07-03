@@ -4,6 +4,7 @@
 #include "Greyscale.h"
 #include "Display.h"
 #include "Metadata.h"
+#include "SelectFramesWithObjectsInProximity.h"
 #include "SelectPixels.h"
 #include "TestResources.h"
 #include "extension.h"
@@ -39,11 +40,29 @@ TEST_F(VisitorTestFixture, testBaz) {
     Coordinator().execute(encoded);
 }
 
+TEST_F(VisitorTestFixture, testFindDogAndPerson) {
+    auto input = Load("/home/maureen/dog_videos/dog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto dogAndPersonFrames = input.Map(SelectFramesWithObjectsInProximity).Save("/home/maureen/dog_videos/dog_and_person.hevc");
+    Coordinator().execute(dogAndPersonFrames);
+}
+
+TEST_F(VisitorTestFixture, testSampleFrames) {
+    auto yolo = lightdb::extensibility::Load("yolo");
+    auto input = Load("/home/maureen/visualroad_videos/traffic-000.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto sampled = input.Discretize(Dimension::Time, 30).Map(yolo).Save("/home/maureen/visualroad_videos/traffic-000-sampled30-labels.boxes"); //.Store("traffic-000-sampled", Codec::hevc(), {GeometryReference::make<IntervalGeometry>(Dimension::Time, 30)});
+    Coordinator().execute(sampled);
+}
+
+TEST_F(VisitorTestFixture, testReadSampledFrames) {
+    auto input = Scan("traffic-000-sampled");
+    Coordinator().execute(input);
+}
+
 TEST_F(VisitorTestFixture, testDropFrames) {
     // "/home/maureen/dog_videos/dog.hevc"
     // "/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc"
     auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto shortened = input.Map(DropFrames).Save("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011_bicycle_frames_gpu.hevc");
+    auto shortened = input.Map(DropFrames).Save("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011_car_frames_gpu.hevc");
     Coordinator().execute(shortened);
 }
 

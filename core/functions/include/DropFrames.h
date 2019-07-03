@@ -23,32 +23,20 @@ namespace lightdb {
 class DropFrames : public functor::unaryfunctor {
     class GPU : public functor::unaryfunction {
     public:
-        GPU() : GPU("/home/maureen/uadetrac_videos/MVI_20011/labels/bicycle_mvi_20011_boxes.boxes") { }
-        GPU(const std::filesystem::path &pathToBoxes)
+        GPU()
             : functor::unaryfunction(physical::DeviceType::GPU, lightdb::Codec::raw(), true),
             frameIndex_(0),
             numberOfFramesWithObject_(0),
             shouldRemoveFrames_(true)
         {
+            std::filesystem::path boxesPath = "/home/maureen/uadetrac_videos/MVI_20011/labels/bicycle_mvi_20011_boxes.boxes";
+
             Timer timer;
             timer.startSection();
 
-            std::ifstream ifs(pathToBoxes, std::ios::binary);
+            std::vector<Rectangle> rectangles(std::move(loadRectangles_(boxesPath)));
 
-            char numDigits;
-            ifs.get(numDigits);
-            std::string sizeAsString;
-            for (int i = 0; i < (int)numDigits; i++) {
-                char next;
-                ifs.get(next);
-                sizeAsString += next;
-            }
-            int size = std::stoi(sizeAsString);
-
-            std::vector<Rectangle> rectangles(size);
-            ifs.read(reinterpret_cast<char *>(rectangles.data()), size * sizeof(Rectangle));
-
-            std::vector<bool> framesWithObject(rectangles[size-1].id, false);
+            std::vector<bool> framesWithObject(rectangles[rectangles.size()-1].id, false);
             std::for_each(rectangles.begin(), rectangles.end(), [&](const Rectangle &rectangle) {
                 if (!framesWithObject[rectangle.id])
                     numberOfFramesWithObject_++;
@@ -94,6 +82,24 @@ class DropFrames : public functor::unaryfunctor {
         }
 
     private:
+        std::vector<Rectangle> loadRectangles_(const std::filesystem::path &path) {
+            std::ifstream ifs(path, std::ios::binary);
+
+            char numDigits;
+            ifs.get(numDigits);
+            std::string sizeAsString;
+            for (int i = 0; i < (int)numDigits; i++) {
+                char next;
+                ifs.get(next);
+                sizeAsString += next;
+            }
+            int size = std::stoi(sizeAsString);
+
+            std::vector<Rectangle> rectangles(size);
+            ifs.read(reinterpret_cast<char *>(rectangles.data()), size * sizeof(Rectangle));
+            return rectangles;
+        }
+
         std::vector<bool> framesWithObject_;
         unsigned int frameIndex_;
         unsigned int numberOfFramesWithObject_;

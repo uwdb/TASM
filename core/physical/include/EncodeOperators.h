@@ -41,7 +41,9 @@ private:
               encoder_{this->context(), encodeConfiguration_, lock()},
               writer_{encoder_.api()},
               encodeSession_{encoder_, writer_}
-        { }
+        {
+            timer_.endSection();
+        }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if (iterator() != iterator().eos()) {
@@ -57,8 +59,9 @@ private:
                     // If so, flush the encode queue and end this op too
                     encodeSession_.Flush();
 
+                auto returnVal = CPUEncodedFrameData(physical().codec(), decoded.configuration(), decoded.geometry(), writer_.dequeue());
                 timer_.endSection();
-                return {CPUEncodedFrameData(physical().codec(), decoded.configuration(), decoded.geometry(), writer_.dequeue())};
+                return {returnVal};
             } else {
                 std::cout << "ANALYSIS GPUEncodeToCPU took " << timer_.totalTimeInMillis() << " ms\n";
                 return std::nullopt;
@@ -82,7 +85,7 @@ private:
         VideoEncoder encoder_;
         MemoryEncodeWriter writer_;
         VideoEncoderSession encodeSession_;
-        Timer timer_;
+//        Timer timer_;
     };
 
     const Codec codec_;

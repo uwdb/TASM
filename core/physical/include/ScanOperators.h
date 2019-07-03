@@ -26,7 +26,9 @@ private:
         explicit Runtime(ScanSingleFileDecodeReader &physical)
             : runtime::Runtime<ScanSingleFileDecodeReader>(physical),
               reader_(physical.source().filename())
-        { }
+        {
+            timer_.endSection();
+        }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             timer_.startSection();
@@ -42,14 +44,15 @@ private:
                  timer_.endSection();
                  return returnValue;
             } else {
-                std::cout << "ANALYSIS ScanSingleFileDecodeReader took " << timer_.totalTimeInMillis() << " ms" << std::endl;
+                timer_.endSection();
+                std::cout << "ANALYSIS ScanSingleFileDecodeReader took " << timer_.totalTimeInMillis() << " ms\n";
                 return std::nullopt;
             }
         }
 
         FileDecodeReader reader_;
     private:
-        Timer timer_;
+//        Timer timer_;
     };
 
     const catalog::Source source_;

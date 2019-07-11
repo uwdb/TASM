@@ -39,20 +39,23 @@ private:
             if(iterator() != iterator().eos()) {
                 auto input = iterator()++;
 
+                timer_.startSection("inside-GPUMap");
                 auto &transform = physical().transform()(DeviceType::GPU);
                 auto output = transform(input);
 
                 auto returnVal = dynamic_cast<MaterializedLightField&>(*output).ref();
+                timer_.endSection("inside-GPUMap");
                 GLOBAL_TIMER.endSection("GPUMap");
                 return returnVal;
             } else {
                 physical().transform()(DeviceType::GPU).handleAllDataHasBeenProcessed();
                 GLOBAL_TIMER.endSection("GPUMap");
+                timer_.printAllTimes();
                 return {};
             }
         }
     private:
-//        Timer timer_;
+        Timer timer_;
     };
 
     const functor::unaryfunctor transform_;

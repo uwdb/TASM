@@ -40,7 +40,8 @@ private:
               encodeConfiguration_{configuration(), this->physical().codec().nvidiaId().value(), gop()},
               encoder_{this->context(), encodeConfiguration_, lock()},
               writer_{encoder_.api()},
-              encodeSession_{encoder_, writer_}
+              encodeSession_{encoder_, writer_},
+              numberOfEncodedFrames_(0)
         {
 //            timer_.endSection();
         }
@@ -50,8 +51,12 @@ private:
             if (iterator() != iterator().eos()) {
                 auto decoded = iterator()++;
 
-                for (const auto &frame: decoded.frames())
-                    encodeSession_.Encode(*frame, decoded.configuration().offset.top, decoded.configuration().offset.left);
+                timer_.startSection("inside-GPUEncodeToCPU");
+                for (const auto &frame: decoded.frames()) {
+                    ++numberOfEncodedFrames_;
+                    encodeSession_.Encode(*frame, decoded.configuration().offset.top,
+                                          decoded.configuration().offset.left);
+                }
 
                 //TODO think this should move down just above nullopt
                 // Did we just reach the end of the decode stream?
@@ -61,9 +66,12 @@ private:
 
                 auto returnVal = CPUEncodedFrameData(physical().codec(), decoded.configuration(), decoded.geometry(), writer_.dequeue());
                 GLOBAL_TIMER.endSection("GPUEncodeToCPU");
+                timer_.endSection("inside-GPUEncodeToCPU");
                 return {returnVal};
             } else {
                 GLOBAL_TIMER.endSection("GPUEncodeToCPU");
+                std::cout << "**Encoded " << numberOfEncodedFrames_ << " frames\n";
+                timer_.printAllTimes();
                 return std::nullopt;
             }
         }
@@ -85,7 +93,8 @@ private:
         VideoEncoder encoder_;
         MemoryEncodeWriter writer_;
         VideoEncoderSession encodeSession_;
-//        Timer timer_;
+        Timer timer_;
+        unsigned long numberOfEncodedFrames_;
     };
 
     const Codec codec_;

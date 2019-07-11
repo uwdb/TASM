@@ -51,7 +51,7 @@ public:
         assert(!currentOperation_.length());
         assert(!operatorsInProgress_.size());
         for (auto it = operatorToExecutionTime_.begin(); it != operatorToExecutionTime_.end(); it++) {
-            std::cout << "Operator " << it->first << " took " << toMillis_(it->second) << " ms" << std::endl;
+            std::cout << "ANALYSIS " << it->first << " took " << toMillis_(it->second) << " ms" << std::endl;
         }
     }
 private:

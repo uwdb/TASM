@@ -29,7 +29,7 @@ class DropFrames : public functor::unaryfunctor {
             numberOfFramesWithObject_(0),
             shouldRemoveFrames_(true)
         {
-            std::filesystem::path boxesPath = "/home/maureen/uadetrac_videos/MVI_20011/labels/bicycle_mvi_20011_boxes.boxes";
+            std::filesystem::path boxesPath = "/home/maureen/uadetrac_videos/MVI_20011/labels/car_mvi_20011_boxes.boxes";
 
             Timer timer;
             timer.startSection("DropFramesSetUp");

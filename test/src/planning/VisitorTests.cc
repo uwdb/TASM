@@ -62,7 +62,7 @@ TEST_F(VisitorTestFixture, testDropFrames) {
     // "/home/maureen/dog_videos/dog.hevc"
     // "/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc"
     auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto shortened = input.Map(DropFrames).Save("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011_car_frames_gpu.hevc");
+    auto shortened = input.Map(DropFrames).Save("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011_car_frames.hevc");
     Coordinator().execute(shortened);
 }
 

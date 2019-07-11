@@ -101,22 +101,26 @@ private:
             GLOBAL_TIMER.startSection("SaveToFile");
             if(!all_parent_eos()) {
                 auto &input = *iterator();
+                timer_.startSection("inside-SaveToFile");
                 auto &output = outputs_.front().get();
 
                 std::copy(input.value().begin(), input.value().end(),
                           std::ostreambuf_iterator<char>(output.stream()));
-                auto returnVal = iterator()++;
+                auto returnVal = *iterator();
+                timer_.endSection("inside-SaveToFile");
+                iterator()++;
                 GLOBAL_TIMER.endSection("SaveToFile");
                 return returnVal;
             } else {
                 GLOBAL_TIMER.endSection("SaveToFile");
+                timer_.printAllTimes();
                 return std::nullopt;
             }
         }
 
     private:
         std::vector<std::reference_wrapper<transactions::OutputStream>> outputs_;
-//        Timer timer_;
+        Timer timer_;
     };
 };
 

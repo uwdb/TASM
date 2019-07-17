@@ -6,6 +6,57 @@
 #include <thread>
 #include <experimental/filesystem>
 
+#include "gpac/isomedia.h"
+#include "gpac/internal/isomedia_dev.h"
+#include "gpac/list.h"
+
+// Implementations for private functions.
+static GF_TrackBox *gf_isom_get_track_from_file2(GF_ISOFile *the_file, u32 trackNumber) {
+    auto count = gf_list_count(the_file->moov->trackList);
+    assert(trackNumber <= count);
+    unsigned int position = 0;
+    void *box = NULL;
+    while ((box = gf_list_enum(the_file->moov->trackList, &position))) {
+        if (reinterpret_cast<GF_TrackBox*>(box)->Header->trackID == trackNumber)
+            break;
+    }
+    assert(box);
+
+    return reinterpret_cast<GF_TrackBox*>(box);
+}
+
+//Retrieve closes RAP for a given sample - if sample is RAP, sets the RAP flag
+static GF_Err stbl_GetSampleRAP2(GF_SyncSampleBox *stss, u32 SampleNumber, SAPType *IsRAP, u32 *prevRAP, u32 *nextRAP)
+{
+    u32 i;
+    if (prevRAP) *prevRAP = 0;
+    if (nextRAP) *nextRAP = 0;
+
+    (*IsRAP) = RAP_NO;
+    if (!stss || !SampleNumber) return GF_BAD_PARAM;
+
+    if (stss->r_LastSyncSample && (stss->r_LastSyncSample < SampleNumber) ) {
+        i = stss->r_LastSampleIndex;
+    } else {
+        i = 0;
+    }
+    for (; i < stss->nb_entries; i++) {
+        //get the entry
+        if (stss->sampleNumbers[i] == SampleNumber) {
+            //update the cache
+            stss->r_LastSyncSample = SampleNumber;
+            stss->r_LastSampleIndex = i;
+            (*IsRAP) = RAP;
+        }
+        else if (stss->sampleNumbers[i] > SampleNumber) {
+            if (nextRAP) *nextRAP = stss->sampleNumbers[i];
+            return GF_OK;
+        }
+        if (prevRAP) *prevRAP = stss->sampleNumbers[i];
+    }
+    return GF_OK;
+}
+
 struct DecodeReaderPacket: public CUVIDSOURCEDATAPACKET {
 public:
     DecodeReaderPacket() : CUVIDSOURCEDATAPACKET{} { }
@@ -201,6 +252,109 @@ private:
     CUvideosource source_;
     CUVIDEOFORMAT format_;
     size_t decoded_bytes_;
+};
+
+class FrameDecodeReader: public DecodeReader {
+public:
+    explicit FrameDecodeReader(std::filesystem::path filename, std::vector<unsigned int> frames)
+        : filename_(std::move(filename)),
+        frames_(std::move(frames)),
+        frameIterator_(frames_.begin()),
+        currentKeyframeSampleNumber_(-1),
+        decodedBytes_(0)
+    {
+        // In order to get the headers, mode cannot be READ_DUMP, and the extract mode must be set.
+        file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
+        assert(gf_isom_set_nalu_extract_mode(file_, 1, GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG | GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG) == GF_OK);
+
+        frames_ = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                   60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 79,
+                   80, 120, 121, 126, 130, 197, 199, 200, 201, 202, 203, 210, 211, 212};
+        frameIterator_ = frames_.begin();
+    }
+
+    std::optional<DecodeReaderPacket> read() override {
+        // Assume frames are sorted.
+        // Go through frames, and use GPAC to find out what GOP each frame belongs to.
+        // Return the data for all frames in the same GOP
+        //      Data needs to be:
+        //          [Keyframe,
+        //              last interesting frame in the GOP]
+
+        // Can get data_offset for keyframe to get start of reading.
+        // Also get data_offset for last interesting frame in the GOP + its dataLength to see where to stop reading.
+        auto dataFromNextGOP = framesForNextGOP_();
+        if (dataFromNextGOP.has_value()) {
+            unsigned long flags = CUVID_PKT_DISCONTINUITY;
+            if (frameIterator_ == frames_.end())
+                flags |= CUVID_PKT_ENDOFSTREAM;
+
+            return DecodeReaderPacket(dataFromNextGOP.value(), flags);
+        } else
+            return {};
+    }
+
+    // FIXME: Is this necessary for the frame reader?
+    CUVIDEOFORMAT format() const override {
+        CUVIDEOFORMAT format;
+        return format;
+    }
+
+    // FIXME: implement this.
+    bool isComplete() const override {
+        // FIXME: This isn't right.
+        return frameIterator_ == frames_.end();
+    }
+
+private:
+    std::optional<lightdb::bytestring> framesForNextGOP_() {
+        // This isn't right because we'll miss the last GOP.
+        if (frameIterator_ == frames_.end()) {
+            gf_isom_close(file_);
+            return std::nullopt;
+        }
+
+        unsigned int track_index = 1;
+        GF_TrackBox *trak = gf_isom_get_track_from_file2(file_, track_index);
+        SAPType isRAP;
+        unsigned int prevRAP;
+        unsigned int nextRAP;
+        GF_Err result = stbl_GetSampleRAP2(trak->Media->information->sampleTable->SyncSample, *frameIterator_, &isRAP, &prevRAP, &nextRAP);
+        assert(result == GF_OK);
+
+        // Find all frames that have the same prevRAP.
+        while (frameIterator_ != frames_.end() && (*frameIterator_ < nextRAP || !nextRAP))
+            frameIterator_++;
+
+        // Read frame data from prevRAP to prev(frameIterator_).
+        unsigned long size = 0;
+        unsigned int lastFrame = *std::prev(frameIterator_);
+
+        // First read to get sizes.
+        for (unsigned int i = prevRAP; i <= lastFrame; i++) {
+            GF_ISOSample *sample = gf_isom_get_sample_info(file_, track_index, i, NULL, NULL);
+            size += sample->dataLength;
+            gf_isom_sample_del(&sample);
+        }
+
+        // Then read to get the actual data.
+        lightdb::bytestring videoData;
+        videoData.reserve(size);
+        for (unsigned int i = prevRAP; i <= lastFrame; i++) {
+            GF_ISOSample *sample = gf_isom_get_sample(file_, track_index, i, NULL);
+            videoData.insert(videoData.end(), sample->data, sample->data + sample->dataLength);
+            gf_isom_sample_del(&sample);
+        }
+
+        return {videoData};
+    }
+
+    std::filesystem::path filename_;
+    std::vector<unsigned int> frames_;
+    std::vector<unsigned int>::const_iterator frameIterator_;
+    long currentKeyframeSampleNumber_;
+    unsigned long decodedBytes_;
+    GF_ISOFile *file_;
 };
 
 #endif //LIGHTDB_DECODEREADER_H

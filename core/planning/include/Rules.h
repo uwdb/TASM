@@ -71,7 +71,8 @@ namespace lightdb::optimization {
                         auto gpu = plan().allocator().gpu();
                         //auto gpu = plan().environment().gpus()[0];
 
-                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
+//                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
+                        auto &scan = plan().emplace<physical::ScanFramesFromFileDecodeReader>(logical, stream);
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 
                         auto children = plan().children(plan().lookup(node));

@@ -58,6 +58,46 @@ private:
     const catalog::Source source_;
 };
 
+class ScanFramesFromFileDecodeReader: public PhysicalOperator {
+public:
+    explicit ScanFramesFromFileDecodeReader(const LightFieldReference& logical, catalog::Source source)
+        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanFramesFromFileDecodeReader-init")),
+        source_(std::move(source))
+    { }
+
+    const catalog::Source &source() const { return source_; }
+
+private:
+    class Runtime: public runtime::Runtime<ScanFramesFromFileDecodeReader> {
+    public:
+        explicit Runtime(ScanFramesFromFileDecodeReader &physical)
+            : runtime::Runtime<ScanFramesFromFileDecodeReader>(physical),
+                    frameReader_(physical.source().filename(), {})
+        { }
+
+        std::optional<physical::MaterializedLightFieldReference> read() override {
+            auto packet = frameReader_.read();
+            if (packet.has_value()) {
+                // FIXME: implement this.
+                return std::optional<physical::MaterializedLightFieldReference>{
+                    physical::MaterializedLightFieldReference::make<CPUEncodedFrameData>(
+                            physical().source().codec(),
+                            physical().source().configuration(),
+                            physical().source().geometry(),
+                            packet.value())};
+            } else {
+                return std::nullopt;
+            }
+        }
+
+    private:
+        FrameDecodeReader frameReader_;
+    };
+
+    const catalog::Source source_;
+
+};
+
 class ScanSingleBoxesFile: public PhysicalOperator {
 public:
     explicit ScanSingleBoxesFile(const LightFieldReference &logical, catalog::Source source)

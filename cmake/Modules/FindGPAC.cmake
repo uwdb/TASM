@@ -21,6 +21,8 @@ find_package_handle_standard_args(GPAC  DEFAULT_MSG
 mark_as_advanced(GPAC_INCLUDE_DIR GPAC_LIBRARY )
 
 if(GPAC_FOUND)
-  set(GPAC_INCLUDE_DIRS ${GPAC_INCLUDE_DIR})
+    message("GPAC library: ${GPAC_LIBRARY}")
+  set(GPAC_INCLUDE_DIRS ${GPAC_INCLUDE_DIR} ${GPAC_INCLUDE_DIR}/gpac/internal)
+    message("Gpac include: ${GPAC_INCLUDE_DIRS}")
   set(GPAC_LIBRARIES ${GPAC_LIBRARY})
 endif()

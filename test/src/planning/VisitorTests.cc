@@ -106,8 +106,8 @@ TEST_F(VisitorTestFixture, testMapAndBoxThings) {
 }
 
 TEST_F(VisitorTestFixture, testSaveToCatalog) {
-    auto input = Load("/home/maureen/MVI_20052/sampled_frames/sampled.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Store("uadetrac"));
+//    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(Scan("dog_with_keyframes").Store("short_dog"));
 }
 
 TEST_F(VisitorTestFixture, testBar) {

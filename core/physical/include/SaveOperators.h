@@ -6,6 +6,8 @@
 #include "timer.h"
 #include <iostream>
 
+#include "sqlite3.h"
+
 namespace lightdb::physical {
 
 class SaveBoxes: public PhysicalOperator {
@@ -42,6 +44,29 @@ private:
 //                rectangles_.insert(rectangles_.end(), rectangles.begin(), rectangles.end());
                 return iterators().front()++;
             } else {
+                // Write rectangles to database;
+//                sqlite3 *db;
+//                int result = sqlite3_open_v2("/home/maureen/sqlite_stuff/practice.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+//                assert(result == SQLITE_OK);
+//
+//
+//                // Create table called "labels".
+//                char *createTable = "CREATE TABLE LABELS(" \
+//                        "LABEL  TEXT    NOT NULL," \
+//                        "VOLUME BLOB    NOT NULL," \
+//                        "PRIMARY KEY (LABEL, VOLUME) );";
+//
+//                char *error = nullptr;
+//                result = sqlite3_exec(db, createTable, NULL, NULL, &error);
+//                if (result != SQLITE_OK) {
+//                    std::cout << "Error\n";
+//                    sqlite3_free(error);
+//                }
+//
+//                result = sqlite3_close(db);
+//                assert(result == SQLITE_OK);
+
+
                 // Write rectangles to file.
                 std::filesystem::path outputFile = physical().logical().downcast<logical::SavedLightField>().filename();
                 for (auto iter = metadata_.begin(); iter != metadata_.end(); iter++) {
@@ -57,12 +82,6 @@ private:
 
                     ofs.write(reinterpret_cast<char *>(boxes.data()), boxes.size() * sizeof(Rectangle));
                 }
-
-//                std::ofstream ofs(outputFile, std::ios::binary);
-//                // FIXME: This doesn't work, e.g. when size is 234.
-//                ofs.put((char)rectangles_.size());
-//                ofs.write(reinterpret_cast<char*>(rectangles_.data()), rectangles_.size() * sizeof(Rectangle));
-//                ofs.close();
 
                 return std::nullopt;
             }

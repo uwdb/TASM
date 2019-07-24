@@ -117,6 +117,7 @@ private:
             { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            GLOBAL_TIMER.startSection("ScanSingleBoxesFile");
             if (!reader_.eof()) {
                 char numDigits;
                 reader_.get(numDigits);
@@ -136,9 +137,13 @@ private:
                 reader_.get(numDigits);
                 assert(reader_.eof());
 
-                return {MetadataLightField({{"labels", rectangles}}, physical().source().configuration(), physical().source().geometry()).ref()};
-            } else
+                auto returnValue = MetadataLightField({{"labels", rectangles}}, physical().source().configuration(), physical().source().geometry()).ref();
+                GLOBAL_TIMER.endSection("ScanSingleBoxesFile");
+                return {returnValue};
+            } else {
+                GLOBAL_TIMER.endSection("ScanSingleBoxesFile");
                 return std::nullopt;
+            }
         }
         std::ifstream reader_;
     };

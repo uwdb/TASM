@@ -122,6 +122,8 @@ private:
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            GLOBAL_TIMER.startSection("GPUOverlayUnion");
+
             // FIXME: iterators().back() shouldn't be hardcoded maybe?
             // FIXME: If the boxes iterator is done, but the video one isn't, we should continue
             // and just output the remaining video frames.
@@ -138,9 +140,12 @@ private:
                         output.frames().emplace_back(frame);
                 }
 
+                GLOBAL_TIMER.endSection("GPUOverlayUnion");
                 return {output};
-            } else
+            } else {
+                GLOBAL_TIMER.endSection("GPUOverlayUnion");
                 return {};
+            }
         }
 
     private:
@@ -155,7 +160,7 @@ private:
             { }
 
             const std::vector<Data> operator++(int) {
-                std::cout << "Finding boxes for frame " << current_id_ << std::endl;
+//                std::cout << "Finding boxes for frame " << current_id_ << std::endl;
 
                 std::optional<Data> value;
                 std::vector<Data> values;
@@ -177,7 +182,7 @@ private:
 
         private:
             Data next() {
-                std::cout << "Returning value at index " << index_ << " for frame " << current_id_ << std::endl;
+//                std::cout << "Returning value at index " << index_ << " for frame " << current_id_ << std::endl;
                 auto value = peek().value();
                 index_++;
                 return value;

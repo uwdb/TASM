@@ -22,7 +22,10 @@ namespace lightdb::hevc {
                   tile_dimensions_{0, 0} {
             metadata_.SkipExponentialGolomb();
             metadata_.SkipExponentialGolomb();
-            metadata_.SkipBits(6);
+            metadata_.SkipBits(1); // dependent_slice_segments_enabled_flag
+            metadata_.MarkPosition("output_flag_present_flag_offset");
+            metadata_.CollectValue("output_flag_present_flag");
+            metadata_.SkipBits(4);
             metadata_.CollectValue("cabac_init_present_flag");
             metadata_.SkipExponentialGolomb();
             metadata_.SkipExponentialGolomb();
@@ -86,6 +89,14 @@ namespace lightdb::hevc {
         inline bytestring GetBytes() const override {
             return AddEmulationPreventionAndMarker(data_, GetHeaderSize(), data_.size() / 8);
         }
+
+        /**
+         *
+         * @return True if the output flag was not already enabled. False if the the output flag is already present.
+         */
+        bool TryToTurnOnOutputFlagPresentFlag();
+
+        bool HasOutputFlagPresentFlagEnabled();
 
     private:
         BitArray data_;

@@ -33,5 +33,22 @@ namespace lightdb::hevc {
 
         tile_dimensions_ = dimensions;
     }
+
+    bool PictureParameterSet::TryToTurnOnOutputFlagPresentFlag() {
+        bool outputFlagPresent = metadata_.GetValue("output_flag_present_flag");
+        if (outputFlagPresent)
+            return false;
+
+        // Flip flag to 1.
+        assert(!data_[metadata_.GetValue("output_flag_present_flag_offset")]);
+        data_[metadata_.GetValue("output_flag_present_flag_offset")] = true;
+        assert(data_[metadata_.GetValue("output_flag_present_flag_offset")]);
+
+        return true;
+    }
+
+    bool PictureParameterSet::HasOutputFlagPresentFlagEnabled() {
+            return data_[metadata_.GetValue("output_flag_present_flag_offset")];
+    }
 }; //namespace lightdb::hevc
 

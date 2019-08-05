@@ -26,6 +26,9 @@ namespace lightdb::hevc {
          */
         bytestring GetStitchedSegments();
 
+        void addPicOutputFlagIfNecessary();
+        bytestring combinedNalsForTile(unsigned int tileNumber) const;
+
 
      private:
 
@@ -53,6 +56,7 @@ namespace lightdb::hevc {
         std::vector<std::vector<bytestring>> tile_nals_;
         const StitchContext context_;
         const Headers headers_;
+        std::vector<std::vector<std::unique_ptr<Nal>>> formattedNals_;
     };
 
 }; //namespace lightdb::hevc

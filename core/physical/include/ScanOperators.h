@@ -194,6 +194,62 @@ private:
     const catalog::Source source_;
 };
 
+class ScanEntireFile: public PhysicalOperator {
+public:
+    explicit ScanEntireFile(const LightFieldReference &logical, catalog::Source source)
+        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanEntireFile-init")),
+        source_(std::move(source))
+    {}
+
+    const catalog::Source &source() const { return source_; }
+
+private:
+    class Runtime: public runtime::Runtime<ScanEntireFile> {
+    public:
+        explicit Runtime(ScanEntireFile &physical)
+            : runtime::Runtime<ScanEntireFile>(physical),
+            reader_(physical.source().filename(), std::ios::binary)
+        {}
+
+        std::optional<MaterializedLightFieldReference> read() override {
+            if (reader_.eof()) {
+                reader_.close();
+                return {};
+            } else {
+                GLOBAL_TIMER.startSection("ScanEntireFile");
+                reader_.seekg(0, std::ios::end);
+                int size = reader_.tellg();
+                reader_.seekg(0, std::ios::beg);
+
+                bytestring fileData(size);
+//                fileData.reserve(size);
+
+                reader_.read(fileData.data(), size);
+                assert(reader_.good());
+                assert(!reader_.fail());
+
+                if (!reader_.eof()) {
+                    reader_.get();
+                    assert(reader_.eof());
+                }
+                auto returnVal = CPUEncodedFrameData(
+                        physical().source().codec(),
+                        physical().source().configuration(),
+                        physical().source().geometry(),
+                        fileData);
+                GLOBAL_TIMER.endSection("ScanEntireFile");
+                return {returnVal};
+            }
+        }
+
+
+    private:
+        std::ifstream reader_;
+    };
+
+    const catalog::Source source_;
+};
+
 } // namespace lightdb::physical
 
 #endif //LIGHTDB_SCANOPERATORS_H

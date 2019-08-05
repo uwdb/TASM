@@ -80,8 +80,9 @@ namespace lightdb::hevc {
     void SequenceParameterSet::CalculateSizes() {
         auto min_cb_log2_size = metadata_.GetValue("log2_min_luma_coding_block_size_minus3") + 3;
 
-        assert ((GetContext().GetVideoDimensions().first & (1 << min_cb_log2_size)) == 0 &&
-                (GetContext().GetVideoDimensions().second & (1 << min_cb_log2_size)) == 0);
+        // FIXME: This should be checking the coded width/height.
+//        assert ((GetContext().GetVideoDimensions().first & (1 << min_cb_log2_size)) == 0 &&
+//                (GetContext().GetVideoDimensions().second & (1 << min_cb_log2_size)) == 0);
 
         auto min_cb_log2_size_y = min_cb_log2_size;
         auto ctb_log2_size_y = min_cb_log2_size_y + metadata_.GetValue("log2_diff_max_min_luma_coding_block_size");

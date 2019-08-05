@@ -32,4 +32,23 @@ namespace lightdb::hevc {
                 throw InvalidArgumentError(std::string("Unrecognized SliceSegmentLayer type ") + std::to_string(PeekType(data)), "data");
         }
     }
+
+    std::unique_ptr<Nal> LoadNal(const StitchContext &context, const bytestring &data, const Headers &headers) {
+        switch(PeekType(data)) {
+            case NalUnitSPS:
+                return std::make_unique<SequenceParameterSet>(context, data);
+            case NalUnitPPS:
+                return std::make_unique<PictureParameterSet>(context, data);
+            case NalUnitVPS:
+                return std::make_unique<VideoParameterSet>(context, data);
+            case NalUnitCodedSliceIDRWRADL:
+                return std::make_unique<IDRSliceSegmentLayer>(context, data, headers);
+            case NalUnitCodedSliceTrailR:
+                return std::make_unique<TrailRSliceSegmentLayer>(context, data, headers);
+            case NalUnitAccessUnitDelimiter:
+                return std::make_unique<AccessDelimiter>(context, data);
+            default:
+                return std::make_unique<Opaque>(context, data);
+        }
+    }
 }; //namespace lightdb::hevc

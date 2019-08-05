@@ -83,6 +83,14 @@ namespace lightdb::hevc {
             return IsSequence() || IsPicture() || IsVideo();
         }
 
+        inline bool IsIDRSegment() const {
+            return type_ == NalUnitCodedSliceIDRWRADL;
+        }
+
+        inline bool IsTrailRSegment() const {
+            return type_ == NalUnitCodedSliceTrailR;
+        }
+
         /**
          *
          * @return The bytestring that represents this Nal
@@ -172,6 +180,8 @@ std::shared_ptr<Nal> Load(const StitchContext &context, const bytestring &data);
  * @return A Nal with the correct type
  */
 SliceSegmentLayer Load(const StitchContext &context, const bytestring &data, const Headers &headers);
+
+std::unique_ptr<Nal> LoadNal(const StitchContext &context, const bytestring &data, const Headers &headers);
 
 }; //namespace lightdb::hevc
 

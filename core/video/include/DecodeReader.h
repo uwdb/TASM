@@ -315,12 +315,22 @@ private:
         }
 
         unsigned int track_index = 1;
-        GF_TrackBox *trak = gf_isom_get_track_from_file2(file_, track_index);
-        SAPType isRAP;
-        unsigned int prevRAP;
-        unsigned int nextRAP;
-        GF_Err result = stbl_GetSampleRAP2(trak->Media->information->sampleTable->SyncSample, *frameIterator_, &isRAP, &prevRAP, &nextRAP);
+
+        GF_ISOSample *sample = gf_isom_get_sample_info(file_, track_index, *frameIterator_, NULL, NULL);
+        unsigned int prevRAP = 0;
+        unsigned int nextRAP = 0;
+        unsigned int streamDescriptionIndex = 0;
+        GF_ISOSample *rapSample = NULL;
+        GF_Err result = gf_isom_get_sample_for_media_time(file_, track_index, sample->DTS, &streamDescriptionIndex, GF_ISOM_SEARCH_SYNC_BACKWARD, NULL, &prevRAP);
         assert(result == GF_OK);
+
+
+//        GF_TrackBox *trak = gf_isom_get_track_from_file2(file_, track_index);
+//        SAPType isRAP;
+//        unsigned int prevRAP;
+//        unsigned int nextRAP;
+//        GF_Err result = stbl_GetSampleRAP2(trak->Media->information->sampleTable->SyncSample, *frameIterator_, &isRAP, &prevRAP, &nextRAP);
+//        assert(result == GF_OK);
 
         // Find all frames that have the same prevRAP.
         while (frameIterator_ != frames_.end() && (*frameIterator_ < nextRAP || !nextRAP))

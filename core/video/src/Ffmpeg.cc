@@ -67,6 +67,7 @@ namespace lightdb::video::ffmpeg {
 
     static StreamConfiguration GetConfigurationFromContext(AVFormatContext *context, AVStream *stream,
                                                            const unsigned int bitrate) {
+        // FIXME: Get coded width/height from stream->codec->coded_width/coded_height.
         if (stream->codecpar->height <= 0 ||
             stream->codecpar->width <= 0)
             throw FfmpegRuntimeError("Frame size not detected");

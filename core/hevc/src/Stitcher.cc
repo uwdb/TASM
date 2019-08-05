@@ -118,4 +118,54 @@ namespace lightdb::hevc {
         }
         return result;
     }
+
+    void Stitcher::addPicOutputFlagIfNecessary() {
+        for (const auto &nals : tile_nals_) {
+            std::vector<std::unique_ptr<Nal>> nalObjects;
+            nalObjects.reserve(nals.size());
+            for (const auto &nalData : nals) {
+                nalObjects.emplace_back(LoadNal(context_, nalData, headers_));
+            }
+
+            // Now go through nals.
+            // Flip bit in PPS, if necessary.
+            // Add bit in slices, if necessary.
+            bool outputFlagIsNotPresentInGOP = false;
+            for (auto it = nalObjects.begin(); it != nalObjects.end(); it++) {
+                if ((*it)->IsSequence())
+                    continue;
+
+                else if ((*it)->IsVideo())
+                    continue;
+
+                else if ((*it)->IsPicture()) {
+//                    auto pps = dynamic_cast<PictureParameterSet&>(**it);
+                    outputFlagIsNotPresentInGOP = static_cast<PictureParameterSet*>(it->get())->TryToTurnOnOutputFlagPresentFlag();
+                } else if (((*it)->IsIDRSegment() || (*it)->IsTrailRSegment()) && outputFlagIsNotPresentInGOP) {
+                    // Insert pic_output_bit.
+                    static_cast<SliceSegmentLayer*>(it->get())->InsertPicOutputFlag();
+                }
+            }
+            formattedNals_.push_back(std::move(nalObjects));
+        }
+    }
+
+    bytestring Stitcher::combinedNalsForTile(unsigned int tileNumber) const {
+        unsigned int totalSize = 0;
+        std::vector<bytestring> bytes(formattedNals_[tileNumber].size());
+        for (int i = 0; i < formattedNals_[tileNumber].size(); i++) {
+            auto nalBytes = formattedNals_[tileNumber][i]->GetBytes();
+            bytes[i].resize(nalBytes.size());
+            totalSize += nalBytes.size();
+            std::move(nalBytes.begin(), nalBytes.end(), bytes[i].begin());
+        }
+
+        bytestring allData(totalSize);
+        auto currentEnd = allData.begin();
+        for (auto &nalBytes : bytes) {
+            currentEnd = std::move(nalBytes.begin(), nalBytes.end(), currentEnd);
+        }
+
+        return allData;
+    }
 }; //namespace lightdb::hevc

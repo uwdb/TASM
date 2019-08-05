@@ -12,10 +12,6 @@ namespace lightdb::physical {
 
 class SaveBoxes: public PhysicalOperator {
 public:
-//        explicit SaveBoxes(const LightFieldReference &logical)
-//            : PhysicalOperator(logical, {}, physical::DeviceType::CPU, runtime::make<Runtime>(*this))
-//        { }
-
     explicit SaveBoxes(const LightFieldReference &logical, PhysicalOperatorReference &parent)
             : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "SaveBoxes-init"))
     { }
@@ -40,48 +36,79 @@ private:
                     rectanglesForLabel.insert(rectanglesForLabel.end(), labelAndRectangles.second.begin(), labelAndRectangles.second.end());
                 });
 
-//                std::vector<Rectangle> rectangles = metadataLightField.allRectangles();
-//                rectangles_.insert(rectangles_.end(), rectangles.begin(), rectangles.end());
                 return iterators().front()++;
             } else {
                 // Write rectangles to database;
-//                sqlite3 *db;
-//                int result = sqlite3_open_v2("/home/maureen/sqlite_stuff/practice.db", &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
-//                assert(result == SQLITE_OK);
-//
-//
-//                // Create table called "labels".
-//                char *createTable = "CREATE TABLE LABELS(" \
-//                        "LABEL  TEXT    NOT NULL," \
-//                        "VOLUME BLOB    NOT NULL," \
-//                        "PRIMARY KEY (LABEL, VOLUME) );";
-//
-//                char *error = nullptr;
-//                result = sqlite3_exec(db, createTable, NULL, NULL, &error);
-//                if (result != SQLITE_OK) {
-//                    std::cout << "Error\n";
-//                    sqlite3_free(error);
-//                }
-//
-//                result = sqlite3_close(db);
-//                assert(result == SQLITE_OK);
+                sqlite3 *db;
+                std::filesystem::path outputFile = physical().logical().downcast<logical::SavedLightField>().filename();
+                std::filesystem::remove(outputFile);
+
+                int result = sqlite3_open_v2(outputFile.c_str(), &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+                assert(result == SQLITE_OK);
+
+
+                // Create table called "labels".
+                char *createTable = "CREATE TABLE LABELS(" \
+                        "LABEL  TEXT    NOT NULL," \
+                        "FRAME INT NOT NULL," \
+                        "X INT NULL," \
+                        "Y INT NULL," \
+                        "WIDTH INT NOT NULL," \
+                        "HEIGHT INT NOT NULL," \
+                        "PRIMARY KEY (LABEL, FRAME, X, Y, WIDTH, HEIGHT));";
+
+
+                char *error = nullptr;
+                result = sqlite3_exec(db, createTable, NULL, NULL, &error);
+                if (result != SQLITE_OK) {
+                    std::cout << "Error\n";
+                    sqlite3_free(error);
+                }
+
+                sqlite3_stmt *insert;
+                char *insertStatement = "INSERT INTO LABELS VALUES( ?, ?, ?, ?, ?, ?);";
+                result = sqlite3_prepare_v2(db, insertStatement, strlen(insertStatement), &insert, nullptr);
+                assert(result == SQLITE_OK);
+
+                // Insert the boxes into the table.
+                for (const auto &labelAndRectangles : metadata_) {
+                    for (const Rectangle &rectangle : labelAndRectangles.second) {
+                        assert(sqlite3_reset(insert) == SQLITE_OK);
+                        result = sqlite3_bind_text(insert, 1, labelAndRectangles.first.c_str(), labelAndRectangles.first.length(),
+                                                   nullptr);
+                        assert(result == SQLITE_OK);
+
+                        result = sqlite3_bind_int(insert, 2, rectangle.id);
+                        assert(result == SQLITE_OK);
+
+                        assert(sqlite3_bind_int(insert, 3, rectangle.x) == SQLITE_OK);
+                        assert(sqlite3_bind_int(insert, 4, rectangle.y) == SQLITE_OK);
+                        assert(sqlite3_bind_int(insert, 5, rectangle.width) == SQLITE_OK);
+                        assert(sqlite3_bind_int(insert, 6, rectangle.height) == SQLITE_OK);
+
+                        assert(sqlite3_step(insert) == SQLITE_DONE);
+                    }
+                }
+                assert(sqlite3_finalize(insert) == SQLITE_OK);
+                result = sqlite3_close(db);
+                assert(result == SQLITE_OK);
 
 
                 // Write rectangles to file.
-                std::filesystem::path outputFile = physical().logical().downcast<logical::SavedLightField>().filename();
-                for (auto iter = metadata_.begin(); iter != metadata_.end(); iter++) {
-                    std::string label = iter->first;
-                    std::vector<Rectangle> boxes = iter->second;
-
-                    std::filesystem::path pathForLabel = outputFile.parent_path().append(label + "_" + outputFile.filename().string());
-                    std::ofstream ofs(pathForLabel, std::ios::binary);
-
-                    std::string sizeAsString = std::to_string(boxes.size());
-                    ofs.put((char)sizeAsString.length());
-                    ofs.write(sizeAsString.data(), sizeAsString.length());
-
-                    ofs.write(reinterpret_cast<char *>(boxes.data()), boxes.size() * sizeof(Rectangle));
-                }
+//                std::filesystem::path outputFile = physical().logical().downcast<logical::SavedLightField>().filename();
+//                for (auto iter = metadata_.begin(); iter != metadata_.end(); iter++) {
+//                    std::string label = iter->first;
+//                    std::vector<Rectangle> boxes = iter->second;
+//
+//                    std::filesystem::path pathForLabel = outputFile.parent_path().append(label + "_" + outputFile.filename().string());
+//                    std::ofstream ofs(pathForLabel, std::ios::binary);
+//
+//                    std::string sizeAsString = std::to_string(boxes.size());
+//                    ofs.put((char)sizeAsString.length());
+//                    ofs.write(sizeAsString.data(), sizeAsString.length());
+//
+//                    ofs.write(reinterpret_cast<char *>(boxes.data()), boxes.size() * sizeof(Rectangle));
+//                }
 
                 return std::nullopt;
             }

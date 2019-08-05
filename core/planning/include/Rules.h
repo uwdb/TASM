@@ -20,6 +20,8 @@
 #include "SinkOperators.h"
 #include "Rectangle.h"
 
+#include "SelectFramesOperators.h"
+
 #include <iostream>
 
 namespace lightdb::optimization {
@@ -71,8 +73,8 @@ namespace lightdb::optimization {
                         auto gpu = plan().allocator().gpu();
                         //auto gpu = plan().environment().gpus()[0];
 
-//                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
-                        auto &scan = plan().emplace<physical::ScanFramesFromFileDecodeReader>(logical, stream);
+                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
+//                        auto &scan = plan().emplace<physical::ScanFramesFromFileDecodeReader>(logical, stream);
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 
                         auto children = plan().children(plan().lookup(node));
@@ -111,19 +113,24 @@ namespace lightdb::optimization {
 
                 if(node.codec() == Codec::h264() ||
                    node.codec() == Codec::hevc()) {
+                    // Test the homomorphic select frames after loading.
+                    auto &scan = plan().emplace<physical::ScanEntireFile>(logical, node.source());
+                    plan().emplace<physical::HomomorphicSelectFrames>(logical, scan, scan.downcast<physical::ScanEntireFile>().source());
+                    return true;
+
                     //auto gpu = plan().environment().gpus()[0];
-                    auto gpu = plan().allocator().gpu();
-
-                    auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, node.source());
-                    auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
-
-                    auto children = plan().children(plan().lookup(node));
-                    if(children.size() > 1) {
-                        auto tees = physical::TeedPhysicalOperatorAdapter::make(decode, children.size());
-                        for (auto index = 0u; index < children.size(); index++)
-                            plan().add(tees->physical(index));
-                            //plan().emplace<physical::GPUOperatorAdapter>(tees->physical(index), decode);
-                    }
+//                    auto gpu = plan().allocator().gpu();
+//
+//                    auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, node.source());
+//                    auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
+//
+//                    auto children = plan().children(plan().lookup(node));
+//                    if(children.size() > 1) {
+//                        auto tees = physical::TeedPhysicalOperatorAdapter::make(decode, children.size());
+//                        for (auto index = 0u; index < children.size(); index++)
+//                            plan().add(tees->physical(index));
+//                            //plan().emplace<physical::GPUOperatorAdapter>(tees->physical(index), decode);
+//                    }
                 } else if(node.codec() == Codec::boxes()) {
                     plan().emplace<physical::ScanSingleBoxesFile>(logical, node.source());
 //                    auto &scan = plan().emplace<physical::ScanSingleFile<sizeof(Rectangle) * 8192>>(logical, node.source());
@@ -828,6 +835,9 @@ namespace lightdb::optimization {
 
                 if(physical_parents.empty())
                     return false;
+
+                plan().emplace<physical::SaveToFile>(plan().lookup(node), physical_parents.front());
+                return true;
 
                 auto encode = Encode(node, physical_parents.front());
 

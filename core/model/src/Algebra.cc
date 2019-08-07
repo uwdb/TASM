@@ -61,9 +61,7 @@ namespace lightdb::logical {
     }
 
     LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification) {
-        std::cout << "Selecting metadata specification" << std::endl;
-        return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification);
-//        return this_;
+        return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, this_.downcast<ExternalLightField>().source());
     }
 
     LightFieldReference Algebra::Store(const std::string &name, const Codec &codec,

@@ -48,7 +48,7 @@ private:
 
 
                 // Create table called "labels".
-                char *createTable = "CREATE TABLE LABELS(" \
+                const char *createTable = "CREATE TABLE LABELS(" \
                         "LABEL  TEXT    NOT NULL," \
                         "FRAME INT NOT NULL," \
                         "X INT NULL," \
@@ -66,7 +66,7 @@ private:
                 }
 
                 sqlite3_stmt *insert;
-                char *insertStatement = "INSERT INTO LABELS VALUES( ?, ?, ?, ?, ?, ?);";
+                const char *insertStatement = "INSERT INTO LABELS VALUES( ?, ?, ?, ?, ?, ?);";
                 result = sqlite3_prepare_v2(db, insertStatement, strlen(insertStatement), &insert, nullptr);
                 assert(result == SQLITE_OK);
 

@@ -25,12 +25,20 @@ public:
                             Codec codec)
             : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUEncodeToCPU-init")),
               GPUOperator(parent),
-              codec_(std::move(codec)) {
+              codec_(std::move(codec)),
+              didSetFramesToKeep_(false) {
         if(!codec.nvidiaId().has_value())
             throw GpuRuntimeError("Requested codec does not have an Nvidia encode id");
     }
 
     const Codec &codec() const { return codec_; }
+
+    const bool didSetFramesToKeep() const { return didSetFramesToKeep_; }
+    const std::unordered_set<int> &framesToKeep() const { return framesToKeep_; }
+    void setFramesToKeep(std::unordered_set<int> framesToKeep) {
+        didSetFramesToKeep_ = true;
+        framesToKeep_ = std::move(framesToKeep);
+    }
 
 private:
     class Runtime: public runtime::GPUUnaryRuntime<GPUEncodeToCPU, GPUDecodedFrameData> {
@@ -41,7 +49,8 @@ private:
               encoder_{this->context(), encodeConfiguration_, lock()},
               writer_{encoder_.api()},
               encodeSession_{encoder_, writer_},
-              numberOfEncodedFrames_(0)
+              numberOfEncodedFrames_(0),
+              frameNumber_(0)
         {
 //            timer_.endSection();
         }
@@ -53,6 +62,10 @@ private:
 
                 timer_.startSection("inside-GPUEncodeToCPU");
                 for (const auto &frame: decoded.frames()) {
+                    auto frameNumber = frameNumber_++;
+                    if (physical().didSetFramesToKeep() && !physical().framesToKeep().count(frameNumber))
+                        continue;
+
                     ++numberOfEncodedFrames_;
                     encodeSession_.Encode(*frame, decoded.configuration().offset.top,
                                           decoded.configuration().offset.left);
@@ -70,7 +83,7 @@ private:
                 return {returnVal};
             } else {
                 GLOBAL_TIMER.endSection("GPUEncodeToCPU");
-                std::cout << "**Encoded " << numberOfEncodedFrames_ << " frames\n";
+                std::cout << "**Encoded " << numberOfEncodedFrames_ << " frames, considered " << frameNumber_ << "frames\n";
                 timer_.printAllTimes();
                 return std::nullopt;
             }
@@ -95,9 +108,14 @@ private:
         VideoEncoderSession encodeSession_;
         Timer timer_;
         unsigned long numberOfEncodedFrames_;
+        unsigned long frameNumber_;
     };
 
     const Codec codec_;
+
+    // Add optional list of frames to keep.
+    bool didSetFramesToKeep_;
+    std::unordered_set<int> framesToKeep_;
 };
 
 }; // namespace lightdb::physical

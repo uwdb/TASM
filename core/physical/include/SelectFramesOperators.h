@@ -8,6 +8,51 @@
 
 namespace lightdb::physical {
 
+class NaiveSelectFrames: public PhysicalOperator, GPUOperator {
+public:
+    explicit NaiveSelectFrames(const LightFieldReference &logical,
+                                PhysicalOperatorReference &parent)
+        : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "NaiveSelectFrames-init")),
+        GPUOperator(parent),
+        metadataSpecification_(logical.downcast<logical::MetadataSubsetLightField>().metadataSpecification()),
+        source_(logical.downcast<logical::MetadataSubsetLightField>().source()),
+        metadataManager_(source_.filename())
+    {}
+
+    const MetadataSpecification &metadataSpecification() const { return metadataSpecification_; }
+    const catalog::Source &source() const { return source_; }
+    std::unordered_set<int> framesToKeep() const { return metadataManager_.framesForMetadata(metadataSpecification()); }
+
+private:
+    class Runtime: public runtime::UnaryRuntime<NaiveSelectFrames, GPUDecodedFrameData> {
+    public:
+        explicit Runtime(NaiveSelectFrames &physical)
+            : runtime::UnaryRuntime<NaiveSelectFrames, GPUDecodedFrameData>(physical),
+                    frameNumber_(0)
+        {}
+
+        std::optional<MaterializedLightFieldReference> read() override {
+            if (iterator() == iterator().eos())
+                return {};
+
+            GLOBAL_TIMER.startSection("NaiveSelectFrames");
+            auto frames = iterator()++;
+
+
+
+
+            GLOBAL_TIMER.endSection("NaiveSelectFrames");
+            return {};
+        }
+    private:
+        unsigned long frameNumber_;
+    };
+
+    const MetadataSpecification metadataSpecification_;
+    const catalog::Source source_;
+    const metadata::MetadataManager metadataManager_;
+};
+
 class HomomorphicSelectFrames: public PhysicalOperator {
 public:
     explicit HomomorphicSelectFrames(const LightFieldReference &logical,

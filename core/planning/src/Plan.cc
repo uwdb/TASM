@@ -80,5 +80,40 @@ namespace lightdb::optimization {
 
         physical_.erase(original);
     }
+
+    void Plan::replace_assignments(const std::vector<PhysicalOperatorReference> &originals, const PhysicalOperatorReference &replacement) {
+        // Remove a few operators to be replaced by one.
+        for (auto &[logical, assignments]: assigned_) {
+            for (auto &original : originals) {
+                if (assignments.find(original) != assignments.end())
+                    assignments.erase(original);
+            }
+            assignments.insert(replacement);
+        }
+
+        for (auto &physical : physical_) {
+            auto &parents = physical->parents();
+            // See if parents contains both of originals. Assume that it must contain both?
+            bool containsOne = false;
+            for (auto &original : originals) {
+                if (std::find(parents.begin(), parents.end(), original) != parents.end()) {
+                    containsOne = true;
+                    break;
+                }
+            }
+            parents.erase(std::remove(parents.begin(), parents.end(), replacement), parents.end());
+
+            // Replace the first original with the replacement.
+            // Remove the rest of the originals.
+            std::replace(parents.begin(), parents.end(), originals.front(), replacement);
+            for (int i = 1; i < originals.size(); ++i) {
+                std::remove(parents.begin(), parents.end(), originals[i]);
+            }
+        }
+
+        for (auto &original : originals) {
+            physical_.erase(original);
+        }
+    }
 } // namespace lightdb::optimization
 

@@ -21,6 +21,7 @@
 #include "Rectangle.h"
 
 #include <iostream>
+#include <SelectFramesOperators.h>
 
 namespace lightdb::optimization {
     class ChooseMaterializedScans : public OptimizerRule {
@@ -354,6 +355,45 @@ namespace lightdb::optimization {
                 }
             }
             return false;
+        }
+    };
+
+    class ChooseMetadataSelection : public OptimizerRule {
+    public:
+        using OptimizerRule::OptimizerRule;
+
+        bool visit(const logical::MetadataSubsetLightField &node) override {
+            if (!plan().has_physical_assignment(node)) {
+                auto physical_parents = functional::flatmap<std::vector<PhysicalOperatorReference>>(
+                        node.parents().begin(), node.parents().end(),
+                        [this](auto &parent) { return plan().unassigned(parent); });
+
+                if(physical_parents.empty())
+                    return false;
+
+                assert(physical_parents.size() == 1);
+                auto decode = physical_parents[0]; // Decode
+
+//                return false;
+
+                /* For homomorphic selection */
+                /*
+                // There should also be a second parent: scan & decode
+                // Get parent for decode = Scan
+                assert(decode->parents().size() == 1);
+                auto scan = decode->parents().front();
+
+                auto scanEntireFile = PhysicalOperatorReference::make<physical::ScanEntireFile>(scan->logical(), scan.downcast<physical::ScanSingleFileDecodeReader>().source());
+                plan().replace_assignments({scan, decode}, scanEntireFile);
+                plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), scanEntireFile, scanEntireFile.downcast<physical::ScanEntireFile>().source());
+                */
+
+                /* For non-homorphic selection */
+                plan().emplace<physical::NaiveSelectFrames>(plan().lookup(node), decode);
+
+                return true;
+            } else
+                return false;
         }
     };
 
@@ -784,7 +824,7 @@ namespace lightdb::optimization {
         using OptimizerRule::OptimizerRule;
 
         //TODO Duplicate of ChooseStore::Encode, this is lame
-        PhysicalOperatorReference Encode(const logical::SavedLightField &node, PhysicalOperatorReference parent) {
+        PhysicalOperatorReference Encode(const logical::SavedLightField &node, PhysicalOperatorReference parent, bool replace=false) {
             auto logical = plan().lookup(node);
 
             // Can we leverage the ChooseEncode rule to automatically do this stuff, which is an exact duplicate?
@@ -815,7 +855,12 @@ namespace lightdb::optimization {
             } else if(!parent.is<physical::GPUOperator>()) {
                 //auto gpuop = plan().emplace<physical::GPUOperatorAdapter>(parent);
                 //return plan().emplace<physical::GPUEncodeToCPU>(logical, gpuop, Codec::hevc());
-                return plan().emplace<physical::GPUEncodeToCPU>(logical, parent, Codec::hevc());
+                if (replace) {
+                    auto encode = PhysicalOperatorReference::make<physical::GPUEncodeToCPU>(logical, parent->parents().front(), Codec::hevc());
+                    plan().replace_assignments(parent, encode);
+                    return encode;
+                } else
+                    return plan().emplace<physical::GPUEncodeToCPU>(logical, parent, Codec::hevc());
             } else
                 return plan().emplace<physical::GPUEncodeToCPU>(logical, parent, Codec::hevc());
         }
@@ -829,7 +874,15 @@ namespace lightdb::optimization {
                 if(physical_parents.empty())
                     return false;
 
-                auto encode = Encode(node, physical_parents.front());
+//                plan().emplace<physical::SaveToFile>(plan().lookup(node), physical_parents.front());
+//                return true;
+                bool lastFrameWasMetadataSelection = physical_parents.front().is<physical::NaiveSelectFrames>();
+
+                auto encode = Encode(node, physical_parents.front(), lastFrameWasMetadataSelection);
+
+                if (lastFrameWasMetadataSelection) {
+                    encode.downcast<physical::GPUEncodeToCPU>().setFramesToKeep(physical_parents.front().downcast<physical::NaiveSelectFrames>().framesToKeep());
+                }
 
                if (physical_parents.front().is<physical::CPUMap>() && node.filename().extension() == ".boxes") {
                    plan().emplace<physical::SaveBoxes>(plan().lookup(node), encode);

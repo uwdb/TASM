@@ -16,6 +16,7 @@ namespace lightdb::optimization {
                      make_rule<ChooseDecoders>(),
                      make_rule<ChooseUnion>(),
                      make_rule<ChooseSelection>(),
+                     make_rule<ChooseMetadataSelection>(),
                      make_rule<ChooseInterpolate>(),
                      make_rule<ChooseDiscretize>(),
                      make_rule<ChooseLinearScale>(),

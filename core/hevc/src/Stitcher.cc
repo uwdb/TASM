@@ -2,6 +2,8 @@
 #include "SliceSegmentLayer.h"
 #include <list>
 
+#include "timer.h"
+
 namespace lightdb::hevc {
 
     //TODO typedef nested type
@@ -121,15 +123,19 @@ namespace lightdb::hevc {
 
     void Stitcher::addPicOutputFlagIfNecessaryKeepingFrames(const std::unordered_set<int> &framesToKeep) {
         for (const auto &nals : tile_nals_) {
+            Timer timer;
+            timer.startSection("CreateNals");
             std::vector<std::unique_ptr<Nal>> nalObjects;
             nalObjects.reserve(nals.size());
             for (const auto &nalData : nals) {
                 nalObjects.emplace_back(LoadNal(context_, nalData, headers_));
             }
+            timer.endSection("CreateNals");
 
             // Now go through nals.
             // Flip bit in PPS, if necessary.
             // Add bit in slices, if necessary.
+            timer.startSection("AddPicOutputFlagToNals");
             auto currentFrameNumber = 0;
             bool outputFlagIsNotPresentInGOP = false;
             for (auto it = nalObjects.begin(); it != nalObjects.end(); it++) {
@@ -148,6 +154,8 @@ namespace lightdb::hevc {
                 } else
                     assert(false);
             }
+            timer.endSection("AddPicOutputFlagToNals");
+            timer.printAllTimes();
             formattedNals_.push_back(std::move(nalObjects));
         }
     }

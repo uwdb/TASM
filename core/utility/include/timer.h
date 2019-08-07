@@ -5,6 +5,7 @@
 #ifndef LIGHTDB_TIMER_H
 #define LIGHTDB_TIMER_H
 
+#include <chrono>
 #include <iostream>
 
 namespace lightdb {

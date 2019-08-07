@@ -377,7 +377,7 @@ namespace lightdb::optimization {
 //                return false;
 
                 /* For homomorphic selection */
-                /*
+
                 // There should also be a second parent: scan & decode
                 // Get parent for decode = Scan
                 assert(decode->parents().size() == 1);
@@ -386,10 +386,10 @@ namespace lightdb::optimization {
                 auto scanEntireFile = PhysicalOperatorReference::make<physical::ScanEntireFile>(scan->logical(), scan.downcast<physical::ScanSingleFileDecodeReader>().source());
                 plan().replace_assignments({scan, decode}, scanEntireFile);
                 plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), scanEntireFile, scanEntireFile.downcast<physical::ScanEntireFile>().source());
-                */
+
 
                 /* For non-homorphic selection */
-                plan().emplace<physical::NaiveSelectFrames>(plan().lookup(node), decode);
+//                plan().emplace<physical::NaiveSelectFrames>(plan().lookup(node), decode);
 
                 return true;
             } else
@@ -874,8 +874,10 @@ namespace lightdb::optimization {
                 if(physical_parents.empty())
                     return false;
 
-//                plan().emplace<physical::SaveToFile>(plan().lookup(node), physical_parents.front());
-//                return true;
+                // For homomorphic frame selection:
+                plan().emplace<physical::SaveToFile>(plan().lookup(node), physical_parents.front());
+                return true;
+
                 bool lastFrameWasMetadataSelection = physical_parents.front().is<physical::NaiveSelectFrames>();
 
                 auto encode = Encode(node, physical_parents.front(), lastFrameWasMetadataSelection);

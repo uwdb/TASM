@@ -101,11 +101,21 @@ private:
 
             // Now that we have the entire byte string, insert/modify pic_output_flag.
             hevc::StitchContext context({1, 1}, {height, width});
+
+            Timer stitcherTimer;
+            stitcherTimer.startSection("CreateStitcher");
             hevc::Stitcher stitcher(context, encodedData);
+            stitcherTimer.endSection("CreateStitcher");
 
             auto framesToKeep = metadataManager_.framesForMetadata(physical().metadataSpecification());
+            stitcherTimer.startSection("AddPicOutputFlag");
             stitcher.addPicOutputFlagIfNecessaryKeepingFrames(framesToKeep);
+            stitcherTimer.endSection("AddPicOutputFlag");
+
+            stitcherTimer.startSection("GetCombinedNals");
             auto combinedNals = stitcher.combinedNalsForTile(0);
+            stitcherTimer.endSection("GetCombinedNals");
+            stitcherTimer.printAllTimes();
 
             auto returnVal = CPUEncodedFrameData(physical().source().codec(),
                                         physical().source().configuration(),

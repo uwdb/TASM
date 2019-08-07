@@ -12,6 +12,10 @@ namespace lightdb {
             : tableName_(tableName), columnName_(columnName), expectedValue_(expectedValue)
         { }
 
+        const std::string &tableName() const { return tableName_; }
+        const std::string &columnName() const { return columnName_; }
+        const std::string &expectedValue() const { return expectedValue_; }
+
     private:
         std::string tableName_;
         std::string columnName_;

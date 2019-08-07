@@ -13,6 +13,8 @@
 #include "Pool.h"
 #include "Rectangle.h"
 #include "reference.h"
+#include "sqlite3.h"
+#include <unordered_set>
 
 #include <map>
 
@@ -54,17 +56,34 @@ namespace lightdb::physical {
 namespace lightdb::logical {
     class MetadataSubsetLightField : public LightField {
     public:
-        MetadataSubsetLightField(const LightFieldReference &lightField, const MetadataSpecification &metadataSpecification)
-        : LightField(lightField), metadataSelection_(metadataSpecification)
+        MetadataSubsetLightField(const LightFieldReference &lightField, const MetadataSpecification &metadataSpecification, const catalog::Source &source)
+        : LightField(lightField),
+        metadataSelection_(metadataSpecification),
+        source_(source)
         { }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightField>(visitor); }
+        const MetadataSpecification &metadataSpecification() const { return metadataSelection_; }
+        const catalog::Source &source() const { return source_; }
 
     private:
         MetadataSpecification metadataSelection_;
-
+        catalog::Source source_;
     };
 } // namespace lightdb::logical
+
+namespace lightdb::metadata {
+    class MetadataManager {
+    public:
+        explicit MetadataManager(const std::filesystem::path &pathToMetadata)
+                : pathToMetadata_(pathToMetadata)
+        {}
+
+        std::unordered_set<int> framesForMetadata(const MetadataSpecification&) const;
+    private:
+        const std::filesystem::path pathToMetadata_;
+    };
+} // namespace lightdb::metadata
 
 
 #endif //LIGHTDB_METADATALIGHTFIELD_H

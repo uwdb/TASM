@@ -14,16 +14,19 @@ public:
                                      const PhysicalOperatorReference &parent,
                                      const catalog::Source &source)
             : PhysicalOperator(logical, {parent}, DeviceType::CPU, runtime::make<Runtime>(*this, "HomomorphicSelectFrames-init")),
-            source_(source)
+            source_(source),
+            metadataSpecification_(logical.downcast<logical::MetadataSubsetLightField>().metadataSpecification())
     {}
 
     const catalog::Source &source() const { return source_; }
+    const MetadataSpecification &metadataSpecification() const { return metadataSpecification_; }
 
 private:
     class Runtime: public runtime::UnaryRuntime<HomomorphicSelectFrames, CPUEncodedFrameData> {
     public:
         explicit Runtime(HomomorphicSelectFrames &physical)
-            : runtime::UnaryRuntime<HomomorphicSelectFrames, CPUEncodedFrameData>(physical)
+            : runtime::UnaryRuntime<HomomorphicSelectFrames, CPUEncodedFrameData>(physical),
+                    metadataManager_(physical.source().filename())
         {}
 
         std::optional<MaterializedLightFieldReference> read() override {
@@ -55,7 +58,8 @@ private:
             hevc::StitchContext context({1, 1}, {height, width});
             hevc::Stitcher stitcher(context, encodedData);
 
-            stitcher.addPicOutputFlagIfNecessary();
+            auto framesToKeep = metadataManager_.framesForMetadata(physical().metadataSpecification());
+            stitcher.addPicOutputFlagIfNecessaryKeepingFrames(framesToKeep);
             auto combinedNals = stitcher.combinedNalsForTile(0);
 
             auto returnVal = CPUEncodedFrameData(physical().source().codec(),
@@ -65,9 +69,13 @@ private:
             GLOBAL_TIMER.endSection("HomomorphicSelectFrames");
             return {returnVal};
         }
+
+    private:
+        metadata::MetadataManager metadataManager_;
     };
 
     const catalog::Source source_;
+    const MetadataSpecification metadataSpecification_;
 };
 
 } // namespace lightdb::physical

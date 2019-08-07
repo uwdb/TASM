@@ -50,7 +50,7 @@ namespace lightdb::hevc {
             return AddEmulationPreventionAndMarker(data_, GetHeaderSize(), kMaxHeaderLength);
         }
 
-        void InsertPicOutputFlag();
+        void InsertPicOutputFlag(bool value);
 
         SliceSegmentLayer(const SliceSegmentLayer& other) = default;
         SliceSegmentLayer(SliceSegmentLayer&& other) = default;

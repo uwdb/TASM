@@ -45,9 +45,9 @@ namespace lightdb::hevc {
         data_ = new_data;
     }
 
-    void SliceSegmentLayer::InsertPicOutputFlag() {
+    void SliceSegmentLayer::InsertPicOutputFlag(bool value) {
         auto position = metadata_.GetValue("pic_output_flag_offset");
-        data_.insert(data_.begin() + position, true);
+        data_.insert(data_.begin() + position, value);
 
         auto startOfByteAlignmentBits = metadata_.GetValue("trailing_bits_offset");
         auto indexFollowingTrailing1 = startOfByteAlignmentBits + 2; // +1 because we inserted a bit, +1 to get next element.

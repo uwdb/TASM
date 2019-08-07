@@ -3,6 +3,7 @@
 
 #include "Headers.h"
 #include "StitchContext.h"
+#include <unordered_set>
 #include <vector>
 
 namespace lightdb::hevc {
@@ -26,7 +27,7 @@ namespace lightdb::hevc {
          */
         bytestring GetStitchedSegments();
 
-        void addPicOutputFlagIfNecessary();
+        void addPicOutputFlagIfNecessaryKeepingFrames(const std::unordered_set<int> &framesToKeep);
         bytestring combinedNalsForTile(unsigned int tileNumber) const;
 
 

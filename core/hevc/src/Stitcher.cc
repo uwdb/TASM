@@ -119,7 +119,7 @@ namespace lightdb::hevc {
         return result;
     }
 
-    void Stitcher::addPicOutputFlagIfNecessary() {
+    void Stitcher::addPicOutputFlagIfNecessaryKeepingFrames(const std::unordered_set<int> &framesToKeep) {
         for (const auto &nals : tile_nals_) {
             std::vector<std::unique_ptr<Nal>> nalObjects;
             nalObjects.reserve(nals.size());
@@ -130,6 +130,7 @@ namespace lightdb::hevc {
             // Now go through nals.
             // Flip bit in PPS, if necessary.
             // Add bit in slices, if necessary.
+            auto currentFrameNumber = 0;
             bool outputFlagIsNotPresentInGOP = false;
             for (auto it = nalObjects.begin(); it != nalObjects.end(); it++) {
                 if ((*it)->IsSequence())
@@ -143,8 +144,9 @@ namespace lightdb::hevc {
                     outputFlagIsNotPresentInGOP = static_cast<PictureParameterSet*>(it->get())->TryToTurnOnOutputFlagPresentFlag();
                 } else if (((*it)->IsIDRSegment() || (*it)->IsTrailRSegment()) && outputFlagIsNotPresentInGOP) {
                     // Insert pic_output_bit.
-                    static_cast<SliceSegmentLayer*>(it->get())->InsertPicOutputFlag();
-                }
+                    static_cast<SliceSegmentLayer*>(it->get())->InsertPicOutputFlag(framesToKeep.count(currentFrameNumber++));
+                } else
+                    assert(false);
             }
             formattedNals_.push_back(std::move(nalObjects));
         }
@@ -153,7 +155,7 @@ namespace lightdb::hevc {
     bytestring Stitcher::combinedNalsForTile(unsigned int tileNumber) const {
         unsigned int totalSize = 0;
         std::vector<bytestring> bytes(formattedNals_[tileNumber].size());
-        for (int i = 0; i < formattedNals_[tileNumber].size(); i++) {
+        for (auto i = 0; i < formattedNals_[tileNumber].size(); i++) {
             auto nalBytes = formattedNals_[tileNumber][i]->GetBytes();
             bytes[i].resize(nalBytes.size());
             totalSize += nalBytes.size();

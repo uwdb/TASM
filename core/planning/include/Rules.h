@@ -73,16 +73,17 @@ namespace lightdb::optimization {
                         //auto gpu = plan().environment().gpus()[0];
 
 //                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
-                        auto &scan = plan().emplace<physical::ScanFramesFromFileDecodeReader>(logical, stream);
-                        auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 
-                        auto children = plan().children(plan().lookup(node));
-                        if (children.size() > 1) {
-                            auto tees = physical::TeedPhysicalOperatorAdapter::make(decode, children.size());
-                            for (auto index = 0u; index < children.size(); index++)
-                                plan().add(tees->physical(index));
-                            //plan().emplace<physical::GPUOperatorAdapter>(tees->physical(index), decode);
-                        }
+                        auto &scan = plan().emplace<physical::ScanFramesFromFileDecodeReader>(logical, stream);
+//                        auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
+//
+//                        auto children = plan().children(plan().lookup(node));
+//                        if (children.size() > 1) {
+//                            auto tees = physical::TeedPhysicalOperatorAdapter::make(decode, children.size());
+//                            for (auto index = 0u; index < children.size(); index++)
+//                                plan().add(tees->physical(index));
+//                            //plan().emplace<physical::GPUOperatorAdapter>(tees->physical(index), decode);
+//                        }
                     } else if(stream.codec() == Codec::h264() ||
                               stream.codec() == Codec::hevc()) {
                         auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
@@ -372,9 +373,14 @@ namespace lightdb::optimization {
                     return false;
 
                 assert(physical_parents.size() == 1);
-                auto decode = physical_parents[0]; // Decode
+                auto parent = physical_parents.front(); // Decode
 
-//                return false;
+                if (parent.is<physical::ScanFramesFromFileDecodeReader>()) {
+                    plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), parent, parent.downcast<physical::ScanFramesFromFileDecodeReader>().source());
+                    return true;
+                }
+
+                auto decode = parent;
 
                 /* For homomorphic selection */
 
@@ -383,9 +389,10 @@ namespace lightdb::optimization {
                 assert(decode->parents().size() == 1);
                 auto scan = decode->parents().front();
 
-                auto scanEntireFile = PhysicalOperatorReference::make<physical::ScanEntireFile>(scan->logical(), scan.downcast<physical::ScanSingleFileDecodeReader>().source());
+//                auto scanEntireFile = PhysicalOperatorReference::make<physical::ScanEntireFile>(scan->logical(), scan.downcast<physical::ScanSingleFileDecodeReader>().source());
+                auto scanEntireFile = PhysicalOperatorReference::make<physical::ScanFramesFromFileDecodeReader>(scan->logical(), scan.downcast<physical::ScanSingleFileDecodeReader>().source());
                 plan().replace_assignments({scan, decode}, scanEntireFile);
-                plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), scanEntireFile, scanEntireFile.downcast<physical::ScanEntireFile>().source());
+                plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), scanEntireFile, scanEntireFile.downcast<physical::ScanFramesFromFileDecodeReader>().source());
 
 
                 /* For non-homorphic selection */

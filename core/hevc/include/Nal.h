@@ -22,9 +22,21 @@ namespace lightdb::hevc {
      * @param data The byte stream
      * @return The type of the byte stream as defined in NalType.h
      */
+    inline unsigned int PeekType(char &byte) {
+        return (static_cast<unsigned char>(byte) & 0x7Fu) >> 1;
+    }
+
     inline unsigned int PeekType(const bytestring &data) {
         assert(!data.empty());
         return (static_cast<unsigned char>(data[0]) & 0x7Fu) >> 1;
+    }
+
+    inline unsigned int PeekType(std::vector<bool>::iterator startOfNalUnitType) {
+        unsigned char value = 0;
+        for (auto i = 0u; i < 6; i++) {
+            value = (value << 1u) | *startOfNalUnitType++;
+        }
+        return value;
     }
 
     class Nal {

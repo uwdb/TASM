@@ -76,15 +76,18 @@ private:
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            GLOBAL_TIMER.startSection("ScanFramesFromFileDecodeReader");
             auto packet = frameReader_.read();
             if (packet.has_value()) {
                 // FIXME: implement this.
-                return std::optional<physical::MaterializedLightFieldReference>{
+                auto returnVal = std::optional<physical::MaterializedLightFieldReference>{
                     physical::MaterializedLightFieldReference::make<CPUEncodedFrameData>(
                             physical().source().codec(),
                             physical().source().configuration(),
                             physical().source().geometry(),
                             packet.value())};
+                GLOBAL_TIMER.endSection("ScanFramesFromFileDecodeReader");
+                return returnVal;
             } else {
                 return std::nullopt;
             }

@@ -71,7 +71,9 @@ private:
     public:
         explicit Runtime(HomomorphicSelectFrames &physical)
             : runtime::UnaryRuntime<HomomorphicSelectFrames, CPUEncodedFrameData>(physical),
-                    metadataManager_(physical.source().filename())
+                    metadataManager_(physical.source().filename()),
+                    framesToKeep_(metadataManager_.framesForMetadata(physical.metadataSpecification())),
+                    picOutputFlagAdder_(framesToKeep_)
         {}
 
         std::optional<MaterializedLightFieldReference> read() override {
@@ -80,53 +82,32 @@ private:
 
             GLOBAL_TIMER.startSection("HomomorphicSelectFrames");
 
-            // Read the entire file.
-            // Assume that we are getting CPUEncodedFrameData.
-            std::vector<bytestring> encodedData(1);
-            unsigned int width = 0;
-            unsigned int height = 0;
+            CPUEncodedFrameData frameData = iterator()++.downcast<CPUEncodedFrameData>();
+            assert(frameData.codec() == Codec::hevc());
 
-            while (iterator() != iterator().eos()) {
-                CPUEncodedFrameData frameData = iterator()++.downcast<CPUEncodedFrameData>();
-                assert(frameData.codec() == Codec::hevc());
-                auto data = frameData.value();
-                encodedData[0].insert(encodedData[0].end(), data.begin(), data.end());
+            // Assume frameData contains a complete GOP.
 
-                if (!width) {
-                    Configuration configuration = frameData.configuration();
-                    width = configuration.width;
-                    height = configuration.height;
-                }
-            }
-
-            // Now that we have the entire byte string, insert/modify pic_output_flag.
-            hevc::StitchContext context({1, 1}, {height, width});
-
-            Timer stitcherTimer;
-            stitcherTimer.startSection("CreateStitcher");
-            hevc::Stitcher stitcher(context, encodedData);
-            stitcherTimer.endSection("CreateStitcher");
-
-            auto framesToKeep = metadataManager_.framesForMetadata(physical().metadataSpecification());
-            stitcherTimer.startSection("AddPicOutputFlag");
-            stitcher.addPicOutputFlagIfNecessaryKeepingFrames(framesToKeep);
-            stitcherTimer.endSection("AddPicOutputFlag");
-
-            stitcherTimer.startSection("GetCombinedNals");
-            auto combinedNals = stitcher.combinedNalsForTile(0);
-            stitcherTimer.endSection("GetCombinedNals");
-            stitcherTimer.printAllTimes();
+            // Now analyze the nals in the bitstream. Only consider the last nal to be complete if iterator() == eos().
+            // Otherwise, move the last nal to bitsLeftOver.
+            Timer timer;
+            timer.startSection("AddPicOutputFlag");
+            auto gopData = frameData.value();
+            picOutputFlagAdder_.addPicOutputFlagToGOP(gopData);
+            timer.endSection("AddPicOutputFlag");
+            timer.printAllTimes();
 
             auto returnVal = CPUEncodedFrameData(physical().source().codec(),
                                         physical().source().configuration(),
                                         physical().source().geometry(),
-                                        combinedNals);
+                                        gopData);
             GLOBAL_TIMER.endSection("HomomorphicSelectFrames");
-            return {returnVal};
+            return returnVal;
         }
 
     private:
         metadata::MetadataManager metadataManager_;
+        std::unordered_set<int> framesToKeep_;
+        hevc::PicOutputFlagAdder picOutputFlagAdder_;
     };
 
     const catalog::Source source_;

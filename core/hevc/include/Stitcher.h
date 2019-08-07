@@ -7,6 +7,20 @@
 #include <vector>
 
 namespace lightdb::hevc {
+    class PicOutputFlagAdder {
+    public:
+        PicOutputFlagAdder(const std::unordered_set<int> &framesToKeep)
+        : framesToKeep_(framesToKeep),
+        frameNumber_(0)
+        {}
+
+        void addPicOutputFlagToGOP(bytestring &gopData);
+
+    private:
+        const std::unordered_set<int> framesToKeep_;
+        unsigned int frameNumber_;
+    };
+
     class Stitcher {
      public:
 

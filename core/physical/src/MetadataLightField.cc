@@ -9,7 +9,8 @@
 namespace lightdb::associations {
     static std::unordered_map<std::string, std::string> VideoPathToLabelsPath(
             {
-                    {"/home/maureen/dog_videos/dog_with_keyframes.hevc", "/home/maureen/dog_videos/dog_with_keyframes.boxes"}
+                    {"/home/maureen/dog_videos/dog_with_keyframes.hevc", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/dog_with_keyframes/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"}
             } );
 } // namespace lightdb::associations
 

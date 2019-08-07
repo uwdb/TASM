@@ -121,6 +121,87 @@ namespace lightdb::hevc {
         return result;
     }
 
+    void PicOutputFlagAdder::addPicOutputFlagToGOP(bytestring &gopData) {
+        bytestring nalPattern = { 0, 0, 0, 1 };
+
+//        Timer timer;
+//        // Convert bytestring to bits.
+//        // Dont' have to convert the entire bytestring, just the header bits I guess.
+//        // Can flip the bit in PPS without converting.
+//        timer.startSection("ConvertToBits");
+//        BitArray gopBits(gopData.size() * 8);
+//        auto bitIndex = 0u;
+//        for (const auto &c: gopData) {
+//            for (auto i = 0u; i < 8; i++)
+//                gopBits[bitIndex++] = (c << i) & 128;
+//        }
+//        timer.endSection("ConvertToBits");
+
+        auto currentStart = gopData.begin();
+
+        bool nalsAlreadyHaveOutputFlagPresentFlag = false;
+        while (currentStart != gopData.end()) {
+            // Move the iterator past the nal header.
+            currentStart += 4;
+            auto nalType = PeekType(*currentStart);
+
+            // Advance past the header.
+            currentStart += GetHeaderSize();
+
+            if (nalType == NalUnitPPS) {
+                // Flip bit if it's not already set.
+                // Need to find it first …
+
+                // Converting 2 bytes to bits should be sufficient to get to output_flag_present_flag.
+                BitArray headerBits(16);
+                auto indexOfStartOfHeader = std::distance(gopData.begin(), currentStart);
+                auto bitIndex = 0;
+                for (auto i = 0; i < 2; ++i) {
+                    auto c = *currentStart++;
+                    for (auto j = 0; j < 8; j++) {
+                        headerBits[bitIndex++] = (c << j) & 128;
+                    }
+                }
+                BitStream parser(headerBits.begin(), headerBits.begin());
+                parser.SkipExponentialGolomb(); // pic_parameter_set_id
+                parser.SkipExponentialGolomb(); // seq_parameter_set_id
+                parser.SkipBits(1); // dependent_slice_segments_enabled_flag
+                parser.MarkPosition("output_flag_present_flag_offset");
+                parser.CollectValue("output_flag_present_flag");
+
+                if (parser.GetValue("output_flag_present_flag"))
+                    nalsAlreadyHaveOutputFlagPresentFlag = true;
+                else {
+                    headerBits[parser.GetValue("output_flag_present_flag_offset")] = true;
+
+                    // Convert back into bytes and replace in gopData.
+                    for (auto i = 0; i < 2; ++i)
+                        gopData[indexOfStartOfHeader + i] = headerBits.GetByte(i);
+                }
+
+            } else if (nalType == NalUnitCodedSliceIDRWRADL) {
+                // Insert bit and re-byte-align.
+
+
+            } else if (nalType == NalUnitCodedSliceTrailR) {
+                // Insert bit and re-byte-align.
+            }
+
+            currentStart = std::search(currentStart, gopData.end(), nalPattern.begin(), nalPattern.end());
+        }
+
+//        // Translate back into a bytestring.
+//        timer.startSection("ConvertToBytes");
+//        assert(!(gopBits.size() % 8));
+//        auto numberOfBytes = gopBits.size() / 8;
+//        bytestring bytes(numberOfBytes);
+//        for (auto i = 0; i < numberOfBytes; ++i)
+//            bytes[i] = gopBits.GetByte(i);
+//        timer.endSection("ConvertToBytes");
+//
+//        timer.printAllTimes();
+    }
+
     void Stitcher::addPicOutputFlagIfNecessaryKeepingFrames(const std::unordered_set<int> &framesToKeep) {
         for (const auto &nals : tile_nals_) {
             Timer timer;

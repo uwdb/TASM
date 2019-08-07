@@ -61,7 +61,12 @@ namespace lightdb::logical {
     }
 
     LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification) {
-        return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, this_.downcast<ExternalLightField>().source());
+        if (this_.is<ExternalLightField>())
+            return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, this_.downcast<ExternalLightField>().source());
+        else if (this_.is<ScannedLightField>())
+            return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, this_.downcast<ScannedLightField>().sources().front());
+        else
+            assert(false);
     }
 
     LightFieldReference Algebra::Store(const std::string &name, const Codec &codec,

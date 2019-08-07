@@ -32,7 +32,7 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
     // Then
 
     for(auto& frame: data.frames()) {
-        std::cout << "Processing frame number " << frame_index << std::endl;
+//        std::cout << "Processing frame number " << frame_index << std::endl;
         frame_index++;
 
         Allocate(frame->height(), frame->width(), channels);
@@ -70,11 +70,9 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
         output.insert(output.end(), reinterpret_cast<char *>(&box),
                       reinterpret_cast<char *>(&box) + sizeof(Rectangle));
 
-        std::cout << "Labels: " << std::endl;
         for (auto i = 0u; i < box_count_; i++) {
             for (auto j = 0u; j < metadata_.classes; j++) {
                 if (probabilities_[i][j] > 0.001) {
-//                    std::cout << metadata_.names[j] << std::endl;
                     box = {frame_index - 1,
                            static_cast<unsigned int>(boxes_[i].x - boxes_[i].w / 2),
                            static_cast<unsigned int>(boxes_[i].y - boxes_[i].h / 2),
@@ -84,9 +82,6 @@ shared_reference<LightField> YOLO::CPU::operator()(LightField& input) {
                     output.insert(output.end(), reinterpret_cast<char *>(&box),
                                   reinterpret_cast<char *>(&box) + sizeof(Rectangle));
 
-//                    if (std::string(metadata_.names[j]) == "car")
-//                    std::cout << metadata_.names[j] << std::endl;
-//                    carBoxes.emplace_back(box);
                     allBoxes[metadata_.names[j]].emplace_back(box);
                 }
             }

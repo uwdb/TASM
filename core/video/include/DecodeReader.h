@@ -254,7 +254,7 @@ private:
     size_t decoded_bytes_;
 };
 
-class FrameDecodeReader { //: public DecodeReader {
+class FrameDecodeReader: public DecodeReader {
 public:
     explicit FrameDecodeReader(std::filesystem::path filename, std::vector<unsigned int> frames)
         : filename_(std::move(filename)),
@@ -267,14 +267,13 @@ public:
         file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
         assert(gf_isom_set_nalu_extract_mode(file_, 1, GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG | GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG) == GF_OK);
 
-        // TODO: Decode all of the frames.
         frames_ = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
                    60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 79,
                    80, 120, 121, 126, 130, 197, 199, 200, 201, 202, 203, 210, 211, 212};
         frameIterator_ = frames_.begin();
     }
 
-    std::optional<lightdb::bytestring> read() {
+    std::optional<DecodeReaderPacket> read() override {
         // Assume frames are sorted.
         // Go through frames, and use GPAC to find out what GOP each frame belongs to.
         // Return the data for all frames in the same GOP
@@ -284,28 +283,28 @@ public:
 
         // Can get data_offset for keyframe to get start of reading.
         // Also get data_offset for last interesting frame in the GOP + its dataLength to see where to stop reading.
-        return framesForNextGOP_();
-//        if (dataFromNextGOP.has_value()) {
-//            unsigned long flags = CUVID_PKT_DISCONTINUITY;
-//            if (frameIterator_ == frames_.end())
-//                flags |= CUVID_PKT_ENDOFSTREAM;
-//
-//            return DecodeReaderPacket(dataFromNextGOP.value(), flags);
-//        } else
-//            return {};
+        auto dataFromNextGOP = framesForNextGOP_();
+        if (dataFromNextGOP.has_value()) {
+            unsigned long flags = CUVID_PKT_DISCONTINUITY;
+            if (frameIterator_ == frames_.end())
+                flags |= CUVID_PKT_ENDOFSTREAM;
+
+            return DecodeReaderPacket(dataFromNextGOP.value(), flags);
+        } else
+            return {};
     }
 
-//    // FIXME: Is this necessary for the frame reader?
-//    CUVIDEOFORMAT format() const override {
-//        CUVIDEOFORMAT format;
-//        return format;
-//    }
+    // FIXME: Is this necessary for the frame reader?
+    CUVIDEOFORMAT format() const override {
+        CUVIDEOFORMAT format;
+        return format;
+    }
 
-//    // FIXME: implement this.
-//    bool isComplete() const override {
-//        // FIXME: This isn't right.
-//        return frameIterator_ == frames_.end();
-//    }
+    // FIXME: implement this.
+    bool isComplete() const override {
+        // FIXME: This isn't right.
+        return frameIterator_ == frames_.end();
+    }
 
 private:
     std::optional<lightdb::bytestring> framesForNextGOP_() {
@@ -317,21 +316,21 @@ private:
 
         unsigned int track_index = 1;
 
-//        GF_ISOSample *sample = gf_isom_get_sample_info(file_, track_index, *frameIterator_, NULL, NULL);
-//        unsigned int prevRAP = 0;
-//        unsigned int nextRAP = 0;
-//        unsigned int streamDescriptionIndex = 0;
-//        GF_ISOSample *rapSample = NULL;
-//        GF_Err result = gf_isom_get_sample_for_media_time(file_, track_index, sample->DTS, &streamDescriptionIndex, GF_ISOM_SEARCH_SYNC_BACKWARD, NULL, &prevRAP);
-//        assert(result == GF_OK);
-
-
-        GF_TrackBox *trak = gf_isom_get_track_from_file2(file_, track_index);
-        SAPType isRAP;
-        unsigned int prevRAP;
-        unsigned int nextRAP;
-        GF_Err result = stbl_GetSampleRAP2(trak->Media->information->sampleTable->SyncSample, *frameIterator_, &isRAP, &prevRAP, &nextRAP);
+        GF_ISOSample *sample = gf_isom_get_sample_info(file_, track_index, *frameIterator_, NULL, NULL);
+        unsigned int prevRAP = 0;
+        unsigned int nextRAP = 0;
+        unsigned int streamDescriptionIndex = 0;
+        GF_ISOSample *rapSample = NULL;
+        GF_Err result = gf_isom_get_sample_for_media_time(file_, track_index, sample->DTS, &streamDescriptionIndex, GF_ISOM_SEARCH_SYNC_BACKWARD, NULL, &prevRAP);
         assert(result == GF_OK);
+
+
+//        GF_TrackBox *trak = gf_isom_get_track_from_file2(file_, track_index);
+//        SAPType isRAP;
+//        unsigned int prevRAP;
+//        unsigned int nextRAP;
+//        GF_Err result = stbl_GetSampleRAP2(trak->Media->information->sampleTable->SyncSample, *frameIterator_, &isRAP, &prevRAP, &nextRAP);
+//        assert(result == GF_OK);
 
         // Find all frames that have the same prevRAP.
         while (frameIterator_ != frames_.end() && (*frameIterator_ < nextRAP || !nextRAP))

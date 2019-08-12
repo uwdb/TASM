@@ -14,6 +14,24 @@ namespace lightdb::hevc {
 
     // Described in 7.3.2.2
 
+    class SequenceParameterSetMetadata {
+    public:
+        SequenceParameterSetMetadata(BitStream&);
+
+        inline unsigned long GetMaxPicOrder() const {
+            return log2_max_pic_order_cnt_lsb_;
+        }
+
+        inline const std::pair<unsigned long, unsigned long>& GetTileDimensions() const {
+            return dimensions_;
+        }
+
+    private:
+        BitStream &metadata_;
+        std::pair<unsigned long, unsigned long> dimensions_;
+        unsigned long log2_max_pic_order_cnt_lsb_;
+    };
+
     //TODO: Maybe add a getter for general_level_idc, also add assertions mb in calculate_sizes
 
     class SequenceParameterSet : public Nal {
@@ -38,7 +56,8 @@ namespace lightdb::hevc {
          * Note that changing this array changes this header's tile dimensions
          */
         inline const std::pair<unsigned long, unsigned long>& GetTileDimensions() const {
-            return dimensions_;
+            return spsMetadata_.GetTileDimensions();
+//            return dimensions_;
         }
 
         /**
@@ -64,7 +83,8 @@ namespace lightdb::hevc {
          * @return The log2_max_pic_order_cnt_lsb_ for this Nal
          */
         inline unsigned long GetMaxPicOrder() const {
-            return log2_max_pic_order_cnt_lsb_;
+            return spsMetadata_.GetMaxPicOrder();
+//            return log2_max_pic_order_cnt_lsb_;
         }
 
         /**
@@ -82,6 +102,8 @@ namespace lightdb::hevc {
             return addresses_;
         }
 
+        inline SequenceParameterSetMetadata sequenceParameterSetMetadata() const { return spsMetadata_; }
+
     private:
 
         void CalculateSizes();
@@ -90,6 +112,7 @@ namespace lightdb::hevc {
         BitStream metadata_;
         size_t address_length_in_bits_;
         std::vector<size_t> addresses_;
+        SequenceParameterSetMetadata spsMetadata_;
         std::pair<unsigned long, unsigned long> dimensions_;
         unsigned long log2_max_pic_order_cnt_lsb_;
 

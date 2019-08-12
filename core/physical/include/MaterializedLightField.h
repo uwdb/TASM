@@ -147,7 +147,9 @@ namespace lightdb::physical {
                                      const bytestring &data)
                 : EncodedFrameData(DeviceType::CPU, codec, configuration, geometry,
                                    data.begin(), data.end()),
-                  packet_(data)
+                  packet_(data),
+                  firstFrameIndex_(-1),
+                  numberOfFrames_(-1)
         { }
 
         explicit CPUEncodedFrameData(const Codec &codec,
@@ -156,14 +158,42 @@ namespace lightdb::physical {
                                      const DecodeReaderPacket &packet)
                 : EncodedFrameData(DeviceType::CPU, codec, configuration, geometry,
                                    packet.payload, packet.payload + packet.payload_size),
-                  packet_(packet)
+                  packet_(packet),
+                  firstFrameIndex_(-1),
+                  numberOfFrames_(-1)
         { }
 
         inline explicit operator const DecodeReaderPacket() const noexcept { return packet_; }
         inline MaterializedLightFieldReference ref() const override { return MaterializedLightFieldReference::make<CPUEncodedFrameData>(*this); }
 
+        void setFirstFrameIndexAndNumberOfFrames(int firstFrameIndex, int numberOfFrames) {
+            // Should only set this once.
+            assert(firstFrameIndex_ == -1);
+            assert(numberOfFrames_ == -1);
+            firstFrameIndex_ = firstFrameIndex;
+            numberOfFrames_ = numberOfFrames;
+        }
+
+        bool getFirstFrameIndexIfSet(int &outFirstFrameIndex) {
+            if (firstFrameIndex_ == -1)
+                return false;
+
+            outFirstFrameIndex = firstFrameIndex_;
+            return true;
+        }
+
+        bool getNumberOfFramesIfSet(int &outNumberOfFrames) {
+            if (numberOfFrames_ == -1)
+                return false;
+
+            outNumberOfFrames = numberOfFrames_;
+            return true;
+        }
+
     private:
         const DecodeReaderPacket packet_;
+        int firstFrameIndex_;
+        int numberOfFrames_;
     };
 
     class CPUDecodedFrameData: public FrameData {

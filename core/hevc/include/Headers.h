@@ -7,6 +7,24 @@
 #include "PictureParameterSet.h"
 
 namespace lightdb::hevc {
+    class PictureParameterSetMetadata;
+    class SequenceParameterSetMetadata;
+
+    class HeadersMetadata {
+    public:
+        HeadersMetadata(PictureParameterSetMetadata ppsMetadata, SequenceParameterSetMetadata spsMetadata)
+            : ppsMetadata_(ppsMetadata),
+            spsMetadata_(spsMetadata)
+        {}
+
+        const PictureParameterSetMetadata &GetPicture() { return ppsMetadata_; }
+        const SequenceParameterSetMetadata &GetSequence() { return spsMetadata_; }
+
+    private:
+        PictureParameterSetMetadata ppsMetadata_;
+        SequenceParameterSetMetadata spsMetadata_;
+    };
+
 
     class VideoParameterSet;
     class PictureParameterSet;

@@ -4,7 +4,6 @@
 #include "Greyscale.h"
 #include "Display.h"
 #include "Metadata.h"
-#include "SelectFramesWithObjectsInProximity.h"
 #include "SelectPixels.h"
 #include "TestResources.h"
 #include "extension.h"
@@ -40,24 +39,6 @@ TEST_F(VisitorTestFixture, testBaz) {
     Coordinator().execute(encoded);
 }
 
-TEST_F(VisitorTestFixture, testFindDogAndPerson) {
-    auto input = Load("/home/maureen/dog_videos/dog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto dogAndPersonFrames = input.Map(SelectFramesWithObjectsInProximity).Save("/home/maureen/dog_videos/dog_and_person.hevc");
-    Coordinator().execute(dogAndPersonFrames);
-}
-
-TEST_F(VisitorTestFixture, testSampleFrames) {
-    auto yolo = lightdb::extensibility::Load("yolo");
-    auto input = Load("/home/maureen/visualroad_videos/traffic-000.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto sampled = input.Discretize(Dimension::Time, 30).Map(yolo).Save("/home/maureen/visualroad_videos/traffic-000-sampled30-labels.boxes"); //.Store("traffic-000-sampled", Codec::hevc(), {GeometryReference::make<IntervalGeometry>(Dimension::Time, 30)});
-    Coordinator().execute(sampled);
-}
-
-TEST_F(VisitorTestFixture, testReadSampledFrames) {
-    auto input = Scan("traffic-000-sampled");
-    Coordinator().execute(input);
-}
-
 TEST_F(VisitorTestFixture, testDropFrames) {
     // "/home/maureen/dog_videos/dog.hevc"
     // "/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc"
@@ -68,16 +49,23 @@ TEST_F(VisitorTestFixture, testDropFrames) {
 
 TEST_F(VisitorTestFixture, testSelectPixels) {
     // "/home/maureen/dog_videos/dog_pixels_gpu.hevc"
-    auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto selected = input.Map(SelectPixels).Save("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011_car_pixels_gpu.hevc");
+    auto input = Load("/home/maureen/dog_videos/runningDog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto selected = input.Map(SelectPixels).Save("/home/maureen/dog_videos/runningDogPixels.hevc");
     Coordinator().execute(selected);
 }
 
 TEST_F(VisitorTestFixture, testMakeBoxes) {
     auto yolo = lightdb::extensibility::Load("yolo");
-    auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto query = input.Map(yolo).Save("/home/maureen/uadetrac_videos/MVI_20011/labels/mvi_20011_boxes.boxes");
+    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto query = input.Map(yolo).Save("/home/maureen/dog_videos/dog_with_keyframes.boxes");
     Coordinator().execute(query);
+}
+
+TEST_F(VisitorTestFixture, testDrawBoxes) {
+    auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto boxes = Load("/home/maureen/uadetrac_videos/MVI_20011/labels/person_mvi_20011_boxes.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(boxes.Union(input).Save("/home/maureen/boxes.hevc"));
+
 }
 
 TEST_F(VisitorTestFixture, testMapAndBoxThings) {
@@ -105,9 +93,29 @@ TEST_F(VisitorTestFixture, testMapAndBoxThings) {
 //    Coordinator().execute(boxes.Union(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
 }
 
+TEST_F(VisitorTestFixture, testLoadAndSelectFrames) {
+//    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    auto input = Scan("dog_with_keyframes");
+    MetadataSpecification metadataSelection("LABELS", "LABEL", "dog");
+    Coordinator().execute(input.Select(metadataSelection).Save("/home/maureen/dog_videos/dog_with_cow_frames_selected.hevc"));
+//    Coordinator().execute(input.Save("/home/maureen/test-add-pic-output-flag.hevc"));
+}
+
+TEST_F(VisitorTestFixture, testScanAndSink) {
+    auto input = Scan("dog_with_keyframes");
+    Coordinator().execute(input.Sink());
+}
+
+TEST_F(VisitorTestFixture, testScanAndSave) {
+    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Save("/home/maureen/tst.hevc"));
+}
+
 TEST_F(VisitorTestFixture, testSaveToCatalog) {
 //    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(Scan("dog_with_keyframes").Store("short_dog"));
+//    Coordinator().execute(Scan("dog_with_keyframes").Store("short_dog"));
+    auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Save("/home/maureen/test.hevc"));
 }
 
 TEST_F(VisitorTestFixture, testBar) {

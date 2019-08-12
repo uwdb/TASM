@@ -121,23 +121,47 @@ namespace lightdb::hevc {
         return result;
     }
 
+    static BitArray createBitArray(const bytestring &data, bytestring::iterator &currentByte, unsigned int numberOfBytesToTranslate) {
+        BitArray bits(numberOfBytesToTranslate * 8);
+        auto bitIndex = 0;
+        for (auto i = 0; i < numberOfBytesToTranslate; i++) {
+            unsigned char c = *currentByte++;
+            for (auto j = 0; j < 8; j++) {
+                bits[bitIndex++] = (c << j) & 128;
+            }
+        }
+
+        return bits;
+    }
+
+    static void insertPicOutputFlag(bytestring &data, bytestring::iterator startingByte, HeadersMetadata &headersMetadata, unsigned int nalType, bool value) {
+        auto numberOfBytesToTranslate = 4;
+
+        auto indexOfStartOfHeader = std::distance(data.begin(), startingByte);
+        BitArray sliceHeaderBits = createBitArray(data, startingByte, numberOfBytesToTranslate);
+        BitStream parser(sliceHeaderBits.begin(), sliceHeaderBits.begin());
+
+        SliceSegmentLayerMetadata *sliceMetadata = nullptr;
+        if (nalType == NalUnitCodedSliceIDRWRADL)
+            sliceMetadata = new IDRSliceSegmentLayerMetadata(parser, headersMetadata);
+        else
+            sliceMetadata = new TrailRSliceSegmentLayerMetadata(parser, headersMetadata);
+
+        sliceMetadata->InsertPicOutputFlag(sliceHeaderBits, value);
+        for (auto i = 0; i < numberOfBytesToTranslate; i++)
+            data[indexOfStartOfHeader + i] = sliceHeaderBits.GetByte(i);
+
+        delete sliceMetadata;
+    }
+
     void PicOutputFlagAdder::addPicOutputFlagToGOP(bytestring &gopData) {
         bytestring nalPattern = { 0, 0, 0, 1 };
 
-//        Timer timer;
-//        // Convert bytestring to bits.
-//        // Dont' have to convert the entire bytestring, just the header bits I guess.
-//        // Can flip the bit in PPS without converting.
-//        timer.startSection("ConvertToBits");
-//        BitArray gopBits(gopData.size() * 8);
-//        auto bitIndex = 0u;
-//        for (const auto &c: gopData) {
-//            for (auto i = 0u; i < 8; i++)
-//                gopBits[bitIndex++] = (c << i) & 128;
-//        }
-//        timer.endSection("ConvertToBits");
-
         auto currentStart = gopData.begin();
+
+        std::unique_ptr<PictureParameterSetMetadata> ppsMetadata;
+        std::unique_ptr<SequenceParameterSetMetadata> spsMetadata;
+        std::unique_ptr<HeadersMetadata> headersMetadata;
 
         bool nalsAlreadyHaveOutputFlagPresentFlag = false;
         while (currentStart != gopData.end()) {
@@ -147,60 +171,59 @@ namespace lightdb::hevc {
 
             // Advance past the header.
             currentStart += GetHeaderSize();
-
             if (nalType == NalUnitPPS) {
                 // Flip bit if it's not already set.
                 // Need to find it first …
 
-                // Converting 2 bytes to bits should be sufficient to get to output_flag_present_flag.
-                BitArray headerBits(16);
+                // Start of next nal = size of header.
+                auto startOfNextNal = std::search(currentStart, gopData.end(), nalPattern.begin(), nalPattern.end());
+                auto sizeOfPPS = std::distance(currentStart, startOfNextNal);
                 auto indexOfStartOfHeader = std::distance(gopData.begin(), currentStart);
-                auto bitIndex = 0;
-                for (auto i = 0; i < 2; ++i) {
-                    auto c = *currentStart++;
-                    for (auto j = 0; j < 8; j++) {
-                        headerBits[bitIndex++] = (c << j) & 128;
-                    }
-                }
-                BitStream parser(headerBits.begin(), headerBits.begin());
-                parser.SkipExponentialGolomb(); // pic_parameter_set_id
-                parser.SkipExponentialGolomb(); // seq_parameter_set_id
-                parser.SkipBits(1); // dependent_slice_segments_enabled_flag
-                parser.MarkPosition("output_flag_present_flag_offset");
-                parser.CollectValue("output_flag_present_flag");
 
-                if (parser.GetValue("output_flag_present_flag"))
+                BitArray headerBits = createBitArray(gopData, currentStart, sizeOfPPS);
+                BitStream parser(headerBits.begin(), headerBits.begin());
+                ppsMetadata = std::make_unique<PictureParameterSetMetadata>(parser);
+                if (spsMetadata.get()) {
+                    assert(!headersMetadata);
+                    headersMetadata = std::make_unique<HeadersMetadata>(*ppsMetadata, *spsMetadata);
+                }
+
+                if (ppsMetadata->OutputFlagPresentFlag())
                     nalsAlreadyHaveOutputFlagPresentFlag = true;
                 else {
-                    headerBits[parser.GetValue("output_flag_present_flag_offset")] = true;
+                    headerBits[ppsMetadata->GetOutputFlagPresentFlagOffset()] = true;
 
                     // Convert back into bytes and replace in gopData.
-                    for (auto i = 0; i < 2; ++i)
+                    for (auto i = 0; i < sizeOfPPS; ++i)
                         gopData[indexOfStartOfHeader + i] = headerBits.GetByte(i);
                 }
+            } else if (nalType == NalUnitSPS) {
+                // Get metadata for SPS.
+                auto startOfNextNal = std::search(currentStart, gopData.end(), nalPattern.begin(), nalPattern.end());
+                auto sizeOfSPS = std::distance(currentStart, startOfNextNal);
+                BitArray headerBits = createBitArray(gopData, currentStart, sizeOfSPS);
+                BitStream parser(headerBits.begin(), headerBits.begin());
+                spsMetadata = std::make_unique<SequenceParameterSetMetadata>(parser);
+                if (ppsMetadata.get()) {
+                    assert(!headersMetadata.get());
+                    headersMetadata = std::make_unique<HeadersMetadata>(*ppsMetadata, *spsMetadata);
+                }
 
-            } else if (nalType == NalUnitCodedSliceIDRWRADL) {
+            } else if (nalType == NalUnitCodedSliceIDRWRADL || nalType == NalUnitCodedSliceTrailR) {
                 // Insert bit and re-byte-align.
+                assert(headersMetadata.get());
 
+                if (nalsAlreadyHaveOutputFlagPresentFlag)
+                    continue;
 
-            } else if (nalType == NalUnitCodedSliceTrailR) {
-                // Insert bit and re-byte-align.
+                insertPicOutputFlag(gopData, currentStart, *headersMetadata, nalType, true);
             }
 
             currentStart = std::search(currentStart, gopData.end(), nalPattern.begin(), nalPattern.end());
         }
-
-//        // Translate back into a bytestring.
-//        timer.startSection("ConvertToBytes");
-//        assert(!(gopBits.size() % 8));
-//        auto numberOfBytes = gopBits.size() / 8;
-//        bytestring bytes(numberOfBytes);
-//        for (auto i = 0; i < numberOfBytes; ++i)
-//            bytes[i] = gopBits.GetByte(i);
-//        timer.endSection("ConvertToBytes");
-//
-//        timer.printAllTimes();
     }
+
+
 
     void Stitcher::addPicOutputFlagIfNecessaryKeepingFrames(const std::unordered_set<int> &framesToKeep) {
         for (const auto &nals : tile_nals_) {

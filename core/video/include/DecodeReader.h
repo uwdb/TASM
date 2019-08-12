@@ -254,6 +254,100 @@ private:
     size_t decoded_bytes_;
 };
 
+struct GOPReaderPacket {
+public:
+    explicit GOPReaderPacket(lightdb::bytestring data, unsigned int firstFrameIndex, unsigned int numberOfFrames)
+            : data_(std::move(data)),
+              firstFrameIndex_(firstFrameIndex),
+              numberOfFrames_(numberOfFrames)
+    {}
+
+    const lightdb::bytestring &data() const { return data_; }
+    unsigned int firstFrameIndex() const { return firstFrameIndex_; }
+    unsigned int numberOfFrames() const { return numberOfFrames_; }
+
+private:
+    lightdb::bytestring data_;
+    unsigned int firstFrameIndex_;
+    unsigned int numberOfFrames_;
+};
+
+class EncodedFrameReader {
+public:
+    explicit EncodedFrameReader(std::filesystem::path filename, std::vector<unsigned int> frames)
+        : filename_(std::move(filename)),
+        frames_(std::move(frames))
+    {
+        file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
+        assert(gf_isom_set_nalu_extract_mode(file_, 1, GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG | GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG) == GF_OK);
+
+        frameIterator_ = frames_.begin();
+
+        shouldReadAllFrames_ = frames_.empty();
+
+        GF_TrackBox *trak = gf_isom_get_track_from_file2(file_, trackNumber_);
+        GF_SyncSampleBox *sampleBox = trak->Media->information->sampleTable->SyncSample;
+
+        keyFrameSampleNumbers_.resize(sampleBox->nb_entries);
+        for (auto i = 0; i < sampleBox->nb_entries; ++i)
+            keyFrameSampleNumbers_[i] = sampleBox->sampleNumbers[i];
+
+        keyframeIterator_ = keyFrameSampleNumbers_.begin();
+        numberOfSamples_ = gf_isom_get_sample_count(file_, trackNumber_);
+    }
+
+    std::optional<GOPReaderPacket> read() {
+        // If we are reading all of the frames, return the frames for the next GOP.
+        if (shouldReadAllFrames_) {
+            if (keyframeIterator_ == keyFrameSampleNumbers_.end())
+                return {};
+
+            auto firstSampleToRead = *keyframeIterator_++;
+            auto lastSampleToRead = keyframeIterator_ == keyFrameSampleNumbers_.end() ? numberOfSamples_ : *keyframeIterator_ - 1;
+
+            unsigned long size = 0;
+
+            // First read to get sizes.
+            for (auto i = firstSampleToRead; i <= lastSampleToRead; i++) {
+                GF_ISOSample *sample = gf_isom_get_sample_info(file_, trackNumber_, i, NULL, NULL);
+                size += sample->dataLength;
+                gf_isom_sample_del(&sample);
+            }
+
+            // Then read to get the actual data.
+            lightdb::bytestring videoData;
+            videoData.reserve(size);
+            for (auto i = firstSampleToRead; i <= lastSampleToRead; i++) {
+                GF_ISOSample *sample = gf_isom_get_sample(file_, trackNumber_, i, NULL);
+                videoData.insert(videoData.end(), sample->data, sample->data + sample->dataLength);
+                gf_isom_sample_del(&sample);
+            }
+
+            // -1 from firstSampleToRead to go from sample number -> index.
+            return { GOPReaderPacket(videoData, firstSampleToRead - 1, lastSampleToRead - firstSampleToRead + 1) };
+        } else {
+            // TODO: Implement this.
+            assert(false);
+        }
+        return {};
+    }
+
+    ~EncodedFrameReader() {
+        gf_isom_close(file_);
+    }
+
+private:
+    std::filesystem::path filename_;
+    std::vector<unsigned int> frames_;
+    static const unsigned int trackNumber_ = 1;
+    bool shouldReadAllFrames_;
+    std::vector<unsigned int>::const_iterator frameIterator_;
+    GF_ISOFile *file_;
+    std::vector<unsigned int> keyFrameSampleNumbers_;
+    std::vector<unsigned int>::const_iterator keyframeIterator_;
+    unsigned int numberOfSamples_;
+};
+
 class FrameDecodeReader: public DecodeReader {
 public:
     explicit FrameDecodeReader(std::filesystem::path filename, std::vector<unsigned int> frames)

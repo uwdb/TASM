@@ -74,7 +74,7 @@ namespace lightdb::optimization {
 
 //                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
 
-                        auto &scan = plan().emplace<physical::ScanFramesFromFileDecodeReader>(logical, stream);
+                        auto &scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, stream);
 //                        auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 //
 //                        auto children = plan().children(plan().lookup(node));
@@ -375,8 +375,8 @@ namespace lightdb::optimization {
                 assert(physical_parents.size() == 1);
                 auto parent = physical_parents.front(); // Decode
 
-                if (parent.is<physical::ScanFramesFromFileDecodeReader>()) {
-                    plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), parent, parent.downcast<physical::ScanFramesFromFileDecodeReader>().source());
+                if (parent.is<physical::ScanFramesFromFileEncodedReader>()) {
+                    plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), parent, parent.downcast<physical::ScanFramesFromFileEncodedReader>().source());
                     return true;
                 }
 

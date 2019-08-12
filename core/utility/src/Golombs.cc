@@ -8,6 +8,10 @@ using lightdb::BitStream;
 
 namespace lightdb {
 
+    unsigned long BitStream::CurrentOffset() {
+        return std::distance(first_index_, index_);
+    }
+
     /**
      * Returns the number of bits necessary to encode this golomb, storing the number of zeroes
      * needed at the front of the golomb at the end of the list

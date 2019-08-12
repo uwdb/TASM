@@ -8,18 +8,12 @@
 
 namespace lightdb::hevc {
     // Defined in 7.3.2.3
-    class PictureParameterSet : public Nal {
+    // Should there be a "metadata" base class for all nal types?
+    class PictureParameterSetMetadata {
     public:
-        /**
-         * Interprets data as a byte stream representing a PictureParameterSet
-         * @param context The context surrounding the Nal
-         * @param data The byte stream
-         */
-        PictureParameterSet(const StitchContext &context, const bytestring &data)
-                : Nal(context, data),
-                  data_(RemoveEmulationPrevention(data, GetHeaderSize(), data.size())),
-                  metadata_(data_.begin(), data_.begin() + GetHeaderSizeInBits()),
-                  tile_dimensions_{0, 0} {
+        PictureParameterSetMetadata(BitStream metadata)
+            : metadata_(metadata)
+        {
             metadata_.SkipExponentialGolomb();
             metadata_.SkipExponentialGolomb();
             metadata_.SkipBits(1); // dependent_slice_segments_enabled_flag
@@ -46,6 +40,45 @@ namespace lightdb::hevc {
             CHECK_EQ(metadata_.GetValue("end") % 8, 0);
         }
 
+        inline bool HasEntryPointOffsets() const {
+            return metadata_.GetValue("tiles_enabled_flag") ||
+                   metadata_.GetValue("entropy_coding_sync_enabled_flag");
+        }
+
+        inline bool CabacInitPresentFlag() const {
+            return static_cast<bool>(metadata_.GetValue("cabac_init_present_flag"));
+        }
+
+        inline bool OutputFlagPresentFlag() const {
+            return metadata_.GetValue("output_flag_present_flag");
+        }
+
+        inline unsigned long GetOutputFlagPresentFlagOffset() const {
+            return metadata_.GetValue("output_flag_present_flag_offset");
+        }
+
+    private:
+        // Ideal would be for Metadata to own metadata object, and PPS accesses it through it.
+        // This is fast for seeing if idea works.
+        BitStream metadata_;
+    };
+
+    class PictureParameterSet : public Nal {
+    public:
+        /**
+         * Interprets data as a byte stream representing a PictureParameterSet
+         * @param context The context surrounding the Nal
+         * @param data The byte stream
+         */
+        PictureParameterSet(const StitchContext &context, const bytestring &data)
+                : Nal(context, data),
+                  data_(RemoveEmulationPrevention(data, GetHeaderSize(), data.size())),
+                  metadata_(data_.begin(), data_.begin() + GetHeaderSizeInBits()),
+                  ppsMetadata_(metadata_),
+                  tile_dimensions_{0, 0} {
+
+        }
+
         /**
          * Sets the tile dimensions in the byte stream to be dimensions
          * @param dimensions A length two array, the first element being the height (num of rows) and the second
@@ -69,8 +102,9 @@ namespace lightdb::hevc {
          * @return True if this byte stream has entry point offsets, false otherwise
          */
         inline bool HasEntryPointOffsets() const {
-            return metadata_.GetValue("tiles_enabled_flag") ||
-                   metadata_.GetValue("entropy_coding_sync_enabled_flag");
+            return ppsMetadata_.HasEntryPointOffsets();
+//            return metadata_.GetValue("tiles_enabled_flag") ||
+//                   metadata_.GetValue("entropy_coding_sync_enabled_flag");
         }
 
         /**
@@ -79,7 +113,8 @@ namespace lightdb::hevc {
          * false otherwise
          */
 	    inline bool CabacInitPresentFlag() const {
-            return static_cast<bool>(metadata_.GetValue("cabac_init_present_flag"));
+	        return ppsMetadata_.HasEntryPointOffsets();
+//            return static_cast<bool>(metadata_.GetValue("cabac_init_present_flag"));
         }
 
         /**
@@ -98,9 +133,12 @@ namespace lightdb::hevc {
 
         bool HasOutputFlagPresentFlagEnabled();
 
+        inline PictureParameterSetMetadata pictureParameterSetMetadata() const { return ppsMetadata_; }
+
     private:
         BitArray data_;
         BitStream metadata_;
+        PictureParameterSetMetadata ppsMetadata_;
         std::pair<unsigned long, unsigned long> tile_dimensions_;
     };
 }; //namespace lightdb::hevc

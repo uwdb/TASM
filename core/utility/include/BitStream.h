@@ -21,6 +21,8 @@ namespace lightdb {
         BitStream(Input start, Input current) : index_(current), first_index_(start) {
         }
 
+        unsigned long CurrentOffset();
+
 
         /**
          *

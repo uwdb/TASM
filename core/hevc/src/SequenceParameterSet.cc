@@ -4,11 +4,8 @@
 
 namespace lightdb::hevc {
 
-    SequenceParameterSet::SequenceParameterSet(const StitchContext &context, const bytestring &data)
-            : Nal(context, data),
-              data_(RemoveEmulationPrevention(data, GetHeaderSize(), data.size())),
-              metadata_(data_.begin(), data_.begin() + GetHeaderSizeInBits()) {
-
+    SequenceParameterSetMetadata::SequenceParameterSetMetadata(lightdb::BitStream &metadata)
+        : metadata_(metadata){
         metadata_.SkipBits(4);
         metadata_.CollectValue("sps_max_sub_layer_minus1", 3);
         metadata_.SkipBits(1);
@@ -46,6 +43,16 @@ namespace lightdb::hevc {
         dimensions_.first = metadata_.GetValue("height");
         dimensions_.second = metadata_.GetValue("width");
         log2_max_pic_order_cnt_lsb_ = metadata_.GetValue("log2_max_pic_order_cnt_lsb_minus4") + 4;
+    }
+
+    SequenceParameterSet::SequenceParameterSet(const StitchContext &context, const bytestring &data)
+            : Nal(context, data),
+              data_(RemoveEmulationPrevention(data, GetHeaderSize(), data.size())),
+              metadata_(data_.begin(), data_.begin() + GetHeaderSizeInBits()),
+              spsMetadata_(metadata_) {
+
+        dimensions_ = spsMetadata_.GetTileDimensions();
+        log2_max_pic_order_cnt_lsb_ = spsMetadata_.GetMaxPicOrder();
         CalculateSizes();
     }
 

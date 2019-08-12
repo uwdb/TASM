@@ -30,7 +30,9 @@ namespace lightdb::hevc {
 //            return metadata_.GetValue("end");
 //        }
 
-        void InsertPicOutputFlag(bytestring &data, bool value);
+        void InsertPicOutputFlag(BitArray &data, bool value);
+
+        virtual ~SliceSegmentLayerMetadata() = default;
 
     protected:
         BitStream &GetBitStream() { return metadata_; }

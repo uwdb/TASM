@@ -60,7 +60,7 @@ namespace lightdb::hevc {
 
     }
 
-    void SliceSegmentLayerMetadata::InsertPicOutputFlag(bytestring &data, bool value) {
+    void SliceSegmentLayerMetadata::InsertPicOutputFlag(BitArray &data, bool value) {
         // Insert pic_output_flag_offset.
         // Need to decode bytes from pic_output_flag_offset -> end.
         // Find byte offset for pic_output_flag_offset & byte offset for end.
@@ -70,45 +70,16 @@ namespace lightdb::hevc {
         // Translate back to bytes and update in data.
 
         auto picOutputFlagOffset = metadata_.GetValue("pic_output_flag_offset");
-        // Need to update position to be relative to start of bytes.
-        auto startOfAlignmentBitsOffset = metadata_.GetValue("trailing_bits_offset");
-        auto endOffset = metadata_.GetValue("end");
+        data.insert(data.begin() + picOutputFlagOffset, value);
 
-        // Get byte number of picOutputFlagOffset and end.
-        unsigned int picOutputFlagOffsetByte = picOutputFlagOffset / 8;
-        unsigned int endOffsetByte = endOffset / 8;
-        auto numberOfBytes = endOffsetByte - picOutputFlagOffsetByte + 1;
-
-        // Transform data from picOutputByte -> endByte into bits.
-        BitArray bits(numberOfBytes * 8);
-        auto bitIndex = 0;
-        for (auto i = 0; i < numberOfBytes; ++i) {
-            auto c = data[picOutputFlagOffsetByte + i];
-            for (auto j = 0; j < 8; j++) {
-                bits[bitIndex++] = (c << j) & 128;
-            }
-        }
-
-        // Offset of picOutputFlag in bits is mod?
-        auto offsetOfPicOutputFlagInBits = picOutputFlagOffset % 8;
-        bits.insert(bits.begin() + offsetOfPicOutputFlagInBits, value);
-
-        // Realign.
-        // Translate startOfAlignmentBitsOffset to be relative to bits in array.
-        // Location in bits array = (dif in bytes for alignment bits offset and pic output flag offset) * 8 + (alignment bits offset % 8)
-        auto indexOfStartOfAlignmentBitsOffset = (startOfAlignmentBitsOffset / 8 - picOutputFlagOffsetByte) * 8 + startOfAlignmentBitsOffset % 8;
-        auto indexFollowingTrailing1 = indexOfStartOfAlignmentBitsOffset + 2; // +1 because we inserted a bit, +1 to get next element.
-        auto existingNumberOfTrailing0s = 8 - 1 - (startOfAlignmentBitsOffset % 8);
+        auto startOfByteAlignmentBits = metadata_.GetValue("trailing_bits_offset");
+        auto indexFollowingTrailing1 = startOfByteAlignmentBits + 2; // +1 because we inserted a bit, +1 to get next element.
+        auto existingNumberOfTrailing0s = 8 - 1 - (startOfByteAlignmentBits % 8);
 
         if (existingNumberOfTrailing0s)
-            bits.erase(bits.begin() + indexFollowingTrailing1);
+            data.erase(data.begin() + indexFollowingTrailing1);
         else
-            bits.insert(bits.begin() + indexFollowingTrailing1, 7, false);
-
-        // Translate back to bytes and put back into data.
-        for (auto i = 0; i < numberOfBytes; ++i) {
-            data[picOutputFlagOffsetByte + i] = bits.GetByte(i);
-        }
+            data.insert(data.begin() + indexFollowingTrailing1, 7, false);
     }
 
     IDRSliceSegmentLayerMetadata::IDRSliceSegmentLayerMetadata(BitStream& metadata, HeadersMetadata headersMetadata)

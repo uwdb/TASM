@@ -58,6 +58,47 @@ private:
     const catalog::Source source_;
 };
 
+class ScanFramesFromFileEncodedReader: public PhysicalOperator {
+public:
+    explicit ScanFramesFromFileEncodedReader(const LightFieldReference &logical, catalog::Source source)
+        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanFramesFromFileEncodedReader-init")),
+        source_(std::move(source))
+    { }
+
+    const catalog::Source &source() const { return source_; }
+
+private:
+    class Runtime: public runtime::Runtime<ScanFramesFromFileEncodedReader> {
+    public:
+        explicit Runtime(ScanFramesFromFileEncodedReader &physical)
+            : runtime::Runtime<ScanFramesFromFileEncodedReader>(physical),
+                    frameReader_(physical.source().filename(), {})
+        {}
+
+        std::optional<physical::MaterializedLightFieldReference> read() override {
+            GLOBAL_TIMER.startSection("ScanFramesFromFileEncodedReader");
+            std::optional<physical::MaterializedLightFieldReference> returnVal = {};
+            auto gopPacket = frameReader_.read();
+            if (gopPacket.has_value()) {
+                auto cpuData = MaterializedLightFieldReference::make<CPUEncodedFrameData>(
+                        physical().source().codec(),
+                        physical().source().configuration(),
+                        physical().source().geometry(),
+                        gopPacket->data());
+
+                cpuData.downcast<CPUEncodedFrameData>().setFirstFrameIndexAndNumberOfFrames(gopPacket->firstFrameIndex(), gopPacket->numberOfFrames());
+                returnVal = {cpuData};
+            }
+            GLOBAL_TIMER.endSection("ScanFramesFromFileEncodedReader");
+            return returnVal;
+        }
+    private:
+        EncodedFrameReader frameReader_;
+    };
+
+    const catalog::Source source_;
+};
+
 class ScanFramesFromFileDecodeReader: public PhysicalOperator {
 public:
     explicit ScanFramesFromFileDecodeReader(const LightFieldReference& logical, catalog::Source source)

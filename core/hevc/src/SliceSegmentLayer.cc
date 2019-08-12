@@ -60,9 +60,59 @@ namespace lightdb::hevc {
 
     }
 
-    IDRSliceSegmentLayer::IDRSliceSegmentLayer(const StitchContext &context, const bytestring &data, const Headers &headers)
-            : SliceSegmentLayer(context, data, headers) {
+    void SliceSegmentLayerMetadata::InsertPicOutputFlag(bytestring &data, bool value) {
+        // Insert pic_output_flag_offset.
+        // Need to decode bytes from pic_output_flag_offset -> end.
+        // Find byte offset for pic_output_flag_offset & byte offset for end.
+        // Translate into bits.
+        // Insert bit for pic_output_flag.
+        // Truncate from trailing bits.
+        // Translate back to bytes and update in data.
 
+        auto picOutputFlagOffset = metadata_.GetValue("pic_output_flag_offset");
+        // Need to update position to be relative to start of bytes.
+        auto startOfAlignmentBitsOffset = metadata_.GetValue("trailing_bits_offset");
+        auto endOffset = metadata_.GetValue("end");
+
+        // Get byte number of picOutputFlagOffset and end.
+        unsigned int picOutputFlagOffsetByte = picOutputFlagOffset / 8;
+        unsigned int endOffsetByte = endOffset / 8;
+        auto numberOfBytes = endOffsetByte - picOutputFlagOffsetByte + 1;
+
+        // Transform data from picOutputByte -> endByte into bits.
+        BitArray bits(numberOfBytes * 8);
+        auto bitIndex = 0;
+        for (auto i = 0; i < numberOfBytes; ++i) {
+            auto c = data[picOutputFlagOffsetByte + i];
+            for (auto j = 0; j < 8; j++) {
+                bits[bitIndex++] = (c << j) & 128;
+            }
+        }
+
+        // Offset of picOutputFlag in bits is mod?
+        auto offsetOfPicOutputFlagInBits = picOutputFlagOffset % 8;
+        bits.insert(bits.begin() + offsetOfPicOutputFlagInBits, value);
+
+        // Realign.
+        // Translate startOfAlignmentBitsOffset to be relative to bits in array.
+        // Location in bits array = (dif in bytes for alignment bits offset and pic output flag offset) * 8 + (alignment bits offset % 8)
+        auto indexOfStartOfAlignmentBitsOffset = (startOfAlignmentBitsOffset / 8 - picOutputFlagOffsetByte) * 8 + startOfAlignmentBitsOffset % 8;
+        auto indexFollowingTrailing1 = indexOfStartOfAlignmentBitsOffset + 2; // +1 because we inserted a bit, +1 to get next element.
+        auto existingNumberOfTrailing0s = 8 - 1 - (startOfAlignmentBitsOffset % 8);
+
+        if (existingNumberOfTrailing0s)
+            bits.erase(bits.begin() + indexFollowingTrailing1);
+        else
+            bits.insert(bits.begin() + indexFollowingTrailing1, 7, false);
+
+        // Translate back to bytes and put back into data.
+        for (auto i = 0; i < numberOfBytes; ++i) {
+            data[picOutputFlagOffsetByte + i] = bits.GetByte(i);
+        }
+    }
+
+    IDRSliceSegmentLayerMetadata::IDRSliceSegmentLayerMetadata(BitStream& metadata, HeadersMetadata headersMetadata)
+        : SliceSegmentLayerMetadata(metadata, headersMetadata) {
         GetBitStream().CollectValue("first_slice_segment_in_pic_flag", 1, true);
         GetBitStream().SkipBits(1); // no_output_of_prior_pics_flag
         GetBitStream().SkipExponentialGolomb(); // slice_pic_parameter_set_id
@@ -73,7 +123,35 @@ namespace lightdb::hevc {
         GetBitStream().SkipExponentialGolomb();
         GetBitStream().SkipBits(1);
         GetBitStream().MarkPosition("entry_point_offset");
-        GetBitStream().SkipEntryPointOffsets(headers.GetPicture()->HasEntryPointOffsets());
+        GetBitStream().SkipEntryPointOffsets(headersMetadata.GetPicture().HasEntryPointOffsets());
+        GetBitStream().MarkPosition("trailing_bits_offset");
+        GetBitStream().CollectValue("trailing_one", 1, true);
+        GetBitStream().ByteAlign(0);
+        GetBitStream().MarkPosition("end");
+    }
+
+    IDRSliceSegmentLayer::IDRSliceSegmentLayer(const StitchContext &context, const bytestring &data, const Headers &headers)
+            : SliceSegmentLayer(context, data, headers),
+            idrSliceSegmentLayerMetadata_(GetBitStream(), headersMetadata_){
+    }
+
+    TrailRSliceSegmentLayerMetadata::TrailRSliceSegmentLayerMetadata(lightdb::BitStream &metadata, lightdb::hevc::HeadersMetadata headersMetadata)
+        : SliceSegmentLayerMetadata(metadata, headersMetadata) {
+        GetBitStream().CollectValue("first_slice_segment_in_pic_flag", 1, true);
+        GetBitStream().SkipExponentialGolomb(); // slice_pic_parameter_set_id
+        GetBitStream().MarkPosition("address_offset");
+        GetBitStream().SkipExponentialGolomb(); // slice_type
+        GetBitStream().MarkPosition("pic_output_flag_offset");
+        GetBitStream().SkipBits(headersMetadata.GetSequence().GetMaxPicOrder());
+        GetBitStream().SkipTrue();
+        GetBitStream().SkipBits(2);
+        GetBitStream().SkipFalse();
+        GetBitStream().SkipBits(1, headersMetadata.GetPicture().CabacInitPresentFlag());
+        GetBitStream().SkipExponentialGolomb();
+        GetBitStream().SkipExponentialGolomb();
+        GetBitStream().SkipBits(1);
+        GetBitStream().MarkPosition("entry_point_offset");
+        GetBitStream().SkipEntryPointOffsets(headersMetadata.GetPicture().HasEntryPointOffsets());
         GetBitStream().MarkPosition("trailing_bits_offset");
         GetBitStream().CollectValue("trailing_one", 1, true);
         GetBitStream().ByteAlign(0);
@@ -81,26 +159,7 @@ namespace lightdb::hevc {
     }
 
     TrailRSliceSegmentLayer::TrailRSliceSegmentLayer(const StitchContext &context, const bytestring &data, const Headers &headers)
-            : SliceSegmentLayer(context, data, headers) {
-
-        GetBitStream().CollectValue("first_slice_segment_in_pic_flag", 1, true);
-        GetBitStream().SkipExponentialGolomb(); // slice_pic_parameter_set_id
-        GetBitStream().MarkPosition("address_offset");
-        GetBitStream().SkipExponentialGolomb(); // slice_type
-        GetBitStream().MarkPosition("pic_output_flag_offset");
-        GetBitStream().SkipBits(headers.GetSequence()->GetMaxPicOrder());
-        GetBitStream().SkipTrue();
-        GetBitStream().SkipBits(2);
-        GetBitStream().SkipFalse();
-        GetBitStream().SkipBits(1, headers.GetPicture()->CabacInitPresentFlag());
-        GetBitStream().SkipExponentialGolomb();
-        GetBitStream().SkipExponentialGolomb();
-        GetBitStream().SkipBits(1);
-        GetBitStream().MarkPosition("entry_point_offset");
-        GetBitStream().SkipEntryPointOffsets(headers.GetPicture()->HasEntryPointOffsets());
-        GetBitStream().MarkPosition("trailing_bits_offset");
-        GetBitStream().CollectValue("trailing_one", 1, true);
-        GetBitStream().ByteAlign(0);
-        GetBitStream().MarkPosition("end");
+            : SliceSegmentLayer(context, data, headers),
+            trailRMetadata_(GetBitStream(), headersMetadata_){
     }
 }; //namespace lightdb::hevc

@@ -10,6 +10,35 @@
 
 namespace lightdb::hevc {
     // Defined in 7.3.6.1 and 7.3.2.9
+
+    class SliceSegmentLayerMetadata {
+    public:
+        SliceSegmentLayerMetadata(BitStream &metadata, HeadersMetadata headersMetadata)
+            : metadata_(metadata),
+            headersMetadata_(headersMetadata)
+        {}
+
+//        inline unsigned long PicOutputFlagOffset() const {
+//            return metadata_.GetValue("pic_output_flag_offset");
+//        }
+//
+//        inline unsigned long StartOfByteAlignmentBitsOffset() const {
+//            return metadata_.GetValue("trailing_bits_offset");
+//        };
+//
+//        inline unsigned long GetEndOffset() const {
+//            return metadata_.GetValue("end");
+//        }
+
+        void InsertPicOutputFlag(bytestring &data, bool value);
+
+    protected:
+        BitStream &GetBitStream() { return metadata_; }
+
+        BitStream &metadata_;
+        HeadersMetadata headersMetadata_;
+    };
+
     class SliceSegmentLayer : public Nal {
     public:
 
@@ -23,6 +52,7 @@ namespace lightdb::hevc {
                 : Nal(context, data),
                   data_(RemoveEmulationPrevention(data, GetHeaderSize(), kMaxHeaderLength)),
                   headers_(std::move(headers)),
+                  headersMetadata_(headers.GetPicture()->pictureParameterSetMetadata(), headers.GetSequence()->sequenceParameterSetMetadata()),
                   metadata_(data_.begin(), data_.begin() + GetHeaderSizeInBits()),
                   address_(0)
         { }
@@ -61,6 +91,8 @@ namespace lightdb::hevc {
             return metadata_;
         }
 
+        HeadersMetadata headersMetadata_;
+
     private:
         BitArray data_;
         const Headers headers_;
@@ -69,6 +101,11 @@ namespace lightdb::hevc {
 
         static constexpr unsigned int kFirstSliceFlagOffset = 0;
         static constexpr unsigned int kMaxHeaderLength = 24;
+    };
+
+    class IDRSliceSegmentLayerMetadata : public SliceSegmentLayerMetadata {
+    public:
+        IDRSliceSegmentLayerMetadata(BitStream &metadata, HeadersMetadata headersMetadata);
     };
 
     class IDRSliceSegmentLayer : public SliceSegmentLayer {
@@ -81,6 +118,14 @@ namespace lightdb::hevc {
         * @param headers The headers associated with this segment
         */
         IDRSliceSegmentLayer(const StitchContext &context, const bytestring &data, const Headers &headers);
+
+    private:
+        IDRSliceSegmentLayerMetadata idrSliceSegmentLayerMetadata_;
+    };
+
+    class TrailRSliceSegmentLayerMetadata : public SliceSegmentLayerMetadata {
+    public:
+        TrailRSliceSegmentLayerMetadata(BitStream &metadata, HeadersMetadata headersMetadata);
     };
 
     class TrailRSliceSegmentLayer : public SliceSegmentLayer {
@@ -93,6 +138,9 @@ namespace lightdb::hevc {
         * @param headers The headers associated with this segment
         */
         TrailRSliceSegmentLayer(const StitchContext &context, const bytestring &data, const Headers &headers);
+
+    private:
+        TrailRSliceSegmentLayerMetadata trailRMetadata_;
 
     };
 }; //namespace lightdb::hevc

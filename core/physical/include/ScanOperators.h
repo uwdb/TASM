@@ -5,6 +5,7 @@
 #include "PhysicalOperators.h"
 #include "Rectangle.h"
 
+#include "MP4Reader.h"
 #include "timer.h"
 #include <iostream>
 
@@ -62,17 +63,29 @@ class ScanFramesFromFileEncodedReader: public PhysicalOperator {
 public:
     explicit ScanFramesFromFileEncodedReader(const LightFieldReference &logical, catalog::Source source)
         : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanFramesFromFileEncodedReader-init")),
-        source_(std::move(source))
+        source_(std::move(source)),
+        mp4Reader_(MP4Reader(source_.filename()))
     { }
 
     const catalog::Source &source() const { return source_; }
+    const MP4Reader &mp4Reader() const { return mp4Reader_; }
+    bool hasMetadataSpecification() const { return metadataSpecification_.get(); }
+    const MetadataSpecification &metadataSpecification() const {
+        assert(metadataSpecification_.get());
+        return *metadataSpecification_;
+    }
+
+    void setMetadataSpecification(const MetadataSpecification &metadataSpecification) {
+        metadataSpecification_ = std::make_unique<MetadataSpecification>(metadataSpecification);
+    }
 
 private:
     class Runtime: public runtime::Runtime<ScanFramesFromFileEncodedReader> {
     public:
         explicit Runtime(ScanFramesFromFileEncodedReader &physical)
             : runtime::Runtime<ScanFramesFromFileEncodedReader>(physical),
-                    frameReader_(physical.source().filename(), {})
+                    metadataManager_(physical.source().filename()),
+                    frameReader_(physical.source().filename(), physical.mp4Reader(), physical.hasMetadataSpecification() ? metadataManager_.orderedFramesForMetadata(physical.metadataSpecification()) : std::vector<int>())
         {}
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -93,10 +106,13 @@ private:
             return returnVal;
         }
     private:
+        metadata::MetadataManager metadataManager_;
         EncodedFrameReader frameReader_;
     };
 
     const catalog::Source source_;
+    std::unique_ptr<MetadataSpecification> metadataSpecification_;
+    MP4Reader mp4Reader_;
 };
 
 class ScanFramesFromFileDecodeReader: public PhysicalOperator {

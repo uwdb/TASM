@@ -376,7 +376,9 @@ namespace lightdb::optimization {
                 auto parent = physical_parents.front(); // Decode
 
                 if (parent.is<physical::ScanFramesFromFileEncodedReader>()) {
-                    plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), parent, parent.downcast<physical::ScanFramesFromFileEncodedReader>().source());
+                    auto &scanFrames = parent.downcast<physical::ScanFramesFromFileEncodedReader>();
+                    plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), parent, scanFrames.source(), scanFrames.mp4Reader());
+                    scanFrames.setMetadataSpecification(node.metadataSpecification());
                     return true;
                 }
 
@@ -390,9 +392,9 @@ namespace lightdb::optimization {
                 auto scan = decode->parents().front();
 
 //                auto scanEntireFile = PhysicalOperatorReference::make<physical::ScanEntireFile>(scan->logical(), scan.downcast<physical::ScanSingleFileDecodeReader>().source());
-                auto scanEntireFile = PhysicalOperatorReference::make<physical::ScanFramesFromFileDecodeReader>(scan->logical(), scan.downcast<physical::ScanSingleFileDecodeReader>().source());
-                plan().replace_assignments({scan, decode}, scanEntireFile);
-                plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), scanEntireFile, scanEntireFile.downcast<physical::ScanFramesFromFileDecodeReader>().source());
+//                auto scanEntireFile = PhysicalOperatorReference::make<physical::ScanFramesFromFileDecodeReader>(scan->logical(), scan.downcast<physical::ScanSingleFileDecodeReader>().source());
+//                plan().replace_assignments({scan, decode}, scanEntireFile);
+//                plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), scanEntireFile, scanEntireFile.downcast<physical::ScanFramesFromFileDecodeReader>().source());
 
 
                 /* For non-homorphic selection */
@@ -818,8 +820,8 @@ namespace lightdb::optimization {
                 if(physical_parents.empty())
                     return false;
 
-                auto sink = Encode(node, physical_parents.front());
-                plan().emplace<physical::Sink>(plan().lookup(node), sink);
+//                auto sink = Encode(node, physical_parents.front());
+                plan().emplace<physical::Sink>(plan().lookup(node), physical_parents.front());
                 return true;
             }
             return false;

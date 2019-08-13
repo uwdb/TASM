@@ -4,7 +4,7 @@
 
 namespace lightdb::hevc {
 
-    SequenceParameterSetMetadata::SequenceParameterSetMetadata(lightdb::BitStream &metadata)
+    SequenceParameterSetMetadata::SequenceParameterSetMetadata(lightdb::BitStream metadata)
         : metadata_(metadata){
         metadata_.SkipBits(4);
         metadata_.CollectValue("sps_max_sub_layer_minus1", 3);

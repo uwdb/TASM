@@ -122,16 +122,30 @@ namespace lightdb::hevc {
     }
 
     static BitArray createBitArray(const bytestring &data, bytestring::iterator &currentByte, unsigned int numberOfBytesToTranslate) {
-        BitArray bits(numberOfBytesToTranslate * 8);
+        BitArray bits(0);
+        bits.reserve(numberOfBytesToTranslate * 8);
         auto bitIndex = 0;
         for (auto i = 0; i < numberOfBytesToTranslate; i++) {
             unsigned char c = *currentByte++;
-            for (auto j = 0; j < 8; j++) {
-                bits[bitIndex++] = (c << j) & 128;
-            }
+            if (c == 3)
+                continue;
+
+            for (auto j = 0; j < 8; j++)
+                bits.push_back((c << j) & 128);
         }
 
         return bits;
+    }
+
+    static void updateBytes(bytestring &data, unsigned int startingByteIndex, unsigned int numberOfBytesToUpdate, const BitArray &updatedBits) {
+        auto translatedByteIndex = 0;
+        for (auto i = 0; i < numberOfBytesToUpdate; ++i) {
+            if (data[startingByteIndex+ i] == 3)
+                continue;
+
+            data[startingByteIndex + i] = updatedBits.GetByte(translatedByteIndex++);
+        }
+        assert(translatedByteIndex == updatedBits.size() / 8);
     }
 
     static void insertPicOutputFlag(bytestring &data, bytestring::iterator startingByte, HeadersMetadata &headersMetadata, unsigned int nalType, bool value) {
@@ -148,15 +162,15 @@ namespace lightdb::hevc {
             sliceMetadata = new TrailRSliceSegmentLayerMetadata(parser, headersMetadata);
 
         sliceMetadata->InsertPicOutputFlag(sliceHeaderBits, value);
-        for (auto i = 0; i < numberOfBytesToTranslate; i++)
-            data[indexOfStartOfHeader + i] = sliceHeaderBits.GetByte(i);
+        updateBytes(data, indexOfStartOfHeader, numberOfBytesToTranslate, sliceHeaderBits);
 
         delete sliceMetadata;
     }
 
-    void PicOutputFlagAdder::addPicOutputFlagToGOP(bytestring &gopData) {
+    void PicOutputFlagAdder::addPicOutputFlagToGOP(bytestring &gopData, int firstFrameIndex, const std::unordered_set<int> &framesToKeep) {
         bytestring nalPattern = { 0, 0, 0, 1 };
 
+        auto currentFrameIndex = firstFrameIndex;
         auto currentStart = gopData.begin();
 
         std::unique_ptr<PictureParameterSetMetadata> ppsMetadata;
@@ -194,8 +208,7 @@ namespace lightdb::hevc {
                     headerBits[ppsMetadata->GetOutputFlagPresentFlagOffset()] = true;
 
                     // Convert back into bytes and replace in gopData.
-                    for (auto i = 0; i < sizeOfPPS; ++i)
-                        gopData[indexOfStartOfHeader + i] = headerBits.GetByte(i);
+                    updateBytes(gopData, indexOfStartOfHeader, sizeOfPPS, headerBits);
                 }
             } else if (nalType == NalUnitSPS) {
                 // Get metadata for SPS.
@@ -216,7 +229,7 @@ namespace lightdb::hevc {
                 if (nalsAlreadyHaveOutputFlagPresentFlag)
                     continue;
 
-                insertPicOutputFlag(gopData, currentStart, *headersMetadata, nalType, true);
+                insertPicOutputFlag(gopData, currentStart, *headersMetadata, nalType, framesToKeep.count(currentFrameIndex++));
             }
 
             currentStart = std::search(currentStart, gopData.end(), nalPattern.begin(), nalPattern.end());

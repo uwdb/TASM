@@ -90,14 +90,14 @@ TEST_F(VisitorTestFixture, testMapAndBoxThings) {
 //    auto boxes = input.Map(yolo);
 //    Coordinator().execute(boxes.Save("/home/maureen/lightdb/dogBoxes.boxes"));
 
-//    Coordinator().execute(boxes.Union(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
+//    Coordinator().execute(boxes.Uniocdn(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
 }
 
 TEST_F(VisitorTestFixture, testLoadAndSelectFrames) {
 //    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto input = Scan("dog_with_keyframes");
+    auto input = Scan("dog_with_gop_10");
     MetadataSpecification metadataSelection("LABELS", "LABEL", "dog");
-    Coordinator().execute(input.Select(metadataSelection).Save("/home/maureen/dog_videos/dog_with_cow_frames_selected.hevc"));
+    Coordinator().execute(input.Select(metadataSelection).Save("/home/maureen/dog_videos/dog_with_dog_selected.hevc"));
 //    Coordinator().execute(input.Save("/home/maureen/test-add-pic-output-flag.hevc"));
 }
 
@@ -112,10 +112,8 @@ TEST_F(VisitorTestFixture, testScanAndSave) {
 }
 
 TEST_F(VisitorTestFixture, testSaveToCatalog) {
-//    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-//    Coordinator().execute(Scan("dog_with_keyframes").Store("short_dog"));
-    auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Save("/home/maureen/test.hevc"));
+    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::GOPSize, 30u}}).Store("dog_with_gop_30"));
 }
 
 TEST_F(VisitorTestFixture, testBar) {

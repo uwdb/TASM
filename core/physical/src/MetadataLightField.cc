@@ -10,7 +10,17 @@ namespace lightdb::associations {
     static std::unordered_map<std::string, std::string> VideoPathToLabelsPath(
             {
                     {"/home/maureen/dog_videos/dog_with_keyframes.hevc", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
-                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/dog_with_keyframes/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"}
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/dog_with_keyframes/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/dog_with_gop_60/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/dog_with_gop_30/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/dog_with_gop_15/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/dog_with_gop_10/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/dog_with_gop_5/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/debugbuild/test/resources/dog_with_gop_60/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/debugbuild/test/resources/dog_with_gop_30/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/debugbuild/test/resources/dog_with_gop_15/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/debugbuild/test/resources/dog_with_gop_10/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/debugbuild/test/resources/dog_with_gop_5/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
             } );
 } // namespace lightdb::associations
 
@@ -30,7 +40,7 @@ namespace lightdb::metadata {
 std::unordered_set<int> MetadataManager::framesForMetadata(const MetadataSpecification &metadataSpecification) const {
 
     sqlite3 *db;
-    ASSERT_SQLITE_OK(sqlite3_open_v2(lightdb::associations::VideoPathToLabelsPath.at(pathToMetadata_).c_str(), &db, SQLITE_OPEN_READONLY, NULL));
+    ASSERT_SQLITE_OK(sqlite3_open_v2(lightdb::associations::VideoPathToLabelsPath.at(pathToVideo_).c_str(), &db, SQLITE_OPEN_READONLY, NULL));
 
     char *selectFramesStatement = nullptr;
     int size = asprintf(&selectFramesStatement, "SELECT DISTINCT FRAME FROM %s WHERE %s = '%s';",
@@ -55,5 +65,17 @@ std::unordered_set<int> MetadataManager::framesForMetadata(const MetadataSpecifi
     free(selectFramesStatement);
 
     return frames;
+}
+
+std::vector<int> MetadataManager::orderedFramesForMetadata(const MetadataSpecification &metadataSpecification) const {
+    std::unordered_set<int> frames = framesForMetadata(metadataSpecification);
+
+    std::vector<int> orderedFrames(frames.size());
+    auto currentIndex = 0;
+    for (auto &frame : frames)
+        orderedFrames[currentIndex++] = std::move(frame);
+
+    std::sort(orderedFrames.begin(), orderedFrames.end());
+    return orderedFrames;
 }
 } // namespace lightdb::logical

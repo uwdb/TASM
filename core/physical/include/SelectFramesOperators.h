@@ -4,7 +4,9 @@
 #include "timer.h"
 #include "PhysicalOperators.h"
 #include "Stitcher.h"
+#include "MP4Reader.h"
 #include <cassert>
+#include <iostream>
 
 namespace lightdb::physical {
 
@@ -57,14 +59,18 @@ class HomomorphicSelectFrames: public PhysicalOperator {
 public:
     explicit HomomorphicSelectFrames(const LightFieldReference &logical,
                                      const PhysicalOperatorReference &parent,
-                                     const catalog::Source &source)
+                                     const catalog::Source &source,
+                                     const MP4Reader mp4Reader)
             : PhysicalOperator(logical, {parent}, DeviceType::CPU, runtime::make<Runtime>(*this, "HomomorphicSelectFrames-init")),
             source_(source),
-            metadataSpecification_(logical.downcast<logical::MetadataSubsetLightField>().metadataSpecification())
+            metadataSpecification_(logical.downcast<logical::MetadataSubsetLightField>().metadataSpecification()),
+            mp4Reader_(mp4Reader)
     {}
+
 
     const catalog::Source &source() const { return source_; }
     const MetadataSpecification &metadataSpecification() const { return metadataSpecification_; }
+    const MP4Reader &mp4Reader() const { return mp4Reader_; }
 
 private:
     class Runtime: public runtime::UnaryRuntime<HomomorphicSelectFrames, CPUEncodedFrameData> {
@@ -73,8 +79,14 @@ private:
             : runtime::UnaryRuntime<HomomorphicSelectFrames, CPUEncodedFrameData>(physical),
                     metadataManager_(physical.source().filename()),
                     framesToKeep_(metadataManager_.framesForMetadata(physical.metadataSpecification())),
-                    picOutputFlagAdder_(framesToKeep_)
-        {}
+                    picOutputFlagAdder_(framesToKeep_),
+                    doNotHaveToAddPicOutputFlag_(physical.mp4Reader().allFrameSequencesBeginWithKeyframe(metadataManager_.orderedFramesForMetadata(physical.metadataSpecification())))
+        {
+            if (doNotHaveToAddPicOutputFlag_)
+                std::cout << "Skipping adding pic_output_flag\n";
+            else
+                std::cout << "Adding pic_output_flag\n";
+        }
 
         std::optional<MaterializedLightFieldReference> read() override {
             if (iterator() == iterator().eos())
@@ -85,16 +97,24 @@ private:
             CPUEncodedFrameData frameData = iterator()++.downcast<CPUEncodedFrameData>();
             assert(frameData.codec() == Codec::hevc());
 
+            if (doNotHaveToAddPicOutputFlag_)
+                return frameData;
+
             // Assume frameData contains a complete GOP.
 
             // Now analyze the nals in the bitstream. Only consider the last nal to be complete if iterator() == eos().
             // Otherwise, move the last nal to bitsLeftOver.
             Timer timer;
             timer.startSection("AddPicOutputFlag");
+            int firstFrameIndex;
+            assert(frameData.getFirstFrameIndexIfSet(firstFrameIndex));
             auto gopData = frameData.value();
-            picOutputFlagAdder_.addPicOutputFlagToGOP(gopData);
+            // TODO: If all of the frames we are keeping from the GOP are sequential, then there is no need to add the flag.
+            // If some GOPs are sequential and others are not, we will have to make a new PPS and update the slices to reference
+            // the correct PPS.
+            picOutputFlagAdder_.addPicOutputFlagToGOP(gopData, firstFrameIndex, framesToKeep_);
             timer.endSection("AddPicOutputFlag");
-            timer.printAllTimes();
+//            timer.printAllTimes();
 
             auto returnVal = CPUEncodedFrameData(physical().source().codec(),
                                         physical().source().configuration(),
@@ -108,10 +128,12 @@ private:
         metadata::MetadataManager metadataManager_;
         std::unordered_set<int> framesToKeep_;
         hevc::PicOutputFlagAdder picOutputFlagAdder_;
+        bool doNotHaveToAddPicOutputFlag_;
     };
 
     const catalog::Source source_;
     const MetadataSpecification metadataSpecification_;
+    const MP4Reader &mp4Reader_;
 };
 
 } // namespace lightdb::physical

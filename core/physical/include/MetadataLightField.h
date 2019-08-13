@@ -75,13 +75,14 @@ namespace lightdb::logical {
 namespace lightdb::metadata {
     class MetadataManager {
     public:
-        explicit MetadataManager(const std::filesystem::path &pathToMetadata)
-                : pathToMetadata_(pathToMetadata)
+        explicit MetadataManager(const std::filesystem::path &pathToVideo)
+                : pathToVideo_(pathToVideo)
         {}
 
         std::unordered_set<int> framesForMetadata(const MetadataSpecification&) const;
+        std::vector<int> orderedFramesForMetadata(const MetadataSpecification&) const;
     private:
-        const std::filesystem::path pathToMetadata_;
+        const std::filesystem::path pathToVideo_;
     };
 } // namespace lightdb::metadata
 

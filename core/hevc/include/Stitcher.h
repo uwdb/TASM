@@ -14,7 +14,7 @@ namespace lightdb::hevc {
         frameNumber_(0)
         {}
 
-        void addPicOutputFlagToGOP(bytestring &gopData);
+        void addPicOutputFlagToGOP(bytestring &gopData, int firstFrameIndex, const std::unordered_set<int> &framesToKeep);
 
     private:
         const std::unordered_set<int> framesToKeep_;

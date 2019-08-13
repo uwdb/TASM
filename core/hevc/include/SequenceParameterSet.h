@@ -16,7 +16,7 @@ namespace lightdb::hevc {
 
     class SequenceParameterSetMetadata {
     public:
-        SequenceParameterSetMetadata(BitStream&);
+        SequenceParameterSetMetadata(BitStream);
 
         inline unsigned long GetMaxPicOrder() const {
             return log2_max_pic_order_cnt_lsb_;
@@ -27,7 +27,7 @@ namespace lightdb::hevc {
         }
 
     private:
-        BitStream &metadata_;
+        BitStream metadata_;
         std::pair<unsigned long, unsigned long> dimensions_;
         unsigned long log2_max_pic_order_cnt_lsb_;
     };

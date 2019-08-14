@@ -81,6 +81,7 @@ namespace lightdb::metadata {
 
         std::unordered_set<int> framesForMetadata(const MetadataSpecification&) const;
         std::vector<int> orderedFramesForMetadata(const MetadataSpecification&) const;
+        std::unordered_set<int> keyframesForMetadata(const MetadataSpecification&) const;
     private:
         const std::filesystem::path pathToVideo_;
     };

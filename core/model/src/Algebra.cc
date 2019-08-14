@@ -88,6 +88,14 @@ namespace lightdb::logical {
                 this_, codec, this_->volume().bounding(), this_->colorSpace(), options);
     }
 
+    LightFieldReference Algebra::Encode(const MetadataSpecification &metadataSpecification) {
+        assert(this_.is<ScannedLightField>());
+
+        return LightFieldReference::make<logical::MetadataEncodedLightField>(
+                this_, Codec::hevc(), this_->volume().bounding(), this_->colorSpace(), this_.downcast<ScannedLightField>().sources().front(), metadataSpecification);
+
+    }
+
     LightFieldReference Algebra::Union(const LightFieldReference other) {
         return LightFieldReference::make<logical::CompositeLightField>(std::vector<LightFieldReference>{this_, other});
     }

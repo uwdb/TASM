@@ -233,9 +233,9 @@ private:
 class EncodedFrameReader {
 public:
     // Assume frames is sorted.
-    explicit EncodedFrameReader(std::filesystem::path filename, const MP4Reader &mp4Reader, std::vector<int> frames)
+    explicit EncodedFrameReader(std::filesystem::path filename, std::vector<int> frames)
         : filename_(std::move(filename)),
-        mp4Reader_(mp4Reader),
+        mp4Reader_(filename_),
         frames_(std::move(frames)),
         numberOfSamplesRead_(0)
     {
@@ -296,7 +296,7 @@ private:
     }
 
     std::filesystem::path filename_;
-    const MP4Reader &mp4Reader_;
+    MP4Reader mp4Reader_;
     std::vector<int> frames_;
     bool shouldReadAllFrames_;
     std::vector<int>::const_iterator frameIterator_;

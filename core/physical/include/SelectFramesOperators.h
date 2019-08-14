@@ -59,18 +59,15 @@ class HomomorphicSelectFrames: public PhysicalOperator {
 public:
     explicit HomomorphicSelectFrames(const LightFieldReference &logical,
                                      const PhysicalOperatorReference &parent,
-                                     const catalog::Source &source,
-                                     const MP4Reader mp4Reader)
+                                     const catalog::Source &source)
             : PhysicalOperator(logical, {parent}, DeviceType::CPU, runtime::make<Runtime>(*this, "HomomorphicSelectFrames-init")),
             source_(source),
-            metadataSpecification_(logical.downcast<logical::MetadataSubsetLightField>().metadataSpecification()),
-            mp4Reader_(mp4Reader)
+            metadataSpecification_(logical.downcast<logical::MetadataSubsetLightField>().metadataSpecification())
     {}
 
 
     const catalog::Source &source() const { return source_; }
     const MetadataSpecification &metadataSpecification() const { return metadataSpecification_; }
-    const MP4Reader &mp4Reader() const { return mp4Reader_; }
 
 private:
     class Runtime: public runtime::UnaryRuntime<HomomorphicSelectFrames, CPUEncodedFrameData> {
@@ -80,7 +77,9 @@ private:
                     metadataManager_(physical.source().filename()),
                     framesToKeep_(metadataManager_.framesForMetadata(physical.metadataSpecification())),
                     picOutputFlagAdder_(framesToKeep_),
-                    doNotHaveToAddPicOutputFlag_(physical.mp4Reader().allFrameSequencesBeginWithKeyframe(metadataManager_.orderedFramesForMetadata(physical.metadataSpecification())))
+                    doNotHaveToAddPicOutputFlag_(MP4Reader::allFrameSequencesBeginWithKeyframe(
+                            metadataManager_.orderedFramesForMetadata(physical.metadataSpecification()),
+                            physical.source().keyframes()))
         {
             if (doNotHaveToAddPicOutputFlag_)
                 std::cout << "Skipping adding pic_output_flag\n";
@@ -97,8 +96,10 @@ private:
             CPUEncodedFrameData frameData = iterator()++.downcast<CPUEncodedFrameData>();
             assert(frameData.codec() == Codec::hevc());
 
-            if (doNotHaveToAddPicOutputFlag_)
+            if (doNotHaveToAddPicOutputFlag_) {
+                GLOBAL_TIMER.endSection("HomomorphicSelectFrames");
                 return frameData;
+            }
 
             // Assume frameData contains a complete GOP.
 
@@ -133,7 +134,6 @@ private:
 
     const catalog::Source source_;
     const MetadataSpecification metadataSpecification_;
-    const MP4Reader &mp4Reader_;
 };
 
 } // namespace lightdb::physical

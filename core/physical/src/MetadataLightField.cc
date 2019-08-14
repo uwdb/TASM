@@ -21,6 +21,7 @@ namespace lightdb::associations {
                     {"/home/maureen/lightdb/debugbuild/test/resources/dog_with_gop_15/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
                     {"/home/maureen/lightdb/debugbuild/test/resources/dog_with_gop_10/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
                     {"/home/maureen/lightdb/debugbuild/test/resources/dog_with_gop_5/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/dog_with_keyframes_real/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
             } );
 } // namespace lightdb::associations
 
@@ -78,4 +79,24 @@ std::vector<int> MetadataManager::orderedFramesForMetadata(const MetadataSpecifi
     std::sort(orderedFrames.begin(), orderedFrames.end());
     return orderedFrames;
 }
-} // namespace lightdb::logical
+
+std::unordered_set<int> MetadataManager::keyframesForMetadata(const lightdb::MetadataSpecification &metadataSpecification) const {
+    auto allFrames = orderedFramesForMetadata(metadataSpecification);
+    if (allFrames.empty())
+        return {};
+
+    std::unordered_set<int> keyframes;
+
+    // Find the starts of all sequences.
+    auto lastFrame = allFrames.front();
+    keyframes.insert(lastFrame);
+    for (auto it = allFrames.begin() + 1; it != allFrames.end(); it++) {
+        if (*it != lastFrame + 1)
+            keyframes.insert(*it);
+
+        lastFrame = *it;
+    }
+
+    return keyframes;
+}
+} // namespace lightdb::metadata

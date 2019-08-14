@@ -1302,7 +1302,7 @@ NVENCSTATUS EncodeAPI::Initialize(void* device, NV_ENC_DEVICE_TYPE deviceType)
 
 NVENCSTATUS EncodeAPI::NvEncEncodeFrame(EncodeBuffer *pEncodeBuffer, NvEncPictureCommand *encPicCommand,
                                            NV_ENC_PIC_STRUCT ePicStruct,
-                                           bool isFirstFrame, int8_t *qpDeltaMapArray, uint32_t qpDeltaMapArraySize)
+                                           bool shouldOutputKeyframe, int8_t *qpDeltaMapArray, uint32_t qpDeltaMapArraySize)
 {
     NVENCSTATUS nvStatus = NV_ENC_SUCCESS;
     NV_ENC_PIC_PARAMS encPicParams;
@@ -1323,7 +1323,7 @@ NVENCSTATUS EncodeAPI::NvEncEncodeFrame(EncodeBuffer *pEncodeBuffer, NvEncPictur
     encPicParams.qpDeltaMapSize = qpDeltaMapArraySize;
 
     // Can we substitute setting intraRefreshEnableFlag to true for this?
-    if(isFirstFrame) {
+    if(shouldOutputKeyframe) {
         //ResetEncoder();
         encPicParams.encodePicFlags |= NV_ENC_PIC_FLAG_OUTPUT_SPSPPS | NV_ENC_PIC_FLAG_FORCEIDR;
         //encPicParams.pictureType = NV_ENC_PIC_TYPE_IDR;

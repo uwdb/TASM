@@ -21,7 +21,7 @@ public:
         Flush();
     }
 
-    void Encode(Frame &frame, size_t top=0, size_t left=0) {
+    void Encode(Frame &frame, size_t top=0, size_t left=0, bool shouldBeKeyframe = false) {
         auto &buffer = GetAvailableBuffer();
 
         if(buffer.input_buffer.buffer_format != NV_ENC_BUFFER_FORMAT_NV12_PL)
@@ -34,7 +34,7 @@ public:
             buffer.copy(encoder().lock_, frame);
         else
             buffer.copy(encoder().lock_, frame, top, left);
-        return Encode(buffer, frame.type());
+        return Encode(buffer, frame.type(), shouldBeKeyframe);
     }
 
     void Encode(std::vector<Frame> &frames, const FrameCopierFunction &copier) {
@@ -131,11 +131,11 @@ private:
         return {buffer};
     }
 
-    void Encode(EncodeBuffer &buffer, NV_ENC_PIC_STRUCT type) {
+    void Encode(EncodeBuffer &buffer, NV_ENC_PIC_STRUCT type, bool shouldBeKeyframe = false) {
         NVENCSTATUS status;
 
         std::scoped_lock lock{buffer};
-        if ((status = encoder_.api().NvEncEncodeFrame(&buffer, nullptr, type, frameCount() == 0)) != NV_ENC_SUCCESS)
+        if ((status = encoder_.api().NvEncEncodeFrame(&buffer, nullptr, type, shouldBeKeyframe || frameCount() == 0)) != NV_ENC_SUCCESS)
             throw GpuEncodeRuntimeError("Encoder session failed to encode input buffer", status);
 
         frameCount_++;

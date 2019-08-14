@@ -20,6 +20,8 @@
 #include <optional>
 #include <stdexcept>
 
+#include "MetadataLightField.h"
+
 namespace lightdb::logical {
     class ConstantLightField : public LightField {
     public:
@@ -253,6 +255,46 @@ namespace lightdb::logical {
     private:
         const catalog::ExternalEntry entry_;
         const lightdb::options<> options_;
+    };
+
+    class MetadataEncodedLightField : public LightField, public OptionContainer<> {
+    public:
+        MetadataEncodedLightField(LightFieldReference parent,
+                Codec codec,
+                const Volume &volume,
+                const ColorSpace &colorSpace,
+                const catalog::Source &source,
+                const MetadataSpecification &metadataSpecification)
+                : LightField({parent}, volume, colorSpace),
+                codec_(codec),
+                source_(source),
+                metadataSpecification_(metadataSpecification)
+        {
+            setKeyframesInOptions();
+        }
+
+        inline const MetadataSpecification &metadataSpecification() const { return metadataSpecification_; }
+        const Codec& codec() const { return codec_; }
+        const catalog::Source& source() const { return source_; }
+
+        const lightdb::options<>& options() const override { return options_; }
+
+        void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataEncodedLightField>(visitor); }
+    private:
+        void setKeyframesInOptions() {
+            auto filename = source().filename();
+            metadata::MetadataManager metadataManager(filename);
+
+            auto allFrames = metadataManager.orderedFramesForMetadata(metadataSpecification());
+            auto keyframes = metadataManager.keyframesForMetadata(metadataSpecification());
+
+            options_[EncodeOptions::Keyframes] = std::move(keyframes);
+        }
+
+        const Codec codec_;
+        const catalog::Source source_;
+        const MetadataSpecification metadataSpecification_;
+        lightdb::options<> options_;
     };
 
     class EncodedLightField : public LightField, public OptionContainer<> {

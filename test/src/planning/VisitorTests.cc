@@ -95,9 +95,10 @@ TEST_F(VisitorTestFixture, testMapAndBoxThings) {
 
 TEST_F(VisitorTestFixture, testLoadAndSelectFrames) {
 //    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto input = Scan("dog_with_gop_10");
+    auto input = Scan("dog_with_keyframes_real");
     MetadataSpecification metadataSelection("LABELS", "LABEL", "dog");
-    Coordinator().execute(input.Select(metadataSelection).Save("/home/maureen/dog_videos/dog_with_dog_selected.hevc"));
+    Coordinator().execute(input.Select(metadataSelection).Store("dog_with_dog_selected"));
+//    Coordinator().execute(input.Select(metadataSelection).Save("/home/maureen/dog_videos/dog_with_dog_selected.hevc"));
 //    Coordinator().execute(input.Save("/home/maureen/test-add-pic-output-flag.hevc"));
 }
 
@@ -114,6 +115,19 @@ TEST_F(VisitorTestFixture, testScanAndSave) {
 TEST_F(VisitorTestFixture, testSaveToCatalog) {
     auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
     Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::GOPSize, 30u}}).Store("dog_with_gop_30"));
+}
+
+TEST_F(VisitorTestFixture, testEncodeForMetadata) {
+    // Want:
+    // Scan
+    // Transfer to GPU
+    // GPU Encode To CPU with keyframe options
+    // GPU to CPU
+    // Store
+
+    auto input = Scan("dog_with_keyframes");
+    MetadataSpecification metadataSelection("LABELS", "LABEL", "dog");
+    Coordinator().execute(input.Encode(metadataSelection).Store("dog_with_keyframes_real"));
 }
 
 TEST_F(VisitorTestFixture, testBar) {

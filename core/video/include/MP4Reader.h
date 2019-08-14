@@ -8,6 +8,21 @@
 
 class MP4Reader {
 public:
+    static std::vector<int> keyframesForFile(const std::filesystem::path &filename) {
+        assert(filename.extension() == ".mp4");
+        static const int trackNumber = 1;
+
+        GF_ISOFile *file = gf_isom_open(filename.c_str(), GF_ISOM_OPEN_READ, nullptr);
+        GF_TrackBox *trak = gf_isom_get_track_from_file2(file, trackNumber);
+        GF_SyncSampleBox *sampleBox = trak->Media->information->sampleTable->SyncSample;
+
+        std::vector<int> keyframes(sampleBox->nb_entries);
+        for (auto i = 0; i < sampleBox->nb_entries; ++i)
+            keyframes[i] = sampleNumberToFrameNumber(sampleBox->sampleNumbers[i]);
+
+        return keyframes;
+    }
+
     explicit MP4Reader(const std::filesystem::path &filename)
         : filename_(filename)
     {
@@ -26,9 +41,10 @@ public:
         numberOfSamples_ = gf_isom_get_sample_count(file_, trackNumber_);
     }
 
-//    ~MP4Reader() {
+    ~MP4Reader() {
+        return;
 //        gf_isom_close(file_);
-//    }
+    }
 
     const std::vector<unsigned int> &keyframeSampleNumbers() const {
         return keyframeSampleNumbers_;
@@ -46,31 +62,31 @@ public:
         return frameNumber + 1;
     }
 
-    bool allFrameSequencesBeginWithKeyframe(const std::vector<int> &frames) const {
+    static bool allFrameSequencesBeginWithKeyframe(const std::vector<int> &frames, const std::vector<int> &keyframes) {
         if (frames.empty())
             return true;
 
-        auto keyframeIterator = keyframeSampleNumbers_.begin();
+        auto keyframeIterator = keyframes.begin();
         auto frameIterator = frames.begin();
         auto startOfFrameSequence = *frameIterator;
         while (true) {
             // See if current frame sequence aligns with a keyframe.
-            while (keyframeIterator != keyframeSampleNumbers_.end() && sampleNumberToFrameNumber(*keyframeIterator) < startOfFrameSequence)
+            while (keyframeIterator != keyframes.end() && *keyframeIterator < startOfFrameSequence)
                 keyframeIterator++;
 
             // See if we weren't able to find a keyframe >= the frame we are interested in.
-            if (keyframeIterator == keyframeSampleNumbers_.end())
+            if (keyframeIterator == keyframes.end())
                 return false;
 
             // The keyframe we found is past the start of the frame sequence.
-            if (sampleNumberToFrameNumber(*keyframeIterator) != startOfFrameSequence)
+            if (*keyframeIterator != startOfFrameSequence)
                 return false;
 
-            while (frameIterator != frames.end() && *(frameIterator + 1) == *frameIterator + 1)
+            while (frameIterator + 1 != frames.end() && *(frameIterator + 1) == *frameIterator + 1)
                 frameIterator++;
 
             // We have no more frames to look at. If we've made it this far, then we're good.
-            if (frameIterator == frames.end())
+            if (frameIterator + 1 == frames.end())
                 break;
 
             // frameIterator is pointing to last frame in sequence. Move it forward, and set it to the start of a new frame sequence.
@@ -102,7 +118,7 @@ public:
     }
 
 private:
-    GF_TrackBox *gf_isom_get_track_from_file2(GF_ISOFile *the_file, u32 trackNumber) {
+    static GF_TrackBox *gf_isom_get_track_from_file2(GF_ISOFile *the_file, u32 trackNumber) {
         auto count = gf_list_count(the_file->moov->trackList);
         assert(trackNumber <= count);
         unsigned int position = 0;

@@ -52,7 +52,7 @@ private:
               numberOfEncodedFrames_(0),
               frameNumber_(0)
         {
-//            timer_.endSection();
+            keyframes_ = getKeyframes();
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -68,7 +68,8 @@ private:
 
                     ++numberOfEncodedFrames_;
                     encodeSession_.Encode(*frame, decoded.configuration().offset.top,
-                                          decoded.configuration().offset.left);
+                                          decoded.configuration().offset.left,
+                                          keyframes_.count(frameNumber));
                 }
 
                 //TODO think this should move down just above nullopt
@@ -102,6 +103,19 @@ private:
                         std::make_any<unsigned int>(kDefaultGopSize)));
         }
 
+        std::unordered_set<int> getKeyframes() const {
+            auto option = logical().is<OptionContainer<>>()
+                    ? logical().downcast<OptionContainer<>>().get_option(EncodeOptions::Keyframes)
+                    : std::nullopt;
+
+            if (option.has_value() && option.value().type() != typeid(std::unordered_set<int>))
+                throw InvalidArgumentError("Invalid keyframes option specified", EncodeOptions::Keyframes);
+            else if (option.has_value())
+                return std::any_cast<std::unordered_set<int>>(option.value());
+            else
+                return {};
+        }
+
         EncodeConfiguration encodeConfiguration_;
         VideoEncoder encoder_;
         MemoryEncodeWriter writer_;
@@ -109,6 +123,7 @@ private:
         Timer timer_;
         unsigned long numberOfEncodedFrames_;
         unsigned long frameNumber_;
+        std::unordered_set<int> keyframes_;
     };
 
     const Codec codec_;

@@ -12,6 +12,7 @@ namespace lightdb {
 
         struct Encoding {
             static constexpr const char* GOPSize = "GOP";
+            static constexpr const char* Keyframes = "Keyframes";
         };
         struct Geometry {
             static constexpr const char* Volume = "Volume";

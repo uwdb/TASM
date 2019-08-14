@@ -70,11 +70,11 @@ namespace lightdb::optimization {
                         stream.codec() == Codec::hevc()) &&
                        !plan().environment().gpus().empty()) {
                         auto gpu = plan().allocator().gpu();
-                        //auto gpu = plan().environment().gpus()[0];
+//                        auto gpu = plan().environment().gpus()[0];
 
 //                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
 
-                        auto &scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, stream);
+                        plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, stream);
 //                        auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 //
 //                        auto children = plan().children(plan().lookup(node));
@@ -141,6 +141,22 @@ namespace lightdb::optimization {
     class ChooseEncoders : public OptimizerRule {
     public:
         using OptimizerRule::OptimizerRule;
+
+        bool visit(const logical::MetadataEncodedLightField &node) override {
+            if (!plan().has_physical_assignment(node)) {
+                auto physical_parents = functional::flatmap<std::vector<PhysicalOperatorReference>>(
+                        node.parents().begin(), node.parents().end(),
+                        [this](auto &parent) { return plan().unassigned(parent); });
+
+                if(physical_parents.empty())
+                    return false;
+
+                assert(physical_parents.size() == 1);
+
+                plan().emplace<physical::GPUEncodeToCPU>(plan().lookup(node), physical_parents.front(), node.codec());
+                return true;
+            }
+        }
 
         bool visit(const logical::EncodedLightField &node) override {
             if(!plan().has_physical_assignment(node)) {
@@ -377,7 +393,7 @@ namespace lightdb::optimization {
 
                 if (parent.is<physical::ScanFramesFromFileEncodedReader>()) {
                     auto &scanFrames = parent.downcast<physical::ScanFramesFromFileEncodedReader>();
-                    plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), parent, scanFrames.source(), scanFrames.mp4Reader());
+                    plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), parent, scanFrames.source());
                     scanFrames.setMetadataSpecification(node.metadataSpecification());
                     return true;
                 }
@@ -769,8 +785,8 @@ namespace lightdb::optimization {
                 if(physical_parents.empty())
                     return false;
 
-                auto encode = Encode(node, physical_parents[0]);
-                plan().emplace<physical::Store>(plan().lookup(node), encode);
+//                auto encode = Encode(node, physical_parents[0]);
+                plan().emplace<physical::Store>(plan().lookup(node), physical_parents[0]);
                 return true;
             }
             return false;

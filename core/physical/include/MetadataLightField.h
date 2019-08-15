@@ -53,39 +53,58 @@ namespace lightdb::physical {
     };
 } // namespace lightdb::physical
 
+namespace lightdb::metadata {
+    class MetadataManager {
+    public:
+        explicit MetadataManager(const std::filesystem::path &pathToVideo, const MetadataSpecification &metadataSpecification)
+                : pathToVideo_(pathToVideo),
+                metadataSpecification_(metadataSpecification),
+                didSetFramesForMetadata_(false),
+                framesForMetadata_(0),
+                didSetOrderedFramesForMetadata_(false),
+                orderedFramesForMetadata_(0),
+                didSetIdealKeyframesForMetadata_(false),
+                idealKeyframesForMetadata_(0)
+        {}
+
+        const std::unordered_set<int> &framesForMetadata() const;
+        const std::vector<int> &orderedFramesForMetadata() const;
+        const std::unordered_set<int> &idealKeyframesForMetadata() const;
+    private:
+        const std::filesystem::path pathToVideo_;
+        const MetadataSpecification metadataSpecification_;
+        mutable bool didSetFramesForMetadata_;
+        mutable std::unordered_set<int> framesForMetadata_;
+        mutable bool didSetOrderedFramesForMetadata_;
+        mutable std::vector<int> orderedFramesForMetadata_;
+        mutable bool didSetIdealKeyframesForMetadata_;
+        mutable std::unordered_set<int> idealKeyframesForMetadata_;
+    };
+} // namespace lightdb::metadata
+
 namespace lightdb::logical {
     class MetadataSubsetLightField : public LightField {
     public:
         MetadataSubsetLightField(const LightFieldReference &lightField, const MetadataSpecification &metadataSpecification, const catalog::Source &source)
         : LightField(lightField),
         metadataSelection_(metadataSpecification),
-        source_(source)
+        source_(source),
+        metadataManager_(source_.filename(), metadataSelection_)
         { }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightField>(visitor); }
         const MetadataSpecification &metadataSpecification() const { return metadataSelection_; }
         const catalog::Source &source() const { return source_; }
+        const std::unordered_set<int> &framesForMetadata() const { return metadataManager_.framesForMetadata(); }
+        const std::vector<int> &orderedFramesForMetadata() const { return metadataManager_.orderedFramesForMetadata(); }
 
     private:
         MetadataSpecification metadataSelection_;
         catalog::Source source_;
+        metadata::MetadataManager metadataManager_;
     };
 } // namespace lightdb::logical
 
-namespace lightdb::metadata {
-    class MetadataManager {
-    public:
-        explicit MetadataManager(const std::filesystem::path &pathToVideo)
-                : pathToVideo_(pathToVideo)
-        {}
-
-        std::unordered_set<int> framesForMetadata(const MetadataSpecification&) const;
-        std::vector<int> orderedFramesForMetadata(const MetadataSpecification&) const;
-        std::unordered_set<int> keyframesForMetadata(const MetadataSpecification&) const;
-    private:
-        const std::filesystem::path pathToVideo_;
-    };
-} // namespace lightdb::metadata
 
 
 #endif //LIGHTDB_METADATALIGHTFIELD_H

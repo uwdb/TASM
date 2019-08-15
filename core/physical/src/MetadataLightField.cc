@@ -63,26 +63,27 @@ std::vector<Rectangle> MetadataLightField::allRectangles() {
 } // namespace lightdb::physical
 
 namespace lightdb::metadata {
-std::unordered_set<int> MetadataManager::framesForMetadata(const MetadataSpecification &metadataSpecification) const {
+const std::unordered_set<int> &MetadataManager::framesForMetadata() const {
+    if (didSetFramesForMetadata_)
+        return framesForMetadata_;
 
     sqlite3 *db;
     ASSERT_SQLITE_OK(sqlite3_open_v2(lightdb::associations::VideoPathToLabelsPath.at(pathToVideo_).c_str(), &db, SQLITE_OPEN_READONLY, NULL));
 
     char *selectFramesStatement = nullptr;
     int size = asprintf(&selectFramesStatement, "SELECT DISTINCT FRAME FROM %s WHERE %s = '%s';",
-                        metadataSpecification.tableName().c_str(),
-                        metadataSpecification.columnName().c_str(),
-                        metadataSpecification.expectedValue().c_str());
+                        metadataSpecification_.tableName().c_str(),
+                        metadataSpecification_.columnName().c_str(),
+                        metadataSpecification_.expectedValue().c_str());
     assert(size != -1);
 
     sqlite3_stmt *select;
     ASSERT_SQLITE_OK(sqlite3_prepare_v2(db, selectFramesStatement, size, &select, nullptr));
 
     // Step and get results.
-    std::unordered_set<int> frames;
     int result;
     while ((result = sqlite3_step(select)) == SQLITE_ROW) {
-        frames.insert(sqlite3_column_int(select, 0));
+        framesForMetadata_.insert(sqlite3_column_int(select, 0));
     }
     assert(result == SQLITE_DONE);
 
@@ -90,38 +91,47 @@ std::unordered_set<int> MetadataManager::framesForMetadata(const MetadataSpecifi
     sqlite3_close(db);
     free(selectFramesStatement);
 
-    return frames;
+    didSetFramesForMetadata_ = true;
+    return framesForMetadata_;
 }
 
-std::vector<int> MetadataManager::orderedFramesForMetadata(const MetadataSpecification &metadataSpecification) const {
-    std::unordered_set<int> frames = framesForMetadata(metadataSpecification);
+const std::vector<int> &MetadataManager::orderedFramesForMetadata() const {
+    if (didSetOrderedFramesForMetadata_)
+        return orderedFramesForMetadata_;
 
-    std::vector<int> orderedFrames(frames.size());
+    std::unordered_set<int> frames = framesForMetadata();
+
+    orderedFramesForMetadata_.resize(frames.size());
     auto currentIndex = 0;
     for (auto &frame : frames)
-        orderedFrames[currentIndex++] = std::move(frame);
+        orderedFramesForMetadata_[currentIndex++] = frame;
 
-    std::sort(orderedFrames.begin(), orderedFrames.end());
-    return orderedFrames;
+    std::sort(orderedFramesForMetadata_.begin(), orderedFramesForMetadata_.end());
+
+    didSetOrderedFramesForMetadata_ = true;
+    return orderedFramesForMetadata_;
 }
 
-std::unordered_set<int> MetadataManager::keyframesForMetadata(const lightdb::MetadataSpecification &metadataSpecification) const {
-    auto allFrames = orderedFramesForMetadata(metadataSpecification);
+const std::unordered_set<int> &MetadataManager::idealKeyframesForMetadata() const {
+    if (didSetIdealKeyframesForMetadata_)
+        return idealKeyframesForMetadata_;
+
+    didSetIdealKeyframesForMetadata_ = true;
+
+    auto allFrames = orderedFramesForMetadata();
     if (allFrames.empty())
         return {};
 
-    std::unordered_set<int> keyframes;
-
     // Find the starts of all sequences.
     auto lastFrame = allFrames.front();
-    keyframes.insert(lastFrame);
+    idealKeyframesForMetadata_.insert(lastFrame);
     for (auto it = allFrames.begin() + 1; it != allFrames.end(); it++) {
         if (*it != lastFrame + 1)
-            keyframes.insert(*it);
+            idealKeyframesForMetadata_.insert(*it);
 
         lastFrame = *it;
     }
 
-    return keyframes;
+    return idealKeyframesForMetadata_;
 }
 } // namespace lightdb::metadata

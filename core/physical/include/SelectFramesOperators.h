@@ -13,17 +13,18 @@ namespace lightdb::physical {
 class NaiveSelectFrames: public PhysicalOperator, GPUOperator {
 public:
     explicit NaiveSelectFrames(const LightFieldReference &logical,
-                                PhysicalOperatorReference &parent)
+                                PhysicalOperatorReference &parent,
+                                std::unordered_set<int> framesToKeep)
         : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "NaiveSelectFrames-init")),
         GPUOperator(parent),
         metadataSpecification_(logical.downcast<logical::MetadataSubsetLightField>().metadataSpecification()),
         source_(logical.downcast<logical::MetadataSubsetLightField>().source()),
-        metadataManager_(source_.filename())
+        framesToKeep_(framesToKeep)
     {}
 
     const MetadataSpecification &metadataSpecification() const { return metadataSpecification_; }
     const catalog::Source &source() const { return source_; }
-    std::unordered_set<int> framesToKeep() const { return metadataManager_.framesForMetadata(metadataSpecification()); }
+    const std::unordered_set<int> &framesToKeep() const { return framesToKeep_; }
 
 private:
     class Runtime: public runtime::UnaryRuntime<NaiveSelectFrames, GPUDecodedFrameData> {
@@ -46,7 +47,7 @@ private:
 
     const MetadataSpecification metadataSpecification_;
     const catalog::Source source_;
-    const metadata::MetadataManager metadataManager_;
+    const std::unordered_set<int> framesToKeep_;
 };
 
 class HomomorphicSelectFrames: public PhysicalOperator {
@@ -55,24 +56,22 @@ public:
                                      const PhysicalOperatorReference &parent,
                                      const catalog::Source &source)
             : PhysicalOperator(logical, {parent}, DeviceType::CPU, runtime::make<Runtime>(*this, "HomomorphicSelectFrames-init")),
-            source_(source),
-            metadataSpecification_(logical.downcast<logical::MetadataSubsetLightField>().metadataSpecification())
+            source_(source)
     {}
 
 
     const catalog::Source &source() const { return source_; }
-    const MetadataSpecification &metadataSpecification() const { return metadataSpecification_; }
+    const logical::MetadataSubsetLightField &metadataSubsetLightField() const { return logical().downcast<logical::MetadataSubsetLightField>(); }
 
 private:
     class Runtime: public runtime::UnaryRuntime<HomomorphicSelectFrames, CPUEncodedFrameData> {
     public:
         explicit Runtime(HomomorphicSelectFrames &physical)
             : runtime::UnaryRuntime<HomomorphicSelectFrames, CPUEncodedFrameData>(physical),
-                    metadataManager_(physical.source().filename()),
-                    framesToKeep_(metadataManager_.framesForMetadata(physical.metadataSpecification())),
+                    framesToKeep_(physical.metadataSubsetLightField().framesForMetadata()),
                     picOutputFlagAdder_(framesToKeep_),
                     doNotHaveToAddPicOutputFlag_(physical.source().mp4Reader().allFrameSequencesBeginWithKeyframe(
-                            metadataManager_.orderedFramesForMetadata(physical.metadataSpecification())))
+                            physical.metadataSubsetLightField().orderedFramesForMetadata()))
         {
             if (doNotHaveToAddPicOutputFlag_)
                 std::cout << "Skipping adding pic_output_flag\n";
@@ -119,14 +118,12 @@ private:
         }
 
     private:
-        metadata::MetadataManager metadataManager_;
         std::unordered_set<int> framesToKeep_;
         hevc::PicOutputFlagAdder picOutputFlagAdder_;
         bool doNotHaveToAddPicOutputFlag_;
     };
 
     const catalog::Source source_;
-    const MetadataSpecification metadataSpecification_;
 };
 
 } // namespace lightdb::physical

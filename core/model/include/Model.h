@@ -282,11 +282,8 @@ namespace lightdb::logical {
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataEncodedLightField>(visitor); }
     private:
         void setKeyframesInOptions() {
-            auto filename = source().filename();
-            metadata::MetadataManager metadataManager(filename);
-
-            auto allFrames = metadataManager.orderedFramesForMetadata(metadataSpecification());
-            auto keyframes = metadataManager.keyframesForMetadata(metadataSpecification());
+            metadata::MetadataManager metadataManager(source().filename(), metadataSpecification_);
+            auto keyframes = metadataManager.idealKeyframesForMetadata();
 
             options_[EncodeOptions::Keyframes] = std::move(keyframes);
         }

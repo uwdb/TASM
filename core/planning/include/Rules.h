@@ -395,12 +395,12 @@ namespace lightdb::optimization {
                 if (parent.is<physical::ScanFramesFromFileEncodedReader>()) {
                     auto &scanFrames = parent.downcast<physical::ScanFramesFromFileEncodedReader>();
                     plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), parent, scanFrames.source());
-                    scanFrames.setMetadataSpecification(node.metadataSpecification());
+                    scanFrames.setFramesToRead(node.orderedFramesForMetadata());
                     return true;
                 }
 
                 /* For non-homorphic selection */
-                plan().emplace<physical::NaiveSelectFrames>(plan().lookup(node), parent);
+                plan().emplace<physical::NaiveSelectFrames>(plan().lookup(node), parent, node.framesForMetadata());
 
                 return true;
             } else

@@ -67,14 +67,10 @@ public:
     { }
 
     const catalog::Source &source() const { return source_; }
-    bool hasMetadataSpecification() const { return metadataSpecification_.get(); }
-    const MetadataSpecification &metadataSpecification() const {
-        assert(metadataSpecification_.get());
-        return *metadataSpecification_;
-    }
+    const std::vector<int> &framesToRead() const { return framesToRead_; }
 
-    void setMetadataSpecification(const MetadataSpecification &metadataSpecification) {
-        metadataSpecification_ = std::make_unique<MetadataSpecification>(metadataSpecification);
+    void setFramesToRead(std::vector<int> frames) {
+        framesToRead_ = std::move(frames);
     }
 
 private:
@@ -82,8 +78,7 @@ private:
     public:
         explicit Runtime(ScanFramesFromFileEncodedReader &physical)
             : runtime::Runtime<ScanFramesFromFileEncodedReader>(physical),
-                    metadataManager_(physical.source().filename()),
-                    frameReader_(physical.source().filename(), physical.hasMetadataSpecification() ? metadataManager_.orderedFramesForMetadata(physical.metadataSpecification()) : std::vector<int>())
+                    frameReader_(physical.source().filename(), physical.framesToRead())
         {}
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -104,12 +99,11 @@ private:
             return returnVal;
         }
     private:
-        metadata::MetadataManager metadataManager_;
         EncodedFrameReader frameReader_;
     };
 
     const catalog::Source source_;
-    std::unique_ptr<MetadataSpecification> metadataSpecification_;
+    std::vector<int> framesToRead_;
 };
 
 class ScanFramesFromFileDecodeReader: public PhysicalOperator {

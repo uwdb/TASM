@@ -35,9 +35,9 @@ public:
 
     const bool didSetFramesToKeep() const { return didSetFramesToKeep_; }
     const std::unordered_set<int> &framesToKeep() const { return framesToKeep_; }
-    void setFramesToKeep(std::unordered_set<int> framesToKeep) {
+    void setFramesToKeep(const std::unordered_set<int> &framesToKeep) {
         didSetFramesToKeep_ = true;
-        framesToKeep_ = std::move(framesToKeep);
+        framesToKeep_ = framesToKeep;
     }
 
 private:

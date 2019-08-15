@@ -7,7 +7,7 @@
 #define ASSERT_SQLITE_OK(i) (assert(i == SQLITE_OK))
 
 namespace lightdb::associations {
-    static std::unordered_map<std::string, std::string> VideoPathToLabelsPath(
+    static const std::unordered_map<std::string, std::string> VideoPathToLabelsPath(
             {
                     {"/home/maureen/dog_videos/dog_with_keyframes.hevc", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
                     {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/dog_with_keyframes/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
@@ -22,6 +22,31 @@ namespace lightdb::associations {
                     {"/home/maureen/lightdb/debugbuild/test/resources/dog_with_gop_10/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
                     {"/home/maureen/lightdb/debugbuild/test/resources/dog_with_gop_5/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
                     {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/dog_with_keyframes_real/1-0-stream.mp4", "/home/maureen/dog_videos/dog_with_keyframes.boxes"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_40191_gop250/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_40191/MVI_40191.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_40191_gop60/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_40191/MVI_40191.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_40191_gop30/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_40191/MVI_40191.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_40191_gop15/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_40191/MVI_40191.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_40191_gop10/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_40191/MVI_40191.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_40191_gop5/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_40191/MVI_40191.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_40191_gop1/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_40191/MVI_40191.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_40191_van/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_40191/MVI_40191.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_gop250/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_gop60/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_gop30/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_gop15/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_gop10/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_gop5/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_gop1/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_van/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_bus/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_others/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_car/1-0-stream.mp4", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/jackson_town_square_gop250/1-0-stream.mp4", "/home/maureen/noscope_videos/jackson_town_square_1hr.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/jackson_town_square_gop60/1-0-stream.mp4", "/home/maureen/noscope_videos/jackson_town_square_1hr.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/jackson_town_square_gop30/1-0-stream.mp4", "/home/maureen/noscope_videos/jackson_town_square_1hr.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/jackson_town_square_gop10/1-0-stream.mp4", "/home/maureen/noscope_videos/jackson_town_square_1hr.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/jackson_town_square_gop5/1-0-stream.mp4", "/home/maureen/noscope_videos/jackson_town_square_1hr.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/jackson_town_square_car/1-0-stream.mp4", "/home/maureen/noscope_videos/jackson_town_square_1hr.db"},
             } );
 } // namespace lightdb::associations
 

@@ -72,18 +72,19 @@ namespace lightdb::optimization {
                         auto gpu = plan().allocator().gpu();
 //                        auto gpu = plan().environment().gpus()[0];
 
-//                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
-
                         plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, stream);
-//                        auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
-//
-//                        auto children = plan().children(plan().lookup(node));
-//                        if (children.size() > 1) {
-//                            auto tees = physical::TeedPhysicalOperatorAdapter::make(decode, children.size());
-//                            for (auto index = 0u; index < children.size(); index++)
-//                                plan().add(tees->physical(index));
-//                            //plan().emplace<physical::GPUOperatorAdapter>(tees->physical(index), decode);
-//                        }
+                        return true;
+
+                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
+                        auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
+
+                        auto children = plan().children(plan().lookup(node));
+                        if (children.size() > 1) {
+                            auto tees = physical::TeedPhysicalOperatorAdapter::make(decode, children.size());
+                            for (auto index = 0u; index < children.size(); index++)
+                                plan().add(tees->physical(index));
+                            //plan().emplace<physical::GPUOperatorAdapter>(tees->physical(index), decode);
+                        }
                     } else if(stream.codec() == Codec::h264() ||
                               stream.codec() == Codec::hevc()) {
                         auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
@@ -398,23 +399,8 @@ namespace lightdb::optimization {
                     return true;
                 }
 
-                auto decode = parent;
-
-                /* For homomorphic selection */
-
-                // There should also be a second parent: scan & decode
-                // Get parent for decode = Scan
-                assert(decode->parents().size() == 1);
-                auto scan = decode->parents().front();
-
-//                auto scanEntireFile = PhysicalOperatorReference::make<physical::ScanEntireFile>(scan->logical(), scan.downcast<physical::ScanSingleFileDecodeReader>().source());
-//                auto scanEntireFile = PhysicalOperatorReference::make<physical::ScanFramesFromFileDecodeReader>(scan->logical(), scan.downcast<physical::ScanSingleFileDecodeReader>().source());
-//                plan().replace_assignments({scan, decode}, scanEntireFile);
-//                plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), scanEntireFile, scanEntireFile.downcast<physical::ScanFramesFromFileDecodeReader>().source());
-
-
                 /* For non-homorphic selection */
-//                plan().emplace<physical::NaiveSelectFrames>(plan().lookup(node), decode);
+                plan().emplace<physical::NaiveSelectFrames>(plan().lookup(node), parent);
 
                 return true;
             } else
@@ -743,7 +729,7 @@ namespace lightdb::optimization {
     public:
         using OptimizerRule::OptimizerRule;
 
-        PhysicalOperatorReference Encode(const logical::StoredLightField &node, PhysicalOperatorReference parent) {
+        PhysicalOperatorReference Encode(const logical::StoredLightField &node, PhysicalOperatorReference parent, bool replace=false) {
             auto logical = plan().lookup(node);
 
             // Can we leverage the ChooseEncode rule to automatically do this stuff, which is an exact duplicate?
@@ -771,7 +757,12 @@ namespace lightdb::optimization {
             } else if(!parent.is<physical::GPUOperator>()) {
                 //auto gpuop = plan().emplace<physical::GPUOperatorAdapter>(parent);
                 //return plan().emplace<physical::GPUEncodeToCPU>(logical, gpuop, Codec::hevc());
-                return plan().emplace<physical::GPUEncodeToCPU>(logical, parent, Codec::hevc());
+                if (replace) {
+                    auto encode = PhysicalOperatorReference::make<physical::GPUEncodeToCPU>(logical, parent->parents().front(), Codec::hevc());
+                    plan().replace_assignments(parent, encode);
+                    return encode;
+                } else
+                    return plan().emplace<physical::GPUEncodeToCPU>(logical, parent, Codec::hevc());
             } else
                 return plan().emplace<physical::GPUEncodeToCPU>(logical, parent, Codec::hevc());
         }
@@ -784,6 +775,19 @@ namespace lightdb::optimization {
 
                 if(physical_parents.empty())
                     return false;
+
+                // For homomorphic frame selection:
+                plan().emplace<physical::Store>(plan().lookup(node), physical_parents.front());
+                return true;
+
+                // For naive frame selection:
+                bool lastFrameWasMetadataSelection = physical_parents.front().is<physical::NaiveSelectFrames>();
+                auto encode = Encode(node, physical_parents.front(), lastFrameWasMetadataSelection);
+                if (lastFrameWasMetadataSelection) {
+                    encode.downcast<physical::GPUEncodeToCPU>().setFramesToKeep(physical_parents.front().downcast<physical::NaiveSelectFrames>().framesToKeep());
+                }
+                plan().emplace<physical::Store>(plan().lookup(node), encode);
+                return true;
 
 //                auto encode = Encode(node, physical_parents[0]);
                 plan().emplace<physical::Store>(plan().lookup(node), physical_parents[0]);

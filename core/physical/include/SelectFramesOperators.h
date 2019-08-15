@@ -37,13 +37,7 @@ private:
             if (iterator() == iterator().eos())
                 return {};
 
-            GLOBAL_TIMER.startSection("NaiveSelectFrames");
-            auto frames = iterator()++;
-
-
-
-
-            GLOBAL_TIMER.endSection("NaiveSelectFrames");
+            // This intentionally does nothing because this physical operator never actually ends up in a physical plan.
             return {};
         }
     private:
@@ -77,9 +71,8 @@ private:
                     metadataManager_(physical.source().filename()),
                     framesToKeep_(metadataManager_.framesForMetadata(physical.metadataSpecification())),
                     picOutputFlagAdder_(framesToKeep_),
-                    doNotHaveToAddPicOutputFlag_(MP4Reader::allFrameSequencesBeginWithKeyframe(
-                            metadataManager_.orderedFramesForMetadata(physical.metadataSpecification()),
-                            physical.source().keyframes()))
+                    doNotHaveToAddPicOutputFlag_(physical.source().mp4Reader().allFrameSequencesBeginWithKeyframe(
+                            metadataManager_.orderedFramesForMetadata(physical.metadataSpecification())))
         {
             if (doNotHaveToAddPicOutputFlag_)
                 std::cout << "Skipping adding pic_output_flag\n";

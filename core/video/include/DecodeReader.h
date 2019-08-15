@@ -241,17 +241,17 @@ public:
     {
         frameIterator_ = frames_.begin();
         shouldReadAllFrames_ = frames_.empty();
-        keyframeIterator_ = mp4Reader_.keyframeSampleNumbers().begin();
+        keyframeIterator_ = mp4Reader_.keyframeNumbers().begin();
     }
 
     std::optional<GOPReaderPacket> read() {
         // If we are reading all of the frames, return the frames for the next GOP.
         if (shouldReadAllFrames_) {
-            if (keyframeIterator_ == mp4Reader_.keyframeSampleNumbers().end())
+            if (keyframeIterator_ == mp4Reader_.keyframeNumbers().end())
                 return {};
 
-            auto firstSampleToRead = *keyframeIterator_++;
-            auto lastSampleToRead = keyframeIterator_ == mp4Reader_.keyframeSampleNumbers().end() ? mp4Reader_.numberOfSamples() : *keyframeIterator_ - 1;
+            auto firstSampleToRead = MP4Reader::frameNumberToSampleNumber(*keyframeIterator_++);
+            auto lastSampleToRead = keyframeIterator_ == mp4Reader_.keyframeNumbers().end() ? mp4Reader_.numberOfSamples() : MP4Reader::frameNumberToSampleNumber(*keyframeIterator_ - 1);
 
             return dataForSamples(firstSampleToRead, lastSampleToRead);
         } else {
@@ -259,26 +259,51 @@ public:
                 return {};
 
             // Unideal, but frames_ is 0-indexed, but keyframes are 1-indexed because they are sample numbers.
+            unsigned int firstSampleToRead = 0;
+            unsigned int lastSampleToRead = 0;
+            if (mp4Reader_.allFramesAreKeyframes()) {
+//                // Read up to 30 frames at a time.
+//                firstSampleToRead = MP4Reader::frameNumberToSampleNumber(*frameIterator_);
+//
+//                auto maximumNumberOfFramesToRead = 100;
+//                auto distance = std::distance(frameIterator_, frames_.end());
+//                if (distance >= maximumNumberOfFramesToRead) {
+//                    std::advance(frameIterator_, maximumNumberOfFramesToRead);
+//                } else {
+//                    frameIterator_ = frames_.end();
+//                }
+//
+//                lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*std::prev(frameIterator_));
 
-            // Find GOP that the current frame is in.
-            while (keyframeIterator_ != mp4Reader_.keyframeSampleNumbers().end() &&
-                    MP4Reader::sampleNumberToFrameNumber(*keyframeIterator_) <= *frameIterator_)
-                keyframeIterator_++;
 
-            // Now keyframeIterator is pointing to the keyframe of the next GOP.
-            // Find the rest of the frames that we want and are in the same GOP.
-            if (keyframeIterator_ == mp4Reader_.keyframeSampleNumbers().end())
-                frameIterator_ = frames_.end();
-            else {
-                while (frameIterator_ != frames_.end() && *frameIterator_ <
-                                                                  MP4Reader::sampleNumberToFrameNumber(*keyframeIterator_))
-                    frameIterator_++;
+                // Read sequential portion of frames.
+                firstSampleToRead = MP4Reader::frameNumberToSampleNumber(*frameIterator_);
+
+                auto lastFrameIndex = *frameIterator_++;
+                while (frameIterator_ != frames_.end() && *frameIterator_ == lastFrameIndex + 1)
+                    lastFrameIndex = *frameIterator_++;
+
+                lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*std::prev(frameIterator_));
+            } else {
+                // Find GOP that the current frame is in.
+                while (keyframeIterator_ != mp4Reader_.keyframeNumbers().end() &&
+                       *keyframeIterator_ <= *frameIterator_)
+                    keyframeIterator_++;
+
+                // Now keyframeIterator is pointing to the keyframe of the next GOP.
+                // Find the rest of the frames that we want and are in the same GOP.
+                if (keyframeIterator_ == mp4Reader_.keyframeNumbers().end())
+                    frameIterator_ = frames_.end();
+                else {
+                    while (frameIterator_ != frames_.end() && *frameIterator_ < *keyframeIterator_)
+                        frameIterator_++;
+                }
+
+                // Now frameIterator_ is point to one past the last frame we are interested in.
+                // Read frames from the previous GOP to the last frame we are interested in.
+                firstSampleToRead = MP4Reader::frameNumberToSampleNumber(*std::prev(keyframeIterator_));
+                lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*std::prev(frameIterator_));
             }
-
-            // Now frameIterator_ is point to one past the last frame we are interested in.
-            // Read frames from the previous GOP to the last frame we are interested in.
-            auto firstSampleToRead = *std::prev(keyframeIterator_);
-            auto lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*std::prev(frameIterator_));
 
             numberOfSamplesRead_ += lastSampleToRead - firstSampleToRead + 1;
             return dataForSamples(firstSampleToRead, lastSampleToRead);
@@ -299,8 +324,8 @@ private:
     MP4Reader mp4Reader_;
     std::vector<int> frames_;
     bool shouldReadAllFrames_;
-    std::vector<int>::const_iterator frameIterator_;
-    std::vector<unsigned int>::const_iterator keyframeIterator_;
+    std::vector<int>::iterator frameIterator_;
+    std::vector<int>::const_iterator keyframeIterator_;
     unsigned int numberOfSamplesRead_;
 };
 
@@ -317,22 +342,11 @@ public:
         file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
         assert(gf_isom_set_nalu_extract_mode(file_, 1, GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG | GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG) == GF_OK);
 
-        frames_ = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                   60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 79,
-                   80, 120, 121, 126, 130, 197, 199, 200, 201, 202, 203, 210, 211, 212};
+        frames_ = {};
         frameIterator_ = frames_.begin();
     }
 
     std::optional<DecodeReaderPacket> read() override {
-        // Assume frames are sorted.
-        // Go through frames, and use GPAC to find out what GOP each frame belongs to.
-        // Return the data for all frames in the same GOP
-        //      Data needs to be:
-        //          [Keyframe,
-        //              last interesting frame in the GOP]
-
-        // Can get data_offset for keyframe to get start of reading.
-        // Also get data_offset for last interesting frame in the GOP + its dataLength to see where to stop reading.
         auto dataFromNextGOP = framesForNextGOP_();
         if (dataFromNextGOP.has_value()) {
             unsigned long flags = CUVID_PKT_DISCONTINUITY;
@@ -358,55 +372,7 @@ public:
 
 private:
     std::optional<lightdb::bytestring> framesForNextGOP_() {
-        // This isn't right because we'll miss the last GOP.
-        if (frameIterator_ == frames_.end()) {
-            gf_isom_close(file_);
-            return std::nullopt;
-        }
-
-        unsigned int track_index = 1;
-
-        GF_ISOSample *sample = gf_isom_get_sample_info(file_, track_index, *frameIterator_, NULL, NULL);
-        unsigned int prevRAP = 0;
-        unsigned int nextRAP = 0;
-        unsigned int streamDescriptionIndex = 0;
-        GF_ISOSample *rapSample = NULL;
-        GF_Err result = gf_isom_get_sample_for_media_time(file_, track_index, sample->DTS, &streamDescriptionIndex, GF_ISOM_SEARCH_SYNC_BACKWARD, NULL, &prevRAP);
-        assert(result == GF_OK);
-
-
-//        GF_TrackBox *trak = gf_isom_get_track_from_file2(file_, track_index);
-//        SAPType isRAP;
-//        unsigned int prevRAP;
-//        unsigned int nextRAP;
-//        GF_Err result = stbl_GetSampleRAP2(trak->Media->information->sampleTable->SyncSample, *frameIterator_, &isRAP, &prevRAP, &nextRAP);
-//        assert(result == GF_OK);
-
-        // Find all frames that have the same prevRAP.
-        while (frameIterator_ != frames_.end() && (*frameIterator_ < nextRAP || !nextRAP))
-            frameIterator_++;
-
-        // Read frame data from prevRAP to prev(frameIterator_).
-        unsigned long size = 0;
-        unsigned int lastFrame = *std::prev(frameIterator_);
-
-        // First read to get sizes.
-        for (unsigned int i = prevRAP; i <= lastFrame; i++) {
-            GF_ISOSample *sample = gf_isom_get_sample_info(file_, track_index, i, NULL, NULL);
-            size += sample->dataLength;
-            gf_isom_sample_del(&sample);
-        }
-
-        // Then read to get the actual data.
-        lightdb::bytestring videoData;
-        videoData.reserve(size);
-        for (unsigned int i = prevRAP; i <= lastFrame; i++) {
-            GF_ISOSample *sample = gf_isom_get_sample(file_, track_index, i, NULL);
-            videoData.insert(videoData.end(), sample->data, sample->data + sample->dataLength);
-            gf_isom_sample_del(&sample);
-        }
-
-        return {videoData};
+        return {};
     }
 
     std::filesystem::path filename_;

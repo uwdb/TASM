@@ -117,6 +117,99 @@ TEST_F(VisitorTestFixture, testSaveToCatalog) {
     Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::GOPSize, 30u}}).Store("dog_with_gop_30"));
 }
 
+static const char *videoToScan = "/home/maureen/noscope_videos/jackson_town_square_1hr.hevc";
+static const std::string videoCatalogName = "jackson_town_square";
+static const std::string labelCategory = "car";
+
+TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames250) {
+    auto input = Scan(videoCatalogName + "_gop250");
+    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+}
+
+TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames60) {
+    auto input = Scan(videoCatalogName + "_gop60");
+    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+}
+
+TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames30) {
+    auto input = Scan(videoCatalogName + "_gop30");
+    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+}
+
+TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames15) {
+    auto input = Scan(videoCatalogName + "_gop15");
+    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+}
+
+TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames10) {
+    auto input = Scan(videoCatalogName + "_gop10");
+    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+}
+
+TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames5) {
+    auto input = Scan(videoCatalogName + "_gop5");
+    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+}
+
+TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames1) {
+    auto input = Scan(videoCatalogName + "_gop1");
+    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+}
+
+TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFramesCustom) {
+    auto input = Scan(videoCatalogName + "_" + labelCategory);
+    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+}
+
+TEST_F(VisitorTestFixture, testSavingMetadata) {
+    auto input = Scan(videoCatalogName + "_gop60");
+    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+    Coordinator().execute(input.Encode(selection).Store(videoCatalogName + "_" + labelCategory));
+}
+
+TEST_F(VisitorTestFixture, testGOPSaving250) {
+    auto input = Load(videoToScan, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::GOPSize, 250u}}).Store(videoCatalogName + "_gop250"));
+}
+
+TEST_F(VisitorTestFixture, testGOPSaving60) {
+    auto input = Load(videoToScan, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::GOPSize, 60u}}).Store(videoCatalogName + "_gop60"));
+}
+
+TEST_F(VisitorTestFixture, testGOPSaving30) {
+    auto input = Load(videoToScan, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::GOPSize, 30u}}).Store(videoCatalogName + "_gop30"));
+}
+
+TEST_F(VisitorTestFixture, testGOPSaving15) {
+    auto input = Load(videoToScan, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::GOPSize, 15u}}).Store(videoCatalogName + "_gop15"));
+}
+
+TEST_F(VisitorTestFixture, testGOPSaving10) {
+    auto input = Load(videoToScan, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::GOPSize, 10u}}).Store(videoCatalogName + "_gop10"));
+}
+
+TEST_F(VisitorTestFixture, testGOPSaving5) {
+    auto input = Load(videoToScan, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::GOPSize, 5u}}).Store(videoCatalogName + "_gop5"));
+}
+
+TEST_F(VisitorTestFixture, testGOPSaving1) {
+    auto input = Load(videoToScan, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::GOPSize, 1u}}).Store(videoCatalogName + "_gop1"));
+}
+
 TEST_F(VisitorTestFixture, testEncodeForMetadata) {
     // Want:
     // Scan

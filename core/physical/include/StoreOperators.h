@@ -47,6 +47,7 @@ private:
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if(!all_parent_eos()) {
+                GLOBAL_TIMER.startSection("Store");
                 for(auto i = 0u; i < iterators().size(); i++) {
                     auto input = iterators().at(i)++;
                     auto &data = input.downcast<SerializableData>();
@@ -54,7 +55,7 @@ private:
 
                     std::copy(data.value().begin(), data.value().end(), std::ostreambuf_iterator<char>(output.stream()));
                 }
-
+                GLOBAL_TIMER.endSection("Store");
                 return EmptyData(DeviceType::CPU);
             } else
                 return std::nullopt;

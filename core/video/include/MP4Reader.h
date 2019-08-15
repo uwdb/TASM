@@ -1,6 +1,7 @@
 #ifndef LIGHTDB_MP4READER_H
 #define LIGHTDB_MP4READER_H
 
+#include "Catalog.h"
 #include "gpac/isomedia.h"
 #include "gpac/internal/isomedia_dev.h"
 #include "gpac/list.h"
@@ -9,12 +10,17 @@
 class MP4Reader {
 public:
     static std::vector<int> keyframesForFile(const std::filesystem::path &filename) {
-        assert(filename.extension() == ".mp4");
+        if (filename.extension() != ".mp4")
+            return {};
+
         static const int trackNumber = 1;
 
         GF_ISOFile *file = gf_isom_open(filename.c_str(), GF_ISOM_OPEN_READ, nullptr);
         GF_TrackBox *trak = gf_isom_get_track_from_file2(file, trackNumber);
         GF_SyncSampleBox *sampleBox = trak->Media->information->sampleTable->SyncSample;
+
+        if (!sampleBox)
+            return {};
 
         std::vector<int> keyframes(sampleBox->nb_entries);
         for (auto i = 0; i < sampleBox->nb_entries; ++i)
@@ -24,19 +30,27 @@ public:
     }
 
     explicit MP4Reader(const std::filesystem::path &filename)
-        : filename_(filename)
+        : filename_(filename),
+        invalidFile_(false)
     {
-        assert(filename_.extension() == ".mp4");
+        if (filename_.extension() != ".mp4") {
+            invalidFile_ = true;
+            return;
+        }
 
         file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
         assert(gf_isom_set_nalu_extract_mode(file_, 1, GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG | GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG) == GF_OK);
 
         GF_TrackBox *trak = gf_isom_get_track_from_file2(file_, trackNumber_);
         GF_SyncSampleBox *sampleBox = trak->Media->information->sampleTable->SyncSample;
-
-        keyframeSampleNumbers_.resize(sampleBox->nb_entries);
-        for (auto i = 0; i < sampleBox->nb_entries; ++i)
-            keyframeSampleNumbers_[i] = sampleBox->sampleNumbers[i];
+        // If !sampleBox, then every frame is a keyframe.
+        if (!sampleBox)
+            keyframeNumbers_ = {};
+        else {
+            keyframeNumbers_.resize(sampleBox->nb_entries);
+            for (auto i = 0; i < sampleBox->nb_entries; ++i)
+                keyframeNumbers_[i] = sampleBox->sampleNumbers[i] - 1;
+        }
 
         numberOfSamples_ = gf_isom_get_sample_count(file_, trackNumber_);
     }
@@ -46,12 +60,16 @@ public:
 //        gf_isom_close(file_);
     }
 
-    const std::vector<unsigned int> &keyframeSampleNumbers() const {
-        return keyframeSampleNumbers_;
+    const std::vector<int> &keyframeNumbers() const {
+        return keyframeNumbers_;
     }
 
     unsigned int numberOfSamples() const {
         return numberOfSamples_;
+    }
+
+    bool allFramesAreKeyframes() const {
+        return filename_.extension() == ".mp4" && keyframeNumbers_.empty();
     }
 
     static int sampleNumberToFrameNumber(unsigned int sampleNumber) {
@@ -62,20 +80,23 @@ public:
         return frameNumber + 1;
     }
 
-    static bool allFrameSequencesBeginWithKeyframe(const std::vector<int> &frames, const std::vector<int> &keyframes) {
+    bool allFrameSequencesBeginWithKeyframe(const std::vector<int> &frames) const {
         if (frames.empty())
             return true;
 
-        auto keyframeIterator = keyframes.begin();
+        if (allFramesAreKeyframes())
+            return true;
+
+        auto keyframeIterator = keyframeNumbers_.begin();
         auto frameIterator = frames.begin();
         auto startOfFrameSequence = *frameIterator;
         while (true) {
             // See if current frame sequence aligns with a keyframe.
-            while (keyframeIterator != keyframes.end() && *keyframeIterator < startOfFrameSequence)
+            while (keyframeIterator != keyframeNumbers_.end() && *keyframeIterator < startOfFrameSequence)
                 keyframeIterator++;
 
             // See if we weren't able to find a keyframe >= the frame we are interested in.
-            if (keyframeIterator == keyframes.end())
+            if (keyframeIterator == keyframeNumbers_.end())
                 return false;
 
             // The keyframe we found is past the start of the frame sequence.
@@ -135,9 +156,10 @@ private:
     static const unsigned int trackNumber_ = 1;
     std::filesystem::path filename_;
     GF_ISOFile *file_;
-    std::vector<unsigned int> keyframeSampleNumbers_;
+    std::vector<int> keyframeNumbers_;
     unsigned int numberOfSamples_;
     unsigned int numberOfSamplesRead_ = 0;
+    bool invalidFile_;
 };
 
 #endif //LIGHTDB_MP4READER_H

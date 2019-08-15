@@ -31,7 +31,7 @@ namespace lightdb {
                       configuration_(configuration),
                       volume_(std::move(volume)),
                       geometry_(geometry),
-                      keyframes_(MP4Reader::keyframesForFile(filename_))
+                      mp4Reader_(filename_)
             { }
 
             unsigned int index() const { return index_; }
@@ -40,7 +40,8 @@ namespace lightdb {
             const CompositeVolume volume() const { return volume_; }
             const Configuration& configuration() const { return configuration_; }
             const GeometryReference &geometry() const { return geometry_; }
-            const std::vector<int> &keyframes() const { return keyframes_; }
+            const MP4Reader &mp4Reader() const { return mp4Reader_; }
+            const std::vector<int> &keyframes() const { return mp4Reader_.keyframeNumbers(); }
 
         private:
             const unsigned int index_;
@@ -50,7 +51,7 @@ namespace lightdb {
             const CompositeVolume volume_;
             const GeometryReference geometry_;
 
-            std::vector<int> keyframes_;
+            const MP4Reader mp4Reader_;
         };
 
         class Catalog {

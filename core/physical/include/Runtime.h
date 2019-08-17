@@ -135,7 +135,7 @@ namespace lightdb {
             template <typename T=Data, typename = typename std::enable_if<std::is_base_of<physical::FrameData, T>::value>>
             const GeometryReference geometry(const PhysicalOperatorReference &physical) {
                 auto it = std::find(this->physical().parents().begin(), this->physical().parents().end(), physical);
-                return geometry(static_cast<size_t>(std::distance(it, std::begin(this->physical().parents()))));
+                return geometry(static_cast<size_t>(std::distance(std::begin(this->physical().parents()), it)));
             }
 
             template <typename T=Data, typename = typename std::enable_if<std::is_base_of<physical::FrameData, T>::value>>

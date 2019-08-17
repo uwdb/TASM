@@ -174,7 +174,7 @@ namespace lightdb::physical {
             numberOfFrames_ = numberOfFrames;
         }
 
-        bool getFirstFrameIndexIfSet(int &outFirstFrameIndex) {
+        bool getFirstFrameIndexIfSet(int &outFirstFrameIndex) const {
             if (firstFrameIndex_ == -1)
                 return false;
 
@@ -182,7 +182,7 @@ namespace lightdb::physical {
             return true;
         }
 
-        bool getNumberOfFramesIfSet(int &outNumberOfFrames) {
+        bool getNumberOfFramesIfSet(int &outNumberOfFrames) const {
             if (numberOfFrames_ == -1)
                 return false;
 

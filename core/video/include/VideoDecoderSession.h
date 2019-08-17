@@ -38,8 +38,13 @@ public:
         for(auto begin = std::chrono::system_clock::now();
             std::chrono::system_clock::now() - begin < duration;
             std::this_thread::sleep_for(duration / interval)) {
-                if((packet = decoder_.frame_queue().try_dequeue<CUVIDPARSERDISPINFO>()) != nullptr)
-                    return {DecodedFrame(decoder_, packet)};
+                if((packet = decoder_.frame_queue().try_dequeue<CUVIDPARSERDISPINFO>()) != nullptr) {
+                    auto frameNumber = -1;
+                    if (decoder_.frameNumberQueue().pop(frameNumber)) {
+                        return {DecodedFrame(decoder_, packet, frameNumber)};
+                    } else
+                        return {DecodedFrame(decoder_, packet)};
+                }
             }
 
         return std::nullopt;
@@ -59,6 +64,16 @@ protected:
 
         do {
             if (reader != end) {
+                int firstFrameIndex = -1;
+                int numberOfFrames = -1;
+                bool gotFirstFrameIndex = (*reader).getFirstFrameIndexIfSet(firstFrameIndex);
+                bool gotNumberOfFrames = (*reader).getNumberOfFramesIfSet(numberOfFrames);
+                if (gotFirstFrameIndex && gotNumberOfFrames) {
+                    for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
+                        decoder.frameNumberQueue().push(i);
+                    }
+                }
+
                 auto packet = static_cast<DecodeReaderPacket>(reader++);
                 if ((status = cuvidParseVideoData(parser, &packet)) != CUDA_SUCCESS) {
                     cuvidDestroyVideoParser(parser);

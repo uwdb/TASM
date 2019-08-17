@@ -86,11 +86,15 @@ private:
             std::optional<physical::MaterializedLightFieldReference> returnVal = {};
             auto gopPacket = frameReader_.read();
             if (gopPacket.has_value()) {
+                unsigned long flags = CUVID_PKT_DISCONTINUITY;
+                if (frameReader_.isEos())
+                    flags |= CUVID_PKT_ENDOFSTREAM;
+
                 auto cpuData = MaterializedLightFieldReference::make<CPUEncodedFrameData>(
                         physical().source().codec(),
                         physical().source().configuration(),
                         physical().source().geometry(),
-                        gopPacket->data());
+                        DecodeReaderPacket(gopPacket->data(), flags));
 
                 cpuData.downcast<CPUEncodedFrameData>().setFirstFrameIndexAndNumberOfFrames(gopPacket->firstFrameIndex(), gopPacket->numberOfFrames());
                 returnVal = {cpuData};
@@ -104,6 +108,14 @@ private:
 
     const catalog::Source source_;
     std::vector<int> framesToRead_;
+};
+
+class ScanSequentialFramesFromFileEncodedReader: public ScanFramesFromFileEncodedReader {
+    using ScanFramesFromFileEncodedReader::ScanFramesFromFileEncodedReader;
+};
+
+class ScanNonSequentialFramesFromFileEncodedReader: public ScanFramesFromFileEncodedReader {
+    using ScanFramesFromFileEncodedReader::ScanFramesFromFileEncodedReader;
 };
 
 class ScanFramesFromFileDecodeReader: public PhysicalOperator {

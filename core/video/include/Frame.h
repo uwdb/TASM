@@ -14,12 +14,20 @@
 
 class Frame {
 public:
+    Frame(unsigned int height, unsigned int width, NV_ENC_PIC_STRUCT type, int frameNumber)
+        : height_(height), width_(width), type_(type), frameNumber_(frameNumber)
+    { }
+
     Frame(unsigned int height, unsigned int width, NV_ENC_PIC_STRUCT type)
-        : height_(height), width_(width), type_(type)
+            : height_(height), width_(width), type_(type)
     { }
 
     Frame(const Configuration &configuration, NV_ENC_PIC_STRUCT type)
         : Frame(configuration.height, configuration.width, type)
+    { }
+
+    Frame(const Configuration &configuration, NV_ENC_PIC_STRUCT type, int frameNumber)
+            : Frame(configuration.height, configuration.width, type, frameNumber)
     { }
 
     Frame(const Frame&) = default;
@@ -31,10 +39,19 @@ public:
     virtual unsigned int width() const { return width_; }
     //TODO move this to GPUFrame
     NV_ENC_PIC_STRUCT type() const { return type_; }
+    bool getFrameNumber(int &outFrameNumber) const {
+        if (frameNumber_.has_value()) {
+            outFrameNumber = *frameNumber_;
+            return true;
+        } else
+            return false;
+
+    }
 
 protected:
     const unsigned int height_, width_;
     NV_ENC_PIC_STRUCT type_;
+    std::optional<int> frameNumber_;
 };
 
 class CudaFrame;
@@ -230,6 +247,10 @@ using CudaFrameReference = lightdb::shared_reference<CudaFrame>;
 
 class DecodedFrame : public GPUFrame {
 public:
+    DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters, int frameNumber)
+            : GPUFrame(decoder.configuration(), extract_type(parameters), frameNumber), decoder_(decoder), parameters_(parameters)
+    { }
+
     DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters)
         : GPUFrame(decoder.configuration(), extract_type(parameters)), decoder_(decoder), parameters_(parameters)
     { }

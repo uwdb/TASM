@@ -33,11 +33,23 @@ public:
 
     const Codec &codec() const { return codec_; }
 
-    const bool didSetFramesToKeep() const { return didSetFramesToKeep_; }
-    const std::unordered_set<int> &framesToKeep() const { return framesToKeep_; }
+    bool didSetFramesToKeep() const { return didSetFramesToKeep_; }
+    const std::set<int> &framesToKeep() const { return framesToKeep_; }
     void setFramesToKeep(const std::unordered_set<int> &framesToKeep) {
         didSetFramesToKeep_ = true;
-        framesToKeep_ = framesToKeep;
+        framesToKeep_.insert(framesToKeep.begin(), framesToKeep.end());
+    }
+
+    void setFramesToKeep(const std::vector<int> &framesToKeep) {
+        didSetFramesToKeep_ = true;
+        framesToKeep_.insert(framesToKeep.begin(), framesToKeep.end());
+    }
+
+    bool didSetDesiredKeyframes() const { return didSetDesiredKeyframes_; }
+    const std::unordered_set<int> &desiredKeyframes() const { return desiredKeyframes_; }
+    void setDesiredKeyframes(std::unordered_set<int> keyframes) {
+        didSetDesiredKeyframes_ = true;
+        desiredKeyframes_ = std::move(keyframes);
     }
 
 private:
@@ -50,35 +62,66 @@ private:
               writer_{encoder_.api()},
               encodeSession_{encoder_, writer_},
               numberOfEncodedFrames_(0),
-              frameNumber_(0)
+              frameNumber_(0),
+              nextFrameThatWillBeEncoded_(physical.framesToKeep().begin()),
+              currentDataFramesIteratorIsValid_(false)
         {
-            keyframes_ = getKeyframes();
+            desiredKeyframes_ = physical.didSetDesiredKeyframes() ? physical.desiredKeyframes() : getDesiredKeyframes();
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            // TODO: We only want to pass on 1 GOP at a time (when selecting frames with multiple strategies).
+            // Should this keep track of GOPs instead of encoding frames from many GOPs at a time?
+            // Would that cause the writer to dequeue frames from 1 GOP at a time?
             GLOBAL_TIMER.startSection("GPUEncodeToCPU");
             if (iterator() != iterator().eos()) {
-                auto decoded = iterator()++;
+                auto &decoded = *iterator();
+                if (!currentDataFramesIteratorIsValid_) {
+                    currentDataFramesIterator_ = decoded.frames().begin();
+                    currentDataFramesIteratorIsValid_ = true;
+                }
 
                 timer_.startSection("inside-GPUEncodeToCPU");
-                for (const auto &frame: decoded.frames()) {
-                    auto frameNumber = frameNumber_++;
+                bool encodedKeyframe = false;
+                for (auto &frameIt = currentDataFramesIterator_; frameIt != decoded.frames().end(); frameIt++) {
+                    int frameNumberFromFrame = -1;
+                    auto frameNumber = (*frameIt)->getFrameNumber(frameNumberFromFrame) ? frameNumberFromFrame : frameNumber_;
+                    ++frameNumber_; // Always increment this so we can keep track of how many frames were decoded.
                     if (physical().didSetFramesToKeep() && !physical().framesToKeep().count(frameNumber))
                         continue;
 
                     ++numberOfEncodedFrames_;
-                    encodeSession_.Encode(*frame, decoded.configuration().offset.top,
+                    // Try to force the output of 1 GOP at a time.
+                    if (desiredKeyframes_.count(frameNumber)) {
+                        encodeSession_.Flush();
+                        if (encodedKeyframe)
+                            break;
+                        else
+                            encodedKeyframe = true;
+                    }
+
+                    encodeSession_.Encode(**frameIt, decoded.configuration().offset.top,
                                           decoded.configuration().offset.left,
-                                          keyframes_.count(frameNumber));
+                                          desiredKeyframes_.count(frameNumber));
                 }
 
                 //TODO think this should move down just above nullopt
                 // Did we just reach the end of the decode stream?
-                if (iterator() == iterator().eos())
+                if (iterator() == iterator().eos() || noMoreFramesInCurrentData())
                     // If so, flush the encode queue and end this op too
                     encodeSession_.Flush();
 
-                auto returnVal = CPUEncodedFrameData(physical().codec(), decoded.configuration(), decoded.geometry(), writer_.dequeue());
+                // For mixed frame selection, we need to export this one GOP at a time.
+                unsigned int numberOfFrames = 0;
+                auto returnVal = CPUEncodedFrameData(physical().codec(), decoded.configuration(), decoded.geometry(), writer_.dequeue(numberOfFrames));
+                returnVal.setFirstFrameIndexAndNumberOfFrames(*nextFrameThatWillBeEncoded_, numberOfFrames);
+                std::advance(nextFrameThatWillBeEncoded_, numberOfFrames);
+
+                if (noMoreFramesInCurrentData()) {
+                    ++iterator();
+                    currentDataFramesIteratorIsValid_ = false;
+                }
+
                 GLOBAL_TIMER.endSection("GPUEncodeToCPU");
                 timer_.endSection("inside-GPUEncodeToCPU");
                 return {returnVal};
@@ -103,7 +146,7 @@ private:
                         std::make_any<unsigned int>(kDefaultGopSize)));
         }
 
-        std::unordered_set<int> getKeyframes() const {
+        std::unordered_set<int> getDesiredKeyframes() const {
             auto option = logical().is<OptionContainer<>>()
                     ? logical().downcast<OptionContainer<>>().get_option(EncodeOptions::Keyframes)
                     : std::nullopt;
@@ -116,6 +159,10 @@ private:
                 return {};
         }
 
+        bool noMoreFramesInCurrentData() {
+            return currentDataFramesIterator_ == (*iterator()).frames().end();
+        }
+
         EncodeConfiguration encodeConfiguration_;
         VideoEncoder encoder_;
         MemoryEncodeWriter writer_;
@@ -123,14 +170,20 @@ private:
         Timer timer_;
         unsigned long numberOfEncodedFrames_;
         unsigned long frameNumber_;
-        std::unordered_set<int> keyframes_;
+        std::unordered_set<int> desiredKeyframes_;
+        std::set<int>::const_iterator nextFrameThatWillBeEncoded_;
+        std::vector<GPUFrameReference>::const_iterator currentDataFramesIterator_;
+        bool currentDataFramesIteratorIsValid_;
     };
 
     const Codec codec_;
 
     // Add optional list of frames to keep.
     bool didSetFramesToKeep_;
-    std::unordered_set<int> framesToKeep_;
+    std::set<int> framesToKeep_;
+
+    bool didSetDesiredKeyframes_;
+    std::unordered_set<int> desiredKeyframes_;
 };
 
 }; // namespace lightdb::physical

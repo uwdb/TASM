@@ -5,6 +5,7 @@
 #include "FrameQueue.h"
 #include "VideoLock.h"
 #include "errors.h"
+#include "spsc_queue.h"
 
 class VideoDecoder {
 public:
@@ -25,9 +26,10 @@ private:
 
 class CudaDecoder: public VideoDecoder {
 public:
-  CudaDecoder(const DecodeConfiguration &configuration, FrameQueue& frame_queue, VideoLock& lock)
+  CudaDecoder(const DecodeConfiguration &configuration, FrameQueue& frame_queue, VideoLock& lock, lightdb::spsc_queue<int>& frameNumberQueue)
           : VideoDecoder(configuration, frame_queue), handle_(nullptr),
-            lock_(lock)
+            lock_(lock),
+            frameNumberQueue_(frameNumberQueue)
   {
       CUresult result;
       auto decoderCreateInfo = this->configuration().AsCuvidCreateInfo(lock);
@@ -41,7 +43,8 @@ public:
   CudaDecoder(CudaDecoder&& other) noexcept
           : VideoDecoder(std::move(other)),
             handle_(other.handle_),
-            lock_(other.lock_) {
+            lock_(other.lock_),
+            frameNumberQueue_(other.frameNumberQueue_) {
       other.handle_ = nullptr;
   }
 
@@ -56,10 +59,12 @@ public:
 
   CUvideodecoder handle() const { return handle_; }
   VideoLock &lock() const {return lock_; }
+  lightdb::spsc_queue<int> &frameNumberQueue() const { return frameNumberQueue_; }
 
 protected:
   CUvideodecoder handle_;
   VideoLock &lock_;
+  lightdb::spsc_queue<int> &frameNumberQueue_;
 };
 
 #endif // LIGHTDB_VIDEODECODER_H

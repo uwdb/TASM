@@ -1,33 +1,33 @@
 #ifndef LIGHTDB_MP4READER_H
 #define LIGHTDB_MP4READER_H
 
-#include "Catalog.h"
+#include "Color.h"
 #include "gpac/isomedia.h"
 #include "gpac/internal/isomedia_dev.h"
 #include "gpac/list.h"
-#include <experimental/filesystem>
+#include <filesystem>
 
 class MP4Reader {
 public:
-    static std::vector<int> keyframesForFile(const std::filesystem::path &filename) {
-        if (filename.extension() != ".mp4")
-            return {};
-
-        static const int trackNumber = 1;
-
-        GF_ISOFile *file = gf_isom_open(filename.c_str(), GF_ISOM_OPEN_READ, nullptr);
-        GF_TrackBox *trak = gf_isom_get_track_from_file2(file, trackNumber);
-        GF_SyncSampleBox *sampleBox = trak->Media->information->sampleTable->SyncSample;
-
-        if (!sampleBox)
-            return {};
-
-        std::vector<int> keyframes(sampleBox->nb_entries);
-        for (auto i = 0; i < sampleBox->nb_entries; ++i)
-            keyframes[i] = sampleNumberToFrameNumber(sampleBox->sampleNumbers[i]);
-
-        return keyframes;
-    }
+//    static std::vector<int> keyframesForFile(const std::filesystem::path &filename) {
+//        if (filename.extension() != ".mp4")
+//            return {};
+//
+//        static const int trackNumber = 1;
+//
+//        GF_ISOFile *file = gf_isom_open(filename.c_str(), GF_ISOM_OPEN_READ, nullptr);
+//        GF_TrackBox *trak = gf_isom_get_track_from_file2(file, trackNumber);
+//        GF_SyncSampleBox *sampleBox = trak->Media->information->sampleTable->SyncSample;
+//
+//        if (!sampleBox)
+//            return {};
+//
+//        std::vector<int> keyframes(sampleBox->nb_entries);
+//        for (auto i = 0; i < sampleBox->nb_entries; ++i)
+//            keyframes[i] = sampleNumberToFrameNumber(sampleBox->sampleNumbers[i]);
+//
+//        return keyframes;
+//    }
 
     explicit MP4Reader(const std::filesystem::path &filename)
         : filename_(filename),
@@ -48,7 +48,7 @@ public:
             keyframeNumbers_ = {};
         else {
             keyframeNumbers_.resize(sampleBox->nb_entries);
-            for (auto i = 0; i < sampleBox->nb_entries; ++i)
+            for (unsigned int i = 0; i < sampleBox->nb_entries; ++i)
                 keyframeNumbers_[i] = sampleBox->sampleNumbers[i] - 1;
         }
 
@@ -56,7 +56,6 @@ public:
     }
 
     ~MP4Reader() {
-        return;
 //        gf_isom_close(file_);
     }
 
@@ -80,63 +79,11 @@ public:
         return frameNumber + 1;
     }
 
-    bool allFrameSequencesBeginWithKeyframe(const std::vector<int> &frames) const {
-        if (frames.empty())
-            return true;
+    std::pair<std::vector<int>, std::vector<int>> frameSequencesInSequentialGOPsAndNonSequentialGOPs(const std::vector<int> &frames) const;
 
-        if (allFramesAreKeyframes())
-            return true;
+    bool allFrameSequencesBeginWithKeyframe(const std::vector<int> &frames) const;
 
-        auto keyframeIterator = keyframeNumbers_.begin();
-        auto frameIterator = frames.begin();
-        auto startOfFrameSequence = *frameIterator;
-        while (true) {
-            // See if current frame sequence aligns with a keyframe.
-            while (keyframeIterator != keyframeNumbers_.end() && *keyframeIterator < startOfFrameSequence)
-                keyframeIterator++;
-
-            // See if we weren't able to find a keyframe >= the frame we are interested in.
-            if (keyframeIterator == keyframeNumbers_.end())
-                return false;
-
-            // The keyframe we found is past the start of the frame sequence.
-            if (*keyframeIterator != startOfFrameSequence)
-                return false;
-
-            while (frameIterator + 1 != frames.end() && *(frameIterator + 1) == *frameIterator + 1)
-                frameIterator++;
-
-            // We have no more frames to look at. If we've made it this far, then we're good.
-            if (frameIterator + 1 == frames.end())
-                break;
-
-            // frameIterator is pointing to last frame in sequence. Move it forward, and set it to the start of a new frame sequence.
-            startOfFrameSequence = *(++frameIterator);
-        }
-        return true;
-    }
-
-    lightdb::bytestring dataForSamples(unsigned int firstSampleToRead, unsigned int lastSampleToRead) const {
-        unsigned long size = 0;
-
-        // First read to get sizes.
-        for (auto i = firstSampleToRead; i <= lastSampleToRead; i++) {
-            GF_ISOSample *sample = gf_isom_get_sample_info(file_, trackNumber_, i, NULL, NULL);
-            size += sample->dataLength;
-            gf_isom_sample_del(&sample);
-        }
-
-        // Then read to get the actual data.
-        lightdb::bytestring videoData;
-        videoData.reserve(size);
-        for (auto i = firstSampleToRead; i <= lastSampleToRead; i++) {
-            GF_ISOSample *sample = gf_isom_get_sample(file_, trackNumber_, i, NULL);
-            videoData.insert(videoData.end(), sample->data, sample->data + sample->dataLength);
-            gf_isom_sample_del(&sample);
-        }
-
-        return videoData;
-    }
+    lightdb::bytestring dataForSamples(unsigned int firstSampleToRead, unsigned int lastSampleToRead) const;
 
 private:
     static GF_TrackBox *gf_isom_get_track_from_file2(GF_ISOFile *the_file, u32 trackNumber) {

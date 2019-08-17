@@ -117,21 +117,25 @@ const std::unordered_set<int> &MetadataManager::idealKeyframesForMetadata() cons
         return idealKeyframesForMetadata_;
 
     didSetIdealKeyframesForMetadata_ = true;
+    idealKeyframesForMetadata_ = MetadataManager::idealKeyframesForFrames(orderedFramesForMetadata());
+    return idealKeyframesForMetadata_;
+}
 
-    auto allFrames = orderedFramesForMetadata();
-    if (allFrames.empty())
+std::unordered_set<int> MetadataManager::idealKeyframesForFrames(const std::vector<int> &orderedFrames) {
+    if (orderedFrames.empty())
         return {};
 
     // Find the starts of all sequences.
-    auto lastFrame = allFrames.front();
-    idealKeyframesForMetadata_.insert(lastFrame);
-    for (auto it = allFrames.begin() + 1; it != allFrames.end(); it++) {
+    auto lastFrame = orderedFrames.front();
+    std::unordered_set<int> idealKeyframes;
+    idealKeyframes.insert(lastFrame);
+    for (auto it = orderedFrames.begin() + 1; it != orderedFrames.end(); it++) {
         if (*it != lastFrame + 1)
-            idealKeyframesForMetadata_.insert(*it);
+            idealKeyframes.insert(*it);
 
         lastFrame = *it;
     }
 
-    return idealKeyframesForMetadata_;
+    return idealKeyframes;
 }
 } // namespace lightdb::metadata

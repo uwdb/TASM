@@ -47,6 +47,11 @@ public:
 
     std::chrono::microseconds poll_duration() const { return poll_duration_; }
 
+//    const std::vector<int> &framesThatWillBeDecoded() const { return framesThatWillBeDecoded_; }
+//    void setFramesThatWillBeDecoded(std::vector<int> framesThatWillBeDecoded) {
+//        framesThatWillBeDecoded_ = framesThatWillBeDecoded;
+//    }
+
 private:
     class Runtime: public runtime::GPUUnaryRuntime<GPUDecodeFromCPU, CPUEncodedFrameData> {
     public:
@@ -55,11 +60,11 @@ private:
               configuration_{configuration(), codec()},
               geometry_{geometry()},
               queue_{lock()},
-              decoder_{configuration_, queue_, lock()},
+              frameNumberQueue_(4000), // Not sure what size makes sense here.
+              decoder_{configuration_, queue_, lock(), frameNumberQueue_},
               session_{decoder_, iterator(), iterator().eos()}
-        {
-//            timer_.endSection();
-        }
+//              nextFrameToBeDecoded_(physical.framesThatWillBeDecoded().begin())
+        { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             GLOBAL_TIMER.startSection("GPUDecodeFromCPU");
@@ -94,12 +99,13 @@ private:
         const DecodeConfiguration configuration_;
         const GeometryReference geometry_;
         CUVIDFrameQueue queue_;
+        spsc_queue<int> frameNumberQueue_;
         CudaDecoder decoder_;
         VideoDecoderSession<Runtime::downcast_iterator<CPUEncodedFrameData>> session_;
-//        Timer timer_;
     };
 
     const std::chrono::microseconds poll_duration_;
+//    std::vector<int> framesThatWillBeDecoded_;
 };
 
 class CPUDecode : public PhysicalOperator {

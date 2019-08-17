@@ -89,7 +89,7 @@ namespace lightdb {
         virtual State visit(const logical::SavedLightField &l) { return visit((const LightField&)(l)); }
         virtual State visit(const logical::SunkLightField &l) { return visit((const LightField&)(l)); }
         virtual State visit(const logical::MetadataSubsetLightField &l) { return visit((const LightField&)(l)); }
-        virtual State visit(const logical::MetadataEncodedLightField &l) { visit((const LightField&)l); }
+        virtual State visit(const logical::MetadataEncodedLightField &l) { return visit((const LightField&)l); }
 
         virtual State visit(State state, const LightField &field) { return state + visit(field); }
         virtual State visit(State state, const logical::ConstantLightField &field) { return state + visit(field); }

@@ -64,21 +64,23 @@ protected:
 class MemoryEncodeWriter: public EncodeWriter {
 public:
     explicit MemoryEncodeWriter(EncodeAPI &api, size_t initial_buffer_size=16*1024*1024)
-        : EncodeWriter(api), buffer_() {
+        : EncodeWriter(api), buffer_(), numberOfFramesInBuffer_(0) {
         buffer_.reserve(initial_buffer_size);
     }
 
     MemoryEncodeWriter(const MemoryEncodeWriter&) = delete;
     MemoryEncodeWriter(MemoryEncodeWriter&& other) noexcept
-            : EncodeWriter(std::move(other)), buffer_(std::move(other.buffer_)), lock_{}
+            : EncodeWriter(std::move(other)), buffer_(std::move(other.buffer_)), lock_{}, numberOfFramesInBuffer_(std::move(other.numberOfFramesInBuffer_))
     { }
 
     NVENCSTATUS Flush() override { return NV_ENC_SUCCESS; }
     const std::vector<char>& buffer() const { return buffer_; }
-    std::vector<char> dequeue() {
+    std::vector<char> dequeue(unsigned int &numberOfFrames) {
         std::vector<char> value;
         std::lock_guard lock{lock_};
         buffer_.swap(value);
+        numberOfFrames = numberOfFramesInBuffer_;
+        numberOfFramesInBuffer_ = 0;
         return value;
     }
 
@@ -86,12 +88,14 @@ protected:
     NVENCSTATUS WriteFrame(const void *buffer, const size_t size) override {
         std::lock_guard lock{lock_};
         buffer_.insert(buffer_.end(), static_cast<const char*>(buffer), static_cast<const char*>(buffer) + size);
+        ++numberOfFramesInBuffer_;
         return NV_ENC_SUCCESS;
     }
 
 private:
     std::vector<char> buffer_;
     std::mutex lock_;
+    unsigned int numberOfFramesInBuffer_;
 };
 
 

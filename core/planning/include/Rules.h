@@ -72,7 +72,8 @@ namespace lightdb::optimization {
                         auto gpu = plan().allocator().gpu();
 //                        auto gpu = plan().environment().gpus()[0];
 
-                        plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, stream);
+                        plan().emplace<physical::ScanSequentialFramesFromFileEncodedReader>(logical, stream);
+                        plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
                         return true;
 
                         auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
@@ -157,6 +158,7 @@ namespace lightdb::optimization {
                 plan().emplace<physical::GPUEncodeToCPU>(plan().lookup(node), physical_parents.front(), node.codec());
                 return true;
             }
+            return false;
         }
 
         bool visit(const logical::EncodedLightField &node) override {
@@ -389,9 +391,29 @@ namespace lightdb::optimization {
                 if(physical_parents.empty())
                     return false;
 
-                assert(physical_parents.size() == 1);
-                auto parent = physical_parents.front(); // Decode
+//                assert(physical_parents.size() == 1);
+                auto parent = physical_parents.front(); // ScanEncodedFrames
 
+                /* For combo selection */
+                if (physical_parents.size() == 2 && parent.is<physical::ScanNonSequentialFramesFromFileEncodedReader>()) {
+                    auto &scanNonSequentialFrames = parent.downcast<physical::ScanNonSequentialFramesFromFileEncodedReader>();
+                    auto &scanSequentialFrames = physical_parents.back().downcast<physical::ScanSequentialFramesFromFileEncodedReader>();
+
+                    auto sequentialAndNonSequentialFrames = node.sequentialFramesAndNonSequentialFrames();
+                    scanSequentialFrames.setFramesToRead(sequentialAndNonSequentialFrames.first);
+                    scanNonSequentialFrames.setFramesToRead(sequentialAndNonSequentialFrames.second);
+
+                    auto gpu = plan().allocator().gpu();
+                    auto logical = plan().lookup(node);
+                    auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scanNonSequentialFrames, gpu);
+                    auto encode = plan().emplace<physical::GPUEncodeToCPU>(logical, decode, Codec::hevc());
+
+                    encode.downcast<physical::GPUEncodeToCPU>().setFramesToKeep(scanNonSequentialFrames.framesToRead());
+                    encode.downcast<physical::GPUEncodeToCPU>().setDesiredKeyframes(metadata::MetadataManager::idealKeyframesForFrames(scanNonSequentialFrames.framesToRead()));
+                    return true;
+                }
+
+                /* For homomorphic selection */
                 if (parent.is<physical::ScanFramesFromFileEncodedReader>()) {
                     auto &scanFrames = parent.downcast<physical::ScanFramesFromFileEncodedReader>();
                     plan().emplace<physical::HomomorphicSelectFrames>(plan().lookup(node), parent, scanFrames.source());
@@ -399,7 +421,7 @@ namespace lightdb::optimization {
                     return true;
                 }
 
-                /* For non-homorphic selection */
+                /* For non-homorphic selection (decode & encode everything) */
                 plan().emplace<physical::NaiveSelectFrames>(plan().lookup(node), parent, node.framesForMetadata());
 
                 return true;
@@ -775,6 +797,28 @@ namespace lightdb::optimization {
 
                 if(physical_parents.empty())
                     return false;
+
+                /* For combo metadata frame selection */
+                auto encodeParent = physical_parents.front();
+                auto scanParentOfEncode = encodeParent->parents().front()->parents().front();
+                assert(scanParentOfEncode.is<physical::ScanNonSequentialFramesFromFileEncodedReader>());
+
+                // Find scan of sequential frames.
+                auto logicalScan = node.parents().front()->parents().front();
+                auto physicalAssignmentsForScanLogical = plan().assignments(logicalScan);
+                assert(physicalAssignmentsForScanLogical.size() == 2);
+                // TODO: This is super hacky.
+                // Find scan physical operator for sequential frames, which is not the parent of encode.
+                auto scanSequentialFrames = *(++physicalAssignmentsForScanLogical.begin());
+                assert(scanSequentialFrames.is<physical::ScanSequentialFramesFromFileEncodedReader>());
+
+                // Get frames that Store is looking for.
+                assert(encodeParent->logical().is<logical::MetadataSubsetLightField>());
+
+                plan().emplace<physical::StoreOutOfOrderData>(plan().lookup(node),
+                        std::vector<PhysicalOperatorReference>({encodeParent, scanSequentialFrames}),
+                        encodeParent->logical().downcast<logical::MetadataSubsetLightField>().orderedFramesForMetadata());
+                return true;
 
                 // For homomorphic frame selection:
                 plan().emplace<physical::Store>(plan().lookup(node), physical_parents.front());

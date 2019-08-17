@@ -94,10 +94,8 @@ namespace lightdb::optimization {
         for (auto &physical : physical_) {
             auto &parents = physical->parents();
             // See if parents contains both of originals. Assume that it must contain both?
-            bool containsOne = false;
             for (auto &original : originals) {
                 if (std::find(parents.begin(), parents.end(), original) != parents.end()) {
-                    containsOne = true;
                     break;
                 }
             }
@@ -106,7 +104,7 @@ namespace lightdb::optimization {
             // Replace the first original with the replacement.
             // Remove the rest of the originals.
             std::replace(parents.begin(), parents.end(), originals.front(), replacement);
-            for (int i = 1; i < originals.size(); ++i) {
+            for (long unsigned int i = 1; i < originals.size(); ++i) {
                 std::remove(parents.begin(), parents.end(), originals[i]);
             }
         }

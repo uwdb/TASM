@@ -118,52 +118,58 @@ TEST_F(VisitorTestFixture, testSaveToCatalog) {
 }
 
 static const char *videoToScan = "/home/maureen/noscope_videos/jackson_town_square_1hr.hevc";
-static const std::string videoCatalogName = "jackson_town_square";
-static const std::string labelCategory = "car";
+static const std::string videoCatalogName = "dog_with_gop_5";
+static const std::string labelCategory = "dog";
 
-TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames250) {
+TEST_F(VisitorTestFixture, testLoadAndSelectFramesBasic) {
+    auto input = Scan(videoCatalogName);
+    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+}
+
+TEST_F(VisitorTestFixture, testLoadAndSelectFrames250) {
     auto input = Scan(videoCatalogName + "_gop250");
     MetadataSpecification selection("LABELS", "LABEL", labelCategory);
     Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
 }
 
-TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames60) {
+TEST_F(VisitorTestFixture, testLoadAndSelectFrames60) {
     auto input = Scan(videoCatalogName + "_gop60");
     MetadataSpecification selection("LABELS", "LABEL", labelCategory);
     Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
 }
 
-TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames30) {
+TEST_F(VisitorTestFixture, testLoadAndSelectFrames30) {
     auto input = Scan(videoCatalogName + "_gop30");
     MetadataSpecification selection("LABELS", "LABEL", labelCategory);
     Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
 }
 
-TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames15) {
+TEST_F(VisitorTestFixture, testLoadAndSelectFrames15) {
     auto input = Scan(videoCatalogName + "_gop15");
     MetadataSpecification selection("LABELS", "LABEL", labelCategory);
     Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
 }
 
-TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames10) {
+TEST_F(VisitorTestFixture, testLoadAndSelectFrames10) {
     auto input = Scan(videoCatalogName + "_gop10");
     MetadataSpecification selection("LABELS", "LABEL", labelCategory);
     Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
 }
 
-TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames5) {
+TEST_F(VisitorTestFixture, testLoadAndSelectFrames5) {
     auto input = Scan(videoCatalogName + "_gop5");
     MetadataSpecification selection("LABELS", "LABEL", labelCategory);
     Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
 }
 
-TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFrames1) {
+TEST_F(VisitorTestFixture, testLoadAndSelectFrames1) {
     auto input = Scan(videoCatalogName + "_gop1");
     MetadataSpecification selection("LABELS", "LABEL", labelCategory);
     Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
 }
 
-TEST_F(VisitorTestFixture, uadetracTestLoadAndSelectFramesCustom) {
+TEST_F(VisitorTestFixture, testLoadAndSelectFramesCustom) {
     auto input = Scan(videoCatalogName + "_" + labelCategory);
     MetadataSpecification selection("LABELS", "LABEL", labelCategory);
     Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));

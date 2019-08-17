@@ -70,6 +70,10 @@ namespace lightdb::metadata {
         const std::unordered_set<int> &framesForMetadata() const;
         const std::vector<int> &orderedFramesForMetadata() const;
         const std::unordered_set<int> &idealKeyframesForMetadata() const;
+
+        static std::unordered_set<int> idealKeyframesForFrames(const std::vector<int> &orderedFrames);
+
+
     private:
         const std::filesystem::path pathToVideo_;
         const MetadataSpecification metadataSpecification_;
@@ -90,18 +94,30 @@ namespace lightdb::logical {
         metadataSelection_(metadataSpecification),
         source_(source),
         metadataManager_(source_.filename(), metadataSelection_)
-        { }
+        {
+//            setKeyframesInOptions();
+        }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightField>(visitor); }
         const MetadataSpecification &metadataSpecification() const { return metadataSelection_; }
         const catalog::Source &source() const { return source_; }
         const std::unordered_set<int> &framesForMetadata() const { return metadataManager_.framesForMetadata(); }
         const std::vector<int> &orderedFramesForMetadata() const { return metadataManager_.orderedFramesForMetadata(); }
+        std::pair<std::vector<int>, std::vector<int>> sequentialFramesAndNonSequentialFrames() const {
+            return source().mp4Reader().frameSequencesInSequentialGOPsAndNonSequentialGOPs(orderedFramesForMetadata());
+        }
+
+//        const lightdb::options<>& options() const override { return options_; }
 
     private:
+//        void setKeyframesInOptions() {
+//            options_[EncodeOptions::Keyframes] = metadataManager_.idealKeyframesForMetadata();
+//        }
+
         MetadataSpecification metadataSelection_;
         catalog::Source source_;
         metadata::MetadataManager metadataManager_;
+//        lightdb::options<> options_;
     };
 } // namespace lightdb::logical
 

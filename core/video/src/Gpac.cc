@@ -102,28 +102,6 @@ namespace lightdb::video::gpac {
                 CHECK_GE(left, 0);
                 CHECK_GE(top, 0);
 
-//                auto sampleNumber = 22;
-//                unsigned long dataOffset;
-//                GF_ISOSample *sampleInfo = gf_isom_get_sample_info(file, track_index, sampleNumber, NULL, &dataOffset);
-//
-//                GF_ISOSample *rapSample = NULL;
-//                unsigned int streamDescriptionIndex = 0;
-//                GF_Err error = gf_isom_get_sample_for_media_time(file, track_index, 3000, &streamDescriptionIndex, GF_ISOM_SEARCH_SYNC_SHADOW, &rapSample, NULL);
-
-                GF_ISOFile *dataFile = gf_isom_open(url, GF_ISOM_OPEN_READ_DUMP, nullptr);
-                auto sampleNumber = 25;
-                unsigned long dataOffset = 0;
-                unsigned int descIndex = 0;
-                GF_ISOSample *sampleInfo = gf_isom_get_sample_info(dataFile, track_index, sampleNumber, &descIndex, &dataOffset);
-
-                // Has to be called from the data file, not the metadata file.
-                GF_ISOSample *rapSample = NULL;
-                unsigned int streamDescriptionIndex = 0;
-                unsigned int rapSampleNumber = 0;
-                GF_Err error = gf_isom_get_sample_for_media_time(dataFile, track_index, sampleNumber, &streamDescriptionIndex, GF_ISOM_SEARCH_SYNC_BACKWARD, &rapSample, &rapSampleNumber);
-
-                GF_ISOSample *frameInfo = gf_isom_get_sample(dataFile, track_index, sampleNumber, NULL);
-
                 auto geometry = entry != nullptr
                                 ? serialization::as_geometry(*entry)
                                 : default_geometry.value();

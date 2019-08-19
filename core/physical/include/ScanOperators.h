@@ -82,7 +82,8 @@ private:
         {}
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
-            GLOBAL_TIMER.startSection("ScanFramesFromFileEncodedReader");
+            if (physical().timerIdentifier().length())
+                GLOBAL_TIMER.startSection(physical().timerIdentifier());
             std::optional<physical::MaterializedLightFieldReference> returnVal = {};
             auto gopPacket = frameReader_.read();
             if (gopPacket.has_value()) {
@@ -99,7 +100,8 @@ private:
                 cpuData.downcast<CPUEncodedFrameData>().setFirstFrameIndexAndNumberOfFrames(gopPacket->firstFrameIndex(), gopPacket->numberOfFrames());
                 returnVal = {cpuData};
             }
-            GLOBAL_TIMER.endSection("ScanFramesFromFileEncodedReader");
+            if (physical().timerIdentifier().length())
+                GLOBAL_TIMER.endSection(physical().timerIdentifier());
             return returnVal;
         }
     private:
@@ -108,14 +110,30 @@ private:
 
     const catalog::Source source_;
     std::vector<int> framesToRead_;
+
+protected:
+    virtual const std::string &timerIdentifier() const {
+        static const std::string timerIdentifier = "ScanFramesFromFileEncodedReader";
+        return timerIdentifier;
+    }
 };
 
 class ScanSequentialFramesFromFileEncodedReader: public ScanFramesFromFileEncodedReader {
     using ScanFramesFromFileEncodedReader::ScanFramesFromFileEncodedReader;
+protected:
+    const std::string &timerIdentifier() const override {
+        static const std::string timerIdentifier = "ScanSequentialFramesFromFileEncodedReader";
+        return timerIdentifier;
+    }
 };
 
 class ScanNonSequentialFramesFromFileEncodedReader: public ScanFramesFromFileEncodedReader {
     using ScanFramesFromFileEncodedReader::ScanFramesFromFileEncodedReader;
+protected:
+    const std::string &timerIdentifier() const override {
+        static const std::string timerIdentifier = "";
+        return timerIdentifier;
+    }
 };
 
 class ScanFramesFromFileDecodeReader: public PhysicalOperator {

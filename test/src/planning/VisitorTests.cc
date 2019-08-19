@@ -118,8 +118,8 @@ TEST_F(VisitorTestFixture, testSaveToCatalog) {
 }
 
 static const char *videoToScan = "/home/maureen/noscope_videos/jackson_town_square_1hr.hevc";
-static const std::string videoCatalogName = "dog_with_gop_5";
-static const std::string labelCategory = "dog";
+static const std::string videoCatalogName = "MVI_63563";
+static const std::string labelCategory = "others";
 
 TEST_F(VisitorTestFixture, testLoadAndSelectFramesBasic) {
     auto input = Scan(videoCatalogName);

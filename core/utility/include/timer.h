@@ -16,7 +16,7 @@ public:
     { }
 
     void startSection(const std::string &id) {
-        return; // Weird when have multiple operators with same id.
+//        return; // Weird when have multiple operators with same id.
         // If we're starting a section for an operator, we shouldn't already have that operator waiting to finish.
         assert(std::find(operatorsInProgress_.begin(), operatorsInProgress_.end(), id) == operatorsInProgress_.end());
         std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
@@ -31,7 +31,7 @@ public:
     }
 
     void endSection(const std::string &id) {
-        return;
+//        return;
         assert(currentOperation_ == id);
 
         std::chrono::system_clock::time_point now = std::chrono::system_clock::now();

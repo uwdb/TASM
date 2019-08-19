@@ -84,6 +84,9 @@ private:
                 timer_.startSection("inside-GPUEncodeToCPU");
                 bool encodedKeyframe = false;
                 for (auto &frameIt = currentDataFramesIterator_; frameIt != decoded.frames().end(); frameIt++) {
+                    if (encodedKeyframe)
+                        break;
+
                     int frameNumberFromFrame = -1;
                     auto frameNumber = (*frameIt)->getFrameNumber(frameNumberFromFrame) ? frameNumberFromFrame : frameNumber_;
                     ++frameNumber_; // Always increment this so we can keep track of how many frames were decoded.
@@ -93,11 +96,9 @@ private:
                     ++numberOfEncodedFrames_;
                     // Try to force the output of 1 GOP at a time.
                     if (desiredKeyframes_.count(frameNumber)) {
+                        // Flush the last GOP.
                         encodeSession_.Flush();
-                        if (encodedKeyframe)
-                            break;
-                        else
-                            encodedKeyframe = true;
+                        encodedKeyframe = true;
                     }
 
                     encodeSession_.Encode(**frameIt, decoded.configuration().offset.top,
@@ -105,22 +106,23 @@ private:
                                           desiredKeyframes_.count(frameNumber));
                 }
 
-                //TODO think this should move down just above nullopt
-                // Did we just reach the end of the decode stream?
-                if (iterator() == iterator().eos() || noMoreFramesInCurrentData())
-                    // If so, flush the encode queue and end this op too
-                    encodeSession_.Flush();
-
-                // For mixed frame selection, we need to export this one GOP at a time.
-                unsigned int numberOfFrames = 0;
-                auto returnVal = CPUEncodedFrameData(physical().codec(), decoded.configuration(), decoded.geometry(), writer_.dequeue(numberOfFrames));
-                returnVal.setFirstFrameIndexAndNumberOfFrames(*nextFrameThatWillBeEncoded_, numberOfFrames);
-                std::advance(nextFrameThatWillBeEncoded_, numberOfFrames);
+                auto configuration = decoded.configuration();
+                auto geometry = decoded.geometry();
 
                 if (noMoreFramesInCurrentData()) {
                     ++iterator();
                     currentDataFramesIteratorIsValid_ = false;
                 }
+
+                if (iterator() == iterator().eos())
+                    // If so, flush the encode queue and end this op too
+                    encodeSession_.Flush();
+
+                // For mixed frame selection, we need to export this one GOP at a time.
+                unsigned int numberOfFrames = 0;
+                auto returnVal = CPUEncodedFrameData(physical().codec(), configuration, geometry, writer_.dequeue(numberOfFrames));
+                returnVal.setFirstFrameIndexAndNumberOfFrames(*nextFrameThatWillBeEncoded_, numberOfFrames);
+                std::advance(nextFrameThatWillBeEncoded_, numberOfFrames);
 
                 GLOBAL_TIMER.endSection("GPUEncodeToCPU");
                 timer_.endSection("inside-GPUEncodeToCPU");

@@ -121,8 +121,11 @@ private:
                 // For mixed frame selection, we need to export this one GOP at a time.
                 unsigned int numberOfFrames = 0;
                 auto returnVal = CPUEncodedFrameData(physical().codec(), configuration, geometry, writer_.dequeue(numberOfFrames));
-                returnVal.setFirstFrameIndexAndNumberOfFrames(*nextFrameThatWillBeEncoded_, numberOfFrames);
-                std::advance(nextFrameThatWillBeEncoded_, numberOfFrames);
+
+                if (physical().didSetFramesToKeep()) {
+                    returnVal.setFirstFrameIndexAndNumberOfFrames(*nextFrameThatWillBeEncoded_, numberOfFrames);
+                    std::advance(nextFrameThatWillBeEncoded_, numberOfFrames);
+                }
 
                 GLOBAL_TIMER.endSection("GPUEncodeToCPU");
                 timer_.endSection("inside-GPUEncodeToCPU");

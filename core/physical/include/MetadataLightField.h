@@ -71,10 +71,13 @@ namespace lightdb::metadata {
         const std::vector<int> &orderedFramesForMetadata() const;
         const std::unordered_set<int> &idealKeyframesForMetadata() const;
 
+        const std::vector<Rectangle> &rectanglesForFrame(int frame) const;
+
         static std::unordered_set<int> idealKeyframesForFrames(const std::vector<int> &orderedFrames);
 
-
     private:
+        void selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn) const;
+
         const std::filesystem::path pathToVideo_;
         const MetadataSpecification metadataSpecification_;
         mutable bool didSetFramesForMetadata_;
@@ -83,15 +86,17 @@ namespace lightdb::metadata {
         mutable std::vector<int> orderedFramesForMetadata_;
         mutable bool didSetIdealKeyframesForMetadata_;
         mutable std::unordered_set<int> idealKeyframesForMetadata_;
+        mutable std::unordered_map<int, std::vector<lightdb::Rectangle>> frameToRectangles_;
     };
 } // namespace lightdb::metadata
 
 namespace lightdb::logical {
     class MetadataSubsetLightField : public LightField {
     public:
-        MetadataSubsetLightField(const LightFieldReference &lightField, const MetadataSpecification &metadataSpecification, const catalog::Source &source)
+        MetadataSubsetLightField(const LightFieldReference &lightField, const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType, const catalog::Source &source)
         : LightField(lightField),
         metadataSelection_(metadataSpecification),
+        subsetType_(subsetType),
         source_(source),
         metadataManager_(source_.filename(), metadataSelection_)
         {
@@ -100,24 +105,22 @@ namespace lightdb::logical {
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightField>(visitor); }
         const MetadataSpecification &metadataSpecification() const { return metadataSelection_; }
+        MetadataSubsetType subsetType() const { return subsetType_; }
         const catalog::Source &source() const { return source_; }
+
+        // Should there be different classes of metadata selection? e.g. frames, pixels?
         const std::unordered_set<int> &framesForMetadata() const { return metadataManager_.framesForMetadata(); }
         const std::vector<int> &orderedFramesForMetadata() const { return metadataManager_.orderedFramesForMetadata(); }
         std::pair<std::vector<int>, std::vector<int>> sequentialFramesAndNonSequentialFrames() const {
             return source().mp4Reader().frameSequencesInSequentialGOPsAndNonSequentialGOPs(orderedFramesForMetadata());
         }
 
-//        const lightdb::options<>& options() const override { return options_; }
-
+        const std::vector<Rectangle> &rectanglesForFrame(int frame) const { return metadataManager_.rectanglesForFrame(frame); }
     private:
-//        void setKeyframesInOptions() {
-//            options_[EncodeOptions::Keyframes] = metadataManager_.idealKeyframesForMetadata();
-//        }
-
         MetadataSpecification metadataSelection_;
+        MetadataSubsetType subsetType_;
         catalog::Source source_;
         metadata::MetadataManager metadataManager_;
-//        lightdb::options<> options_;
     };
 } // namespace lightdb::logical
 

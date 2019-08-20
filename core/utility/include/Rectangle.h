@@ -7,6 +7,10 @@ namespace lightdb {
         unsigned int x, y;
         unsigned int width, height;
 
+        Rectangle(unsigned int id = 0, unsigned int x = 0, unsigned int y = 0, unsigned int width = 0, unsigned int height = 0)
+            : id(id), x(x), y(y), width(width), height(height)
+        { }
+
         bool containsPoint(const unsigned int &posX, const unsigned int &posY) const {
             return x <= posX
                 && y <= posY

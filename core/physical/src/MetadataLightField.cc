@@ -63,33 +63,39 @@ std::vector<Rectangle> MetadataLightField::allRectangles() {
 } // namespace lightdb::physical
 
 namespace lightdb::metadata {
+    void MetadataManager::selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn) const {
+        sqlite3 *db;
+        ASSERT_SQLITE_OK(sqlite3_open_v2(lightdb::associations::VideoPathToLabelsPath.at(pathToVideo_).c_str(), &db, SQLITE_OPEN_READONLY, NULL));
+
+        char *selectFramesStatement = nullptr;
+        int size = asprintf(&selectFramesStatement, query,
+                            metadataSpecification_.tableName().c_str(),
+                            metadataSpecification_.columnName().c_str(),
+                            metadataSpecification_.expectedValue().c_str());
+        assert(size != -1);
+
+        sqlite3_stmt *select;
+        ASSERT_SQLITE_OK(sqlite3_prepare_v2(db, selectFramesStatement, size, &select, nullptr));
+
+        // Step and get results.
+        int result;
+        while ((result = sqlite3_step(select)) == SQLITE_ROW)
+            resultFn(select);
+
+        assert(result == SQLITE_DONE);
+
+        sqlite3_finalize(select);
+        sqlite3_close(db);
+        free(selectFramesStatement);
+    }
+
 const std::unordered_set<int> &MetadataManager::framesForMetadata() const {
     if (didSetFramesForMetadata_)
         return framesForMetadata_;
 
-    sqlite3 *db;
-    ASSERT_SQLITE_OK(sqlite3_open_v2(lightdb::associations::VideoPathToLabelsPath.at(pathToVideo_).c_str(), &db, SQLITE_OPEN_READONLY, NULL));
-
-    char *selectFramesStatement = nullptr;
-    int size = asprintf(&selectFramesStatement, "SELECT DISTINCT FRAME FROM %s WHERE %s = '%s';",
-                        metadataSpecification_.tableName().c_str(),
-                        metadataSpecification_.columnName().c_str(),
-                        metadataSpecification_.expectedValue().c_str());
-    assert(size != -1);
-
-    sqlite3_stmt *select;
-    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db, selectFramesStatement, size, &select, nullptr));
-
-    // Step and get results.
-    int result;
-    while ((result = sqlite3_step(select)) == SQLITE_ROW) {
-        framesForMetadata_.insert(sqlite3_column_int(select, 0));
-    }
-    assert(result == SQLITE_DONE);
-
-    sqlite3_finalize(select);
-    sqlite3_close(db);
-    free(selectFramesStatement);
+    selectFromMetadataAndApplyFunction("SELECT DISTINCT FRAME FROM %s WHERE %s = '%s';", [this](sqlite3_stmt *stmt) {
+        framesForMetadata_.insert(sqlite3_column_int(stmt, 0));
+    });
 
     didSetFramesForMetadata_ = true;
     return framesForMetadata_;
@@ -137,5 +143,24 @@ std::unordered_set<int> MetadataManager::idealKeyframesForFrames(const std::vect
     }
 
     return idealKeyframes;
+}
+
+const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) const {
+    if (frameToRectangles_.count(frame))
+        return frameToRectangles_[frame];
+
+    std::string query = "SELECT frame, x, y, width, height FROM %s WHERE %s = '%s' and frame = " + std::to_string(frame) + ";";
+
+    selectFromMetadataAndApplyFunction(query.c_str(), [this, frame](sqlite3_stmt *stmt) {
+        unsigned int queryFrame = sqlite3_column_int(stmt, 0);
+        assert(queryFrame == frame);
+        unsigned int x = sqlite3_column_int(stmt, 1);
+        unsigned int y = sqlite3_column_int(stmt, 2);
+        unsigned int width = sqlite3_column_int(stmt, 3);
+        unsigned int height = sqlite3_column_int(stmt, 4);
+
+        frameToRectangles_[frame].emplace_back(queryFrame, x, y, width, height);
+    });
+    return frameToRectangles_[frame];
 }
 } // namespace lightdb::metadata

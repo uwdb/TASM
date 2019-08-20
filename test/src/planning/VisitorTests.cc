@@ -108,8 +108,8 @@ TEST_F(VisitorTestFixture, testScanAndSink) {
 }
 
 TEST_F(VisitorTestFixture, testScanAndSave) {
-    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Save("/home/maureen/tst.hevc"));
+    auto input = Load("/home/maureen/uadetrac_videos/MVI_63563/tiles/MVI_63563.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/reencoded.hevc"));
 }
 
 TEST_F(VisitorTestFixture, testSaveToCatalog) {
@@ -118,12 +118,18 @@ TEST_F(VisitorTestFixture, testSaveToCatalog) {
 }
 
 static const char *videoToScan = "/home/maureen/noscope_videos/jackson_town_square_1hr.hevc";
-static const std::string videoCatalogName = "MVI_63563";
-static const std::string labelCategory = "others";
+static const std::string videoCatalogName = "dog_with_gop_30";
+static const std::string labelCategory = "dog";
 
 TEST_F(VisitorTestFixture, testLoadAndSelectFramesBasic) {
     auto input = Scan(videoCatalogName);
     MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+}
+
+TEST_F(VisitorTestFixture, testLoadAndSelectPixelsBasic) {
+    auto input = Scan(videoCatalogName);
+    PixelMetadataSpecification selection("labels", "label", labelCategory);
     Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
 }
 

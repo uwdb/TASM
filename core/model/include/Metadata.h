@@ -22,6 +22,19 @@ namespace lightdb {
         std::string expectedValue_;
     };
 
+    enum class MetadataSubsetType {
+        Frame,
+        Pixel,
+    };
+
+    class FrameMetadataSpecification : public MetadataSpecification {
+        using MetadataSpecification::MetadataSpecification;
+    };
+
+    class PixelMetadataSpecification : public MetadataSpecification {
+        using MetadataSpecification::MetadataSpecification;
+    };
+
 } // namespace lightdb
 
 #endif //LIGHTDB_METADATA_H

@@ -60,11 +60,19 @@ namespace lightdb::logical {
         return LightFieldReference::make<SubsetLightField>(this_, volume);
     }
 
-    LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification) {
+    LightFieldReference Algebra::Select(const FrameMetadataSpecification &frameMetadataSpecification) {
+        return Select(frameMetadataSpecification, MetadataSubsetType::Frame);
+    }
+
+    LightFieldReference Algebra::Select(const PixelMetadataSpecification &pixelMetadataSpecification) {
+        return Select(pixelMetadataSpecification, MetadataSubsetType::Pixel);
+    }
+
+    LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType) {
         if (this_.is<ExternalLightField>())
-            return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, this_.downcast<ExternalLightField>().source());
+            return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, this_.downcast<ExternalLightField>().source());
         else if (this_.is<ScannedLightField>())
-            return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, this_.downcast<ScannedLightField>().sources().front());
+            return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, this_.downcast<ScannedLightField>().sources().front());
         else
             assert(false);
     }

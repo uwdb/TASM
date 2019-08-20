@@ -35,7 +35,9 @@ namespace lightdb {
             // Specify table name, column name, and column value.
             // For now just support equality.
             // Can create a class, like the ranges, to enable specifying all this.
-            LightFieldReference Select(const MetadataSpecification&);
+            LightFieldReference Select(const FrameMetadataSpecification&);
+            LightFieldReference Select(const PixelMetadataSpecification&);
+            LightFieldReference Select(const MetadataSpecification&, MetadataSubsetType subsetType = MetadataSubsetType::Frame);
 
 
             LightFieldReference Union(std::vector<LightFieldReference>); //TODO needs merge function

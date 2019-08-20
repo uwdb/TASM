@@ -21,7 +21,8 @@
 #include "Rectangle.h"
 
 #include <iostream>
-#include <SelectFramesOperators.h>
+#include "SelectFramesOperators.h"
+#include "SelectPixelsOperators.h"
 
 namespace lightdb::optimization {
     class ChooseMaterializedScans : public OptimizerRule {
@@ -72,9 +73,10 @@ namespace lightdb::optimization {
                         auto gpu = plan().allocator().gpu();
 //                        auto gpu = plan().environment().gpus()[0];
 
-                        plan().emplace<physical::ScanSequentialFramesFromFileEncodedReader>(logical, stream);
-                        plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
-                        return true;
+                        // Only decode certain frames.
+//                        plan().emplace<physical::ScanSequentialFramesFromFileEncodedReader>(logical, stream);
+//                        plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
+//                        return true;
 
                         auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
@@ -393,6 +395,13 @@ namespace lightdb::optimization {
 
 //                assert(physical_parents.size() == 1);
                 auto parent = physical_parents.front(); // ScanEncodedFrames
+
+                /* See if we are selecting pixels. */
+                if (node.subsetType() == MetadataSubsetType::Pixel) {
+                    assert(parent.is<physical::GPUOperator>());
+                    plan().emplace<physical::GPUNaiveSelectPixels>(plan().lookup(node), parent);
+                    return true;
+                }
 
                 /* For combo selection */
                 if (physical_parents.size() == 2) {
@@ -802,45 +811,45 @@ namespace lightdb::optimization {
                     return false;
 
                 /* For combo metadata frame selection */
-                auto encodeParent = physical_parents.front();
-                auto scanParentOfEncode = encodeParent->parents().front()->parents().front();
-                assert(scanParentOfEncode.is<physical::ScanNonSequentialFramesFromFileEncodedReader>());
+//                auto encodeParent = physical_parents.front();
+//                auto scanParentOfEncode = encodeParent->parents().front()->parents().front();
+//                assert(scanParentOfEncode.is<physical::ScanNonSequentialFramesFromFileEncodedReader>());
+//
+//                bool shouldIncludeDecodeEncodeInPlan = !scanParentOfEncode.downcast<physical::ScanNonSequentialFramesFromFileEncodedReader>().framesToRead().empty();
+//
+//                // Find scan of sequential frames.
+//                auto logicalScan = node.parents().front()->parents().front();
+//                auto physicalAssignmentsForScanLogical = plan().assignments(logicalScan);
+//                assert(physicalAssignmentsForScanLogical.size() == 2);
+//                // TODO: This is super hacky.
+//                // Find scan physical operator for sequential frames, which is not the parent of encode.
+//                auto scanSequentialFrames = physicalAssignmentsForScanLogical.begin()->is<physical::ScanSequentialFramesFromFileEncodedReader>()
+//                                                ? *(physicalAssignmentsForScanLogical.begin()) :  *(++physicalAssignmentsForScanLogical.begin());
+//                assert(scanSequentialFrames.is<physical::ScanSequentialFramesFromFileEncodedReader>());
+//
+//                // Get frames that Store is looking for.
+//                assert(encodeParent->logical().is<logical::MetadataSubsetLightField>());
+//
+//                plan().emplace<physical::StoreOutOfOrderData>(plan().lookup(node),
+//                        shouldIncludeDecodeEncodeInPlan ? std::vector<PhysicalOperatorReference>({encodeParent, scanSequentialFrames}) : std::vector<PhysicalOperatorReference>({scanSequentialFrames}),
+//                        encodeParent->logical().downcast<logical::MetadataSubsetLightField>().orderedFramesForMetadata());
+//                return true;
+//
+//                // For homomorphic frame selection:
+//                plan().emplace<physical::Store>(plan().lookup(node), physical_parents.front());
+//                return true;
+//
+//                // For naive frame selection:
+//                bool lastFrameWasMetadataSelection = physical_parents.front().is<physical::NaiveSelectFrames>();
+//                auto encode = Encode(node, physical_parents.front(), lastFrameWasMetadataSelection);
+//                if (lastFrameWasMetadataSelection) {
+//                    encode.downcast<physical::GPUEncodeToCPU>().setFramesToKeep(physical_parents.front().downcast<physical::NaiveSelectFrames>().framesToKeep());
+//                }
+//                plan().emplace<physical::Store>(plan().lookup(node), encode);
+//                return true;
 
-                bool shouldIncludeDecodeEncodeInPlan = !scanParentOfEncode.downcast<physical::ScanNonSequentialFramesFromFileEncodedReader>().framesToRead().empty();
-
-                // Find scan of sequential frames.
-                auto logicalScan = node.parents().front()->parents().front();
-                auto physicalAssignmentsForScanLogical = plan().assignments(logicalScan);
-                assert(physicalAssignmentsForScanLogical.size() == 2);
-                // TODO: This is super hacky.
-                // Find scan physical operator for sequential frames, which is not the parent of encode.
-                auto scanSequentialFrames = physicalAssignmentsForScanLogical.begin()->is<physical::ScanSequentialFramesFromFileEncodedReader>()
-                                                ? *(physicalAssignmentsForScanLogical.begin()) :  *(++physicalAssignmentsForScanLogical.begin());
-                assert(scanSequentialFrames.is<physical::ScanSequentialFramesFromFileEncodedReader>());
-
-                // Get frames that Store is looking for.
-                assert(encodeParent->logical().is<logical::MetadataSubsetLightField>());
-
-                plan().emplace<physical::StoreOutOfOrderData>(plan().lookup(node),
-                        shouldIncludeDecodeEncodeInPlan ? std::vector<PhysicalOperatorReference>({encodeParent, scanSequentialFrames}) : std::vector<PhysicalOperatorReference>({scanSequentialFrames}),
-                        encodeParent->logical().downcast<logical::MetadataSubsetLightField>().orderedFramesForMetadata());
-                return true;
-
-                // For homomorphic frame selection:
-                plan().emplace<physical::Store>(plan().lookup(node), physical_parents.front());
-                return true;
-
-                // For naive frame selection:
-                bool lastFrameWasMetadataSelection = physical_parents.front().is<physical::NaiveSelectFrames>();
-                auto encode = Encode(node, physical_parents.front(), lastFrameWasMetadataSelection);
-                if (lastFrameWasMetadataSelection) {
-                    encode.downcast<physical::GPUEncodeToCPU>().setFramesToKeep(physical_parents.front().downcast<physical::NaiveSelectFrames>().framesToKeep());
-                }
+                auto encode = Encode(node, physical_parents[0]);
                 plan().emplace<physical::Store>(plan().lookup(node), encode);
-                return true;
-
-//                auto encode = Encode(node, physical_parents[0]);
-                plan().emplace<physical::Store>(plan().lookup(node), physical_parents[0]);
                 return true;
             }
             return false;
@@ -953,9 +962,9 @@ namespace lightdb::optimization {
                 if(physical_parents.empty())
                     return false;
 
-                // For homomorphic frame selection:
-                plan().emplace<physical::SaveToFile>(plan().lookup(node), physical_parents.front());
-                return true;
+//                // For homomorphic frame selection:
+//                plan().emplace<physical::SaveToFile>(plan().lookup(node), physical_parents.front());
+//                return true;
 
                 bool lastFrameWasMetadataSelection = physical_parents.front().is<physical::NaiveSelectFrames>();
 

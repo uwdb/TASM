@@ -31,11 +31,12 @@ void select_pixels(
 
     if (im_x < width && im_y < height) {
         const unsigned int output_luma_offset = im_x + im_y * pitch;
-//        const unsigned int output_luma_size = height * pitch;
-//        const unsigned int output_chroma_offset = output_luma_size + im_x + (im_y / 2) * pitch;
+        const unsigned int output_luma_size = height * pitch;
+        const unsigned int output_chroma_offset = output_luma_size + im_x + (im_y / 2) * pitch;
 
         if (!someRectangleContainsPoint(rectangles, rectangle_count, im_x, im_y)) {
             nv12output[output_luma_offset] = 0;
+            nv12output[output_chroma_offset] = 128;
         }
     }
 }

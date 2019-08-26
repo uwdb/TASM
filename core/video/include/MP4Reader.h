@@ -29,7 +29,7 @@ public:
 //        return keyframes;
 //    }
 
-    explicit MP4Reader(const std::filesystem::path &filename)
+    explicit MP4Reader(const std::filesystem::path &filename, bool forDecoding = true)
         : filename_(filename),
         invalidFile_(false)
     {
@@ -39,7 +39,11 @@ public:
         }
 
         file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
-        assert(gf_isom_set_nalu_extract_mode(file_, 1, GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG | GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG) == GF_OK);
+        u32 flags = GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG;
+        // I htink the ANNEXB flag adds AUD NALS.
+        if (forDecoding)
+            flags |= GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG;
+        assert(gf_isom_set_nalu_extract_mode(file_, 1, flags) == GF_OK);
 
         GF_TrackBox *trak = gf_isom_get_track_from_file2(file_, trackNumber_);
         GF_SyncSampleBox *sampleBox = trak->Media->information->sampleTable->SyncSample;

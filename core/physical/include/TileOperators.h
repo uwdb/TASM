@@ -94,10 +94,10 @@ private:
             EncodedFrameReader blackFramesReader(
                     physical().tileEntry().pathForBlackTile(physical().tileNumber()),
                     blackFramesToRead);
-            blackFramesReader.setShouldReadFramesExactly(true);
+//            blackFramesReader.setShouldReadFramesExactly(true);
 
             bytestring blackFramesEncodedData;
-            auto numberOfFrames = 0;
+            auto numberOfFrames = 0u;
 
             for (auto frames = blackFramesReader.read(); frames.has_value(); frames = blackFramesReader.read()) {
                 blackFramesEncodedData.insert(blackFramesEncodedData.end(), frames->data().begin(), frames->data().end());
@@ -116,6 +116,95 @@ private:
     std::vector<int> allFramesToOutput_;
     const catalog::TileEntry tileEntry_;
     unsigned int tileNumber_;
+};
+
+class StitchTiles: public PhysicalOperator {
+public:
+    explicit StitchTiles(const LightFieldReference &logical,
+                         std::vector<PhysicalOperatorReference> &parents,
+                         const tiles::TileLayout &tileLayout)
+            : PhysicalOperator(logical, parents, DeviceType::CPU, runtime::make<Runtime>(*this, "StitchTiles-init")),
+              tileLayout_(tileLayout)
+    { }
+
+    const tiles::TileLayout &tileLayout() const { return tileLayout_; }
+
+private:
+    class Runtime: public runtime::Runtime<StitchTiles> {
+    public:
+        explicit Runtime(StitchTiles &physical)
+                : runtime::Runtime<StitchTiles>(physical),
+                  materializedData_(physical.tileLayout().numberOfTiles()),
+                  configuration_(createConfiguration()),
+                  geometry_(getGeometry()),
+                  parentToTileNumber_(getParentToTileNumber())
+        { }
+
+        std::optional<physical::MaterializedLightFieldReference> read() override {
+            GLOBAL_TIMER.startSection("StitchTiles");
+            if (!all_parent_eos()) {
+                // Parent is a CoalesceSingleTile operator, which exposes a tileNumber() function.
+                for (auto index = 0u; index < iterators().size(); index++) {
+                    if (iterators()[index] != iterators()[index].eos()) {
+                        auto next = (iterators()[index]++);
+                        const auto &data = next.downcast<CPUEncodedFrameData>().value();
+                        auto tileIndex = parentToTileNumber_[index];
+                        materializedData_[tileIndex].insert(materializedData_[tileIndex].end(), data.begin(), data.end());
+                    }
+                }
+                GLOBAL_TIMER.endSection("StitchTiles");
+                return CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, bytestring{});
+
+            } else if (!materializedData_.empty()) {
+                auto numberOfRows = physical().tileLayout().numberOfRows();
+                auto numberOfColumns = physical().tileLayout().numberOfColumns();
+                hevc::StitchContext context({numberOfRows, numberOfColumns},
+                                            {configuration_.height / numberOfRows, configuration_.width / numberOfColumns});
+                hevc::Stitcher stitcher(context, materializedData_);
+                materializedData_.clear(); // for flagging materializedData.empty().
+
+                auto returnValue = CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, stitcher.GetStitchedSegments());
+                GLOBAL_TIMER.endSection("StitchTiles");
+                return returnValue;
+            } else {
+                GLOBAL_TIMER.endSection("StitchTiles");
+                return {};
+            }
+        }
+
+    private:
+        const Configuration createConfiguration() {
+            auto configuration = (*iterators().front()).downcast<FrameData>().configuration();
+            return Configuration{physical().tileLayout().totalWidth(),
+                                 physical().tileLayout().totalHeight(),
+                                 configuration.max_width * physical().tileLayout().numberOfColumns(),
+                                 configuration.max_height * physical().tileLayout().numberOfRows(),
+                                 configuration.bitrate,
+                                 configuration.framerate, {}};
+        }
+
+        GeometryReference getGeometry() {
+            CHECK(!physical().parents().empty());
+
+            return(*iterators().front()).expect_downcast<FrameData>().geometry();
+        }
+
+        std::unordered_map<unsigned int, unsigned int> getParentToTileNumber() {
+            std::unordered_map<unsigned int, unsigned int> parentToTileNumber;
+            for (auto index = 0u; index < physical().parents().size(); ++index) {
+                auto tileNumber = physical().parents()[index].downcast<CoalesceSingleTile>().tileNumber();
+                parentToTileNumber[index] = tileNumber;
+            }
+            return parentToTileNumber;
+        }
+
+        std::vector<bytestring> materializedData_;
+        const Configuration configuration_;
+        const GeometryReference geometry_;
+        std::unordered_map<unsigned int, unsigned int> parentToTileNumber_;
+    };
+
+    tiles::TileLayout tileLayout_;
 };
 
 } // namespace lightdb::physical

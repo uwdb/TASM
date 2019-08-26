@@ -8,7 +8,7 @@ namespace lightdb::hevc {
         }
 
         assert(dimensions.first > 0 && dimensions.second > 0);
-        assert(!metadata_.GetValue("tiles_enabled_flag"));
+        assert(!getMetadataValue("tiles_enabled_flag"));
         assert(tile_dimensions_.first == 0 && tile_dimensions_.second == 0);
 
         // The dimensions are width first, then height, so we must reverse the
@@ -27,28 +27,28 @@ namespace lightdb::hevc {
         }
 
         // Set the tiles enabled flag to true
-        data_[metadata_.GetValue("tiles_enabled_flag_offset")] = true;
-        data_.insert(data_.begin() + metadata_.GetValue("tile_dimensions_offset"), make_move_iterator(dimensions_bits.begin()), make_move_iterator(dimensions_bits.end()));
+        data_[getMetadataValue("tiles_enabled_flag_offset")] = true;
+        data_.insert(data_.begin() + getMetadataValue("tile_dimensions_offset"), make_move_iterator(dimensions_bits.begin()), make_move_iterator(dimensions_bits.end()));
         data_.ByteAlignWithoutRemoval();
 
         tile_dimensions_ = dimensions;
     }
 
     bool PictureParameterSet::TryToTurnOnOutputFlagPresentFlag() {
-        bool outputFlagPresent = metadata_.GetValue("output_flag_present_flag");
+        bool outputFlagPresent = getMetadataValue("output_flag_present_flag");
         if (outputFlagPresent)
             return false;
 
         // Flip flag to 1.
-        assert(!data_[metadata_.GetValue("output_flag_present_flag_offset")]);
-        data_[metadata_.GetValue("output_flag_present_flag_offset")] = true;
-        assert(data_[metadata_.GetValue("output_flag_present_flag_offset")]);
+        assert(!data_[getMetadataValue("output_flag_present_flag_offset")]);
+        data_[getMetadataValue("output_flag_present_flag_offset")] = true;
+        assert(data_[getMetadataValue("output_flag_present_flag_offset")]);
 
         return true;
     }
 
     bool PictureParameterSet::HasOutputFlagPresentFlagEnabled() {
-            return data_[metadata_.GetValue("output_flag_present_flag_offset")];
+            return data_[getMetadataValue("output_flag_present_flag_offset")];
     }
 }; //namespace lightdb::hevc
 

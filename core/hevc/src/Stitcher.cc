@@ -124,8 +124,8 @@ namespace lightdb::hevc {
     static BitArray createBitArray(const bytestring &data, bytestring::iterator &currentByte, unsigned int numberOfBytesToTranslate) {
         BitArray bits(0);
         bits.reserve(numberOfBytesToTranslate * 8);
-        auto bitIndex = 0;
-        for (auto i = 0; i < numberOfBytesToTranslate; i++) {
+//        auto bitIndex = 0;
+        for (auto i = 0u; i < numberOfBytesToTranslate; i++) {
             unsigned char c = *currentByte++;
             if (c == 3)
                 continue;
@@ -138,8 +138,8 @@ namespace lightdb::hevc {
     }
 
     static void updateBytes(bytestring &data, unsigned int startingByteIndex, unsigned int numberOfBytesToUpdate, const BitArray &updatedBits) {
-        auto translatedByteIndex = 0;
-        for (auto i = 0; i < numberOfBytesToUpdate; ++i) {
+        auto translatedByteIndex = 0u;
+        for (auto i = 0u; i < numberOfBytesToUpdate; ++i) {
             if (data[startingByteIndex+ i] == 3)
                 continue;
 
@@ -280,7 +280,7 @@ namespace lightdb::hevc {
     bytestring Stitcher::combinedNalsForTile(unsigned int tileNumber) const {
         unsigned int totalSize = 0;
         std::vector<bytestring> bytes(formattedNals_[tileNumber].size());
-        for (auto i = 0; i < formattedNals_[tileNumber].size(); i++) {
+        for (auto i = 0u; i < formattedNals_[tileNumber].size(); i++) {
             auto nalBytes = formattedNals_[tileNumber][i]->GetBytes();
             bytes[i].resize(nalBytes.size());
             totalSize += nalBytes.size();

@@ -40,6 +40,8 @@ namespace lightdb::hevc {
             CHECK_EQ(metadata_.GetValue("end") % 8, 0);
         }
 
+        const BitStream &metadata() const { return metadata_; }
+
         inline bool HasEntryPointOffsets() const {
             return metadata_.GetValue("tiles_enabled_flag") ||
                    metadata_.GetValue("entropy_coding_sync_enabled_flag");
@@ -73,8 +75,7 @@ namespace lightdb::hevc {
         PictureParameterSet(const StitchContext &context, const bytestring &data)
                 : Nal(context, data),
                   data_(RemoveEmulationPrevention(data, GetHeaderSize(), data.size())),
-                  metadata_(data_.begin(), data_.begin() + GetHeaderSizeInBits()),
-                  ppsMetadata_(metadata_),
+                  ppsMetadata_({data_.begin(), data_.begin() + GetHeaderSizeInBits()}),
                   tile_dimensions_{0, 0} {
 
         }
@@ -136,8 +137,11 @@ namespace lightdb::hevc {
         inline PictureParameterSetMetadata pictureParameterSetMetadata() const { return ppsMetadata_; }
 
     private:
+        unsigned long getMetadataValue(const std::string &key) const {
+            return ppsMetadata_.metadata().GetValue(key);
+        }
+
         BitArray data_;
-        BitStream metadata_;
         PictureParameterSetMetadata ppsMetadata_;
         std::pair<unsigned long, unsigned long> tile_dimensions_;
     };

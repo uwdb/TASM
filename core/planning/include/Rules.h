@@ -418,12 +418,13 @@ namespace lightdb::optimization {
                     // Get rectangle for tile.
                     auto gpu = plan().allocator().gpu();
                     auto logical = plan().lookup(node);
+                    std::vector<PhysicalOperatorReference> coalesces;
                     for (auto &parent: physical_parents) {
                         auto &scan = parent.downcast<physical::ScanFramesFromFileEncodedReader>();
                         auto tileNumber = scan.source().index();
 
-                        if (tileNumber)
-                            continue;
+//                        if (!tileNumber)
+//                            continue;
 
                         auto &tileLayout = parent->logical().downcast<logical::ScannedTiledLightField>().entry().tileLayout();
 
@@ -446,11 +447,15 @@ namespace lightdb::optimization {
                         encode.downcast<physical::GPUEncodeToCPU>().setDesiredKeyframes(scan.source().mp4Reader().keyframeNumbers());
 
                         // Add tile aggregator.
-//                        auto &tileEntry = parent->logical().downcast<logical::ScannedTiledLightField>().entry();
-//                        plan().emplace<physical::CoalesceSingleTile>(logical, encode, scan.framesToRead(), node.orderedFramesForMetadata(), tileEntry, tileNumber);
+                        auto &tileEntry = parent->logical().downcast<logical::ScannedTiledLightField>().entry();
+                        coalesces.emplace_back(plan().emplace<physical::CoalesceSingleTile>(logical, encode, scan.framesToRead(), node.orderedFramesForMetadata(), tileEntry, tileNumber));
                     }
 
                     // TODO: Add operator to interleave nals from different tiles.
+                    plan().emplace<physical::StitchTiles>(
+                            logical,
+                            coalesces,
+                            physical_parents.front()->logical().downcast<logical::ScannedTiledLightField>().entry().tileLayout());
 
                     return true;
 

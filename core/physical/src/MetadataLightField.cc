@@ -53,6 +53,7 @@ namespace lightdb::associations {
                     {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_tiled/black-tile-0.hevc", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
                     {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_tiled/black-tile-1.hevc", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
                     {"MVI_63563_tiled_custom_gops", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"MVI_63563_gops_for_tiles", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
             } );
 } // namespace lightdb::associations
 
@@ -164,7 +165,7 @@ const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) con
 
     selectFromMetadataAndApplyFunction(query.c_str(), [this, frame](sqlite3_stmt *stmt) {
         unsigned int queryFrame = sqlite3_column_int(stmt, 0);
-        assert(queryFrame == frame);
+        assert(queryFrame == (unsigned int)frame);
         unsigned int x = sqlite3_column_int(stmt, 1);
         unsigned int y = sqlite3_column_int(stmt, 2);
         unsigned int width = sqlite3_column_int(stmt, 3);
@@ -191,6 +192,66 @@ static void doesRectangleIntersectTileRectangle(sqlite3_context *context, int ar
         sqlite3_result_int(context, 0);
 }
 
+std::unordered_set<int> MetadataManager::idealKeyframesForMetadataAndTiles(const tiles::TileLayout &tileLayout) const {
+    auto numberOfTiles = tileLayout.numberOfTiles();
+    std::vector<std::vector<int>> framesForEachTile(numberOfTiles);
+    for (auto i = 0u; i < numberOfTiles; ++i)
+        framesForEachTile[i] = framesForTileAndMetadata(i, tileLayout);
+
+    std::vector<int> globalFrames = orderedFramesForMetadata();
+    if (!globalFrames.size())
+        return {};
+
+    enum class Inclusion {
+        InGlobalFrames,
+        NotInGlobalFrames,
+    };
+
+    std::vector<std::vector<int>::const_iterator> tileFrameIterators(numberOfTiles);
+    std::transform(framesForEachTile.begin(), framesForEachTile.end(), tileFrameIterators.begin(), [](const auto &frames) {
+        return frames.begin();
+    });
+    std::vector<int>::const_iterator globalFramesIterator = globalFrames.begin();
+
+    std::vector<Inclusion> tileInclusions(numberOfTiles, Inclusion::NotInGlobalFrames);
+    auto updateTileInclusions = [&]() -> bool {
+        bool anyChanged = false;
+        for (auto tileIndex = 0u; tileIndex < numberOfTiles; ++tileIndex) {
+            if (tileFrameIterators[tileIndex] != framesForEachTile[tileIndex].end()) {
+                if (*tileFrameIterators[tileIndex] == *globalFramesIterator) {
+                    if (tileInclusions[tileIndex] == Inclusion::NotInGlobalFrames)
+                        anyChanged = true;
+                    tileInclusions[tileIndex] = Inclusion::InGlobalFrames;
+                    ++tileFrameIterators[tileIndex];
+                } else {
+                    if (tileInclusions[tileIndex] == Inclusion::InGlobalFrames)
+                        anyChanged = true;
+                    tileInclusions[tileIndex] = Inclusion::NotInGlobalFrames;
+                }
+            } else {
+                if (tileInclusions[tileIndex] == Inclusion::InGlobalFrames)
+                    anyChanged = true;
+                tileInclusions[tileIndex] = Inclusion::NotInGlobalFrames;
+            }
+        }
+        return anyChanged;
+    };
+    // Set initial state of tile inclusions. We don't care about whether any change because the first frame is always a keyframe.
+    updateTileInclusions();
+
+    // Add the first global frame to the set of keyframes.
+    std::unordered_set<int> keyframes;
+    keyframes.insert(*globalFramesIterator++);
+
+    for(; globalFramesIterator != globalFrames.end(); globalFramesIterator++) {
+        if (updateTileInclusions())
+            keyframes.insert(*globalFramesIterator);
+    }
+
+    return keyframes;
+}
+
+
 std::vector<int> MetadataManager::framesForTileAndMetadata(unsigned int tile, const tiles::TileLayout &tileLayout) const {
     // Get rectangle for tile.
     auto tileRectangle = tileLayout.rectangleForTile(tile);
@@ -210,6 +271,8 @@ std::vector<int> MetadataManager::framesForTileAndMetadata(unsigned int tile, co
 
     return frames;
 }
+
+
 
 
 

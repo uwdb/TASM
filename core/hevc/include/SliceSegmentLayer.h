@@ -52,9 +52,9 @@ namespace lightdb::hevc {
         */
         SliceSegmentLayer(const StitchContext &context, const bytestring &data, Headers headers)
                 : Nal(context, data),
+                  headersMetadata_(headers.GetPicture()->pictureParameterSetMetadata(), headers.GetSequence()->sequenceParameterSetMetadata()),
                   data_(RemoveEmulationPrevention(data, GetHeaderSize(), kMaxHeaderLength)),
                   headers_(std::move(headers)),
-                  headersMetadata_(headers.GetPicture()->pictureParameterSetMetadata(), headers.GetSequence()->sequenceParameterSetMetadata()),
                   metadata_(data_.begin(), data_.begin() + GetHeaderSizeInBits()),
                   address_(0)
         { }

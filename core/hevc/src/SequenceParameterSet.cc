@@ -48,8 +48,7 @@ namespace lightdb::hevc {
     SequenceParameterSet::SequenceParameterSet(const StitchContext &context, const bytestring &data)
             : Nal(context, data),
               data_(RemoveEmulationPrevention(data, GetHeaderSize(), data.size())),
-              metadata_(data_.begin(), data_.begin() + GetHeaderSizeInBits()),
-              spsMetadata_(metadata_) {
+              spsMetadata_({data_.begin(), data_.begin() + GetHeaderSizeInBits()}) {
 
         dimensions_ = spsMetadata_.GetTileDimensions();
         log2_max_pic_order_cnt_lsb_ = spsMetadata_.GetMaxPicOrder();
@@ -72,7 +71,7 @@ namespace lightdb::hevc {
         auto new_dimension_bits = EncodeGolombs(new_dimensions);
         auto old_dimension_bits = EncodeGolombs(old_dimensions);
 
-        auto start = metadata_.GetValue("dimensions_offset");
+        auto start = getMetadataValue("dimensions_offset");
 
         // Replace the old dimensions with the new, combining the portion before the old dimensions, the new
         // dimensions, and the portion after the old dimensions
@@ -85,14 +84,14 @@ namespace lightdb::hevc {
     }
 
     void SequenceParameterSet::CalculateSizes() {
-        auto min_cb_log2_size = metadata_.GetValue("log2_min_luma_coding_block_size_minus3") + 3;
+        auto min_cb_log2_size = getMetadataValue("log2_min_luma_coding_block_size_minus3") + 3;
 
         // FIXME: This should be checking the coded width/height.
 //        assert ((GetContext().GetVideoDimensions().first & (1 << min_cb_log2_size)) == 0 &&
 //                (GetContext().GetVideoDimensions().second & (1 << min_cb_log2_size)) == 0);
 
         auto min_cb_log2_size_y = min_cb_log2_size;
-        auto ctb_log2_size_y = min_cb_log2_size_y + metadata_.GetValue("log2_diff_max_min_luma_coding_block_size");
+        auto ctb_log2_size_y = min_cb_log2_size_y + getMetadataValue("log2_diff_max_min_luma_coding_block_size");
         auto ctb_size_y = 1 << ctb_log2_size_y;
         auto pic_width_in_ctbs_y = static_cast<size_t>(ceil(dimensions_.second / static_cast<double>(ctb_size_y)));
         auto pic_height_in_ctbs_y = static_cast<size_t>(ceil(dimensions_.first / static_cast<double>(ctb_size_y)));

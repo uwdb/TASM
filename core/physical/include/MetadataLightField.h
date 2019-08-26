@@ -75,6 +75,7 @@ namespace lightdb::metadata {
 
         static std::unordered_set<int> idealKeyframesForFrames(const std::vector<int> &orderedFrames);
 
+        std::unordered_set<int> idealKeyframesForMetadataAndTiles(const tiles::TileLayout &tileLayout) const;
         std::vector<int> framesForTileAndMetadata(unsigned int tile, const tiles::TileLayout &tileLayout) const;
 
     private:

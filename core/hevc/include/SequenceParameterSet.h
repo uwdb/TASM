@@ -26,6 +26,8 @@ namespace lightdb::hevc {
             return dimensions_;
         }
 
+        const BitStream &metadata() const { return metadata_; }
+
     private:
         BitStream metadata_;
         std::pair<unsigned long, unsigned long> dimensions_;
@@ -65,7 +67,7 @@ namespace lightdb::hevc {
          * @param value The new general level IDC value
          */
         inline void SetGeneralLevelIDC(const unsigned int value) {
-            auto profile_size = GetSizeInBits(metadata_.GetValue("sps_max_sub_layer_minus1"));
+            auto profile_size = GetSizeInBits(getMetadataValue("sps_max_sub_layer_minus1"));
             assert (profile_size % 8 == 0);
             data_.SetByte(GetHeaderSize() + kSizeBeforeProfile + profile_size / 8 - kGeneralLevelIDCSize, static_cast<unsigned char>(value));
         }
@@ -108,8 +110,11 @@ namespace lightdb::hevc {
 
         void CalculateSizes();
 
+         unsigned long getMetadataValue(const std::string &key) const {
+             return spsMetadata_.metadata().GetValue(key);
+         }
+
         BitArray data_;
-        BitStream metadata_;
         size_t address_length_in_bits_;
         std::vector<size_t> addresses_;
         SequenceParameterSetMetadata spsMetadata_;

@@ -108,7 +108,7 @@ TEST_F(VisitorTestFixture, testScanAndSink) {
 }
 
 TEST_F(VisitorTestFixture, testScanTiled) {
-    auto input = ScanTiled("MVI_63563_tiled_custom_gops");
+    auto input = ScanTiled("MVI_63563_gops_for_tiles");
     PixelMetadataSpecification selection("LABELS", "LABEL", "bus");
     Coordinator().execute(input.Select(selection).Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/selected.hevc"));
 }
@@ -188,10 +188,10 @@ TEST_F(VisitorTestFixture, testLoadAndSelectFramesCustom) {
 }
 
 TEST_F(VisitorTestFixture, testSavingMetadata) {
-//    auto input = Scan(videoCatalogName + "_gop60");
-    auto input = Load("/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_tiled/black-tile-1.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+//    auto input = Scan(videoCatalogName);
+    auto input = Load("/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_tiled/black-tile-0.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
     MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Encode(selection).Store("MVI_63563_tiled_custom_gops"));
+    Coordinator().execute(input.Encode(selection).Store("MVI_63563_gops_for_tiles"));
 }
 
 TEST_F(VisitorTestFixture, testGOPSaving250) {

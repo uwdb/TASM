@@ -21,6 +21,7 @@
 #include <stdexcept>
 
 #include "MetadataLightField.h"
+#include <iostream>
 
 namespace lightdb::logical {
     class ConstantLightField : public LightField {
@@ -301,7 +302,11 @@ namespace lightdb::logical {
             metadata::MetadataManager metadataManager(source().filename(), metadataSpecification_);
             auto keyframes = metadataManager.idealKeyframesForMetadata();
 
-            options_[EncodeOptions::Keyframes] = keyframes;
+            auto tileLayout = tiles::CatalogEntryToTileLayout.at("MVI_63563_tiled");
+            auto tileKeyframes = metadataManager.idealKeyframesForMetadataAndTiles(tileLayout);
+
+            std::cout << "Setting keyframes\n";
+            options_[EncodeOptions::Keyframes] = tileKeyframes;
         }
 
         const Codec codec_;

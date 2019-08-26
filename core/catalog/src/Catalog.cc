@@ -120,7 +120,7 @@ namespace lightdb::catalog {
         auto configuration = firstTileStreamConfigurations[0];
 
         std::vector<Source> sources;
-        for (int i = 0; i < numberOfTiles; ++i) {
+        for (auto i = 0u; i < numberOfTiles; ++i) {
             auto pathForTile = pathForOriginalTile(i);
             sources.emplace_back(i,
                     pathForTile,

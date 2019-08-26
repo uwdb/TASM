@@ -26,7 +26,8 @@ public:
             : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUEncodeToCPU-init")),
               GPUOperator(parent),
               codec_(std::move(codec)),
-              didSetFramesToKeep_(false) {
+              didSetFramesToKeep_(false),
+              didSetDesiredKeyframes_(false) {
         if(!codec.nvidiaId().has_value())
             throw GpuRuntimeError("Requested codec does not have an Nvidia encode id");
     }
@@ -169,8 +170,10 @@ private:
 
             if (option.has_value() && option.value().type() != typeid(std::unordered_set<int>))
                 throw InvalidArgumentError("Invalid keyframes option specified", EncodeOptions::Keyframes);
-            else if (option.has_value())
+            else if (option.has_value()) {
+                assert(std::any_cast<std::unordered_set<int>>(option.value()).size());
                 return std::any_cast<std::unordered_set<int>>(option.value());
+            }
             else
                 return {};
         }

@@ -33,6 +33,22 @@ public:
         return numberOfColumns_ * numberOfRows_;
     }
 
+    unsigned int numberOfColumns() const {
+        return numberOfColumns_;
+    }
+
+    unsigned int numberOfRows() const {
+        return numberOfRows_;
+    }
+
+    unsigned int totalHeight() const {
+        return std::accumulate(heightsOfRows_.begin(), heightsOfRows_.end(), 0);
+    }
+
+    unsigned int totalWidth() const {
+        return std::accumulate(widthsOfColumns_.begin(), widthsOfColumns_.end(), 0);
+    }
+
     Rectangle rectangleForTile(unsigned int tile) const {
         // Figure out what row/column the tile is in.
         unsigned int column = tile % numberOfColumns_;
@@ -76,6 +92,7 @@ private:
 static const std::unordered_map<std::string, TileLayout> CatalogEntryToTileLayout {
         { "MVI_63563_tiled", TileLayout(2, 1, {480, 480}, {544}) },
         { "MVI_63563_tiled_custom_gops", TileLayout(2, 1, {480, 480}, {544}) },
+        { "MVI_63563_gops_for_tiles", TileLayout(2, 1, {480, 480}, {544}) },
 };
 
 } // namespace lightdb::tiles

@@ -51,6 +51,10 @@ public:
         didSetDesiredKeyframes_ = true;
         desiredKeyframes_ = std::move(keyframes);
     }
+    void setDesiredKeyframes(const std::vector<int> keyframes) {
+        didSetDesiredKeyframes_ = true;
+        desiredKeyframes_.insert(keyframes.begin(), keyframes.end());
+    }
 
 private:
     class Runtime: public runtime::GPUUnaryRuntime<GPUEncodeToCPU, GPUDecodedFrameData> {
@@ -101,6 +105,8 @@ private:
                         encodedKeyframe = true;
                     }
 
+                    if (!physical().didSetFramesToKeep())
+                        framesBeingEncoded_.push_back(frameNumber);
                     encodeSession_.Encode(**frameIt, decoded.configuration().offset.top,
                                           decoded.configuration().offset.left,
                                           desiredKeyframes_.count(frameNumber));
@@ -125,6 +131,11 @@ private:
                 if (physical().didSetFramesToKeep()) {
                     returnVal.setFirstFrameIndexAndNumberOfFrames(*nextFrameThatWillBeEncoded_, numberOfFrames);
                     std::advance(nextFrameThatWillBeEncoded_, numberOfFrames);
+                } else {
+                    returnVal.setFirstFrameIndexAndNumberOfFrames(framesBeingEncoded_.front(), numberOfFrames);
+                    auto it = framesBeingEncoded_.begin();
+                    std::advance(it, numberOfFrames);
+                    framesBeingEncoded_.erase(framesBeingEncoded_.begin(), it);
                 }
 
                 GLOBAL_TIMER.endSection("GPUEncodeToCPU");
@@ -179,6 +190,7 @@ private:
         std::set<int>::const_iterator nextFrameThatWillBeEncoded_;
         std::vector<GPUFrameReference>::const_iterator currentDataFramesIterator_;
         bool currentDataFramesIteratorIsValid_;
+        std::list<int> framesBeingEncoded_;
     };
 
     const Codec codec_;

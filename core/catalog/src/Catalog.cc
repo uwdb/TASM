@@ -24,6 +24,11 @@ namespace lightdb::catalog {
         return Entry{*this, name, path};
     }
 
+    TileEntry Catalog::tileEntry(const std::string &name) const {
+        auto path = std::filesystem::absolute(path_ / name);
+        return TileEntry(*this, name, path);
+    }
+
     unsigned int Entry::load_version(const std::filesystem::path &path) {
         auto filename = Files::version_filename(path);
 
@@ -55,6 +60,11 @@ namespace lightdb::catalog {
         return std::filesystem::exists(filename)
             ? video::gpac::load_metadata(filename)
             : std::vector<Source>{};
+    }
+
+    LightFieldReference Catalog::getTiled(const std::string &name) const {
+        assert(exists(name));
+        return LightFieldReference::make<logical::ScannedTiledLightField>(tileEntry(name));
     }
 
     LightFieldReference Catalog::get(const std::string &name, const bool create) const {
@@ -96,5 +106,42 @@ namespace lightdb::catalog {
                             volume.value() | TemporalRange{volume->t().start(),
                                                            volume->t().start() + configuration.duration},
                             geometry.value()}; });
+    }
+
+    std::vector<Source> TileEntry::loadSources() {
+        GeometryReference geometry = GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples());
+
+        auto numberOfTiles = tileLayout_.numberOfTiles();
+
+        // For now assume that all tiles are identical. We can't get configurations for later tiles
+        // because their streams are invalid.
+        auto firstTileStreamConfigurations = video::ffmpeg::GetStreamConfigurations(pathForOriginalTile(0), true);
+        assert(firstTileStreamConfigurations.size() == 1);
+        auto configuration = firstTileStreamConfigurations[0];
+
+        std::vector<Source> sources;
+        for (int i = 0; i < numberOfTiles; ++i) {
+            auto pathForTile = pathForOriginalTile(i);
+            sources.emplace_back(i,
+                    pathForTile,
+                    configuration.decode.codec,
+                    configuration.decode,
+                    volume_ | TemporalRange{volume_.t().start(), volume_.t().start() + configuration.duration},
+                    geometry);
+        }
+
+        return sources;
+    }
+
+    std::filesystem::path TileEntry::pathForOriginalTile(unsigned int tile) const {
+        assert(tile < tileLayout().numberOfTiles());
+
+        return std::filesystem::absolute(path_ / ("orig-tile-" + std::to_string(tile) + ".mp4"));
+    }
+
+    std::filesystem::path TileEntry::pathForBlackTile(unsigned int tile) const {
+        assert(tile < tileLayout().numberOfTiles());
+
+        return std::filesystem::absolute(path_ / ("black-tile-" + std::to_string(tile) + ".mp4"));
     }
 } // namespace lightdb::catalog

@@ -7,6 +7,7 @@
 #include "Configuration.h"
 #include "functional.h"
 #include "MP4Reader.h"
+#include "TileLayout.h"
 #include <filesystem>
 #include <utility>
 #include <fstream>
@@ -19,6 +20,7 @@ namespace lightdb {
 
     namespace catalog {
         class Entry;
+        class TileEntry;
 
         class Source {
         public:
@@ -76,6 +78,7 @@ namespace lightdb {
             static const Catalog &instance(Catalog catalog) { return instance_.emplace(catalog); }
             static bool catalog_exists(const std::filesystem::path &path);
 
+            LightFieldReference getTiled(const std::string &name) const;
             LightFieldReference get(const std::string &name, bool create=false) const;
             LightFieldReference create(const std::string& name) const;
             bool exists(const std::string &name) const;
@@ -87,8 +90,45 @@ namespace lightdb {
             const std::filesystem::path path_;
 
             inline Entry entry(const std::string &name) const;
+            TileEntry tileEntry(const std::string &name) const;
 
             static std::optional<Catalog> instance_;
+        };
+
+        class TileEntry {
+            friend class Catalog;
+
+        public:
+            const std::string &name() const { return name_; }
+            const Volume &volume() const { return volume_; }
+            const ColorSpace &colorSpace() const { return colorSpace_; }
+            const tiles::TileLayout &tileLayout() const { return tileLayout_; }
+            const std::vector<Source> &sources() const { return sources_; }
+            std::filesystem::path pathForBlackTile(unsigned int tile) const;
+
+        private:
+            TileEntry(const Catalog &catalog, std::string name, std::filesystem::path path)
+                : catalog_(catalog),
+                name_(std::move(name)),
+                path_(std::move(path)),
+                colorSpace_(YUVColorSpace::instance()),
+                volume_(Volume::limits()),
+                tileLayout_(tiles::CatalogEntryToTileLayout.at(name_)),
+                sources_(loadSources())
+            {
+                CHECK(std::filesystem::exists(path_));
+            }
+
+            std::vector<Source> loadSources();
+            std::filesystem::path pathForOriginalTile(unsigned int tile) const;
+
+            const Catalog &catalog_;
+            const std::string name_;
+            const std::filesystem::path path_;
+            const ColorSpace colorSpace_;
+            const Volume volume_;
+            const tiles::TileLayout tileLayout_;
+            const std::vector<Source> sources_;
         };
 
         class Entry {

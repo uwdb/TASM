@@ -47,6 +47,12 @@ namespace lightdb::associations {
                     {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/jackson_town_square_gop10/1-0-stream.mp4", "/home/maureen/noscope_videos/jackson_town_square_1hr.db"},
                     {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/jackson_town_square_gop5/1-0-stream.mp4", "/home/maureen/noscope_videos/jackson_town_square_1hr.db"},
                     {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/jackson_town_square_car/1-0-stream.mp4", "/home/maureen/noscope_videos/jackson_town_square_1hr.db"},
+                    {"MVI_63563_tiled", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_tiled/orig-tile-0.hevc", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_tiled/orig-tile-1.hevc", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_tiled/black-tile-0.hevc", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_tiled/black-tile-1.hevc", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"MVI_63563_tiled_custom_gops", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
             } );
 } // namespace lightdb::associations
 
@@ -63,9 +69,13 @@ std::vector<Rectangle> MetadataLightField::allRectangles() {
 } // namespace lightdb::physical
 
 namespace lightdb::metadata {
-    void MetadataManager::selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn) const {
+
+    void MetadataManager::selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn) const {
         sqlite3 *db;
-        ASSERT_SQLITE_OK(sqlite3_open_v2(lightdb::associations::VideoPathToLabelsPath.at(pathToVideo_).c_str(), &db, SQLITE_OPEN_READONLY, NULL));
+        ASSERT_SQLITE_OK(sqlite3_open_v2(lightdb::associations::VideoPathToLabelsPath.at(videoIdentifier_).c_str(), &db, SQLITE_OPEN_READONLY, NULL));
+
+        if (afterOpeningFn)
+            afterOpeningFn(db);
 
         char *selectFramesStatement = nullptr;
         int size = asprintf(&selectFramesStatement, query,
@@ -75,7 +85,8 @@ namespace lightdb::metadata {
         assert(size != -1);
 
         sqlite3_stmt *select;
-        ASSERT_SQLITE_OK(sqlite3_prepare_v2(db, selectFramesStatement, size, &select, nullptr));
+        auto prepareResult = sqlite3_prepare_v2(db, selectFramesStatement, size, &select, nullptr);
+        ASSERT_SQLITE_OK(prepareResult);
 
         // Step and get results.
         int result;
@@ -163,4 +174,43 @@ const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) con
     });
     return frameToRectangles_[frame];
 }
+
+static void doesRectangleIntersectTileRectangle(sqlite3_context *context, int argc, sqlite3_value **argv) {
+    assert(argc == 4);
+
+    Rectangle *tileRectangle = reinterpret_cast<Rectangle*>(sqlite3_user_data(context));
+
+    unsigned int x = sqlite3_value_int(argv[0]);
+    unsigned int y = sqlite3_value_int(argv[1]);
+    unsigned int width = sqlite3_value_int(argv[2]);
+    unsigned int height = sqlite3_value_int(argv[3]);
+
+    if (tileRectangle->intersects(Rectangle(0, x, y, width, height)))
+        sqlite3_result_int(context, 1);
+    else
+        sqlite3_result_int(context, 0);
+}
+
+std::vector<int> MetadataManager::framesForTileAndMetadata(unsigned int tile, const tiles::TileLayout &tileLayout) const {
+    // Get rectangle for tile.
+    auto tileRectangle = tileLayout.rectangleForTile(tile);
+
+    // Select frames that have a rectangle that intersects the tile rectangle.
+    auto registerIntersectionFunction = [&](sqlite3 *db) {
+        ASSERT_SQLITE_OK(sqlite3_create_function(db, "RECTANGLEINTERSECT", 4, SQLITE_UTF8 | SQLITE_DETERMINISTIC, &tileRectangle, doesRectangleIntersectTileRectangle, NULL, NULL));
+    };
+
+    std::string query = "SELECT DISTINCT frame FROM %s WHERE %s = '%s' AND RECTANGLEINTERSECT(x, y, width, height) == 1;";
+
+    std::vector<int> frames;
+    selectFromMetadataAndApplyFunction(query.c_str(), [&](sqlite3_stmt *stmt) {
+        int queryFrame = sqlite3_column_int(stmt, 0);
+        frames.push_back(queryFrame);
+    }, registerIntersectionFunction);
+
+    return frames;
+}
+
+
+
 } // namespace lightdb::metadata

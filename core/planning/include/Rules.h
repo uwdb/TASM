@@ -23,6 +23,7 @@
 #include <iostream>
 #include "SelectFramesOperators.h"
 #include "SelectPixelsOperators.h"
+#include "TileOperators.h"
 
 namespace lightdb::optimization {
     class ChooseMaterializedScans : public OptimizerRule {
@@ -57,6 +58,20 @@ namespace lightdb::optimization {
     class ChooseDecoders : public OptimizerRule {
     public:
         using OptimizerRule::OptimizerRule;
+
+        bool visit(const logical::ScannedTiledLightField &node) override {
+            if (!plan().has_physical_assignment(node)) {
+                assert(!node.entry().sources().empty());
+
+                auto logical = plan().lookup(node);
+                for (const auto &stream : node.entry().sources())
+                    plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
+
+                return true;
+            }
+
+            return false;
+        }
 
         bool visit(const logical::ScannedLightField &node) override {
             if(!plan().has_physical_assignment(node)) {
@@ -398,9 +413,52 @@ namespace lightdb::optimization {
 
                 /* See if we are selecting pixels. */
                 if (node.subsetType() == MetadataSubsetType::Pixel) {
-                    assert(parent.is<physical::GPUOperator>());
-                    plan().emplace<physical::GPUNaiveSelectPixels>(plan().lookup(node), parent);
+                    // There should be a parent for each tile.
+                    // Find out what frames are wanted for metadata.
+                    // Get rectangle for tile.
+                    auto gpu = plan().allocator().gpu();
+                    auto logical = plan().lookup(node);
+                    for (auto &parent: physical_parents) {
+                        auto &scan = parent.downcast<physical::ScanFramesFromFileEncodedReader>();
+                        auto tileNumber = scan.source().index();
+
+                        if (tileNumber)
+                            continue;
+
+                        auto &tileLayout = parent->logical().downcast<logical::ScannedTiledLightField>().entry().tileLayout();
+
+                        std::vector<int> framesForTileAndMetadata = node.framesForTileAndMetadata(tileNumber, tileLayout);
+
+                        // Assign these frames to the scan operator.
+                        scan.setFramesToRead(framesForTileAndMetadata);
+                        scan.setGlobalFramesToRead(node.orderedFramesForMetadata());
+
+
+                        // Decode the frames, perform pixel selection, then encode the frames.
+                        // TODO - pixel selection has to know which tile it's operating over so it can transform x and y.
+                        auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, parent, gpu);
+
+                        // TODO: Put select pixels operator in here.
+                        auto selectPixels = plan().emplace<physical::GPUNaiveSelectPixels>(logical, decode, tileNumber, tileLayout);
+
+                        // TODO: For now, assume encode returns one GOP-worth of data at a time.
+                        auto encode = plan().emplace<physical::GPUEncodeToCPU>(logical, selectPixels, Codec::hevc());
+                        encode.downcast<physical::GPUEncodeToCPU>().setDesiredKeyframes(scan.source().mp4Reader().keyframeNumbers());
+
+                        // Add tile aggregator.
+//                        auto &tileEntry = parent->logical().downcast<logical::ScannedTiledLightField>().entry();
+//                        plan().emplace<physical::CoalesceSingleTile>(logical, encode, scan.framesToRead(), node.orderedFramesForMetadata(), tileEntry, tileNumber);
+                    }
+
+                    // TODO: Add operator to interleave nals from different tiles.
+
                     return true;
+
+
+                    /* Naive pixel selection */
+//                    assert(parent.is<physical::GPUOperator>());
+//                    plan().emplace<physical::GPUNaiveSelectPixels>(plan().lookup(node), parent);
+//                    return true;
                 }
 
                 /* For combo selection */
@@ -963,8 +1021,8 @@ namespace lightdb::optimization {
                     return false;
 
 //                // For homomorphic frame selection:
-//                plan().emplace<physical::SaveToFile>(plan().lookup(node), physical_parents.front());
-//                return true;
+                plan().emplace<physical::SaveToFile>(plan().lookup(node), physical_parents.front());
+                return true;
 
                 bool lastFrameWasMetadataSelection = physical_parents.front().is<physical::NaiveSelectFrames>();
 

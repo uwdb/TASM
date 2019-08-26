@@ -25,16 +25,21 @@ void select_pixels(
         const unsigned int width,
         const unsigned int pitch,
         const lightdb::Rectangle *rectangles,
-        const unsigned int rectangle_count) {
+        const unsigned int rectangle_count,
+        const unsigned int xOffset,
+        const unsigned int yOffset) {
     const int im_x = blockDim.x * blockIdx.x + threadIdx.x;
     const int im_y = blockDim.y * blockIdx.y + threadIdx.y;
+
+    const int global_im_x = im_x + xOffset;
+    const int global_im_y = im_y + yOffset;
 
     if (im_x < width && im_y < height) {
         const unsigned int output_luma_offset = im_x + im_y * pitch;
         const unsigned int output_luma_size = height * pitch;
         const unsigned int output_chroma_offset = output_luma_size + im_x + (im_y / 2) * pitch;
 
-        if (!someRectangleContainsPoint(rectangles, rectangle_count, im_x, im_y)) {
+        if (!someRectangleContainsPoint(rectangles, rectangle_count, global_im_x, global_im_y)) {
             nv12output[output_luma_offset] = 0;
             nv12output[output_chroma_offset] = 128;
         }

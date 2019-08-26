@@ -17,6 +17,13 @@ namespace lightdb {
                 && x + width >= posX
                 && y + height >= posY;
         }
+
+        bool intersects(const Rectangle &other) {
+            return !(x >= other.x + other.width
+                    || other.x >= x + width
+                    || y >= other.y + other.height
+                    || other.y >= y + height);
+        }
     };
 } // namespace lightdb
 

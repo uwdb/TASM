@@ -103,13 +103,19 @@ TEST_F(VisitorTestFixture, testLoadAndSelectFrames) {
 }
 
 TEST_F(VisitorTestFixture, testScanAndSink) {
-    auto input = Scan("dog_with_keyframes");
+    auto input = Scan("MVI_63563_combined");
     Coordinator().execute(input.Sink());
 }
 
+TEST_F(VisitorTestFixture, testScanTiled) {
+    auto input = ScanTiled("MVI_63563_tiled_custom_gops");
+    PixelMetadataSpecification selection("LABELS", "LABEL", "bus");
+    Coordinator().execute(input.Select(selection).Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/selected.hevc"));
+}
+
 TEST_F(VisitorTestFixture, testScanAndSave) {
-    auto input = Load("/home/maureen/uadetrac_videos/MVI_63563/tiles/MVI_63563.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/reencoded.hevc"));
+    auto input = Load("/home/maureen/uadetrac_videos/MVI_63563/tiles/left.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Store("MVI_63563_left"));
 }
 
 TEST_F(VisitorTestFixture, testSaveToCatalog) {
@@ -118,8 +124,8 @@ TEST_F(VisitorTestFixture, testSaveToCatalog) {
 }
 
 static const char *videoToScan = "/home/maureen/noscope_videos/jackson_town_square_1hr.hevc";
-static const std::string videoCatalogName = "dog_with_gop_30";
-static const std::string labelCategory = "dog";
+static const std::string videoCatalogName = "MVI_63563_gop30";
+static const std::string labelCategory = "bus";
 
 TEST_F(VisitorTestFixture, testLoadAndSelectFramesBasic) {
     auto input = Scan(videoCatalogName);
@@ -182,9 +188,10 @@ TEST_F(VisitorTestFixture, testLoadAndSelectFramesCustom) {
 }
 
 TEST_F(VisitorTestFixture, testSavingMetadata) {
-    auto input = Scan(videoCatalogName + "_gop60");
+//    auto input = Scan(videoCatalogName + "_gop60");
+    auto input = Load("/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_tiled/black-tile-1.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
     MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Encode(selection).Store(videoCatalogName + "_" + labelCategory));
+    Coordinator().execute(input.Encode(selection).Store("MVI_63563_tiled_custom_gops"));
 }
 
 TEST_F(VisitorTestFixture, testGOPSaving250) {

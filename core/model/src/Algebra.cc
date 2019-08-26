@@ -7,6 +7,10 @@
 using namespace lightdb::catalog;
 
 namespace lightdb::logical {
+    LightFieldReference ScanTiled(const std::string &name) {
+        return Catalog::instance().getTiled(name);
+    }
+
     LightFieldReference Scan(const std::string &name) {
         return Scan(Catalog::instance(), name);
     }
@@ -73,7 +77,10 @@ namespace lightdb::logical {
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, this_.downcast<ExternalLightField>().source());
         else if (this_.is<ScannedLightField>())
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, this_.downcast<ScannedLightField>().sources().front());
-        else
+        else if (this_.is<ScannedTiledLightField>()) {
+            auto &scan = this_.downcast<ScannedTiledLightField>();
+            return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, scan.sources(), std::optional(scan.entry().name()));
+        } else
             assert(false);
     }
 
@@ -97,10 +104,15 @@ namespace lightdb::logical {
     }
 
     LightFieldReference Algebra::Encode(const MetadataSpecification &metadataSpecification) {
-        assert(this_.is<ScannedLightField>());
-
-        return LightFieldReference::make<logical::MetadataEncodedLightField>(
-                this_, Codec::hevc(), this_->volume().bounding(), this_->colorSpace(), this_.downcast<ScannedLightField>().sources().front(), metadataSpecification);
+//        assert(this_.is<ScannedLightField>());
+        if (this_.is<ScannedLightField>()) {
+            return LightFieldReference::make<logical::MetadataEncodedLightField>(
+                    this_, Codec::hevc(), this_->volume().bounding(), this_->colorSpace(), this_.downcast<ScannedLightField>().sources().front(), metadataSpecification);
+        } else if (this_.is<ExternalLightField>()) {
+            return LightFieldReference::make<logical::MetadataEncodedLightField>(
+                    this_, Codec::hevc(), this_->volume().bounding(), this_->colorSpace(), this_.downcast<ExternalLightField>().source(), metadataSpecification);
+        } else
+            assert(false);
 
     }
 

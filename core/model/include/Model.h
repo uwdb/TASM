@@ -219,6 +219,22 @@ namespace lightdb::logical {
         virtual const std::vector<catalog::Source> sources() const = 0;
     };
 
+    class ScannedTiledLightField : public LightField, public StreamBackedLightField {
+    public:
+        explicit ScannedTiledLightField(catalog::TileEntry tileEntry)
+            : LightField({}, tileEntry.volume(), tileEntry.colorSpace()),
+            tileEntry_(std::move(tileEntry))
+        { }
+
+        void accept(LightFieldVisitor &visitor) override { LightField::accept<ScannedTiledLightField>(visitor); }
+
+        const catalog::TileEntry &entry() const { return tileEntry_; }
+        const std::vector<catalog::Source> sources() const override { return tileEntry_.sources(); }
+
+    private:
+        const catalog::TileEntry tileEntry_;
+    };
+
     class ScannedLightField : public LightField, public StreamBackedLightField {
     public:
         explicit ScannedLightField(catalog::Entry entry)
@@ -242,7 +258,7 @@ namespace lightdb::logical {
                 : LightField({}, entry.sources().front().volume(), colorSpace),
                   entry_(entry),
                   options_(std::move(options)) {
-            CHECK_EQ(entry_.sources().size(), 1) << "External TLFs do not currently support >1 source";
+//            CHECK_EQ(entry_.sources().size(), 1) << "External TLFs do not currently support >1 source";
         }
 
         inline const catalog::Source& source() const noexcept { return entry_.sources().front(); }
@@ -285,7 +301,7 @@ namespace lightdb::logical {
             metadata::MetadataManager metadataManager(source().filename(), metadataSpecification_);
             auto keyframes = metadataManager.idealKeyframesForMetadata();
 
-            options_[EncodeOptions::Keyframes] = std::move(keyframes);
+            options_[EncodeOptions::Keyframes] = keyframes;
         }
 
         const Codec codec_;

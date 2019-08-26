@@ -49,12 +49,12 @@ public:
   }
 
   virtual ~CudaDecoder() {
-      // FIXME: This chokes when doing:
-      // input = Load(file)
-      // input2 = Load(file)
-      // input.Map(yolo).Union(input2).Save()
-      if(handle() != nullptr)
+      // I tried calling the destructor at the last call, but it segfaulted.
+      // I think it has to be called the first time.
+      if(handle() != nullptr && !CudaDecoder::DECODER_DESTROYED) {
           cuvidDestroyDecoder(handle());
+          CudaDecoder::DECODER_DESTROYED = true;
+      }
   }
 
   CUvideodecoder handle() const { return handle_; }
@@ -65,6 +65,9 @@ protected:
   CUvideodecoder handle_;
   VideoLock &lock_;
   lightdb::spsc_queue<int> &frameNumberQueue_;
+
+private:
+    static bool DECODER_DESTROYED;
 };
 
 #endif // LIGHTDB_VIDEODECODER_H

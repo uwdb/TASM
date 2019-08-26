@@ -61,25 +61,40 @@ private:
 
 class ScanFramesFromFileEncodedReader: public PhysicalOperator {
 public:
+
+//    explicit ScanFramesFromFileEncodedReader(const LightFieldReference &logical, catalog::Source source)
+//        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanFramesFromFileEncodedReader-init")),
+//        source_(std::move(source))
+//    { }
+
     explicit ScanFramesFromFileEncodedReader(const LightFieldReference &logical, catalog::Source source)
-        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanFramesFromFileEncodedReader-init")),
-        source_(std::move(source))
+            : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanFramesFromFileEncodedReader-init")),
+              source_(std::move(source))
     { }
 
     const catalog::Source &source() const { return source_; }
     const std::vector<int> &framesToRead() const { return framesToRead_; }
+    const std::vector<int> &globalFramesToRead() const { return globalFramesToRead_; }
 
     void setFramesToRead(std::vector<int> frames) {
         framesToRead_ = std::move(frames);
     }
 
+    void setGlobalFramesToRead(const std::vector<int> &frames) {
+        globalFramesToRead_ = frames;
+    }
+
 private:
+
     class Runtime: public runtime::Runtime<ScanFramesFromFileEncodedReader> {
     public:
         explicit Runtime(ScanFramesFromFileEncodedReader &physical)
             : runtime::Runtime<ScanFramesFromFileEncodedReader>(physical),
                     frameReader_(physical.source().filename(), physical.framesToRead())
-        {}
+        {
+            if (physical.globalFramesToRead().size())
+                frameReader_.setGlobalFrames(physical.globalFramesToRead());
+        }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if (physical().timerIdentifier().length())
@@ -104,19 +119,34 @@ private:
                 GLOBAL_TIMER.endSection(physical().timerIdentifier());
             return returnVal;
         }
-    private:
+    protected:
         EncodedFrameReader frameReader_;
     };
 
-    const catalog::Source source_;
     std::vector<int> framesToRead_;
+    std::vector<int> globalFramesToRead_;
 
 protected:
+    const catalog::Source source_;
+
     virtual const std::string &timerIdentifier() const {
         static const std::string timerIdentifier = "ScanFramesFromFileEncodedReader";
         return timerIdentifier;
     }
 };
+
+//class ScanEntiresFromFileEncodedReader: public ScanFramesFromFileEncodedReader {
+//public:
+//    explicit ScanEntireGOPsFromFileEncodedReader(const LightFieldReference &logical, catalog::Source source)
+//            : ScanFramesFromFileEncodedReader(logical, source, EncodedFrameReader::ShouldReadEntireGOP::YES)
+//            { }
+//
+//protected:
+//    const std::string &timerIdentifier() const override {
+//        static const std::string timerIdentifier = "";
+//        return timerIdentifier;
+//    }
+//};
 
 class ScanSequentialFramesFromFileEncodedReader: public ScanFramesFromFileEncodedReader {
     using ScanFramesFromFileEncodedReader::ScanFramesFromFileEncodedReader;

@@ -46,8 +46,12 @@ namespace lightdb::video::gpac {
         char *raw_data = nullptr;
         GF_Err result;
 
-        if(gf_isom_get_udta_count(file, 0) != 1 && required)
-            throw GpacRuntimeError("Could not find metadata box in container", GF_IO_ERR);
+        if(gf_isom_get_udta_count(file, 0) != 1) {
+            if (required)
+                throw GpacRuntimeError("Could not find metadata box in container", GF_IO_ERR);
+            else
+                return {};
+        }
         else if((result = gf_isom_get_udta_type(file, 0, 1, &box_type, nullptr)) != GF_OK)
             throw GpacRuntimeError("Could not retrieve user data box type", result);
         else if((result = gf_isom_get_user_data(file, 0, box_type, nullptr, 1, &raw_data, &size)) != GF_OK)

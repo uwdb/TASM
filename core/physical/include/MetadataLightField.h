@@ -56,8 +56,8 @@ namespace lightdb::physical {
 namespace lightdb::metadata {
     class MetadataManager {
     public:
-        explicit MetadataManager(const std::filesystem::path &pathToVideo, const MetadataSpecification &metadataSpecification)
-                : pathToVideo_(pathToVideo),
+        explicit MetadataManager(const std::string &pathToVideo, const MetadataSpecification &metadataSpecification)
+                : videoIdentifier_(pathToVideo),
                 metadataSpecification_(metadataSpecification),
                 didSetFramesForMetadata_(false),
                 framesForMetadata_(0),
@@ -75,10 +75,12 @@ namespace lightdb::metadata {
 
         static std::unordered_set<int> idealKeyframesForFrames(const std::vector<int> &orderedFrames);
 
-    private:
-        void selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn) const;
+        std::vector<int> framesForTileAndMetadata(unsigned int tile, const tiles::TileLayout &tileLayout) const;
 
-        const std::filesystem::path pathToVideo_;
+    private:
+        void selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn = nullptr) const;
+
+        const std::string videoIdentifier_;
         const MetadataSpecification metadataSpecification_;
         mutable bool didSetFramesForMetadata_;
         mutable std::unordered_set<int> framesForMetadata_;
@@ -94,11 +96,19 @@ namespace lightdb::logical {
     class MetadataSubsetLightField : public LightField {
     public:
         MetadataSubsetLightField(const LightFieldReference &lightField, const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType, const catalog::Source &source)
+            : MetadataSubsetLightField(lightField, metadataSpecification, subsetType, std::vector<catalog::Source>({ source }))
+        { }
+
+        explicit MetadataSubsetLightField(const LightFieldReference &lightField,
+                const MetadataSpecification &metadataSpecification,
+                MetadataSubsetType subsetType,
+                const std::vector<catalog::Source> &sources,
+                std::optional<std::string> metadataIdentifier = {})
         : LightField(lightField),
         metadataSelection_(metadataSpecification),
         subsetType_(subsetType),
-        source_(source),
-        metadataManager_(source_.filename(), metadataSelection_)
+        sources_(sources),
+        metadataManager_(metadataIdentifier ? *metadataIdentifier : source().filename().string(), metadataSelection_)
         {
 //            setKeyframesInOptions();
         }
@@ -106,7 +116,10 @@ namespace lightdb::logical {
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightField>(visitor); }
         const MetadataSpecification &metadataSpecification() const { return metadataSelection_; }
         MetadataSubsetType subsetType() const { return subsetType_; }
-        const catalog::Source &source() const { return source_; }
+        const catalog::Source &source() const {
+            assert(sources_.size() == 1);
+            return sources_[0];
+        }
 
         // Should there be different classes of metadata selection? e.g. frames, pixels?
         const std::unordered_set<int> &framesForMetadata() const { return metadataManager_.framesForMetadata(); }
@@ -116,10 +129,14 @@ namespace lightdb::logical {
         }
 
         const std::vector<Rectangle> &rectanglesForFrame(int frame) const { return metadataManager_.rectanglesForFrame(frame); }
+
+        std::vector<int> framesForTileAndMetadata(unsigned int tileNumber, const tiles::TileLayout &tileLayout) const {
+            return metadataManager_.framesForTileAndMetadata(tileNumber, tileLayout);
+        }
     private:
         MetadataSpecification metadataSelection_;
         MetadataSubsetType subsetType_;
-        catalog::Source source_;
+        std::vector<catalog::Source> sources_;
         metadata::MetadataManager metadataManager_;
     };
 } // namespace lightdb::logical

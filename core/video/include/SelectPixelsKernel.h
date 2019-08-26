@@ -15,7 +15,7 @@ public:
         { }
 
         CudaFrameReference select(VideoLock &lock, const CudaFrameReference &input,
-                                const std::vector<Rectangle> &boxes) const {
+                                const std::vector<Rectangle> &boxes, unsigned int xOffset, unsigned int yOffset) const {
             auto output = GPUFrameReference::make<CudaFrame>(static_cast<Frame&>(*input));
 
             if (!boxes.size())
@@ -26,14 +26,14 @@ public:
             cuda.copy(lock, *input);
             select(lock,
                     cuda.handle(), cuda.height(), cuda.width(), cuda.pitch(),
-                    boxes.data(), boxes.size());
+                    boxes.data(), boxes.size(), xOffset, yOffset);
 
             return output;
         }
 
         void select(VideoLock &lock, CUdeviceptr frame,
                 unsigned int height, unsigned int width, unsigned int pitch,
-                const Rectangle *boxes, const size_t box_count) const {
+                const Rectangle *boxes, const size_t box_count, unsigned int xOffset, unsigned int yOffset) const {
             CUresult result;
             CUdeviceptr device_boxes;
 
@@ -43,7 +43,7 @@ public:
                 throw GpuCudaRuntimeError("cuMemCpy failure", result);
 
             try {
-                select(lock, frame, height, width, pitch, device_boxes, static_cast<unsigned int>(box_count));
+                select(lock, frame, height, width, pitch, device_boxes, static_cast<unsigned int>(box_count), xOffset, yOffset);
             } catch(errors::_GpuCudaRuntimeError&) {
                 if ((result == cuMemFree(device_boxes)) != CUDA_SUCCESS)
                     LOG(ERROR) << "Swallowed failed cuMemFree invocation with result " << result;
@@ -57,7 +57,7 @@ public:
 
         void select(VideoLock &lock, CUdeviceptr frame,
                 unsigned int height, unsigned int width, unsigned int pitch,
-                CUdeviceptr boxes, unsigned int box_count) const {
+                CUdeviceptr boxes, unsigned int box_count, unsigned int xOffset, unsigned int yOffset) const {
             dim3 block(32u, 32u, 1u);
             dim3 grid(width / block.x + 1, height / block.y + 1, 1u);
 
@@ -65,7 +65,8 @@ public:
                     &frame,
                     &height, &width,
                     &pitch,
-                    &boxes, &box_count };
+                    &boxes, &box_count,
+                    &xOffset, &yOffset };
 
             invoke(lock, block, grid, args);
         }

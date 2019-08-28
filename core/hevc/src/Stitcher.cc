@@ -8,8 +8,6 @@ namespace lightdb::hevc {
 
     //TODO typedef nested type
     std::vector<std::vector<bytestring>> Stitcher::GetNals() {
-        Timer timer;
-        timer.startSection("GetNals");
         tile_nals_.reserve(tiles_.size());
         for (auto tile : tiles_) {
             std::vector<bytestring> nals;
@@ -39,8 +37,6 @@ namespace lightdb::hevc {
             nals.push_back(move(bytestring(make_move_iterator(start), make_move_iterator(tile.end()))));
             tile_nals_.push_back(nals);
         }
-        timer.endSection("GetNals");
-        timer.printAllTimes();
         return tile_nals_;
     }
 
@@ -61,14 +57,10 @@ namespace lightdb::hevc {
     }
 
     bytestring Stitcher::GetStitchedSegments() {
-        Timer timer;
-
-        timer.startSection("Update Headers");
         headers_.GetSequence()->SetDimensions(context_.GetVideoDimensions());
         headers_.GetSequence()->SetGeneralLevelIDC(120);
         headers_.GetVideo()->SetGeneralLevelIDC(120);
         headers_.GetPicture()->SetTileDimensions(context_.GetTileDimensions());
-        timer.endSection("Update Headers");
 
         auto tile_num = tiles_.size();
         std::list<std::vector<bytestring>> segment_nals;
@@ -77,13 +69,11 @@ namespace lightdb::hevc {
         unsigned long num_keyframes = 0u;
 
         // First, collect the segment nals from each tile
-        timer.startSection("GetSegmentNals");
         for (auto i = 0u; i < tiles_.size(); i++) {
             auto segments = GetSegmentNals(i, &num_bytes, &num_keyframes, i == 0u);
             segment_nals.push_back(segments);
             num_segments += segments.size();
         }
-        timer.endSection("GetSegmentNals");
 
         auto tile_index = 0u;
         std::vector<bytestring> stitched(num_segments);
@@ -93,7 +83,6 @@ namespace lightdb::hevc {
         // then the segments for tile 0 will go in index 0, 3, 6, 9, 12, the
         // segments for tile 1 will go in index 1, 4, 7, 10, 11, the segments
         // j for tile i will go in index number of tiles * j + i
-        timer.startSection("OrderSegmentNals");
         for (auto &nals : segment_nals) {
           // Go through the segment nals for a given tile
           for (auto i = 0u; i < nals.size(); i++) {
@@ -102,7 +91,6 @@ namespace lightdb::hevc {
           // Update the tile index to move to the segment for the next tile
           tile_index++;
         }
-        timer.endSection("OrderSegmentNals");
 
         auto addresses = headers_.GetSequence()->GetAddresses();
         auto header_bytes = headers_.GetBytes();
@@ -111,40 +99,25 @@ namespace lightdb::hevc {
         // the exact size, std::copy cannot be used and we must use insert
         bytestring result(header_bytes.size() * num_keyframes + num_bytes);
 
-        timer.startSection("UpdateSegments");
         auto it = stitched.begin();
         while (it != stitched.end()) {
           for (auto i = 0u; i < tile_num; i++) {
-              timer.startSection("LoadNal");
             auto current = Load(context_, *it, headers_);
-            timer.endSection("LoadNal");
             if (IsKeyframe(*it)) {
                 // We want to insert the header bytes before each GOP, which is indicated by a keyframe.
                 // So, the before the first keyframe we encounter in each GOP, we will insert the header
                 // bytes
                 if (i == 0) {
-                    timer.startSection("InsertHeaderBytes");
                     result.insert(result.end(), header_bytes.begin(), header_bytes.end());
-                    timer.endSection("InsertHeaderBytes");
                 }
             }
-            timer.startSection("UpdateAddress");
             current.SetAddress(addresses[i]);
-            timer.endSection("UpdateAddress");
-
-            timer.startSection("GetSliceBytes");
             auto slice_bytes = current.GetBytes();
-            timer.endSection("GetSliceBytes");
             // Insert the bytes of the slice
-            timer.startSection("InsertSliceBytes");
             result.insert(result.end(), slice_bytes.begin(), slice_bytes.end());
-            timer.endSection("InsertSliceBytes");
             it++;
           }
         }
-        timer.endSection("UpdateSegments");
-
-        timer.printAllTimes();
         return result;
     }
 

@@ -1,14 +1,9 @@
 #include "Headers.h"
 
-#include "timer.h"
-
 namespace lightdb::hevc {
 
 	Headers::Headers(const StitchContext &context, std::vector<bytestring> nals)  {
 	    auto i = 0u;
-
-	    Timer timer;
-	    timer.startSection("CreateHeaders");
 
 	    // No need to check if it < nals.end() since any well formed stream
         // is guaranteed to have three headers
@@ -26,9 +21,6 @@ namespace lightdb::hevc {
             }
 		}
 		CHECK_EQ(headers_.size(), kNumHeaders);
-
-		timer.endSection("CreateHeaders");
-		timer.printAllTimes();
 	}
 
 	bytestring Headers::GetBytes() const {

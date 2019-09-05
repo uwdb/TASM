@@ -46,6 +46,24 @@ namespace lightdb::physical {
         DeviceType device_;
     };
 
+    class GPUPixelData: public MaterializedLightField {
+    public:
+        GPUPixelData()
+            : MaterializedLightField(DeviceType::GPU)
+        { }
+
+        GPUPixelData(std::vector<GPUFrameReference> pixels)
+            : MaterializedLightField(DeviceType::GPU),
+            pixels_(std::move(pixels))
+        { }
+
+        inline MaterializedLightFieldReference ref() const override { return MaterializedLightFieldReference::make<GPUPixelData>(*this); }
+        inline std::vector<GPUFrameReference>& pixels() noexcept { return pixels_; }
+
+    private:
+        std::vector<GPUFrameReference> pixels_;
+    };
+
     class SerializableData: public MaterializedLightField {
     public:
         virtual const bytestring& value() = 0;

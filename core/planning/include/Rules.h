@@ -421,6 +421,8 @@ namespace lightdb::optimization {
                     auto gpu = plan().allocator().gpu();
                     auto logical = plan().lookup(node);
                     std::vector<PhysicalOperatorReference> lastPerTileOperators;
+                    std::unordered_map<int, int> indexToTileNumber;
+                    std::unique_ptr<tiles::TileLayout> tileLayoutPtr;
                     for (auto &parent: physical_parents) {
                         auto &scan = parent.downcast<physical::ScanFramesFromFileEncodedReader>();
                         auto tileNumber = scan.source().index();
@@ -429,6 +431,8 @@ namespace lightdb::optimization {
 //                            continue;
 
                         auto &tileLayout = parent->logical().downcast<logical::ScannedTiledLightField>().entry().tileLayout();
+                        if (!tileLayoutPtr)
+                            tileLayoutPtr = std::make_unique<tiles::TileLayout>(tiles::TileLayout(tileLayout));
 
                         std::vector<int> framesForTileAndMetadata = node.framesForTileAndMetadata(tileNumber, tileLayout);
 
@@ -441,7 +445,10 @@ namespace lightdb::optimization {
                         // TODO - pixel selection has to know which tile it's operating over so it can transform x and y.
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, parent, gpu);
 
-                        if (!isSelectingPixelsAlone) {
+                        if (isSelectingPixelsAlone) {
+                            indexToTileNumber[lastPerTileOperators.size()] = tileNumber;
+                            lastPerTileOperators.push_back(decode);
+                        } else {
                             // TODO: Put select pixels operator in here.
                             auto selectPixels = plan().emplace<physical::GPUNaiveSelectPixels>(logical, decode,
                                                                                                tileNumber, tileLayout);
@@ -462,7 +469,14 @@ namespace lightdb::optimization {
                     }
 
                     // TODO: Add operator to interleave nals from different tiles.
-                    if (!isSelectingPixelsAlone) {
+                    if (isSelectingPixelsAlone) {
+                        assert(tileLayoutPtr);
+                        plan().emplace<physical::MergeTilePixels>(
+                                logical,
+                                lastPerTileOperators,
+                                *tileLayoutPtr,
+                                indexToTileNumber);
+                    } else {
                         plan().emplace<physical::StitchTiles>(
                                 logical,
                                 lastPerTileOperators,

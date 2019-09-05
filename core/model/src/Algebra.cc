@@ -65,11 +65,15 @@ namespace lightdb::logical {
     }
 
     LightFieldReference Algebra::Select(const FrameMetadataSpecification &frameMetadataSpecification) {
-        return Select(frameMetadataSpecification, MetadataSubsetType::Frame);
+        return Select(frameMetadataSpecification, MetadataSubsetTypeFrame);
     }
 
     LightFieldReference Algebra::Select(const PixelMetadataSpecification &pixelMetadataSpecification) {
-        return Select(pixelMetadataSpecification, MetadataSubsetType::Pixel);
+        return Select(pixelMetadataSpecification, MetadataSubsetTypePixel);
+    }
+
+    LightFieldReference Algebra::Select(const PixelsInFrameMetadataSpecification &pixelsInFrameMetadataSpecification) {
+        return Select(pixelsInFrameMetadataSpecification, MetadataSubsetTypePixelsInFrame);
     }
 
     LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType) {

@@ -39,7 +39,8 @@ namespace lightdb {
             // Can create a class, like the ranges, to enable specifying all this.
             LightFieldReference Select(const FrameMetadataSpecification&);
             LightFieldReference Select(const PixelMetadataSpecification&);
-            LightFieldReference Select(const MetadataSpecification&, MetadataSubsetType subsetType = MetadataSubsetType::Frame);
+            LightFieldReference Select(const PixelsInFrameMetadataSpecification&);
+            LightFieldReference Select(const MetadataSpecification&, MetadataSubsetType subsetType = MetadataSubsetTypeFrame);
 
 
             LightFieldReference Union(std::vector<LightFieldReference>); //TODO needs merge function

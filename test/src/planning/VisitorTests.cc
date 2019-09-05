@@ -109,8 +109,8 @@ TEST_F(VisitorTestFixture, testScanAndSink) {
 
 TEST_F(VisitorTestFixture, testScanTiled) {
     auto input = ScanTiled("MVI_63563_gops_for_tiles");
-    PixelMetadataSpecification selection("LABELS", "LABEL", "bus");
-    Coordinator().execute(input.Select(selection).Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/selected.hevc"));
+    PixelsInFrameMetadataSpecification selection("LABELS", "LABEL", "bus");
+    Coordinator().execute(input.Select(selection).Sink()); //.Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/selected.hevc"));
 }
 
 TEST_F(VisitorTestFixture, testScanAndSave) {

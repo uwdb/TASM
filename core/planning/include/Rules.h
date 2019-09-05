@@ -412,13 +412,15 @@ namespace lightdb::optimization {
                 auto parent = physical_parents.front(); // ScanEncodedFrames
 
                 /* See if we are selecting pixels. */
-                if (node.subsetType() == MetadataSubsetType::Pixel) {
+                if (node.subsetType() & MetadataSubsetTypePixel) {
+                    bool isSelectingPixelsAlone = node.subsetType() == MetadataSubsetTypePixel;
+
                     // There should be a parent for each tile.
                     // Find out what frames are wanted for metadata.
                     // Get rectangle for tile.
                     auto gpu = plan().allocator().gpu();
                     auto logical = plan().lookup(node);
-                    std::vector<PhysicalOperatorReference> coalesces;
+                    std::vector<PhysicalOperatorReference> lastPerTileOperators;
                     for (auto &parent: physical_parents) {
                         auto &scan = parent.downcast<physical::ScanFramesFromFileEncodedReader>();
                         auto tileNumber = scan.source().index();
@@ -439,23 +441,33 @@ namespace lightdb::optimization {
                         // TODO - pixel selection has to know which tile it's operating over so it can transform x and y.
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, parent, gpu);
 
-                        // TODO: Put select pixels operator in here.
-                        auto selectPixels = plan().emplace<physical::GPUNaiveSelectPixels>(logical, decode, tileNumber, tileLayout);
+                        if (!isSelectingPixelsAlone) {
+                            // TODO: Put select pixels operator in here.
+                            auto selectPixels = plan().emplace<physical::GPUNaiveSelectPixels>(logical, decode,
+                                                                                               tileNumber, tileLayout);
 
-                        // TODO: For now, assume encode returns one GOP-worth of data at a time.
-                        auto encode = plan().emplace<physical::GPUEncodeToCPU>(logical, selectPixels, Codec::hevc());
-                        encode.downcast<physical::GPUEncodeToCPU>().setDesiredKeyframes(scan.source().mp4Reader().keyframeNumbers());
+                            // TODO: For now, assume encode returns one GOP-worth of data at a time.
+                            auto encode = plan().emplace<physical::GPUEncodeToCPU>(logical, selectPixels,
+                                                                                   Codec::hevc());
+                            encode.downcast<physical::GPUEncodeToCPU>().setDesiredKeyframes(
+                                    scan.source().mp4Reader().keyframeNumbers());
 
-                        // Add tile aggregator.
-                        auto &tileEntry = parent->logical().downcast<logical::ScannedTiledLightField>().entry();
-                        coalesces.emplace_back(plan().emplace<physical::CoalesceSingleTile>(logical, encode, scan.framesToRead(), node.orderedFramesForMetadata(), tileEntry, tileNumber));
+                            // Add tile aggregator.
+                            auto &tileEntry = parent->logical().downcast<logical::ScannedTiledLightField>().entry();
+                            lastPerTileOperators.emplace_back(
+                                    plan().emplace<physical::CoalesceSingleTile>(logical, encode, scan.framesToRead(),
+                                                                                 node.orderedFramesForMetadata(),
+                                                                                 tileEntry, tileNumber));
+                        }
                     }
 
                     // TODO: Add operator to interleave nals from different tiles.
-                    plan().emplace<physical::StitchTiles>(
-                            logical,
-                            coalesces,
-                            physical_parents.front()->logical().downcast<logical::ScannedTiledLightField>().entry().tileLayout());
+                    if (!isSelectingPixelsAlone) {
+                        plan().emplace<physical::StitchTiles>(
+                                logical,
+                                lastPerTileOperators,
+                                physical_parents.front()->logical().downcast<logical::ScannedTiledLightField>().entry().tileLayout());
+                    }
 
                     return true;
 

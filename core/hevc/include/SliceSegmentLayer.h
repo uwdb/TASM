@@ -53,7 +53,8 @@ namespace lightdb::hevc {
         SliceSegmentLayer(const StitchContext &context, const bytestring &data, Headers headers)
                 : Nal(context, data),
                   headersMetadata_(headers.GetPicture()->pictureParameterSetMetadata(), headers.GetSequence()->sequenceParameterSetMetadata()),
-                  data_(RemoveEmulationPrevention(data, GetHeaderSize(), kMaxHeaderLength)),
+                  numberOfTranslatedBytes_(std::min((unsigned long)kMaxHeaderLength, data.size())),
+                  data_(RemoveEmulationPrevention(data, GetHeaderSize(), numberOfTranslatedBytes_)),
                   headers_(std::move(headers)),
                   metadata_(data_.begin(), data_.begin() + GetHeaderSizeInBits()),
                   address_(0)
@@ -79,7 +80,13 @@ namespace lightdb::hevc {
         * @return A string with the bytes of this Nal
         */
         inline bytestring GetBytes() const override {
-            return AddEmulationPreventionAndMarker(data_, GetHeaderSize(), kMaxHeaderLength);
+            auto headerBytes = AddEmulationPreventionAndMarker(data_, GetHeaderSize(), numberOfTranslatedBytes_);
+            auto headerBytesSize = headerBytes.size();
+
+            bytestring combinedData(headerBytesSize + byte_data_.size() - numberOfTranslatedBytes_);
+            std::move(headerBytes.begin(), headerBytes.end(), combinedData.begin());
+            std::copy(byte_data_.begin() + numberOfTranslatedBytes_, byte_data_.end(), combinedData.begin() + headerBytesSize);
+            return combinedData;
         }
 
         void InsertPicOutputFlag(bool value);
@@ -96,6 +103,9 @@ namespace lightdb::hevc {
         HeadersMetadata headersMetadata_;
 
     private:
+        // For the original data as bytes.
+        unsigned long numberOfTranslatedBytes_;
+
         BitArray data_;
         const Headers headers_;
         BitStream metadata_;

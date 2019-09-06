@@ -48,10 +48,10 @@ namespace lightdb::hevc {
          * @param data The bytes representing the Nal
          */
         Nal(StitchContext context, const lightdb::bytestring &data)
-                : context_(std::move(context)),
-                  byte_data_(data),
-                  type_(PeekType(data)),
-                  is_header_(IsHeader()) {
+            : byte_data_(data),
+              context_(std::move(context)),
+              type_(PeekType(data)),
+              is_header_(IsHeader()) {
             CHECK_EQ(ForbiddenZero(), 0);
         }
 
@@ -122,7 +122,10 @@ namespace lightdb::hevc {
         static constexpr unsigned int kNalHeaderSize = 5u;
         static constexpr unsigned int kNalMarkerSize = kNalMarker.size();
 
-     private:
+    protected:
+        const bytestring byte_data_;
+
+    private:
 
         inline unsigned int ForbiddenZero() const {
             return byte_data_[kForbiddenZeroIndex] & kForbiddenZeroMask;
@@ -132,7 +135,6 @@ namespace lightdb::hevc {
         static constexpr const unsigned int kForbiddenZeroMask = 0x80u;
 
         const StitchContext context_;
-        const bytestring byte_data_;
         const unsigned int type_;
         const bool is_header_;
     };

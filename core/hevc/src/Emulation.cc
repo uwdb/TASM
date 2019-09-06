@@ -39,14 +39,18 @@ namespace lightdb::hevc {
                 index++;
         }
 
-        auto set_size = (data.size() - emulation_indices.size()) * CHAR_BIT;
+        // TODO:
+        // Set size to be minimum of end vs. data.size.
+        // Limit loop.
+        auto numberOfBytesToTranslate = std::min(data.size(), end) - emulation_indices.size();
+        auto set_size = numberOfBytesToTranslate * CHAR_BIT;
         BitArray bits(set_size);
         auto bit_index = 0u;
         auto str_index = 0u;
 
 
         // Now iterate over the string to convert each byte to bits to be inserted into the bit set
-        for (auto c: data) {
+        while (bit_index < set_size) {
             // If this index corresponds to one which we are meant to remove, just skip it
             if (!emulation_indices.empty() && str_index == emulation_indices.front()) {
                 emulation_indices.pop_front();
@@ -55,6 +59,7 @@ namespace lightdb::hevc {
                 // The reason we & with 128 instead of 1 is that we want the high order bits of the byte
                 // to appear earlier in the stream. I.e., if we want to extract bit 18 in abc,
                 // since we are counting from the left, we actually want to extract bit 3 in byte c
+                auto c = data[str_index];
                 for (auto i = 0u; i < CHAR_BIT; i++) {
 		            bits[bit_index++] = (c << i) & 128;
                 }

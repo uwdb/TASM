@@ -30,7 +30,8 @@ private:
         explicit Runtime(GPUNaiveSelectPixels &physical)
             : runtime::GPUUnaryRuntime<GPUNaiveSelectPixels, GPUDecodedFrameData>(physical),
                     transform_(this->context()),
-                    frameNumber_(0)
+                    frameNumber_(0),
+                    isSelectingPixelsOnUntiledVideo_(physical.tileLayout() == tiles::NoTilesLayout)
         { }
 
         std::optional<MaterializedLightFieldReference> read() override {
@@ -48,9 +49,11 @@ private:
                 frameNumber = frame->getFrameNumber(frameNumber) ? frameNumber : frameNumber_++;
 
                 auto rectanglesForFrame = physical().metadataSubsetLightField().rectanglesForFrame(frameNumber);
-                bool anyRectangleIntersectsTile = std::any_of(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](auto &rect) {
-                    return tileRectangle.intersects(rect);
-                });
+                bool anyRectangleIntersectsTile = isSelectingPixelsOnUntiledVideo_
+                        ? rectanglesForFrame.size()
+                        : std::any_of(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](auto &rect) {
+                                return tileRectangle.intersects(rect);
+                            });
 
 //                if (!physical().metadataSubsetLightField().framesForMetadata().count(frameNumber)) {
                 if (!anyRectangleIntersectsTile) {
@@ -87,6 +90,7 @@ private:
     private:
         video::GPUSelectPixels transform_;
         int frameNumber_;
+        bool isSelectingPixelsOnUntiledVideo_;
     };
 
 private:

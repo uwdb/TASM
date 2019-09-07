@@ -108,15 +108,21 @@ TEST_F(VisitorTestFixture, testScanAndSink) {
 }
 
 TEST_F(VisitorTestFixture, testScanTiled) {
-    auto input = ScanTiled("MVI_63563_gops_for_tiles");
-    PixelsInFrameMetadataSpecification selection("LABELS", "LABEL", "bus");
-    Coordinator().execute(input.Select(selection).Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/selected.hevc"));
+    auto input = ScanTiled("jackson_square_1hr_680x512_gops_for_tiles");
+    PixelsInFrameMetadataSpecification selection("LABELS", "LABEL", "car");
+    Coordinator().execute(input.Select(selection).Sink()); //.Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/selected.hevc"));
 }
 
 TEST_F(VisitorTestFixture, testScanTiledToPixels) {
-    auto input = ScanTiled("MVI_63563_gops_for_tiles");
-    PixelMetadataSpecification selection("LABELS", "LABEL", "bus");
-    Coordinator().execute(input.Select(selection).Sink());
+    auto input = ScanTiled("jackson_square_gops_for_tiles");
+    PixelMetadataSpecification selection("LABELS", "LABEL", "car");
+    Coordinator().execute(input.Select(selection).Store("jackson_square_car_pixels"));
+}
+
+TEST_F(VisitorTestFixture, testScanNotTiledAndSelectPixelsInFrame) {
+    auto input = Scan("jackson_square_1hr_680x512");
+    PixelsInFrameMetadataSpecification selection("LABELS", "LABEL", "car");
+    Coordinator().execute(input.Select(selection).Store("jackson_town_square_car_pixels_in_frame"));
 }
 
 TEST_F(VisitorTestFixture, testScanAndSave) {
@@ -195,9 +201,17 @@ TEST_F(VisitorTestFixture, testLoadAndSelectFramesCustom) {
 
 TEST_F(VisitorTestFixture, testSavingMetadata) {
 //    auto input = Scan(videoCatalogName);
-    auto input = Load("/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_tiled/black-tile-0.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Encode(selection).Store("MVI_63563_gops_for_tiles"));
+    auto filenames = { "upper_left.hevc", "lower_left.hevc", "upper_right.hevc", "lower_right.hevc", "black_tile.hevc" };
+    for (auto &file : filenames) {
+        auto input = Load(std::filesystem::path("/home/maureen/noscope_videos/tiles/2x2tiles") / file, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+        MetadataSpecification selection("LABELS", "LABEL", "car");
+        Coordinator().execute(input.Encode(selection).Store("jackson_square_1hr_680x512_gops_for_tiles"));
+    }
+}
+
+TEST_F(VisitorTestFixture, testLoadIntoCatalog) {
+    auto input = Load("/home/maureen/noscope_videos/tiles/2x2tiles/jackson_town_square_1hr_640x512.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Store("jackson_square_1hr_680x512"));
 }
 
 TEST_F(VisitorTestFixture, testGOPSaving250) {

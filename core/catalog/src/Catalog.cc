@@ -64,7 +64,7 @@ namespace lightdb::catalog {
 
     LightFieldReference Catalog::getTiled(const std::string &name) const {
         assert(exists(name));
-        return LightFieldReference::make<logical::ScannedTiledLightField>(tileEntry(name));
+        return LightFieldReference::make<logical::ScannedTiledLightField>(std::move(tileEntry(name)));
     }
 
     LightFieldReference Catalog::get(const std::string &name, const bool create) const {
@@ -120,6 +120,7 @@ namespace lightdb::catalog {
         auto configuration = firstTileStreamConfigurations[0];
 
         std::vector<Source> sources;
+        sources.reserve(numberOfTiles);
         for (auto i = 0u; i < numberOfTiles; ++i) {
             auto pathForTile = pathForOriginalTile(i);
             sources.emplace_back(i,

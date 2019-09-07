@@ -85,8 +85,8 @@ private:
             // Find rectangles that have a frame id <= the maximum processed frame, and put those into
             // the "frames" array of a GPUDecodedFramesObject thing.
             auto pixelsAsFrames = pixelsForProcessedRectangles();
-            auto returnVal = GPUPixelData(pixelsAsFrames);
-//            auto returnVal = GPUDecodedFrameData{configuration_, geometry_, pixelsAsFrames};
+//            auto returnVal = GPUPixelData(pixelsAsFrames);
+            auto returnVal = GPUDecodedFrameData{configuration_, geometry_, pixelsAsFrames};
             GLOBAL_TIMER.endSection("MergeTilePixels");
             return returnVal;
         }
@@ -245,7 +245,7 @@ private:
             return expectedFrameIterator_ != physical().expectedFrames().end();
         }
 
-        const catalog::Source source() const {
+        const catalog::Source &source() const {
             return physical().tileEntry().sources()[physical().tileNumber()];
         }
 

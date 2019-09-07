@@ -299,10 +299,10 @@ namespace lightdb::logical {
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataEncodedLightField>(visitor); }
     private:
         void setKeyframesInOptions() {
-            metadata::MetadataManager metadataManager(source().filename(), metadataSpecification_);
+            metadata::MetadataManager metadataManager(source().filename().parent_path(), metadataSpecification_);
             auto keyframes = metadataManager.idealKeyframesForMetadata();
 
-            auto tileLayout = tiles::CatalogEntryToTileLayout.at("MVI_63563_tiled");
+            auto tileLayout = tiles::CatalogEntryToTileLayout.at("jackson_square_1hr_680x512_gops_for_tiles");
             auto tileKeyframes = metadataManager.idealKeyframesForMetadataAndTiles(tileLayout);
 
             std::cout << "Setting keyframes\n";

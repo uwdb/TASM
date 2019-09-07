@@ -51,7 +51,7 @@ public:
   virtual ~CudaDecoder() {
       // I tried calling the destructor at the last call, but it segfaulted.
       // I think it has to be called the first time.
-      if(handle() != nullptr && !CudaDecoder::DECODER_DESTROYED) {
+      if(handle() != nullptr) {
           cuvidDestroyDecoder(handle());
           CudaDecoder::DECODER_DESTROYED = true;
       }

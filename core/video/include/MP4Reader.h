@@ -31,19 +31,15 @@ public:
 
     explicit MP4Reader(const std::filesystem::path &filename, bool forDecoding = true)
         : filename_(filename),
-        invalidFile_(false)
+        invalidFile_(false),
+        forDecoding_(forDecoding)
     {
         if (filename_.extension() != ".mp4") {
             invalidFile_ = true;
             return;
         }
 
-        file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
-        u32 flags = GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG;
-        // I htink the ANNEXB flag adds AUD NALS.
-        if (forDecoding)
-            flags |= GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG;
-        assert(gf_isom_set_nalu_extract_mode(file_, 1, flags) == GF_OK);
+        setUpGFIsomFile(forDecoding_);
 
         GF_TrackBox *trak = gf_isom_get_track_from_file2(file_, trackNumber_);
         GF_SyncSampleBox *sampleBox = trak->Media->information->sampleTable->SyncSample;
@@ -59,8 +55,33 @@ public:
         numberOfSamples_ = gf_isom_get_sample_count(file_, trackNumber_);
     }
 
+    /*
+     *
+     *    static const unsigned int trackNumber_ = 1;
+    std::filesystem::path filename_;
+    GF_ISOFile *file_;
+    std::vector<int> keyframeNumbers_;
+    unsigned int numberOfSamples_;
+    unsigned int numberOfSamplesRead_ = 0;
+    bool invalidFile_;
+    bool forDecoding_;
+     */
+    MP4Reader(const MP4Reader &other)
+        : filename_(other.filename_),
+        keyframeNumbers_(other.keyframeNumbers_),
+        numberOfSamples_(other.numberOfSamples_),
+        numberOfSamplesRead_(other.numberOfSamplesRead_),
+        invalidFile_(other.invalidFile_),
+        forDecoding_(other.forDecoding_)
+    {
+        setUpGFIsomFile(forDecoding_);
+    }
+
     ~MP4Reader() {
-//        gf_isom_close(file_);
+        if (file_) {
+            gf_isom_close(file_);
+            file_ = NULL;
+        }
     }
 
     const std::vector<int> &keyframeNumbers() const {
@@ -90,6 +111,16 @@ public:
     lightdb::bytestring dataForSamples(unsigned int firstSampleToRead, unsigned int lastSampleToRead) const;
 
 private:
+    void setUpGFIsomFile(bool forDecoding) {
+        file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
+        u32 flags = GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG;
+        // I think the ANNEXB flag adds AUD NALS.
+        if (forDecoding)
+            flags |= GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG;
+        auto result = gf_isom_set_nalu_extract_mode(file_, 1, flags);
+        assert(result == GF_OK);
+    }
+
     static GF_TrackBox *gf_isom_get_track_from_file2(GF_ISOFile *the_file, u32 trackNumber) {
         auto count = gf_list_count(the_file->moov->trackList);
         assert(trackNumber <= count);
@@ -111,6 +142,7 @@ private:
     unsigned int numberOfSamples_;
     unsigned int numberOfSamplesRead_ = 0;
     bool invalidFile_;
+    bool forDecoding_;
 };
 
 #endif //LIGHTDB_MP4READER_H

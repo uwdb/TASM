@@ -28,6 +28,10 @@ public:
             buffers(CreateBuffers(minimumBufferCount()))
   { }
 
+//  ~VideoEncoder() {
+//      usleep(500);
+//  }
+
   EncodeAPI &api() { return *api_; }
   const EncodeConfiguration &configuration() const { return configuration_; }
 

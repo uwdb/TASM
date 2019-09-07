@@ -331,9 +331,9 @@ public:
         return dataForSamples(firstSampleToRead, lastSampleToRead);
     }
 
-    ~EncodedFrameReader() {
-        std::cout << "Number of samples read: " << numberOfSamplesRead_ << std::endl;
-    }
+//    ~EncodedFrameReader() {
+//        std::cout << "Number of samples read: " << numberOfSamplesRead_ << std::endl;
+//    }
 
 private:
     bool haveMoreFrames() const { return frameIterator_ != frames_.end(); }

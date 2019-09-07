@@ -29,6 +29,13 @@ public:
         heightsOfRows_(heightsOfRows)
     { }
 
+    bool operator==(const TileLayout &other) const {
+        return numberOfColumns_ == other.numberOfColumns()
+                && numberOfRows_ == other.numberOfRows()
+                && widthsOfColumns_ == other.widthsOfColumns()
+                && heightsOfRows_ == other.heightsOfRows();
+    }
+
     unsigned int numberOfTiles() const {
         return numberOfColumns_ * numberOfRows_;
     }
@@ -39,6 +46,14 @@ public:
 
     unsigned int numberOfRows() const {
         return numberOfRows_;
+    }
+
+    const std::vector<unsigned int> &widthsOfColumns() const {
+        return widthsOfColumns_;
+    }
+
+    const std::vector<unsigned int> &heightsOfRows() const {
+        return heightsOfRows_;
     }
 
     unsigned int totalHeight() const {
@@ -89,10 +104,16 @@ private:
 //    std::unordered_map<unsigned int, std::filesystem::path> tileToFilePath_;
 };
 
+static const TileLayout NoTilesLayout(1, 1, {1}, {1});
+
 static const std::unordered_map<std::string, TileLayout> CatalogEntryToTileLayout {
         { "MVI_63563_tiled", TileLayout(2, 1, {480, 480}, {544}) },
         { "MVI_63563_tiled_custom_gops", TileLayout(2, 1, {480, 480}, {544}) },
         { "MVI_63563_gops_for_tiles", TileLayout(2, 1, {480, 480}, {544}) },
+        { "jackson_square_gops_for_tiles", TileLayout(2, 1, {320, 320}, {480}) },
+        { "jackson_square_150frame_gops_for_tiles", TileLayout(2, 1, {320, 320}, {480}) },
+        { "jackson_square_150frame_680x512_gops_for_tiles", TileLayout(2, 2, {320, 320}, {256, 256}) },
+        { "jackson_square_1hr_680x512_gops_for_tiles", TileLayout(2, 2, {320, 320}, {256, 256}) },
 };
 
 } // namespace lightdb::tiles

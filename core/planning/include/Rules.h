@@ -93,7 +93,8 @@ namespace lightdb::optimization {
 //                        plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
 //                        return true;
 
-                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
+//                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
+                        auto &scan = plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 
                         auto children = plan().children(plan().lookup(node));
@@ -423,6 +424,21 @@ namespace lightdb::optimization {
                     std::vector<PhysicalOperatorReference> lastPerTileOperators;
                     std::unordered_map<int, int> indexToTileNumber;
                     std::unique_ptr<tiles::TileLayout> tileLayoutPtr;
+
+                    // If there is only one parent, then video isn't tiled.
+                    // Just set frames to decode on parent's scan and add SelectPixels operator.
+                    if (physical_parents.size() == 1 && !isSelectingPixelsAlone) {
+                        assert(physical_parents[0]->parents().size() == 1);
+                        auto &parent = physical_parents[0];
+                        auto &scanParent = parent->parents()[0];
+                        auto &scan = scanParent.downcast<physical::ScanFramesFromFileEncodedReader>();
+                        scan.setFramesToRead(node.orderedFramesForMetadata());
+//                        auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, parent, gpu);
+                        plan().emplace<physical::GPUNaiveSelectPixels>(logical, parent, 0, tiles::NoTilesLayout);
+
+                        return true;
+                    }
+
                     for (auto &parent: physical_parents) {
                         auto &scan = parent.downcast<physical::ScanFramesFromFileEncodedReader>();
                         auto tileNumber = scan.source().index();

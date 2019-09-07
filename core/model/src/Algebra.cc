@@ -78,7 +78,7 @@ namespace lightdb::logical {
 
     LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType) {
         if (this_.is<ExternalLightField>())
-            return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, this_.downcast<ExternalLightField>().source());
+            return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, std::vector<catalog::Source>({ this_.downcast<ExternalLightField>().source() }), std::optional(this_.downcast<ExternalLightField>().source().filename().parent_path()));
         else if (this_.is<ScannedLightField>())
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, this_.downcast<ScannedLightField>().sources().front());
         else if (this_.is<ScannedTiledLightField>()) {

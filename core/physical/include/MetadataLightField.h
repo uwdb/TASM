@@ -65,7 +65,13 @@ namespace lightdb::metadata {
                 orderedFramesForMetadata_(0),
                 didSetIdealKeyframesForMetadata_(false),
                 idealKeyframesForMetadata_(0)
-        {}
+        {
+            openDatabase();
+        }
+
+        ~MetadataManager() {
+            closeDatabase();
+        }
 
         const std::unordered_set<int> &framesForMetadata() const;
         const std::vector<int> &orderedFramesForMetadata() const;
@@ -80,6 +86,8 @@ namespace lightdb::metadata {
 
     private:
         void selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn = nullptr) const;
+        void openDatabase();
+        void closeDatabase();
 
         const std::string videoIdentifier_;
         const MetadataSpecification metadataSpecification_;
@@ -90,13 +98,14 @@ namespace lightdb::metadata {
         mutable bool didSetIdealKeyframesForMetadata_;
         mutable std::unordered_set<int> idealKeyframesForMetadata_;
         mutable std::unordered_map<int, std::vector<lightdb::Rectangle>> frameToRectangles_;
+        sqlite3 *db_;
     };
 } // namespace lightdb::metadata
 
 namespace lightdb::logical {
     class MetadataSubsetLightField : public LightField {
     public:
-        MetadataSubsetLightField(const LightFieldReference &lightField, const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType, const catalog::Source &source)
+        explicit MetadataSubsetLightField(const LightFieldReference &lightField, const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType, const catalog::Source &source)
             : MetadataSubsetLightField(lightField, metadataSpecification, subsetType, std::vector<catalog::Source>({ source }))
         { }
 
@@ -111,7 +120,8 @@ namespace lightdb::logical {
         sources_(sources),
         metadataManager_(metadataIdentifier ? *metadataIdentifier : source().filename().string(), metadataSelection_)
         {
-//            setKeyframesInOptions();
+            // TODO: Open database here.
+            // Close on destruction.
         }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightField>(visitor); }

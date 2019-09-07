@@ -19,7 +19,14 @@ private:
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if(!all_parent_eos()) {
-                std::for_each(iterators().begin(), iterators().end(), [](auto &i) { i++; });
+                auto outputFile = "/home/maureen/noscope_videos/jackson_car_pixels.hevc";
+                std::ofstream ofs(outputFile);
+                std::for_each(iterators().begin(), iterators().end(), [&](auto &i) {
+//                    i++;
+                    MaterializedLightFieldReference data = i++;
+                    auto &value = data.downcast<SerializableData>().value();
+                    ofs.write(value.data(), value.size());
+                });
                 return EmptyData{physical().device()};
             } else
                 return std::nullopt;

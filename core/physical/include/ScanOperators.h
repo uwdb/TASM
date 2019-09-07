@@ -76,8 +76,8 @@ public:
     const std::vector<int> &framesToRead() const { return framesToRead_; }
     const std::vector<int> &globalFramesToRead() const { return globalFramesToRead_; }
 
-    void setFramesToRead(std::vector<int> frames) {
-        framesToRead_ = std::move(frames);
+    void setFramesToRead(const std::vector<int> &frames) {
+        framesToRead_ = frames;
     }
 
     void setGlobalFramesToRead(const std::vector<int> &frames) {

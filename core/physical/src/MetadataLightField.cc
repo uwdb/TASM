@@ -54,6 +54,17 @@ namespace lightdb::associations {
                     {"/home/maureen/lightdb/cmake-build-debug-remote/test/resources/MVI_63563_tiled/black-tile-1.hevc", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
                     {"MVI_63563_tiled_custom_gops", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
                     {"MVI_63563_gops_for_tiles", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"jackson_square_150frame_gops_for_tiles", "/home/maureen/noscope_videos/jackson_town_square_resized_150frames.db"},
+                    {"jackson_square_gops_for_tiles", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
+                    {"/home/maureen/noscope_videos/tiles/jackson_left.hevc", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
+                    {"/home/maureen/noscope_videos/tiles/jackson_right.hevc", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
+                    {"/home/maureen/noscope_videos/tiles/black-tile-0.hevc", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
+                    {"/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/jackson_town_square_gop30/1-0-stream.mp4", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
+                    {"/home/maureen/noscope_videos/tiles/shortened/2x2tiles", "/home/maureen/noscope_videos/tiles/shortened/2x2tiles/jackson-town-square-640x512-150frames.db"},
+                    {"jackson_square_150frame_680x512_gops_for_tiles", "/home/maureen/noscope_videos/tiles/shortened/2x2tiles/jackson-town-square-640x512-150frames.db"},
+                    {"/home/maureen/noscope_videos/tiles/2x2tiles", "/home/maureen/noscope_videos/tiles/2x2tiles/jackson-town-square-640x512-1hr.db"},
+                    {"jackson_square_1hr_680x512_gops_for_tiles", "/home/maureen/noscope_videos/tiles/2x2tiles/jackson-town-square-640x512-1hr.db"},
+                    {"/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/jackson_square_1hr_680x512/1-0-stream.mp4", "/home/maureen/noscope_videos/tiles/2x2tiles/jackson-town-square-640x512-1hr.db"},
             } );
 } // namespace lightdb::associations
 
@@ -71,12 +82,19 @@ std::vector<Rectangle> MetadataLightField::allRectangles() {
 
 namespace lightdb::metadata {
 
-    void MetadataManager::selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn) const {
-        sqlite3 *db;
-        ASSERT_SQLITE_OK(sqlite3_open_v2(lightdb::associations::VideoPathToLabelsPath.at(videoIdentifier_).c_str(), &db, SQLITE_OPEN_READONLY, NULL));
+    void MetadataManager::openDatabase() {
+        int openResult = sqlite3_open_v2(lightdb::associations::VideoPathToLabelsPath.at(videoIdentifier_).c_str(), &db_, SQLITE_OPEN_READONLY, NULL);
+        assert(openResult == SQLITE_OK);
+    }
 
+    void MetadataManager::closeDatabase() {
+        int closeResult = sqlite3_close(db_);
+        assert(closeResult == SQLITE_OK);
+    }
+
+    void MetadataManager::selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn) const {
         if (afterOpeningFn)
-            afterOpeningFn(db);
+            afterOpeningFn(db_);
 
         char *selectFramesStatement = nullptr;
         int size = asprintf(&selectFramesStatement, query,
@@ -86,7 +104,7 @@ namespace lightdb::metadata {
         assert(size != -1);
 
         sqlite3_stmt *select;
-        auto prepareResult = sqlite3_prepare_v2(db, selectFramesStatement, size, &select, nullptr);
+        auto prepareResult = sqlite3_prepare_v2(db_, selectFramesStatement, size, &select, nullptr);
         ASSERT_SQLITE_OK(prepareResult);
 
         // Step and get results.
@@ -97,7 +115,6 @@ namespace lightdb::metadata {
         assert(result == SQLITE_DONE);
 
         sqlite3_finalize(select);
-        sqlite3_close(db);
         free(selectFramesStatement);
     }
 
@@ -247,6 +264,10 @@ std::unordered_set<int> MetadataManager::idealKeyframesForMetadataAndTiles(const
         if (updateTileInclusions())
             keyframes.insert(*globalFramesIterator);
     }
+
+    // Insert frames from normal sequence.
+    auto &originalIdealKeyframes = idealKeyframesForMetadata();
+    keyframes.insert(originalIdealKeyframes.begin(), originalIdealKeyframes.end());
 
     return keyframes;
 }

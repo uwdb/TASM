@@ -249,6 +249,11 @@ public:
         globalFramesIterator_ = globalFrames_.begin();
     }
 
+    void setNewFrames(std::vector<int> frames) {
+        frames_ = std::move(frames);
+        frameIterator_ = frames_.begin();
+    }
+
     void setShouldReadFramesExactly(bool shouldReadFramesExactly) {
         shouldReadFramesExactly_ = shouldReadFramesExactly;
     }

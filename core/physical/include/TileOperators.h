@@ -200,7 +200,8 @@ private:
         explicit Runtime(CoalesceSingleTile &physical)
             : runtime::UnaryRuntime<CoalesceSingleTile, CPUEncodedFrameData>(physical),
                     expectedFrameIterator_(physical.expectedFrames().begin()),
-                    allFramesToOutputIterator_(physical.allFramesToOutput().begin())
+                    allFramesToOutputIterator_(physical.allFramesToOutput().begin()),
+                    blackFramesReader_(physical.tileEntry().pathForBlackTile(physical.tileNumber()), {})
         { }
 
         std::optional<MaterializedLightFieldReference> read() override {
@@ -260,15 +261,13 @@ private:
             if (!blackFramesToRead.size())
                 return {};
 
-            EncodedFrameReader blackFramesReader(
-                    physical().tileEntry().pathForBlackTile(physical().tileNumber()),
-                    blackFramesToRead);
-//            blackFramesReader.setShouldReadFramesExactly(true);
+            assert(blackFramesReader_.isEos());
+            blackFramesReader_.setNewFrames(blackFramesToRead);
 
             bytestring blackFramesEncodedData;
             auto numberOfFrames = 0u;
 
-            for (auto frames = blackFramesReader.read(); frames.has_value(); frames = blackFramesReader.read()) {
+            for (auto frames = blackFramesReader_.read(); frames.has_value(); frames = blackFramesReader_.read()) {
                 blackFramesEncodedData.insert(blackFramesEncodedData.end(), frames->data().begin(), frames->data().end());
                 numberOfFrames += frames->numberOfFrames();
             }
@@ -279,6 +278,7 @@ private:
 
         std::vector<int>::const_iterator expectedFrameIterator_;
         std::vector<int>::const_iterator allFramesToOutputIterator_;
+        EncodedFrameReader blackFramesReader_;
     };
 
     std::vector<int> expectedFrames_;

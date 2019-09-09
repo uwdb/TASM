@@ -205,29 +205,30 @@ private:
         { }
 
         std::optional<MaterializedLightFieldReference> read() override {
-            if (iterator() == iterator().eos() && !haveMoreGlobalFrames())
+            if (iterator() == iterator().eos() && !haveMoreGlobalFrames() && blackFramesReader_.isEos())
                 return {};
 
             GLOBAL_TIMER.startSection("CoalesceSingleTile");
 
             // Read global frames from the black tile until global frames iterator = expected frames iterator.
             auto combinedData = blackFramesData();
+            if (!combinedData.size()) {
+                if (iterator() != iterator().eos()) {
+                    assert(*allFramesToOutputIterator_ == *expectedFrameIterator_);
+                    auto data = iterator()++;
+                    int firstFrameIndex = 0;
+                    assert(data.getFirstFrameIndexIfSet(firstFrameIndex));
+                    int numberOfFrames = 0;
+                    assert(data.getNumberOfFramesIfSet(numberOfFrames));
 
-            if (iterator() != iterator().eos()) {
-                assert(*allFramesToOutputIterator_ == *expectedFrameIterator_);
-                auto data = iterator()++;
-                int firstFrameIndex = 0;
-                assert(data.getFirstFrameIndexIfSet(firstFrameIndex));
-                int numberOfFrames = 0;
-                assert(data.getNumberOfFramesIfSet(numberOfFrames));
+                    // Move expected frames iterator forward number of frames amount.
+                    if (numberOfFrames) {
+                        assert(firstFrameIndex == *expectedFrameIterator_);
+                        std::advance(expectedFrameIterator_, numberOfFrames);
+                        std::advance(allFramesToOutputIterator_, numberOfFrames);
 
-                // Move expected frames iterator forward number of frames amount.
-                if (numberOfFrames) {
-                    assert(firstFrameIndex == *expectedFrameIterator_);
-                    std::advance(expectedFrameIterator_, numberOfFrames);
-                    std::advance(allFramesToOutputIterator_, numberOfFrames);
-
-                    combinedData.insert(combinedData.end(), data.value().begin(), data.value().end());
+                        combinedData = data.value();
+                    }
                 }
             }
 
@@ -252,28 +253,34 @@ private:
 
         bytestring blackFramesData() {
             // Create vector of frames to read from a black tile.
-            std::vector<int> blackFramesToRead;
-            while (haveMoreGlobalFrames() &&
-                (!haveMoreExpectedFrames() || *allFramesToOutputIterator_ != *expectedFrameIterator_)) {
-                blackFramesToRead.push_back(*allFramesToOutputIterator_++);
+            if (!blackFramesReader_.isEos()) {
+                return blackFramesReader_.read()->data();
+            } else {
+                std::vector<int> blackFramesToRead;
+                while (haveMoreGlobalFrames() &&
+                       (!haveMoreExpectedFrames() || *allFramesToOutputIterator_ != *expectedFrameIterator_)) {
+                    blackFramesToRead.push_back(*allFramesToOutputIterator_++);
+                }
+
+                if (!blackFramesToRead.size())
+                    return {};
+
+                assert(blackFramesReader_.isEos());
+                blackFramesReader_.setNewFrames(blackFramesToRead);
+                return blackFramesReader_.read()->data();
+
+//                bytestring blackFramesEncodedData;
+//                auto numberOfFrames = 0u;
+//
+//                for (auto frames = blackFramesReader_.read(); frames.has_value(); frames = blackFramesReader_.read()) {
+//                    blackFramesEncodedData.insert(blackFramesEncodedData.end(), frames->data().begin(),
+//                                                  frames->data().end());
+//                    numberOfFrames += frames->numberOfFrames();
+//                }
+//
+//                assert(numberOfFrames == blackFramesToRead.size());
+//                return blackFramesEncodedData;
             }
-
-            if (!blackFramesToRead.size())
-                return {};
-
-            assert(blackFramesReader_.isEos());
-            blackFramesReader_.setNewFrames(blackFramesToRead);
-
-            bytestring blackFramesEncodedData;
-            auto numberOfFrames = 0u;
-
-            for (auto frames = blackFramesReader_.read(); frames.has_value(); frames = blackFramesReader_.read()) {
-                blackFramesEncodedData.insert(blackFramesEncodedData.end(), frames->data().begin(), frames->data().end());
-                numberOfFrames += frames->numberOfFrames();
-            }
-
-            assert(numberOfFrames == blackFramesToRead.size());
-            return blackFramesEncodedData;
         }
 
         std::vector<int>::const_iterator expectedFrameIterator_;
@@ -313,28 +320,27 @@ private:
             GLOBAL_TIMER.startSection("StitchTiles");
             if (!all_parent_eos()) {
                 // Parent is a CoalesceSingleTile operator, which exposes a tileNumber() function.
+                std::vector<bytestring> materializedData(iterators().size());
                 for (auto index = 0u; index < iterators().size(); index++) {
                     if (iterators()[index] != iterators()[index].eos()) {
-                        auto next = (iterators()[index]++);
-                        const auto &data = next.downcast<CPUEncodedFrameData>().value();
+                        bytestring data;
+                        while (!data.size()) {
+                            auto next = (iterators()[index]++);
+                            data = next.downcast<CPUEncodedFrameData>().value();
+                        }
                         auto tileIndex = parentToTileNumber_[index];
-                        materializedData_[tileIndex].insert(materializedData_[tileIndex].end(), data.begin(), data.end());
+                        materializedData[tileIndex] = data;
                     }
                 }
-                GLOBAL_TIMER.endSection("StitchTiles");
-                return CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, bytestring{});
-
-            } else if (!materializedData_.empty()) {
                 auto numberOfRows = physical().tileLayout().numberOfRows();
                 auto numberOfColumns = physical().tileLayout().numberOfColumns();
                 hevc::StitchContext context({numberOfRows, numberOfColumns},
                                             {configuration_.height / numberOfRows, configuration_.width / numberOfColumns});
-                hevc::Stitcher stitcher(context, materializedData_);
-                materializedData_.clear(); // for flagging materializedData.empty().
+                hevc::Stitcher stitcher(context, materializedData);
+                auto returnVal = CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, stitcher.GetStitchedSegments());
 
-                auto returnValue = CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, stitcher.GetStitchedSegments());
                 GLOBAL_TIMER.endSection("StitchTiles");
-                return returnValue;
+                return returnVal;
             } else {
                 GLOBAL_TIMER.endSection("StitchTiles");
                 return {};

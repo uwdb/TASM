@@ -80,50 +80,54 @@ private:
             // Would that cause the writer to dequeue frames from 1 GOP at a time?
             GLOBAL_TIMER.startSection("GPUEncodeToCPU");
             if (iterator() != iterator().eos()) {
-                auto &decoded = *iterator();
-                if (!currentDataFramesIteratorIsValid_) {
-                    currentDataFramesIterator_ = decoded.frames().begin();
-                    currentDataFramesIteratorIsValid_ = true;
-                }
-
-                timer_.startSection("inside-GPUEncodeToCPU");
+                auto &base = *iterator();
+                auto configuration = base.configuration();
+                auto geometry = base.geometry();
                 bool encodedKeyframe = false;
-                for (auto &frameIt = currentDataFramesIterator_; frameIt != decoded.frames().end(); frameIt++) {
-                    if (encodedKeyframe)
-                        break;
+                timer_.startSection("inside-GPUEncodeToCPU");
 
-                    int frameNumberFromFrame = -1;
-                    auto frameNumber = (*frameIt)->getFrameNumber(frameNumberFromFrame) ? frameNumberFromFrame : frameNumber_;
-                    ++frameNumber_; // Always increment this so we can keep track of how many frames were decoded.
-                    if (physical().didSetFramesToKeep() && !physical().framesToKeep().count(frameNumber))
-                        continue;
-
-                    ++numberOfEncodedFrames_;
-                    // Try to force the output of 1 GOP at a time.
-                    if (desiredKeyframes_.count(frameNumber)) {
-                        // Flush the last GOP.
-                        encodeSession_.Flush();
-                        encodedKeyframe = true;
+                do {
+                    auto &decoded = *iterator();
+                    if (!currentDataFramesIteratorIsValid_) {
+                        currentDataFramesIterator_ = decoded.frames().begin();
+                        currentDataFramesIteratorIsValid_ = true;
                     }
 
-                    if (!physical().didSetFramesToKeep())
-                        framesBeingEncoded_.push_back(frameNumber);
-                    encodeSession_.Encode(**frameIt, decoded.configuration().offset.top,
-                                          decoded.configuration().offset.left,
-                                          desiredKeyframes_.count(frameNumber));
-                }
+                    for (auto &frameIt = currentDataFramesIterator_; frameIt != decoded.frames().end(); frameIt++) {
+                        if (encodedKeyframe)
+                            break;
 
-                auto configuration = decoded.configuration();
-                auto geometry = decoded.geometry();
+                        int frameNumberFromFrame = -1;
+                        auto frameNumber = (*frameIt)->getFrameNumber(frameNumberFromFrame) ? frameNumberFromFrame
+                                                                                            : frameNumber_;
+                        ++frameNumber_; // Always increment this so we can keep track of how many frames were decoded.
+                        if (physical().didSetFramesToKeep() && !physical().framesToKeep().count(frameNumber))
+                            continue;
 
-                if (noMoreFramesInCurrentData()) {
-                    ++iterator();
-                    currentDataFramesIteratorIsValid_ = false;
-                }
+                        ++numberOfEncodedFrames_;
+                        // Try to force the output of 1 GOP at a time.
+                        if (desiredKeyframes_.count(frameNumber)) {
+                            // Flush the last GOP.
+                            encodeSession_.Flush();
+                            encodedKeyframe = true;
+                        }
 
-                if (iterator() == iterator().eos())
-                    // If so, flush the encode queue and end this op too
-                    encodeSession_.Flush();
+                        if (!physical().didSetFramesToKeep())
+                            framesBeingEncoded_.push_back(frameNumber);
+                        encodeSession_.Encode(**frameIt, decoded.configuration().offset.top,
+                                              decoded.configuration().offset.left,
+                                              desiredKeyframes_.count(frameNumber));
+                    }
+
+                    if (noMoreFramesInCurrentData()) {
+                        ++iterator();
+                        currentDataFramesIteratorIsValid_ = false;
+                    }
+
+                    if (iterator() == iterator().eos())
+                        // If so, flush the encode queue and end this op too
+                        encodeSession_.Flush();
+                } while (!encodedKeyframe && iterator() != iterator().eos());
 
                 // For mixed frame selection, we need to export this one GOP at a time.
                 unsigned int numberOfFrames = 0;

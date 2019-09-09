@@ -15,22 +15,24 @@ public:
 private:
     class Runtime: public runtime::Runtime<> {
     public:
-        explicit Runtime(PhysicalOperator &physical) : runtime::Runtime<>(physical) { }
+        explicit Runtime(PhysicalOperator &physical) : runtime::Runtime<>(physical),
+                ofs_("/home/maureen/noscope_videos/jackson_car_pixels.hevc")
+            { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if(!all_parent_eos()) {
-                auto outputFile = "/home/maureen/noscope_videos/jackson_car_pixels.hevc";
-                std::ofstream ofs(outputFile);
                 std::for_each(iterators().begin(), iterators().end(), [&](auto &i) {
 //                    i++;
                     MaterializedLightFieldReference data = i++;
                     auto &value = data.downcast<SerializableData>().value();
-                    ofs.write(value.data(), value.size());
+                    ofs_.write(value.data(), value.size());
                 });
                 return EmptyData{physical().device()};
             } else
                 return std::nullopt;
         }
+    private:
+        std::ofstream ofs_;
     };
 };
 

@@ -3,6 +3,7 @@
 
 #include "PhysicalOperators.h"
 #include "Rectangle.h"
+#include "ThreadPool.h"
 
 namespace lightdb::physical {
 
@@ -313,7 +314,8 @@ private:
                   materializedData_(physical.tileLayout().numberOfTiles()),
                   configuration_(createConfiguration()),
                   geometry_(getGeometry()),
-                  parentToTileNumber_(getParentToTileNumber())
+                  parentToTileNumber_(getParentToTileNumber()),
+                  workerThread_(1) // Can only have 1 thread else GOPs may come in out of order.
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -335,19 +337,33 @@ private:
                 auto numberOfRows = physical().tileLayout().numberOfRows();
                 auto numberOfColumns = physical().tileLayout().numberOfColumns();
                 hevc::StitchContext context({numberOfRows, numberOfColumns},
-                                            {configuration_.height / numberOfRows, configuration_.width / numberOfColumns});
-                hevc::Stitcher stitcher(context, materializedData);
-                auto returnVal = CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, stitcher.GetStitchedSegments());
+                                            {configuration_.height / numberOfRows,
+                                             configuration_.width / numberOfColumns});
+                workerThread_.push(std::bind(&Runtime::stitchGOP, this, context, materializedData));
+                auto returnVal = CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, retrieveFromQueue());
 
                 GLOBAL_TIMER.endSection("StitchTiles");
                 return returnVal;
             } else {
-                GLOBAL_TIMER.endSection("StitchTiles");
-                return {};
+                workerThread_.waitAll();
+                auto nextGOP = retrieveFromQueue();
+                if (nextGOP.size()) {
+                    auto returnVal = CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, nextGOP);
+                    GLOBAL_TIMER.endSection("StitchTiles");
+                    return returnVal;
+                } else {
+                    GLOBAL_TIMER.endSection("StitchTiles");
+                    return {};
+                }
             }
         }
 
     private:
+        void stitchGOP(hevc::StitchContext context, std::vector<bytestring> materializedData) {
+            hevc::Stitcher stitcher(context, materializedData);
+            pushToQueue(stitcher.GetStitchedSegments());
+        }
+
         const Configuration createConfiguration() {
             auto configuration = (*iterators().front()).downcast<FrameData>().configuration();
             return Configuration{physical().tileLayout().totalWidth(),
@@ -373,10 +389,28 @@ private:
             return parentToTileNumber;
         }
 
+        bytestring retrieveFromQueue() {
+            std::lock_guard lock(mutex_);
+            if (stitchedGOPs_.empty())
+                return {};
+
+            auto returnValue = stitchedGOPs_.front();
+            stitchedGOPs_.pop();
+            return returnValue;
+        }
+
+        void pushToQueue(bytestring data) {
+            std::lock_guard lock(mutex_);
+            stitchedGOPs_.push(data);
+        }
+
         std::vector<bytestring> materializedData_;
         const Configuration configuration_;
         const GeometryReference geometry_;
         std::unordered_map<unsigned int, unsigned int> parentToTileNumber_;
+        std::queue<bytestring> stitchedGOPs_;
+        ThreadPool workerThread_;
+        std::mutex mutex_;
     };
 
     tiles::TileLayout tileLayout_;

@@ -29,7 +29,7 @@ private:
     public:
         explicit Runtime(GPUNaiveSelectPixels &physical)
             : runtime::GPUUnaryRuntime<GPUNaiveSelectPixels, GPUDecodedFrameData>(physical),
-                    transform_(this->context()),
+                    transform_(video::GetSelectPixelsKernel(this->context())),
                     frameNumber_(0),
                     isSelectingPixelsOnUntiledVideo_(physical.tileLayout() == tiles::NoTilesLayout)
         { }
@@ -77,7 +77,7 @@ private:
 //e
 //                    output.frames().emplace_back(frame);
                 } else {
-                    auto selected = transform_.nv12().select(this->lock(), frame->cuda(),
+                    auto selected = transform_->nv12().select(this->lock(), frame->cuda(),
                                                              physical().metadataSubsetLightField().rectanglesForFrame(
                                                                      frameNumber), tileRectangle.x, tileRectangle.y);
                     output.frames().emplace_back(selected);
@@ -88,7 +88,7 @@ private:
             return {output};
         }
     private:
-        video::GPUSelectPixels transform_;
+        std::shared_ptr<video::GPUSelectPixels> transform_;
         int frameNumber_;
         bool isSelectingPixelsOnUntiledVideo_;
     };

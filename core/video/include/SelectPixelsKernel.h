@@ -90,6 +90,15 @@ private:
     NV12 nv12_;
 };
 
+static std::weak_ptr<GPUSelectPixels> SELECTPIXELSKERNEL = {};
+static std::shared_ptr<GPUSelectPixels> GetSelectPixelsKernel(const GPUContext &context) {
+    if (SELECTPIXELSKERNEL.use_count())
+        return SELECTPIXELSKERNEL.lock();
+
+    auto shared = std::make_shared<GPUSelectPixels>(context);
+    SELECTPIXELSKERNEL = std::weak_ptr<GPUSelectPixels>(shared);
+    return shared;
+}
 } // namespace lightdb::video
 
 #endif //LIGHTDB_SELECTPIXELSKERNEL_H

@@ -14,7 +14,22 @@
 
 #include "timer.h"
 
+#include "ThreadPool.h"
+#include <future>
+
 namespace lightdb::physical {
+
+static std::mutex EncodeThreadMutex;
+static std::weak_ptr<GPUThreadPool> EncodeThread = {};
+static std::shared_ptr<GPUThreadPool> GetEncodeThread(GPUContext &context) {
+    std::lock_guard lock(EncodeThreadMutex);
+    if (EncodeThread.use_count())
+        return EncodeThread.lock();
+
+    auto shared = std::make_shared<GPUThreadPool>(context, 1);
+    EncodeThread = std::weak_ptr(shared);
+    return shared;
+}
 
 class GPUEncodeToCPU : public PhysicalOperator, public GPUOperator {
 public:
@@ -69,22 +84,31 @@ private:
               numberOfEncodedFrames_(0),
               frameNumber_(0),
               nextFrameThatWillBeEncoded_(physical.framesToKeep().begin()),
-              currentDataFramesIteratorIsValid_(false)
+              currentDataFramesIteratorIsValid_(false),
+              encodeThread_(GetEncodeThread(context()))
         {
             desiredKeyframes_ = physical.didSetDesiredKeyframes() ? physical.desiredKeyframes() : getDesiredKeyframes();
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
+            std::shared_ptr<std::promise<std::optional<physical::MaterializedLightFieldReference>>> readPromise = std::make_shared<std::promise<std::optional<physical::MaterializedLightFieldReference>>>();
+            std::future<std::optional<physical::MaterializedLightFieldReference>> futureRead = readPromise->get_future();
+            encodeThread_->push(std::bind(&Runtime::getNextValue, this, readPromise));
+//            encodeThread_->waitAll(); // This may not be ideal because if encodes from multiple tiles are queued, we only want to wait for this one.
+            return futureRead.get();
+        }
+
+        void getNextValue(std::shared_ptr<std::promise<std::optional<physical::MaterializedLightFieldReference>>> readPromise) {
             // TODO: We only want to pass on 1 GOP at a time (when selecting frames with multiple strategies).
             // Should this keep track of GOPs instead of encoding frames from many GOPs at a time?
             // Would that cause the writer to dequeue frames from 1 GOP at a time?
-            GLOBAL_TIMER.startSection("GPUEncodeToCPU");
+//            GLOBAL_TIMER.startSection("GPUEncodeToCPU");
             if (iterator() != iterator().eos()) {
                 auto &base = *iterator();
                 auto configuration = base.configuration();
                 auto geometry = base.geometry();
                 bool encodedKeyframe = false;
-                timer_.startSection("inside-GPUEncodeToCPU");
+//                timer_.startSection("inside-GPUEncodeToCPU");
 
                 do {
                     auto &decoded = *iterator();
@@ -143,14 +167,14 @@ private:
                     framesBeingEncoded_.erase(framesBeingEncoded_.begin(), it);
                 }
 
-                GLOBAL_TIMER.endSection("GPUEncodeToCPU");
-                timer_.endSection("inside-GPUEncodeToCPU");
-                return {returnVal};
+//                GLOBAL_TIMER.endSection("GPUEncodeToCPU");
+//                timer_.endSection("inside-GPUEncodeToCPU");
+                readPromise->set_value({returnVal});
             } else {
-                GLOBAL_TIMER.endSection("GPUEncodeToCPU");
+//                GLOBAL_TIMER.endSection("GPUEncodeToCPU");
                 std::cout << "**Encoded " << numberOfEncodedFrames_ << " frames, considered " << frameNumber_ << "frames\n";
                 timer_.printAllTimes();
-                return std::nullopt;
+                readPromise->set_value(std::nullopt);
             }
         }
 
@@ -198,6 +222,9 @@ private:
         std::vector<GPUFrameReference>::const_iterator currentDataFramesIterator_;
         bool currentDataFramesIteratorIsValid_;
         std::list<int> framesBeingEncoded_;
+
+        std::shared_ptr<GPUThreadPool> encodeThread_;
+        std::optional<physical::MaterializedLightFieldReference> returnValue_;
     };
 
     const Codec codec_;

@@ -16,6 +16,8 @@ public:
     { }
 
     void startSection(const std::string &id) {
+        if (id != "query")
+            return;
 //        return; // Weird when have multiple operators with same id.
         // If we're starting a section for an operator, we shouldn't already have that operator waiting to finish.
         assert(std::find(operatorsInProgress_.begin(), operatorsInProgress_.end(), id) == operatorsInProgress_.end());
@@ -31,6 +33,9 @@ public:
     }
 
     void endSection(const std::string &id) {
+        if (id != "query")
+            return;
+
 //        return;
         assert(currentOperation_ == id);
 

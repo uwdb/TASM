@@ -250,6 +250,13 @@ namespace lightdb::logical {
         const catalog::Entry entry_;
     };
 
+    class ScannedByGOPLightField : public ScannedLightField {
+        using ScannedLightField::ScannedLightField;
+
+    public:
+        void accept(LightFieldVisitor &visitor) override { LightField::accept<ScannedByGOPLightField>(visitor); }
+    };
+
     class ExternalLightField : public LightField, public StreamBackedLightField, public OptionContainer<> {
     public:
         ExternalLightField(const std::filesystem::path &filename,
@@ -363,6 +370,13 @@ namespace lightdb::logical {
         const Codec codec_;
         const std::optional<GeometryReference> geometry_;
         const catalog::Catalog catalog_;
+    };
+
+    class CrackedLightField : public StoredLightField {
+        using StoredLightField::StoredLightField;
+
+    public:
+        void accept(LightFieldVisitor &visitor) override { LightField::accept<CrackedLightField>(visitor); }
     };
 
     class SavedLightField : public LightField {

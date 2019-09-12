@@ -55,6 +55,7 @@ namespace lightdb::associations {
                     {"MVI_63563_tiled_custom_gops", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
                     {"MVI_63563_gops_for_tiles", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
                     {"jackson_square_150frame_gops_for_tiles", "/home/maureen/noscope_videos/jackson_town_square_resized_150frames.db"},
+                    {"MVI_63563_gop30", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
                     {"jackson_square_gops_for_tiles", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
                     {"/home/maureen/noscope_videos/tiles/jackson_left.hevc", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
                     {"/home/maureen/noscope_videos/tiles/jackson_right.hevc", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},

@@ -79,6 +79,7 @@ namespace lightdb {
             static bool catalog_exists(const std::filesystem::path &path);
 
             LightFieldReference getTiled(const std::string &name) const;
+            LightFieldReference getByGOP(const std::string &name) const;
             LightFieldReference get(const std::string &name, bool create=false) const;
             LightFieldReference create(const std::string& name) const;
             bool exists(const std::string &name) const;

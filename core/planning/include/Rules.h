@@ -21,6 +21,7 @@
 #include "Rectangle.h"
 
 #include <iostream>
+#include "CrackingOperators.h"
 #include "SelectFramesOperators.h"
 #include "SelectPixelsOperators.h"
 #include "TileOperators.h"
@@ -58,6 +59,20 @@ namespace lightdb::optimization {
     class ChooseDecoders : public OptimizerRule {
     public:
         using OptimizerRule::OptimizerRule;
+
+        bool visit(const logical::ScannedByGOPLightField &node) override {
+            if (!plan().has_physical_assignment(node)) {
+                assert(node.entry().sources().size() == 1);
+
+                auto gpu = plan().allocator().gpu();
+                auto logical = plan().lookup(node);
+//                auto &scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, node.entry().sources()[0]);
+                auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, node.entry().sources()[0]);
+                plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
+                return true;
+            }
+            return false;
+        }
 
         bool visit(const logical::ScannedTiledLightField &node) override {
             if (!plan().has_physical_assignment(node)) {
@@ -421,6 +436,7 @@ namespace lightdb::optimization {
                     // Get rectangle for tile.
                     auto gpu = plan().allocator().gpu();
                     auto logical = plan().lookup(node);
+
                     std::vector<PhysicalOperatorReference> lastPerTileOperators;
                     std::unordered_map<int, int> indexToTileNumber;
                     std::unique_ptr<tiles::TileLayout> tileLayoutPtr;
@@ -443,9 +459,6 @@ namespace lightdb::optimization {
                         auto &scan = parent.downcast<physical::ScanFramesFromFileEncodedReader>();
                         auto tileNumber = scan.source().index();
 
-//                        if (!tileNumber)
-//                            continue;
-
                         auto &tileLayout = parent->logical().downcast<logical::ScannedTiledLightField>().entry().tileLayout();
                         if (!tileLayoutPtr)
                             tileLayoutPtr = std::make_unique<tiles::TileLayout>(tiles::TileLayout(tileLayout));
@@ -454,11 +467,12 @@ namespace lightdb::optimization {
 
                         // Assign these frames to the scan operator.
                         scan.setFramesToRead(framesForTileAndMetadata);
+                        // For the case where there are fewer frames than in the metadata table.
                         scan.setGlobalFramesToRead(node.orderedFramesForMetadata());
 
 
                         // Decode the frames, perform pixel selection, then encode the frames.
-                        // TODO - pixel selection has to know which tile it's operating over so it can transform x and y.
+                        // Tile number = parent.to(scan).source().index()
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, parent, gpu);
 
                         if (isSelectingPixelsAlone) {
@@ -500,12 +514,6 @@ namespace lightdb::optimization {
                     }
 
                     return true;
-
-
-                    /* Naive pixel selection */
-//                    assert(parent.is<physical::GPUOperator>());
-//                    plan().emplace<physical::GPUNaiveSelectPixels>(plan().lookup(node), parent);
-//                    return true;
                 }
 
                 /* For combo selection */
@@ -880,6 +888,7 @@ namespace lightdb::optimization {
             } else if(parent.is<physical::GPUEncodeToCPU>()) {
                 return plan().emplace<physical::GPUIdentity>(logical, parent);
             } else if(parent.is<physical::GPUOperator>()) {
+//                auto ensureCropped = plan().emplace<physical::GPUEnsureFrameCropped>(logical, parent);
                 return plan().emplace<physical::GPUEncodeToCPU>(logical, parent, Codec::hevc());
             } else if(parent.is<physical::CPUMap>() && parent.downcast<physical::CPUMap>().transform()(physical::DeviceType::CPU).codec().name() == node.codec().name()) {
                 return plan().emplace<physical::CPUIdentity>(logical, parent);
@@ -904,6 +913,35 @@ namespace lightdb::optimization {
                     return plan().emplace<physical::GPUEncodeToCPU>(logical, parent, Codec::hevc());
             } else
                 return plan().emplace<physical::GPUEncodeToCPU>(logical, parent, Codec::hevc());
+        }
+
+        bool visit(const logical::CrackedLightField &node) override {
+            if (!plan().has_physical_assignment(node)) {
+                auto physical_parents = functional::flatmap<std::vector<PhysicalOperatorReference>>(
+                        node.parents().begin(), node.parents().end(),
+                        [this](auto &parent) { return plan().unassigned(parent); });
+
+                assert(physical_parents.size() == 1);
+
+                // Add an encode operator.
+                // Tell it the tile configuration for each GOP.
+                auto logical = plan().lookup(node);
+                auto &source =  physical_parents[0]->parents()[0].downcast<physical::ScanSingleFileDecodeReader>().source();
+                std::unordered_set<int> keyframes(source.keyframes().begin(), source.keyframes().end());
+                auto crack = plan().emplace<physical::CrackVideo>(
+                                 logical,
+                                 physical_parents[0],
+                                 keyframes);
+                // TODO: Add encode & store for each tile.
+
+//                auto encode = plan().emplace<physical::GPUEncodeToCPU>(logical, physical_parents[0], Codec::hevc());
+                // TODO: Make this store tiles-by-first-and-last-frame & include tile configuration in metadata.
+                // Can't simply store by GOP because once we store multiple versions, GOP won't make sense because there
+                // could be overlapping GOPs.
+//                plan().emplace<physical::Store>(logical, encode);
+                return true;
+            }
+            return false;
         }
 
         bool visit(const logical::StoredLightField &node) override {

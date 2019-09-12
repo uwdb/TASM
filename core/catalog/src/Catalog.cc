@@ -67,6 +67,11 @@ namespace lightdb::catalog {
         return LightFieldReference::make<logical::ScannedTiledLightField>(std::move(tileEntry(name)));
     }
 
+    LightFieldReference Catalog::getByGOP(const std::string &name) const {
+        assert(exists(name));
+        return LightFieldReference::make<logical::ScannedByGOPLightField>(entry(name));
+    }
+
     LightFieldReference Catalog::get(const std::string &name, const bool create) const {
         if(exists(name))
             return LightFieldReference::make<logical::ScannedLightField>(entry(name));

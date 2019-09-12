@@ -19,6 +19,7 @@ namespace lightdb {
     namespace logical {
         LightFieldReference ScanTiled(const std::string &name);
 
+        LightFieldReference ScanByGOP(const std::string &name);
         LightFieldReference Scan(const std::string &name);
         LightFieldReference Scan(const catalog::Catalog&, const std::string &name);
         LightFieldReference Load(const std::filesystem::path&, const lightdb::options<>& = {});
@@ -61,6 +62,10 @@ namespace lightdb {
             LightFieldReference Store(const std::string &name, const catalog::Catalog&,
                                       const Codec &codec=Codec::hevc(),
                                       const std::optional<GeometryReference> &geometry={});
+
+            LightFieldReference StoreCracked(const std::string &name, const Codec &codec=Codec::hevc(),
+                                                const std::optional<GeometryReference> &geometry={});
+
             LightFieldReference Save(const std::filesystem::path&);
             LightFieldReference Sink();
 

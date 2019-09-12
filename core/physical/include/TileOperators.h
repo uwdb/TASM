@@ -32,7 +32,6 @@ private:
                     geometry_((*iterators().front()).downcast<GPUDecodedFrameData>().geometry())
         {
             setConfiguration();
-//            setGeometry();
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -141,7 +140,6 @@ private:
             rectangleFrame.downcast<CudaFrame>().copy(
                     lock(),
                     *frame->cuda(),
-                    // TODO: Translate overlappingRectangle x & y into non-translated tile coordinates.
                     overlappingRectangle.y - tileRectangle.y,
                     overlappingRectangle.x - tileRectangle.x,
                     topLeftOffsets.first,

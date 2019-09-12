@@ -29,11 +29,23 @@ public:
         heightsOfRows_(heightsOfRows)
     { }
 
+    TileLayout(const TileLayout &other) = default;
+
+    // TODO: Not sure if this will set the ints correctly.
+    TileLayout() = default;
+
     bool operator==(const TileLayout &other) const {
-        return numberOfColumns_ == other.numberOfColumns()
-                && numberOfRows_ == other.numberOfRows()
-                && widthsOfColumns_ == other.widthsOfColumns()
-                && heightsOfRows_ == other.heightsOfRows();
+        return numberOfColumns_ == other.numberOfColumns_
+                    && numberOfRows_ == other.numberOfRows_
+                    && widthsOfColumns_ == other.widthsOfColumns_
+                    && heightsOfRows_ == other.heightsOfRows_;
+    }
+
+    bool operator!=(const TileLayout &other) const {
+        return numberOfColumns_ != other.numberOfColumns_
+                || numberOfRows_ != other.numberOfRows_
+                || widthsOfColumns_ != other.widthsOfColumns_
+                || heightsOfRows_ != other.heightsOfRows_;
     }
 
     unsigned int numberOfTiles() const {
@@ -114,6 +126,7 @@ static const std::unordered_map<std::string, TileLayout> CatalogEntryToTileLayou
         { "jackson_square_150frame_gops_for_tiles", TileLayout(2, 1, {320, 320}, {480}) },
         { "jackson_square_150frame_680x512_gops_for_tiles", TileLayout(2, 2, {320, 320}, {256, 256}) },
         { "jackson_square_1hr_680x512_gops_for_tiles", TileLayout(2, 2, {320, 320}, {256, 256}) },
+        { "MVI_63563_gop30", TileLayout(1, 1, {960}, {544}) },
 };
 
 } // namespace lightdb::tiles

@@ -22,4 +22,9 @@ namespace lightdb::catalog {
         auto filename = path.filename().string() + '#' + std::to_string(transaction.id());
         return path.parent_path() / filename;
     }
+
+    std::filesystem::path TileFiles::directoryForTilesInFrames(const Entry &entry, unsigned int firstFrame,
+                                                           unsigned int lastFrame) {
+        return entry.path() / (std::to_string(firstFrame) + "-" + std::to_string(lastFrame));
+    }
 } // namespace lightdb::catalog

@@ -601,35 +601,54 @@ NVENCSTATUS EncodeAPI::NvEncReconfigureEncoder(const NvEncPictureCommand *pEncPi
 
     if (pEncPicCommand->bBitrateChangePending || pEncPicCommand->bResolutionChangePending)
     {
-        if (pEncPicCommand->bResolutionChangePending)
-        {
-            m_uCurWidth = pEncPicCommand->newWidth;
-            m_uCurHeight = pEncPicCommand->newHeight;
-            if ((m_uCurWidth > m_uMaxWidth) || (m_uCurHeight > m_uMaxHeight))
-            {
-                return NV_ENC_ERR_INVALID_PARAM;
-            }
-            m_stCreateEncodeParams.encodeWidth = m_uCurWidth;
-            m_stCreateEncodeParams.encodeHeight = m_uCurHeight;
-            m_stCreateEncodeParams.darWidth = m_uCurWidth;
-            m_stCreateEncodeParams.darHeight = m_uCurHeight;
-        }
+//        if (pEncPicCommand->bResolutionChangePending)
+//        {
+//            m_uCurWidth = pEncPicCommand->newWidth;
+//            m_uCurHeight = pEncPicCommand->newHeight;
+//            if ((m_uCurWidth > m_uMaxWidth) || (m_uCurHeight > m_uMaxHeight))
+//            {
+//                return NV_ENC_ERR_INVALID_PARAM;
+//            }
+//            m_stCreateEncodeParams.encodeWidth = m_uCurWidth;
+//            m_stCreateEncodeParams.encodeHeight = m_uCurHeight;
+//            m_stCreateEncodeParams.darWidth = m_uCurWidth;
+//            m_stCreateEncodeParams.darHeight = m_uCurHeight;
+//        }
+//
+//        if (pEncPicCommand->bBitrateChangePending)
+//        {
+//            m_stEncodeConfig.rcParams.averageBitRate = pEncPicCommand->newBitrate;
+//            m_stEncodeConfig.rcParams.maxBitRate = pEncPicCommand->newBitrate;
+//            m_stEncodeConfig.rcParams.vbvBufferSize = pEncPicCommand->newVBVSize != 0 ? pEncPicCommand->newVBVSize : (pEncPicCommand->newBitrate * m_stCreateEncodeParams.frameRateDen) / m_stCreateEncodeParams.frameRateNum;
+//            m_stEncodeConfig.rcParams.vbvInitialDelay = m_stEncodeConfig.rcParams.vbvBufferSize;
+//        }
 
-        if (pEncPicCommand->bBitrateChangePending)
-        {
-            m_stEncodeConfig.rcParams.averageBitRate = pEncPicCommand->newBitrate;
-            m_stEncodeConfig.rcParams.maxBitRate = pEncPicCommand->newBitrate;
-            m_stEncodeConfig.rcParams.vbvBufferSize = pEncPicCommand->newVBVSize != 0 ? pEncPicCommand->newVBVSize : (pEncPicCommand->newBitrate * m_stCreateEncodeParams.frameRateDen) / m_stCreateEncodeParams.frameRateNum;
-            m_stEncodeConfig.rcParams.vbvInitialDelay = m_stEncodeConfig.rcParams.vbvBufferSize;
-        }
+        NV_ENC_RECONFIGURE_PARAMS reconfigureParams = {NV_ENC_RECONFIGURE_PARAMS_VER};
+        memcpy(&reconfigureParams.reInitEncodeParams, &m_stCreateEncodeParams, sizeof(m_stCreateEncodeParams));
+        NV_ENC_CONFIG reInitCodecConfig = { NV_ENC_CONFIG_VER };
+        memcpy(&reInitCodecConfig, m_stCreateEncodeParams.encodeConfig, sizeof(reInitCodecConfig));
+        reconfigureParams.reInitEncodeParams.encodeConfig = &reInitCodecConfig;
 
-        NV_ENC_RECONFIGURE_PARAMS stReconfigParams;
-        memset(&stReconfigParams, 0, sizeof(stReconfigParams));
-        memcpy(&stReconfigParams.reInitEncodeParams, &m_stCreateEncodeParams, sizeof(m_stCreateEncodeParams));
-        stReconfigParams.version = NV_ENC_RECONFIGURE_PARAMS_VER;
-        stReconfigParams.forceIDR = pEncPicCommand->bResolutionChangePending ? 1 : 0;
+        reconfigureParams.reInitEncodeParams.encodeWidth = pEncPicCommand->newWidth;
+        reconfigureParams.reInitEncodeParams.darWidth = reconfigureParams.reInitEncodeParams.encodeWidth;
+        reconfigureParams.reInitEncodeParams.encodeHeight = pEncPicCommand->newHeight;
+        reconfigureParams.reInitEncodeParams.darHeight = reconfigureParams.reInitEncodeParams.encodeHeight;
 
-        nvStatus = m_pEncodeAPI->nvEncReconfigureEncoder(encodeSessionHandle, &stReconfigParams);
+        m_uCurWidth = pEncPicCommand->newWidth;
+        m_uCurHeight = pEncPicCommand->newHeight;
+        assert(m_uCurWidth <= m_uMaxWidth);
+        assert(m_uCurHeight <= m_uMaxHeight);
+
+        reconfigureParams.forceIDR = true;
+        reconfigureParams.resetEncoder = true;
+
+//        memset(&stReconfigParams, 0, sizeof(stReconfigParams));
+//        memcpy(&stReconfigParams.reInitEncodeParams, &m_stCreateEncodeParams, sizeof(m_stCreateEncodeParams));
+//        stReconfigParams.version = NV_ENC_RECONFIGURE_PARAMS_VER;
+//        stReconfigParams.forceIDR = pEncPicCommand->bResolutionChangePending ? 1 : 0;
+//        stReconfigParams.resetEncoder = 1;
+
+        nvStatus = m_pEncodeAPI->nvEncReconfigureEncoder(encodeSessionHandle, &reconfigureParams);
         if (nvStatus != NV_ENC_SUCCESS)
         {
             LOG(ERROR) << "nvEncReconfigureEncoder";

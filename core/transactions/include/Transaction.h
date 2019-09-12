@@ -52,6 +52,21 @@ public:
               stream_()
     { }
 
+    OutputStream(const Transaction &transaction,
+                const catalog::Entry &entry,
+                const GeometryReference &geometry,
+                unsigned int tileNumber,
+                unsigned int firstFrame,
+                unsigned int lastFrame)
+            : transaction_(transaction),
+            entry_(entry),
+            filename_(catalog::TileFiles::tile_filename(entry, tileNumber, firstFrame, lastFrame)),
+            codec_(Codec::hevc()),
+            volume_(entry.volume()),
+            geometry_(geometry),
+            stream_(filename_)
+    { }
+
     OutputStream(const OutputStream&) = delete;
     OutputStream(OutputStream&&) = default;
 
@@ -62,9 +77,7 @@ public:
     const auto &geometry() const { return geometry_; }
     const auto &codec() const { return codec_; }
 
-private:
-    std::filesystem::path destination_filename(unsigned int version) const;
-
+protected:
     const Transaction &transaction_;
     const std::optional<catalog::Entry> entry_;
     const std::filesystem::path filename_;
@@ -72,6 +85,9 @@ private:
     const CompositeVolume volume_;
     const GeometryReference geometry_;
     std::ofstream stream_;
+
+private:
+    std::filesystem::path destination_filename(unsigned int version) const;
 };
 
 class Transaction {
@@ -99,6 +115,7 @@ public:
         return outputs_.emplace_back(*this, catalog.get(name, true).downcast<logical::ScannedLightField>().entry(),
                                      volume, geometry, codec);
     }
+
     virtual OutputStream& write(const catalog::Entry &entry, const std::string &name,
                                 const CompositeVolume &volume, const GeometryReference &geometry,const Codec& codec) {
         return outputs_.emplace_back(*this, entry, volume, geometry, codec);
@@ -114,10 +131,10 @@ protected:
     { }
 
     static std::recursive_mutex global;
+    std::list<OutputStream> outputs_; // Write returns references, which container must not invalidate
 
 private:
     unsigned long id_;
-    std::list<OutputStream> outputs_; // Write returns references, which container must not invalidate
 };
 
 class SingleNodeVolatileTransaction: public Transaction {
@@ -138,6 +155,48 @@ public:
 
 private:
     void write_metadata(const std::filesystem::path&, unsigned int version);
+
+    bool complete_;
+};
+
+class TileCrackingTransaction: public Transaction {
+public:
+    TileCrackingTransaction(const catalog::Catalog &catalog, const std::string &name, int firstFrame = -1, int lastFrame = -1)
+        : Transaction(0u),
+        entry_(catalog.get(name, true).downcast<logical::ScannedLightField>().entry()),
+        firstFrame_(firstFrame),
+        lastFrame_(lastFrame),
+        complete_(false)
+    {
+        prepareTileDirectory();
+    }
+
+    ~TileCrackingTransaction() override {
+        if (!complete_)
+            commit();
+    }
+
+    virtual OutputStream& write(const GeometryReference &geometry,
+                                unsigned int tileNumber) {
+        return outputs_.emplace_back(*this,
+                                     entry_,
+                                     geometry,
+                                     tileNumber,
+                                     firstFrame_,
+                                     lastFrame_);
+    }
+
+    // TODO: Rename directory once we know the last frame number.
+    void commit() override;
+
+    void abort() override;
+
+private:
+    void prepareTileDirectory();
+
+    const catalog::Entry entry_;
+    int firstFrame_;
+    int lastFrame_;
 
     bool complete_;
 };

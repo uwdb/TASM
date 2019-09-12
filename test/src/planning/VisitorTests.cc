@@ -107,7 +107,12 @@ TEST_F(VisitorTestFixture, testScanAndSink) {
     Coordinator().execute(input.Sink());
 }
 
-TEST_F(VisitorTestFixture, testScanTiled) {
+TEST_F(VisitorTestFixture, testCrackIntoTiles) {
+    auto input = ScanByGOP("MVI_63563_960x576_100frames");
+    Coordinator().execute(input.StoreCracked("MVI_63563_960x576_100frames_cracked"));
+}
+
+TEST_F(VisitorTestFixture, testScanTiled1) {
     auto input = ScanTiled("jackson_square_1hr_680x512_gops_for_tiles");
     PixelsInFrameMetadataSpecification selection("LABELS", "LABEL", "car");
     Coordinator().execute(input.Select(selection).Sink()); //.Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/selected.hevc"));
@@ -125,9 +130,26 @@ TEST_F(VisitorTestFixture, testScanNotTiledAndSelectPixelsInFrame) {
     Coordinator().execute(input.Select(selection).Store("jackson_town_square_car_pixels_in_frame"));
 }
 
+TEST_F(VisitorTestFixture, testScanTiled2) {
+    auto input = ScanTiled("MVI_63563_gop30");
+    PixelMetadataSpecification selection("LABELS", "LABEL", "others");
+    Coordinator().execute(input.Select(selection).Sink()); //.Store("MVI_63563_pixels"));
+}
+
+TEST_F(VisitorTestFixture, testScanSink) {
+    auto input = Scan("MVI_63563_gop30");
+    Coordinator().execute(input.Sink());
+}
+
+TEST_F(VisitorTestFixture, testScanCrop) {
+    auto input = Scan("MVI_63563_gop30");
+    auto selection = input.Select(PhiRange{0, rational_times_real({1, 2}, PI)});
+    Coordinator().execute(selection.Store("cropped_mvi"));
+}
+
 TEST_F(VisitorTestFixture, testScanAndSave) {
-    auto input = Load("/home/maureen/uadetrac_videos/MVI_63563/tiles/left.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Store("MVI_63563_left"));
+    auto input = Load("/home/maureen/uadetrac_videos/MVI_63563/multi-tile/mvi63563_960x576.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Store("MVI_63563_960x576_100frames"));
 }
 
 TEST_F(VisitorTestFixture, testSaveToCatalog) {
@@ -201,6 +223,7 @@ TEST_F(VisitorTestFixture, testLoadAndSelectFramesCustom) {
 
 TEST_F(VisitorTestFixture, testSavingMetadata) {
 //    auto input = Scan(videoCatalogName);
+<<<<<<< HEAD
     auto filenames = { "upper_left.hevc", "lower_left.hevc", "upper_right.hevc", "lower_right.hevc", "black_tile.hevc" };
     for (auto &file : filenames) {
         auto input = Load(std::filesystem::path("/home/maureen/noscope_videos/tiles/2x2tiles") / file, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
@@ -212,6 +235,11 @@ TEST_F(VisitorTestFixture, testSavingMetadata) {
 TEST_F(VisitorTestFixture, testLoadIntoCatalog) {
     auto input = Load("/home/maureen/noscope_videos/tiles/2x2tiles/jackson_town_square_1hr_640x512.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
     Coordinator().execute(input.Store("jackson_square_1hr_680x512"));
+=======
+    auto input = Load("/home/maureen/noscope_videos/tiles/shortened/black-tile-0.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    MetadataSpecification selection("LABELS", "LABEL", "car");
+    Coordinator().execute(input.Encode(selection).Store("jackson_square_gops_for_tiles"));
+>>>>>>> 02fa776... Can crack using pre-defined tile configurations.
 }
 
 TEST_F(VisitorTestFixture, testGOPSaving250) {

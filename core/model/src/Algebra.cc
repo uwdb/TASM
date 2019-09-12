@@ -15,6 +15,10 @@ namespace lightdb::logical {
         return Scan(Catalog::instance(), name);
     }
 
+    LightFieldReference ScanByGOP(const std::string &name) {
+        return Catalog::instance().getByGOP(name);
+    }
+
     LightFieldReference Scan(const catalog::Catalog &catalog, const std::string &name) {
         return catalog.get(name);
     }
@@ -96,6 +100,11 @@ namespace lightdb::logical {
     LightFieldReference Algebra::Store(const std::string &name, const catalog::Catalog &catalog,
                                        const Codec &codec, const std::optional<GeometryReference> &geometry) {
         return LightFieldReference::make<StoredLightField>(this_, name, catalog, geometry, codec);
+    }
+
+    LightFieldReference Algebra::StoreCracked(const std::string &name, const lightdb::Codec &codec,
+                                              const std::optional<lightdb::GeometryReference> &geometry) {
+        return LightFieldReference::make<CrackedLightField>(this_, name, catalog::Catalog::instance(), geometry, codec);
     }
 
     LightFieldReference Algebra::Sink() {

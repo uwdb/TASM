@@ -37,5 +37,15 @@ private:
     static constexpr auto stream_suffix_ = "-stream.mp4";
 };
 
+class TileFiles {
+public:
+    static std::filesystem::path directoryForTilesInFrames(const Entry &entry, unsigned int firstFrame,
+                                                           unsigned int lastFrame);
+
+    static std::filesystem::path tile_filename(const Entry &entry, unsigned int tileNumber, unsigned int firstFrame, unsigned int lastFrame) {
+        return directoryForTilesInFrames(entry, firstFrame, lastFrame) / ("orig-tile-" + std::to_string(tileNumber) + ".hevc");
+    }
+};
+
 } // namespace lightdb::catalog
 #endif //LIGHTDB_FILES_H

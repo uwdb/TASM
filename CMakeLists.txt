@@ -40,8 +40,10 @@ set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} nvcuvid dl pthread glog
 
 include(cmake/nvenc.cmake)
 
-find_package(CUDA 7.5 REQUIRED)
-include_directories(${CUDA_INCLUDE_DIRS})
+find_package(CUDA 8.0 REQUIRED)
+include_directories(${CUDA_INCLUDE_DIRS} /usr/local/cuda-8.0/include)
+message("Cuda include: ${CUDA_INCLUDE_DIRS}")
+message("libs: ${CUDA_CUDA_LIBRARY}, ${CUDA_nvcuvenc_LIBRARY}")
 set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${CUDA_CUDA_LIBRARY} ${CUDA_nvcuvenc_LIBRARY})
 
 #TODO add FindLLV.cmake; clean this up

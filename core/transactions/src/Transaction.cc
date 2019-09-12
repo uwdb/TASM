@@ -73,5 +73,23 @@ void SingleNodeVolatileTransaction::write_metadata(const std::filesystem::path& 
     video::gpac::write_metadata(filename, outputs_in_this_path);
 }
 
+void TileCrackingTransaction::prepareTileDirectory() {
+    auto directory = catalog::TileFiles::directoryForTilesInFrames(entry_, firstFrame_, lastFrame_);
+    if (std::filesystem::exists(directory))
+        std::filesystem::remove_all(directory);
+
+    std::filesystem::create_directory(directory);
+}
+
+void TileCrackingTransaction::abort() {
+    complete_ = true;
+    for(const auto &output: outputs())
+        std::filesystem::remove(output.filename());
+}
+
+void TileCrackingTransaction::commit() {
+
+}
+
 } // namespace lightdb::transactions
 

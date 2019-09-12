@@ -233,7 +233,58 @@ namespace lightdb::video::gpac {
         write_metadata(metadata_filename, filenames, metadata);
     }
 
-    void write_tile_configuration(const std::filesystem::path &metadata_filename,
+    static std::optional<serialization::TileConfiguration> load_tile_configuration(GF_ISOFile *file) {
+        serialization::TileConfiguration tileConfiguration;
+        GF_Err result;
+
+        auto numberOfUDTAs = gf_isom_get_udta_count(file, 0);
+        unsigned int boxType;
+        unsigned int indexOfTileBox = 0;
+        for (auto i = 1; i <= numberOfUDTAs; ++i) {
+            if ((result = gf_isom_get_udta_type(file, 0, i, &boxType, nullptr)) != GF_OK)
+                throw GpacRuntimeError("Couldn't retrieve box type", result);
+
+            if (boxType == TILE_FOURCC) {
+                indexOfTileBox = i;
+                break;
+            }
+        }
+        if (!indexOfTileBox)
+            throw GpacRuntimeError("Could not find tile box", GF_IO_ERR);
+
+        char *rawData = nullptr;
+        unsigned int size = 0;
+        if ((result = gf_isom_get_user_data(file, 0, boxType, nullptr, indexOfTileBox, &rawData, &size)) != GF_OK)
+            throw GpacRuntimeError("Couldn't retrieve tile data", result);
+
+        std::shared_ptr<char> data(rawData, free);
+        if (size > 0 && tileConfiguration.ParseFromArray(data.get(), size))
+            return tileConfiguration;
+        else
+            throw GpacRuntimeError("Couldn't parse tile data", GF_IO_ERR);
+    }
+
+    tiles::TileLayout load_tile_configuration(const std::filesystem::path &metadataFilename) {
+        GF_ISOFile *file;
+        GF_Err result;
+        unsigned int numberOfTiles = 0;
+
+        if ((file = gf_isom_open(metadataFilename.c_str(), GF_ISOM_OPEN_READ_DUMP, nullptr)) == nullptr)
+            throw GpacRuntimeError("Error opening metadata file", GF_IO_ERR);
+        else if ((numberOfTiles = gf_isom_get_track_count(file)) == static_cast<unsigned int>(-1))
+            throw GpacRuntimeError("Error loading metadata file tracks", GF_IO_ERR);
+
+        std::optional<serialization::TileConfiguration> tileConfiguration;
+        if (!(tileConfiguration = load_tile_configuration(file)).has_value())
+            throw GpacRuntimeError("Couldn't load tile configuration", GF_IO_ERR);
+
+        // Construct tile layout object.
+        std::vector<unsigned int> widthsOfColumns(tileConfiguration->widthsofcolumns().begin(), tileConfiguration->widthsofcolumns().end());
+        std::vector<unsigned int> heightsOfRows(tileConfiguration->heightsofrows().begin(), tileConfiguration->heightsofrows().end());
+        return tiles::TileLayout(tileConfiguration->numberofcolumns(), tileConfiguration->numberofrows(), widthsOfColumns, heightsOfRows);
+    }
+
+    static void write_tile_configuration(const std::filesystem::path &metadata_filename,
             const serialization::TileConfiguration &tileConfiguration,
             const std::vector<std::filesystem::path> &muxedFiles) {
         // TODO: Make metadata mp4 reference all of the tile mp4s.

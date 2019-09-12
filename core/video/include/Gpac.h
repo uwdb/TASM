@@ -16,6 +16,7 @@ namespace lightdb::video::gpac {
                    const std::optional<Codec>& ={}, bool remove_source=true);
 
     void write_tile_configuration(const std::filesystem::path &metadata_filenamme, const tiles::TileLayout &tileLayout, const std::vector<std::filesystem::path> &muxedFiles);
+    tiles::TileLayout load_tile_configuration(const std::filesystem::path &metadataFilename);
 
 
     } // namespace lightdb::video::gpac

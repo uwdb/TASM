@@ -1,3 +1,4 @@
+#include <TileConfiguration.pb.h>
 #include "Metadata.pb.h"
 #include "Catalog.h"
 #include "Codec.h"
@@ -9,10 +10,14 @@
 #include "gpac/media_tools.h"
 #include "linux/videodev2.h"
 
+#include "TileConfiguration.pb.h"
+
 namespace lightdb::video::gpac {
     static auto constexpr METADATA_VERSION = 1u;
+    static auto constexpr TILE_CONFIGURATION_VERSION = 1u;
     static auto constexpr MP4_EXTENSION = ".mp4";
     static auto constexpr TLFD_FOURCC = v4l2_fourcc('d', 'f', 'l', 't');
+    static auto constexpr TILE_FOURCC = v4l2_fourcc('e', 'l', 'i', 't');
     static auto _ = []() {
         GOOGLE_PROTOBUF_VERIFY_VERSION;
         // Omit mux progress bars
@@ -226,6 +231,60 @@ namespace lightdb::video::gpac {
         }
 
         write_metadata(metadata_filename, filenames, metadata);
+    }
+
+    void write_tile_configuration(const std::filesystem::path &metadata_filename,
+            const serialization::TileConfiguration &tileConfiguration,
+            const std::vector<std::filesystem::path> &muxedFiles) {
+        // TODO: Make metadata mp4 reference all of the tile mp4s.
+
+        GF_MediaImporter metadataMediaImporter{};
+        GF_Err result;
+
+        metadataMediaImporter.flags = GF_IMPORT_USE_DATAREF;
+        if ((metadataMediaImporter.dest = gf_isom_open(metadata_filename.c_str(), GF_ISOM_OPEN_WRITE, nullptr)) == nullptr)
+            throw GpacRuntimeError("Error opening metadata file", GF_IO_ERR);
+
+        for (const auto &muxedFilename : muxedFiles) {
+            if ((metadataMediaImporter.orig = gf_isom_open(std::filesystem::relative(muxedFilename).c_str(), GF_ISOM_OPEN_READ, nullptr)) == nullptr)
+                throw GpacRuntimeError("Error opening tile file", GF_IO_ERR);
+            else if ((result = gf_media_import(&metadataMediaImporter)) != GF_OK)
+                throw GpacRuntimeError("Error importing tile track", result);
+            else if ((result = gf_isom_close(metadataMediaImporter.orig)) != GF_OK)
+                throw GpacRuntimeError("Error closing tile file", result);
+        }
+
+        auto tileConfigurationString = tileConfiguration.SerializeAsString();
+        if ((result = gf_isom_add_user_data(metadataMediaImporter.dest, 0, TILE_FOURCC, nullptr, tileConfigurationString.data(), tileConfigurationString.length())) != GF_OK)
+            throw GpacRuntimeError("Error writing tile configuration box", result);
+        else if ((result = gf_isom_close(metadataMediaImporter.dest)))
+            throw GpacRuntimeError("Error closing metadata file", result);
+    }
+
+    void write_tile_configuration(const std::filesystem::path &metadata_filename,
+                             const tiles::TileLayout &tileLayout,
+                             const std::vector<std::filesystem::path> &muxedFiles) {
+        lightdb::serialization::TileConfiguration tileConfiguration;
+        tileConfiguration.set_version(TILE_CONFIGURATION_VERSION);
+
+        auto numberOfColumns = tileLayout.numberOfColumns();
+        auto numberOfRows = tileLayout.numberOfRows();
+
+        tileConfiguration.set_numberofcolumns(numberOfColumns);
+        tileConfiguration.set_numberofrows(numberOfRows);
+
+//        tileConfiguration.mutable_widthsofcolumns()->Reserve(numberOfColumns);
+//        memcpy(tileConfiguration.mutable_widthsofcolumns()->mutable_data(),
+//                tileLayout.widthsOfColumns().data(),
+//                numberOfColumns * sizeof(unsigned int))
+
+        for (auto &width : tileLayout.widthsOfColumns())
+            tileConfiguration.add_widthsofcolumns(width);
+
+        for (auto &height : tileLayout.heightsOfRows())
+            tileConfiguration.add_heightsofrows(height);
+
+        write_tile_configuration(metadata_filename, tileConfiguration, muxedFiles);
     }
 
     bool can_mux(const std::filesystem::path &filename) {

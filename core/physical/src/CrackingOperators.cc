@@ -43,6 +43,7 @@ void CrackVideo::Runtime::saveTileGroupsToDisk() {
     // For now just do it here for ease of debugging.
     transactions::TileCrackingTransaction transaction(physical().catalog(),
                                                     physical().outputEntryName(),
+                                                    currentTileLayout_,
                                                     firstFrameInGroup_,
                                                     lastFrameInGroup_);
 

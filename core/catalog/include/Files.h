@@ -52,6 +52,10 @@ public:
         return ".mp4";
     }
 
+    static std::filesystem::path tileMetadataFilename(const Entry &entry, unsigned int firstFrame, unsigned lastFrame) {
+        return directoryForTilesInFrames(entry, firstFrame, lastFrame) / "tile-metadata.mp4";
+    }
+
 private:
     static std::string temporaryFilenameExtension() {
         return ".hevc";

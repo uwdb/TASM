@@ -15,6 +15,8 @@ namespace lightdb::video::gpac {
     void mux_media(const std::filesystem::path &source, const std::filesystem::path &destination,
                    const std::optional<Codec>& ={}, bool remove_source=true);
 
+    void write_tile_configuration(const std::filesystem::path &metadata_filenamme, const tiles::TileLayout &tileLayout, const std::vector<std::filesystem::path> &muxedFiles);
+
 
     } // namespace lightdb::video::gpac
 

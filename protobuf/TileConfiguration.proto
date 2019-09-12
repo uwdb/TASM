@@ -1,0 +1,13 @@
+package lightdb.serialization;
+
+// Should this also include the first and last frames?
+// I guess that could go in a different structure.
+
+message TileConfiguration {
+    required uint32 version = 1;
+
+    required uint32 numberOfColumns = 2;
+    required uint32 numberOfRows = 3;
+    repeated uint32 widthsOfColumns = 4;
+    repeated uint32 heightsOfRows = 5;
+}

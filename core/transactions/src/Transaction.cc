@@ -90,6 +90,9 @@ void TileCrackingTransaction::abort() {
 void TileCrackingTransaction::commit() {
     complete_ = true;
 
+    std::vector<std::filesystem::path> muxedFiles;
+    muxedFiles.reserve(outputs().size());
+
     for (auto &output : outputs()) {
         output.stream().close();
 
@@ -97,7 +100,15 @@ void TileCrackingTransaction::commit() {
         auto muxedFile = output.filename();
         muxedFile.replace_extension(catalog::TileFiles::muxedFilenameExtension());
         video::gpac::mux_media(output.filename(), muxedFile, output.codec());
+        muxedFiles.push_back(std::move(muxedFile));
     }
+
+    writeTileMetadata(muxedFiles);
+}
+
+void TileCrackingTransaction::writeTileMetadata(const std::vector<std::filesystem::path> &muxedFiles) {
+    auto metadataFilename = catalog::TileFiles::tileMetadataFilename(entry_, firstFrame_, lastFrame_);
+    video::gpac::write_tile_configuration(metadataFilename, tileLayout_, muxedFiles);
 }
 
 } // namespace lightdb::transactions

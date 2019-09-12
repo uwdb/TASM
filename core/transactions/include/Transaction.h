@@ -161,9 +161,10 @@ private:
 
 class TileCrackingTransaction: public Transaction {
 public:
-    TileCrackingTransaction(const catalog::Catalog &catalog, const std::string &name, int firstFrame = -1, int lastFrame = -1)
+    TileCrackingTransaction(const catalog::Catalog &catalog, const std::string &name, const tiles::TileLayout &tileLayout, int firstFrame = -1, int lastFrame = -1)
         : Transaction(0u),
         entry_(catalog.get(name, true).downcast<logical::ScannedLightField>().entry()),
+        tileLayout_(tileLayout),
         firstFrame_(firstFrame),
         lastFrame_(lastFrame),
         complete_(false)
@@ -193,8 +194,11 @@ public:
 
 private:
     void prepareTileDirectory();
+    void writeTileMetadata(const std::vector<std::filesystem::path> &muxedFiles);
 
     const catalog::Entry entry_;
+    const tiles::TileLayout tileLayout_;
+
     int firstFrame_;
     int lastFrame_;
 

@@ -88,7 +88,16 @@ void TileCrackingTransaction::abort() {
 }
 
 void TileCrackingTransaction::commit() {
+    complete_ = true;
 
+    for (auto &output : outputs()) {
+        output.stream().close();
+
+        // Mux the outputs to mp4.
+        auto muxedFile = output.filename();
+        muxedFile.replace_extension(catalog::TileFiles::muxedFilenameExtension());
+        video::gpac::mux_media(output.filename(), muxedFile, output.codec());
+    }
 }
 
 } // namespace lightdb::transactions

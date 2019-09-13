@@ -53,6 +53,26 @@ namespace lightdb::catalog {
         return write_version(path, load_version(path) + 1);
     }
 
+    unsigned int Entry::load_tile_version(const std::filesystem::path &path) {
+        auto filename = TileFiles::tileVersionFilename(path);
+
+        if (std::filesystem::exists(filename)) {
+            std::ifstream f(filename);
+            return static_cast<unsigned int>(stoul(std::string(std::istreambuf_iterator<char>(f),
+                                                                      std::istreambuf_iterator<char>())));
+        } else
+            return 0u;
+    }
+
+    void Entry::increment_tile_version(const std::filesystem::path &path) {
+        auto tileVersion = load_tile_version(path);
+
+        // Write incremented version.
+        std::ofstream output(TileFiles::tileVersionFilename(path));
+        auto newVersionAsString = std::to_string(tileVersion + 1);
+        std::copy(newVersionAsString.begin(), newVersionAsString.end(), std::ostreambuf_iterator<char>(output));
+    }
+
 
     std::vector<Source> Entry::load_sources() {
         auto filename = Files::metadata_filename(path(), version());

@@ -74,9 +74,11 @@ void SingleNodeVolatileTransaction::write_metadata(const std::filesystem::path& 
 }
 
 void TileCrackingTransaction::prepareTileDirectory() {
+    // TODO: Shouldn't remove directory because cracking could re-crack.
+    // Could add a tile version to keep track of where to re-start UID.
     auto directory = catalog::TileFiles::directoryForTilesInFrames(entry_, firstFrame_, lastFrame_);
-    if (std::filesystem::exists(directory))
-        std::filesystem::remove_all(directory);
+//    if (std::filesystem::exists(directory))
+//        std::filesystem::remove_all(directory);
 
     std::filesystem::create_directory(directory);
 }
@@ -92,6 +94,8 @@ void TileCrackingTransaction::commit() {
 
     std::vector<std::filesystem::path> muxedFiles;
     muxedFiles.reserve(outputs().size());
+    std::vector<OutputStream> muxedOutputs;
+    muxedOutputs.reserve(outputs().size());
 
     for (auto &output : outputs()) {
         output.stream().close();
@@ -100,10 +104,16 @@ void TileCrackingTransaction::commit() {
         auto muxedFile = output.filename();
         muxedFile.replace_extension(catalog::TileFiles::muxedFilenameExtension());
         video::gpac::mux_media(output.filename(), muxedFile, output.codec());
+
+        muxedOutputs.emplace_back(output, muxedFile);
         muxedFiles.push_back(std::move(muxedFile));
     }
 
+    // TODO: write metadata and tile configuration to same file.
+    video::gpac::write_metadata(catalog::Files::metadata_filename(catalog::TileFiles::directoryForTilesInFrames(entry_, firstFrame_, lastFrame_), 1), muxedOutputs);
     writeTileMetadata(muxedFiles);
+
+    catalog::Entry::increment_tile_version(entry_.path());
 }
 
 void TileCrackingTransaction::writeTileMetadata(const std::vector<std::filesystem::path> &muxedFiles) {

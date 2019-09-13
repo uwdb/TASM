@@ -39,6 +39,10 @@ private:
 
 class TileFiles {
 public:
+    static std::filesystem::path tileVersionFilename(const std::filesystem::path &path) {
+        return path / tile_version_filename_;
+    }
+
     static std::filesystem::path directoryForTilesInFrames(const Entry &entry, unsigned int firstFrame,
                                                            unsigned int lastFrame);
 
@@ -64,6 +68,8 @@ private:
     static std::string baseTileFilename(unsigned int tileNumber) {
         return "orig-tile-" + std::to_string(tileNumber);
     }
+
+    static constexpr auto tile_version_filename_ = "tile-version";
 };
 
 } // namespace lightdb::catalog

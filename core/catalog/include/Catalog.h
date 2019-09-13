@@ -143,7 +143,8 @@ namespace lightdb {
                       version_(load_version(path_)),
                       sources_(load_sources()),
                       volume_(CompositeVolume(functional::transform<CompositeVolume>(sources_.begin(), sources_.end(),
-                              [](const auto &source) { return source.volume(); }), Volume::zero()).bounding())
+                              [](const auto &source) { return source.volume(); }), Volume::zero()).bounding()),
+                      tileVersion_(load_tile_version(path_))
             { CHECK(std::filesystem::exists(path_)); }
 
         public:
@@ -160,6 +161,10 @@ namespace lightdb {
             static unsigned int write_version(const std::filesystem::path &path, unsigned int version);
             static unsigned int increment_version(const std::filesystem::path &path);
 
+            static unsigned int load_tile_version(const std::filesystem::path &path);
+            static void increment_tile_version(const std::filesystem::path &path);
+            unsigned int tile_version() const { return tileVersion_; }
+
         private:
             std::vector<Source> load_sources();
 
@@ -170,6 +175,8 @@ namespace lightdb {
             unsigned int version_;
             std::vector<Source> sources_;
             const Volume volume_;
+
+            unsigned int tileVersion_;
         };
 
         class ExternalEntry {

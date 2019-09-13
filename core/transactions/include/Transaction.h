@@ -52,6 +52,16 @@ public:
               stream_()
     { }
 
+    OutputStream(const OutputStream &base, const std::filesystem::path &filePath)
+        : transaction_(base.transaction_),
+        entry_(base.entry_),
+        filename_(filePath),
+        codec_(base.codec_),
+        volume_(base.volume_),
+        geometry_(base.geometry_),
+        stream_()
+    { }
+
     OutputStream(const Transaction &transaction,
                 const catalog::Entry &entry,
                 const GeometryReference &geometry,

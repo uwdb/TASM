@@ -25,6 +25,8 @@ namespace lightdb::catalog {
 
     std::filesystem::path TileFiles::directoryForTilesInFrames(const Entry &entry, unsigned int firstFrame,
                                                            unsigned int lastFrame) {
-        return entry.path() / (std::to_string(firstFrame) + "-" + std::to_string(lastFrame));
+        // TODO: This won't work if the same frames are stored with different tile layouts. Append UID for now.
+        return entry.path() / (std::to_string(firstFrame) + "-" + std::to_string(lastFrame) + "-" + std::to_string(entry.tile_version()));
+    }
     }
 } // namespace lightdb::catalog

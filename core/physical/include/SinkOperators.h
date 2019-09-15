@@ -12,6 +12,11 @@ public:
         : PhysicalOperator(logical, {parent}, DeviceType::CPU, runtime::make<Runtime>(*this, "Sink-init"))
     { }
 
+    explicit Sink(const LightFieldReference &logical,
+            std::vector<PhysicalOperatorReference> parents)
+        : PhysicalOperator(logical, parents, DeviceType::CPU, runtime::make<Runtime>(*this, "Sink-init"))
+    { }
+
 private:
     class Runtime: public runtime::Runtime<> {
     public:
@@ -24,8 +29,8 @@ private:
                 std::for_each(iterators().begin(), iterators().end(), [&](auto &i) {
 //                    i++;
                     MaterializedLightFieldReference data = i++;
-                    auto &value = data.downcast<SerializableData>().value();
-                    ofs_.write(value.data(), value.size());
+//                    auto &value = data.downcast<SerializableData>().value();
+//                    ofs_.write(value.data(), value.size());
                 });
                 return EmptyData{physical().device()};
             } else

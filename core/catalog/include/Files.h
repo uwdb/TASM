@@ -43,13 +43,22 @@ public:
         return path / tile_version_filename_;
     }
 
+    static std::filesystem::path tileMetadataFilename(const std::filesystem::path &path) {
+        return path / tile_metadata_filename_;
+    }
+
     static std::filesystem::path directoryForTilesInFrames(const Entry &entry, unsigned int firstFrame,
                                                            unsigned int lastFrame);
 
-    static std::filesystem::path tileFilename(const Entry &entry, unsigned int tileNumber, unsigned int firstFrame,
-                                              unsigned int lastFrame) {
+    static std::filesystem::path temporaryTileFilename(const Entry &entry, unsigned int tileNumber,
+                                                       unsigned int firstFrame,
+                                                       unsigned int lastFrame) {
         return directoryForTilesInFrames(entry, firstFrame, lastFrame) / (baseTileFilename(tileNumber) +
                 temporaryFilenameExtension());
+    }
+
+    static std::filesystem::path tileFilename(const std::filesystem::path &directoryPath, unsigned int tileNumber) {
+        return directoryPath / (baseTileFilename(tileNumber) + muxedFilenameExtension());
     }
 
     static std::string muxedFilenameExtension() {
@@ -57,8 +66,10 @@ public:
     }
 
     static std::filesystem::path tileMetadataFilename(const Entry &entry, unsigned int firstFrame, unsigned lastFrame) {
-        return directoryForTilesInFrames(entry, firstFrame, lastFrame) / "tile-metadata.mp4";
+        return directoryForTilesInFrames(entry, firstFrame, lastFrame) / tile_metadata_filename_;
     }
+
+    static std::pair<unsigned int, unsigned int> firstAndLastFramesFromPath(const std::filesystem::path &directoryPath);
 
 private:
     static std::string temporaryFilenameExtension() {
@@ -70,6 +81,8 @@ private:
     }
 
     static constexpr auto tile_version_filename_ = "tile-version";
+    static constexpr auto tile_metadata_filename_ = "tile-metadata.mp4";
+    static constexpr auto separating_string_ = "-";
 };
 
 } // namespace lightdb::catalog

@@ -233,15 +233,24 @@ private:
 class EncodedFrameReader {
 public:
     // Assume frames is sorted.
-    explicit EncodedFrameReader(std::filesystem::path filename, std::vector<int> frames, bool forDecoding = true)
+    // Frames is in global frame numbers (e.g. starting from frameOffsetInFile, not 0).
+    explicit EncodedFrameReader(std::filesystem::path filename, std::vector<int> frames, int frameOffsetInFile = 0)
         : filename_(std::move(filename)),
-        mp4Reader_(filename_, forDecoding),
+        mp4Reader_(filename_),
         frames_(std::move(frames)),
         numberOfSamplesRead_(0),
-        shouldReadFramesExactly_(false)
+        shouldReadFramesExactly_(false),
+        frameOffsetInFile_(frameOffsetInFile)
     {
-        frameIterator_ = frames_.begin();
-        keyframeIterator_ = mp4Reader_.keyframeNumbers().begin();
+        // Update frames to be 0-indexed.
+        if (frameOffsetInFile) {
+            std::for_each(frames_.begin(), frames_.end(), [&](auto &frame) {
+                frame -= frameOffsetInFile;
+            });
+        }
+
+        frameIterator_ = frames_.begin(); // In global frame numbers.
+        keyframeIterator_ = mp4Reader_.keyframeNumbers().begin(); // 0-indexed.
     }
 
     void setGlobalFrames(const std::vector<int> &globalFrames) {
@@ -347,7 +356,7 @@ private:
 
     std::optional<GOPReaderPacket> dataForSamples(unsigned int firstSampleToRead, unsigned int lastSampleToRead) {
         // -1 from firstSampleToRead to go from sample number -> index.
-        return { GOPReaderPacket(mp4Reader_.dataForSamples(firstSampleToRead, lastSampleToRead), MP4Reader::sampleNumberToFrameNumber(firstSampleToRead), lastSampleToRead - firstSampleToRead + 1) };
+        return { GOPReaderPacket(mp4Reader_.dataForSamples(firstSampleToRead, lastSampleToRead), MP4Reader::sampleNumberToFrameNumber(firstSampleToRead + frameOffsetInFile_), lastSampleToRead - firstSampleToRead + 1) };
     }
 
     std::filesystem::path filename_;
@@ -359,6 +368,7 @@ private:
     std::vector<int> globalFrames_;
     std::vector<int>::const_iterator globalFramesIterator_;
     bool shouldReadFramesExactly_;
+    int frameOffsetInFile_;
 };
 
 class FrameDecodeReader: public DecodeReader {

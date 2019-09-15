@@ -21,6 +21,7 @@ namespace lightdb {
     namespace catalog {
         class Entry;
         class TileEntry;
+        class MultiTileEntry;
 
         class Source {
         public:
@@ -79,6 +80,7 @@ namespace lightdb {
             static bool catalog_exists(const std::filesystem::path &path);
 
             LightFieldReference getTiled(const std::string &name) const;
+            LightFieldReference getMultiTiled(const std::string &name) const;
             LightFieldReference getByGOP(const std::string &name) const;
             LightFieldReference get(const std::string &name, bool create=false) const;
             LightFieldReference create(const std::string& name) const;
@@ -92,6 +94,7 @@ namespace lightdb {
 
             inline Entry entry(const std::string &name) const;
             TileEntry tileEntry(const std::string &name) const;
+            MultiTileEntry multiTileEntry(const std::string &name) const;
 
             static std::optional<Catalog> instance_;
         };
@@ -130,6 +133,28 @@ namespace lightdb {
             const Volume volume_;
             const tiles::TileLayout tileLayout_;
             const std::vector<Source> sources_;
+        };
+
+        class MultiTileEntry {
+            friend class Catalog;
+
+        public:
+            const std::string &name() const { return name_; }
+            const catalog::Catalog &catalog() const { return catalog_; }
+            const std::filesystem::path &path() const { return path_; }
+
+        private:
+            MultiTileEntry(const Catalog &catalog, std::string name, std::filesystem::path path)
+                : catalog_(catalog),
+                name_(std::move(name)),
+                path_(std::move(path))
+            { }
+
+            const Catalog &catalog_;
+            const std::string name_;
+            const std::filesystem::path path_;
+
+            // TODO: Add something for frame range -> tile layout.
         };
 
         class Entry {

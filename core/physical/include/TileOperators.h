@@ -10,17 +10,42 @@ class MergeTilePixels: public PhysicalOperator, public GPUOperator {
 public:
     explicit MergeTilePixels(const LightFieldReference &logical,
             std::vector<PhysicalOperatorReference> &parents,
+            std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider)
+        : PhysicalOperator(logical, parents, DeviceType::GPU, runtime::make<Runtime>(*this, "MergeTilePixels-init")),
+        GPUOperator(parents.front()),
+        metadataManager_(getMetadataManager()),
+        tileLayout_(tiles::EmptyTileLayout),
+        parentIndexToTileNumber_{},
+        tileLocationProvider_(tileLocationProvider)
+    { }
+
+    explicit MergeTilePixels(const LightFieldReference &logical,
+            std::vector<PhysicalOperatorReference> &parents,
             const tiles::TileLayout &tileLayout,
             std::unordered_map<int, int> parentIndexToTileNumber)
         : PhysicalOperator(logical, parents, DeviceType::GPU, runtime::make<Runtime>(*this, "MergeTilePixels-init")),
         GPUOperator(parents.front()),
+        metadataManager_(getMetadataManager()),
         tileLayout_(tileLayout),
         parentIndexToTileNumber_(std::move(parentIndexToTileNumber))
     { }
 
+    const std::vector<Rectangle> &rectanglesForFrame(unsigned int frameNumber) const {
+        return metadataManager_.rectanglesForFrame(frameNumber);
+    }
     const logical::MetadataSubsetLightField &metadataSubsetLightField() const { return logical().downcast<logical::MetadataSubsetLightField>(); }
-    const tiles::TileLayout &tileLayout() const { return tileLayout_; }
-    int tileNumberForParentIndex(int parentIndex) const { return parentIndexToTileNumber_.at(parentIndex); }
+    const tiles::TileLayout &tileLayoutForFrame(unsigned int frameNumber) const {
+        if (tileLocationProvider_)
+            return tileLocationProvider_->tileLayoutForFrame(frameNumber);
+        else
+            return tileLayout_;
+    }
+    int tileNumberForParentIndex(int parentIndex) const {
+        if (tileLocationProvider_)
+            return parentIndex;
+        else
+            return parentIndexToTileNumber_.at(parentIndex);
+    }
 
 private:
     class Runtime: public runtime::GPURuntime<MergeTilePixels> {
@@ -46,17 +71,17 @@ private:
                 for (auto index = 0u; index < iterators().size(); index++) {
                     if (iterators()[index] != iterators()[index].eos()) {
                         auto tileNumber = physical().tileNumberForParentIndex(index);
-                        auto tileRectangle = physical().tileLayout().rectangleForTile(tileNumber);
-
                         auto decoded = (iterators()[index]++).downcast<GPUDecodedFrameData>();
                         for (auto &frame : decoded.frames()) {
                             // Get rectangles for frame.
                             int frameNumber = -1;
                             assert(frame->getFrameNumber(frameNumber));
 
+                            auto tileRectangle = physical().tileLayoutForFrame(frameNumber).rectangleForTile(tileNumber);
+
                             updateMaxProcessedFrameNumber(frameNumber, index);
 
-                            const auto &rectanglesForFrame = physical().metadataSubsetLightField().rectanglesForFrame(frameNumber);
+                            const auto &rectanglesForFrame = physical().rectanglesForFrame(frameNumber);
                             bool anyRectangleIntersectsTile = std::any_of(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](auto &rect) {
                                 return tileRectangle.intersects(rect);
                             });
@@ -84,8 +109,8 @@ private:
             // Find rectangles that have a frame id <= the maximum processed frame, and put those into
             // the "frames" array of a GPUDecodedFramesObject thing.
             auto pixelsAsFrames = pixelsForProcessedRectangles();
-//            auto returnVal = GPUPixelData(pixelsAsFrames);
-            auto returnVal = GPUDecodedFrameData{configuration_, geometry_, pixelsAsFrames};
+            auto returnVal = GPUPixelData(pixelsAsFrames);
+//            auto returnVal = GPUDecodedFrameData{configuration_, geometry_, pixelsAsFrames};
             GLOBAL_TIMER.endSection("MergeTilePixels");
             return returnVal;
         }
@@ -168,8 +193,21 @@ private:
         GeometryReference geometry_;
     };
 
+    const metadata::MetadataManager &getMetadataManager() {
+        if (logical().is<logical::MetadataSubsetLightField>())
+            return logical().downcast<logical::MetadataSubsetLightField>().metadataManager();
+        else if (logical().is<logical::MetadataSubsetLightFieldWithoutSources>())
+            return *logical().downcast<logical::MetadataSubsetLightFieldWithoutSources>().metadataManager();
+        else {
+            assert(false);
+        }
+    }
+
+    const metadata::MetadataManager &metadataManager_;
     const tiles::TileLayout tileLayout_;
     std::unordered_map<int, int> parentIndexToTileNumber_;
+
+    std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;
 };
 
 class CoalesceSingleTile: public PhysicalOperator {

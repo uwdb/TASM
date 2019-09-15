@@ -70,7 +70,7 @@ public:
                 unsigned int lastFrame)
             : transaction_(transaction),
             entry_(entry),
-            filename_(catalog::TileFiles::tileFilename(entry, tileNumber, firstFrame, lastFrame)),
+            filename_(catalog::TileFiles::temporaryTileFilename(entry, tileNumber, firstFrame, lastFrame)),
             codec_(Codec::hevc()),
             volume_(entry.volume()),
             geometry_(geometry),

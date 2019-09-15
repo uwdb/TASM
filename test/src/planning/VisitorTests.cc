@@ -112,6 +112,12 @@ TEST_F(VisitorTestFixture, testCrackIntoTiles) {
     Coordinator().execute(input.StoreCracked("MVI_63563_960x576_100frames_cracked"));
 }
 
+TEST_F(VisitorTestFixture, testReadCrackedTiles) {
+    auto input = ScanMultiTiled("MVI_63563_960x576_100frames_cracked");
+    PixelMetadataSpecification selection("labels", "label", "van");
+    Coordinator().execute(input.Select(selection).Sink());
+}
+
 TEST_F(VisitorTestFixture, testScanTiled1) {
     auto input = ScanTiled("jackson_square_1hr_680x512_gops_for_tiles");
     PixelsInFrameMetadataSpecification selection("LABELS", "LABEL", "car");

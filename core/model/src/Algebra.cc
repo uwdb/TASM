@@ -11,6 +11,10 @@ namespace lightdb::logical {
         return Catalog::instance().getTiled(name);
     }
 
+    LightFieldReference ScanMultiTiled(const std::string &name) {
+        return Catalog::instance().getMultiTiled(name);
+    }
+
     LightFieldReference Scan(const std::string &name) {
         return Scan(Catalog::instance(), name);
     }
@@ -88,6 +92,9 @@ namespace lightdb::logical {
         else if (this_.is<ScannedTiledLightField>()) {
             auto &scan = this_.downcast<ScannedTiledLightField>();
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, scan.sources(), std::optional(scan.entry().name()));
+        } else if (this_.is<ScannedMultiTiledLightField>()) {
+            auto &scan = this_.downcast<ScannedMultiTiledLightField>();
+            return LightFieldReference::make<MetadataSubsetLightFieldWithoutSources>(this_, metadataSpecification, subsetType, scan.tileLayoutsManager()->entry().name());
         } else
             assert(false);
     }

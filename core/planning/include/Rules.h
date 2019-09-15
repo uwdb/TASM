@@ -22,6 +22,7 @@
 
 #include <iostream>
 #include "CrackingOperators.h"
+#include "MultiTileOperators.h"
 #include "SelectFramesOperators.h"
 #include "SelectPixelsOperators.h"
 #include "TileOperators.h"
@@ -59,6 +60,16 @@ namespace lightdb::optimization {
     class ChooseDecoders : public OptimizerRule {
     public:
         using OptimizerRule::OptimizerRule;
+
+        bool visit(const logical::ScannedMultiTiledLightField &node) override {
+            if (!plan().has_physical_assignment(node)) {
+                // Insert a place-holder operator because we won't know what files to decode / how many decoders to initialize
+                // until we find out what the next operator is.
+                plan().emplace<physical::ScanMultiTilePlaceholderOperator>(plan().lookup(node));
+                return true;
+            }
+            return false;
+        }
 
         bool visit(const logical::ScannedByGOPLightField &node) override {
             if (!plan().has_physical_assignment(node)) {
@@ -414,6 +425,69 @@ namespace lightdb::optimization {
     class ChooseMetadataSelection : public OptimizerRule {
     public:
         using OptimizerRule::OptimizerRule;
+
+        bool visit(const logical::MetadataSubsetLightFieldWithoutSources &node) override {
+            if (!plan().has_physical_assignment(node)) {
+                auto physical_parents = functional::flatmap<std::vector<PhysicalOperatorReference>>(
+                        node.parents().begin(), node.parents().end(),
+                        [this](auto &parent) { return plan().unassigned(parent); });
+
+                if(physical_parents.empty())
+                    return false;
+
+                auto logical = plan().lookup(node);
+                auto gpu = plan().allocator().gpu();
+
+                assert(physical_parents.size() == 1);
+                assert(physical_parents[0].is<physical::ScanMultiTilePlaceholderOperator>());
+
+                // TODO: Find out what frames will be read for selection.
+                // Pick a tile configuration for each frame.
+                // Create scan/decode operators for each possible tile.
+                // Feed the correct frames to each scan. Scans will need to know tile configuration, directory for each frame.
+                // Decoders will have to know tile configuration for each tile to decode properly.
+
+                auto &multiTiledLightField = physical_parents[0].downcast<physical::ScanMultiTilePlaceholderOperator>().multiTiledLightField();
+                auto metadataManager = node.metadataManager();
+
+                auto tileLayoutsManager = multiTiledLightField.tileLayoutsManager();
+                auto maximumNumberOfTiles = tileLayoutsManager->maximumNumberOfTilesForFrames(metadataManager->orderedFramesForMetadata());
+
+                // Create a scan operator for each possible tile.
+                // The scan operator doesn't have a single file to read from -- that will depend on which tile layout is wanted for each frame.
+                // Scan gets global frames, tile number, and configuration/location provider.
+                // Scan will have to reset its frame reader whenever location changes.
+                // Scan also will have to know the conversion from sample number in the tile file to global frame number.
+                // For each frame, if the tile number in the tile configuration intersects any rectangles, it will have to be decoded.
+
+                // Create a tile location provider that can be shared amongst the scanners.
+//                std::vector<PhysicalOperatorReference> scans;
+                auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
+                std::vector<PhysicalOperatorReference> decodes;
+                for (auto i = 0u; i < maximumNumberOfTiles; ++i) {
+                    // Only create a scan and decode if any rectangle intersects the tile.
+
+                    auto scan = plan().emplace<physical::ScanMultiTileOperator>(
+                                                            physical_parents[0]->logical(),
+                                                            i,
+                                                            metadataManager,
+                                                            tileLocationProvider);
+
+                    decodes.push_back(plan().emplace<physical::GPUDecodeOptionalFromCPU>(logical, scan, gpu));
+                }
+
+                // Add a merge operator whose parents are the decodes.
+                // Start by assuming that its parents will be in the order of tiles.
+                plan().emplace<physical::MergeTilePixels>(logical, decodes, tileLocationProvider);
+
+                // TODO: Remove placeholder from plan.
+                plan().remove_operator(physical_parents[0]);
+
+                return true;
+            }
+
+            return false;
+        }
 
         bool visit(const logical::MetadataSubsetLightField &node) override {
             if (!plan().has_physical_assignment(node)) {
@@ -1043,7 +1117,7 @@ namespace lightdb::optimization {
                     return false;
 
 //                auto sink = Encode(node, physical_parents.front());
-                plan().emplace<physical::Sink>(plan().lookup(node), physical_parents.front());
+                plan().emplace<physical::Sink>(plan().lookup(node), physical_parents);
                 return true;
             }
             return false;

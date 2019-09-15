@@ -1,3 +1,4 @@
+#include <TileConfigurationProvider.h>
 #include "Catalog.h"
 #include "LightField.h"
 #include "PhysicalOperators.h"
@@ -27,6 +28,11 @@ namespace lightdb::catalog {
     TileEntry Catalog::tileEntry(const std::string &name) const {
         auto path = std::filesystem::absolute(path_ / name);
         return TileEntry(*this, name, path);
+    }
+
+    MultiTileEntry Catalog::multiTileEntry(const std::string &name) const {
+        auto path = std::filesystem::absolute(path_ / name);
+        return MultiTileEntry(*this, name, path);
     }
 
     unsigned int Entry::load_version(const std::filesystem::path &path) {
@@ -87,6 +93,17 @@ namespace lightdb::catalog {
         return LightFieldReference::make<logical::ScannedTiledLightField>(std::move(tileEntry(name)));
     }
 
+    LightFieldReference Catalog::getMultiTiled(const std::string &name) const {
+        assert(exists(name));
+        auto multiTile = multiTileEntry(name);
+
+        auto layoutsManager = std::make_shared<tiles::TileLayoutsManager>(multiTile);
+
+        // Make compiler happy.
+//        assert(false);
+        return LightFieldReference::make<logical::ScannedMultiTiledLightField>(layoutsManager);
+    }
+
     LightFieldReference Catalog::getByGOP(const std::string &name) const {
         assert(exists(name));
         return LightFieldReference::make<logical::ScannedByGOPLightField>(entry(name));
@@ -134,8 +151,9 @@ namespace lightdb::catalog {
     }
 
     std::vector<Source> TileEntry::loadSources() {
-        GeometryReference geometry = GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples());
+        // TODO: This should be able to use normal load metadata.
 
+        GeometryReference geometry = GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples());
         auto numberOfTiles = tileLayout_.numberOfTiles();
 
         // For now assume that all tiles are identical. We can't get configurations for later tiles

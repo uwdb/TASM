@@ -33,10 +33,12 @@ namespace lightdb {
         }
 
         bool intersects(const Rectangle &other) {
-            return !(x >= other.x + other.width
+            bool val = !(x >= other.x + other.width
                     || other.x >= x + width
                     || y >= other.y + other.height
                     || other.y >= y + height);
+
+            return val;
         }
 
         Rectangle overlappingRectangle(const Rectangle &other) const {

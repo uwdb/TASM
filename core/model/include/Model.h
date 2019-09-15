@@ -22,6 +22,7 @@
 
 #include "MetadataLightField.h"
 #include <iostream>
+#include <TileConfigurationProvider.h>
 
 namespace lightdb::logical {
     class ConstantLightField : public LightField {
@@ -218,6 +219,21 @@ namespace lightdb::logical {
     class StreamBackedLightField {
     public:
         virtual const std::vector<catalog::Source> sources() const = 0;
+    };
+
+    class ScannedMultiTiledLightField : public LightField {
+    public:
+        explicit ScannedMultiTiledLightField(std::shared_ptr<const tiles::TileLayoutsManager> tileLayoutsManager)
+            : LightField({}, Volume::limits(), YUVColorSpace::instance()),
+            tileLayoutsManager_(tileLayoutsManager)
+        { }
+
+        const std::shared_ptr<const tiles::TileLayoutsManager> &tileLayoutsManager() const { return tileLayoutsManager_; }
+
+        void accept(LightFieldVisitor &visitor) override { LightField::accept<ScannedMultiTiledLightField>(visitor); }
+
+    private:
+        const std::shared_ptr<const tiles::TileLayoutsManager> tileLayoutsManager_;
     };
 
     class ScannedTiledLightField : public LightField, public StreamBackedLightField {

@@ -18,8 +18,9 @@ protected:
         : configuration_(std::move(configuration)), frame_queue_(frame_queue)
     { }
 
+    DecodeConfiguration configuration_;
+
 private:
-    const DecodeConfiguration configuration_;
     FrameQueue& frame_queue_;
 };
 
@@ -54,6 +55,26 @@ public:
       if(handle() != nullptr) {
           cuvidDestroyDecoder(handle());
           CudaDecoder::DECODER_DESTROYED = true;
+      }
+  }
+
+  void updateConfiguration(DecodeConfiguration &newConfiguration) {
+      // Will this mess up if pictures are currently being decoded?
+      CUresult result;
+      // As a hack for now, just update the configuration's width and height.
+      configuration_.width = newConfiguration.width;
+      configuration_.height = newConfiguration.height;
+      auto decoderCreateInfo = this->configuration().AsCuvidCreateInfo(lock_);
+
+      if ((result = cuvidDestroyDecoder(handle_)) != CUDA_SUCCESS) {
+          throw GpuCudaRuntimeError("Call to cuvidDestroyDecoder failed", result);
+      }
+
+      handle_ = nullptr;
+      if ((result = cuvidCreateDecoder(&handle_, &decoderCreateInfo)) != CUDA_SUCCESS) {
+          throw GpuCudaRuntimeError("Call to cuvidCreateDecoder failed", result);
+      } else {
+          LOG(INFO) << "made decoder";
       }
   }
 

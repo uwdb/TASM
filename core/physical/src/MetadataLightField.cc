@@ -66,6 +66,11 @@ namespace lightdb::associations {
                     {"/home/maureen/noscope_videos/tiles/2x2tiles", "/home/maureen/noscope_videos/tiles/2x2tiles/jackson-town-square-640x512-1hr.db"},
                     {"jackson_square_1hr_680x512_gops_for_tiles", "/home/maureen/noscope_videos/tiles/2x2tiles/jackson-town-square-640x512-1hr.db"},
                     {"/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/jackson_square_1hr_680x512/1-0-stream.mp4", "/home/maureen/noscope_videos/tiles/2x2tiles/jackson-town-square-640x512-1hr.db"},
+                    {"/home/maureen/noscope_videos/tiles/shortened/orig-tile-0.hevc", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
+                    {"/home/maureen/noscope_videos/tiles/shortened/orig-tile-1.hevc", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
+                    {"/home/maureen/noscope_videos/tiles/shortened/black-tile-0.hevc", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
+                    {"/home/maureen/noscope_videos/tiles/shortened/black-tile-1.hevc", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
+                    {"MVI_63563_960x576_100frames_cracked", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
             } );
 } // namespace lightdb::associations
 

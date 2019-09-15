@@ -79,6 +79,8 @@ namespace lightdb::optimization {
         void replace_assignments(const PhysicalOperatorReference &original, const PhysicalOperatorReference &replacement);
         void replace_assignments(const std::vector<PhysicalOperatorReference> &originals, const PhysicalOperatorReference &replacement);
 
+        void remove_operator(const PhysicalOperatorReference &original);
+
 
         inline auto& physical() { return physical_; }
         inline const auto& physical() const { return physical_; }

@@ -26,7 +26,23 @@ namespace lightdb::catalog {
     std::filesystem::path TileFiles::directoryForTilesInFrames(const Entry &entry, unsigned int firstFrame,
                                                            unsigned int lastFrame) {
         // TODO: This won't work if the same frames are stored with different tile layouts. Append UID for now.
-        return entry.path() / (std::to_string(firstFrame) + "-" + std::to_string(lastFrame) + "-" + std::to_string(entry.tile_version()));
+        return entry.path() / (std::to_string(firstFrame) + separating_string_ + std::to_string(lastFrame) + separating_string_ + std::to_string(entry.tile_version()));
     }
+
+    std::pair<unsigned int, unsigned int> TileFiles::firstAndLastFramesFromPath(const std::filesystem::path &directoryPath) {
+        std::string directoryName = directoryPath.filename();
+
+        // First frame = string up to first separating character.
+        auto firstSeparator = directoryName.find(separating_string_, 0);
+
+        auto startOfLastFrame = firstSeparator + 1;
+        auto secondSeparator = directoryName.find(separating_string_, startOfLastFrame);
+        assert(firstSeparator != std::string::npos);
+        assert(secondSeparator != std::string::npos);
+
+        unsigned int firstFrame = std::stoul(directoryName.substr(0, firstSeparator));
+        unsigned int lastFrame = std::stoul(directoryName.substr(startOfLastFrame, secondSeparator - startOfLastFrame));
+
+        return std::make_pair(firstFrame, lastFrame);
     }
 } // namespace lightdb::catalog

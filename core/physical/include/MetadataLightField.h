@@ -103,6 +103,28 @@ namespace lightdb::metadata {
 } // namespace lightdb::metadata
 
 namespace lightdb::logical {
+    class MetadataSubsetLightFieldWithoutSources : public LightField {
+    public:
+        MetadataSubsetLightFieldWithoutSources(const LightFieldReference &lightField,
+                                                const MetadataSpecification &metadataSpecification,
+                                                MetadataSubsetType subsetType,
+                                                const std::string metadataIdentifier)
+                : LightField(lightField),
+                metadataSpecification_(metadataSpecification),
+                subsetType_(subsetType),
+                metadataManager_(std::make_shared<metadata::MetadataManager>(metadataIdentifier, metadataSpecification_))
+        { }
+
+        void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightFieldWithoutSources>(visitor); }
+
+        std::shared_ptr<const metadata::MetadataManager> metadataManager() const { return metadataManager_; }
+
+    private:
+        const MetadataSpecification metadataSpecification_;
+        const MetadataSubsetType subsetType_;
+        std::shared_ptr<const metadata::MetadataManager> metadataManager_;
+    };
+
     class MetadataSubsetLightField : public LightField {
     public:
         explicit MetadataSubsetLightField(const LightFieldReference &lightField, const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType, const catalog::Source &source)

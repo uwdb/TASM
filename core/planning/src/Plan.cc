@@ -81,6 +81,22 @@ namespace lightdb::optimization {
         physical_.erase(original);
     }
 
+    void Plan::remove_operator(const lightdb::PhysicalOperatorReference &original) {
+        for (auto &[logical, assignments]: assigned_) {
+            if (assignments.find(original) != assignments.end()) {
+                assignments.erase(original);
+            }
+        }
+
+        for (auto &physical: physical_) {
+            auto &parents = physical->parents();
+            if (std::find(parents.begin(), parents.end(), original) != parents.end())
+                assert(false); // No other physical operator should be related to the one being removed.
+        }
+
+        physical_.erase(original);
+    }
+
     void Plan::replace_assignments(const std::vector<PhysicalOperatorReference> &originals, const PhysicalOperatorReference &replacement) {
         // Remove a few operators to be replaced by one.
         for (auto &[logical, assignments]: assigned_) {

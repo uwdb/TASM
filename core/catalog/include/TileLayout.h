@@ -3,6 +3,7 @@
 
 #include "Configuration.h"
 #include "Rectangle.h"
+#include <boost/functional/hash.hpp>
 #include <numeric>
 
 namespace lightdb::tiles {
@@ -117,6 +118,7 @@ private:
 };
 
 static const TileLayout NoTilesLayout(1, 1, {1}, {1});
+static const TileLayout EmptyTileLayout(0, 0, std::vector<unsigned int>(), std::vector<unsigned int>());
 
 static const std::unordered_map<std::string, TileLayout> CatalogEntryToTileLayout {
         { "MVI_63563_tiled", TileLayout(2, 1, {480, 480}, {544}) },
@@ -130,5 +132,19 @@ static const std::unordered_map<std::string, TileLayout> CatalogEntryToTileLayou
 };
 
 } // namespace lightdb::tiles
+
+namespace std {
+template<>
+struct hash<lightdb::tiles::TileLayout> {
+    size_t operator() (const lightdb::tiles::TileLayout &tileLayout) const {
+        size_t seed = 0;
+        boost::hash_combine(seed, tileLayout.numberOfColumns());
+        boost::hash_combine(seed, tileLayout.numberOfRows());
+        boost::hash_combine(seed, tileLayout.widthsOfColumns());
+        boost::hash_combine(seed, tileLayout.heightsOfRows());
+        return seed;
+    }
+};
+} // namespace std
 
 #endif //LIGHTDB_TILELAYOUT_H

@@ -72,6 +72,56 @@ namespace lightdb::video::gpac {
             return {};
     }
 
+    static Configuration load_configuration(GF_ISOFile *file, unsigned int track_index, unsigned int stream) {
+        GF_Err result;
+        unsigned int height, width;
+        unsigned int samples, scale;
+        unsigned long duration;
+        int left, top;
+
+        auto bitrate = get_average_bitrate(file, track_index, stream);
+
+        if((samples = gf_isom_get_sample_count(file, track_index)) == 0)
+            throw GpacRuntimeError("Unexpected error getting sample count", GF_NOT_FOUND);
+        else if((duration = gf_isom_get_media_duration(file, track_index)) == 0)
+            throw GpacRuntimeError("Unexpected error getting duration", GF_NOT_FOUND);
+        else if((scale = gf_isom_get_media_timescale(file, track_index)) == 0)
+            throw GpacRuntimeError("Unexpected error getting scale", GF_NOT_FOUND);
+        else if((result = gf_isom_get_track_layout_info(file, track_index, &width, &height, &left, &top, nullptr)) != GF_OK)
+            throw GpacRuntimeError("Unexpected error getting track layout", result);
+
+        CHECK_GE(left, 0);
+        CHECK_GE(top, 0);
+
+
+        return Configuration{
+                width,
+                height,
+                0u,
+                0u,
+                bitrate,
+                {scale * samples, static_cast<unsigned int>(duration)},
+                {static_cast<unsigned int>(left), static_cast<unsigned int>(top)}};
+    }
+
+    Configuration load_configuration(const std::filesystem::path &filename) {
+        GF_ISOFile *file;
+        if((file = gf_isom_open(filename.c_str(), GF_ISOM_OPEN_READ_DUMP, nullptr)) == nullptr)
+            throw GpacRuntimeError("Error opening file", GF_IO_ERR);
+
+        unsigned int tracks;
+        if ((tracks = gf_isom_get_track_count(file)) == static_cast<unsigned int>(-1))
+            throw GpacRuntimeError("Unable to get track count", GF_IO_ERR);
+
+        assert(tracks == 1);
+
+        // Get number of streams for the track. Not sure what it is, but assume there is one, I guess.
+        const auto streams = gf_isom_get_sample_description_count(file, tracks);
+        assert(streams == 1);
+
+        return load_configuration(file, tracks, streams);
+    }
+
     static std::vector<catalog::Source> load_tracks(GF_ISOFile *file, const serialization::Metadata_Entry* entry,
                                                     const std::filesystem::path &filename,
                                                     const unsigned int track_index,
@@ -240,7 +290,7 @@ namespace lightdb::video::gpac {
         auto numberOfUDTAs = gf_isom_get_udta_count(file, 0);
         unsigned int boxType;
         unsigned int indexOfTileBox = 0;
-        for (auto i = 1; i <= numberOfUDTAs; ++i) {
+        for (auto i = 1u; i <= numberOfUDTAs; ++i) {
             if ((result = gf_isom_get_udta_type(file, 0, i, &boxType, nullptr)) != GF_OK)
                 throw GpacRuntimeError("Couldn't retrieve box type", result);
 
@@ -266,7 +316,6 @@ namespace lightdb::video::gpac {
 
     tiles::TileLayout load_tile_configuration(const std::filesystem::path &metadataFilename) {
         GF_ISOFile *file;
-        GF_Err result;
         unsigned int numberOfTiles = 0;
 
         if ((file = gf_isom_open(metadataFilename.c_str(), GF_ISOM_OPEN_READ_DUMP, nullptr)) == nullptr)

@@ -14,7 +14,7 @@ CUVIDDECODECREATEINFO DecodeConfiguration::AsCuvidCreateInfo(CUvideoctxlock lock
     else if(!codec.cudaId().has_value())
         throw GpuCudaRuntimeError("Codec does not have a CUDA equivalent", CUDA_ERROR_INVALID_VALUE);
     else
-        return CUVIDDECODECREATEINFO{
+        return CUVIDDECODECREATEINFO{ // TODO: Set max_width and max_height. Can get from any tile configuration by summing widths/heights.
                 .ulWidth = width,
                 .ulHeight = height,
                 .ulNumDecodeSurfaces = decode_surfaces,

@@ -88,6 +88,16 @@ protected:
     }
 
 private:
+    static void reconfigureDecoder(CudaDecoder *decoder, CUVIDEOFORMAT *format) {
+        // For now only support changing the width/height.
+        auto decodeConfiguration = decoder->configuration();
+        decodeConfiguration.width = format->coded_width;
+        decodeConfiguration.height = format->coded_height;
+
+        // Not sure if this is thread-safe.
+        decoder->updateConfiguration(decodeConfiguration);
+    }
+
     static CudaDecoder& RestartDecoder(CudaDecoder& decoder) {
         decoder.frame_queue().reset();
         return decoder;
@@ -117,6 +127,11 @@ private:
     }
 
     static int CUDAAPI HandleVideoSequence(void *userData, CUVIDEOFORMAT *format) {
+        // TODO: Docs say that here is the best place to reconfigure the decoder.
+        // To reconfigure, put the parameters into CUVIDRECONFIGUREDECODERINFO.
+        // New width and height must be less than the max's.
+        // Then call cuvidReconfigureDecoder.
+
         auto* decoder = static_cast<CudaDecoder*>(userData);
 
         assert(format->display_area.bottom - format->display_area.top >= 0);
@@ -124,6 +139,9 @@ private:
 
         if(decoder == nullptr)
             LOG(ERROR) << "Unexpected null decoder during video decode (HandleVideoSequence)";
+        else if (format->coded_width != decoder->configuration().width
+                    || format->coded_height != decoder->configuration().height)
+            reconfigureDecoder(decoder, format);
         else if ((format->codec != decoder->configuration().codec.cudaId()) ||
                  ((static_cast<unsigned int>(format->display_area.right - format->display_area.left)) != decoder->configuration().width) ||
                  ((static_cast<unsigned int>(format->display_area.bottom - format->display_area.top)) != decoder->configuration().height) ||

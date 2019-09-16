@@ -4,8 +4,6 @@
 #include "PhysicalOperators.h"
 #include "Rectangle.h"
 
-#include "spsc_queue.h"
-
 namespace lightdb::physical {
 
 class MergeTilePixels: public PhysicalOperator, public GPUOperator {
@@ -315,27 +313,30 @@ private:
                   materializedData_(physical.tileLayout().numberOfTiles()),
                   configuration_(createConfiguration()),
                   geometry_(getGeometry()),
-                  parentToTileNumber_(getParentToTileNumber()),
-                  isEos_(false),
-                  tileGOPsQueues_(parentToTileNumber_.size()),
-                  tileWorkers_(parentToTileNumber_.size())
-        {
-            for (auto i = 0u; i < iterators().size(); ++i) {
-                auto tileIndex = parentToTileNumber_[i];
-                tileGOPsQueues_[tileIndex] = std::make_shared<spsc_queue<bytestring>>(3000);
-                tileWorkers_[tileIndex] = std::thread(&Runtime::readDataFromIterator, this, i, tileIndex);
-            }
-        }
+                  parentToTileNumber_(getParentToTileNumber())
+        { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             GLOBAL_TIMER.startSection("StitchTiles");
-            if (!isEos_) {
+            if (!all_parent_eos()) {
                 // Parent is a CoalesceSingleTile operator, which exposes a tileNumber() function.
+                std::vector<bytestring> materializedData(iterators().size());
+                for (auto index = 0u; index < iterators().size(); index++) {
+                    if (iterators()[index] != iterators()[index].eos()) {
+                        bytestring data;
+                        while (!data.size()) {
+                            auto next = (iterators()[index]++);
+                            data = next.downcast<CPUEncodedFrameData>().value();
+                        }
+                        auto tileIndex = parentToTileNumber_[index];
+                        materializedData[tileIndex] = data;
+                    }
+                }
                 auto numberOfRows = physical().tileLayout().numberOfRows();
                 auto numberOfColumns = physical().tileLayout().numberOfColumns();
                 hevc::StitchContext context({numberOfRows, numberOfColumns},
                                             {configuration_.height / numberOfRows, configuration_.width / numberOfColumns});
-                hevc::Stitcher stitcher(context, getMaterializedData());
+                hevc::Stitcher stitcher(context, materializedData);
                 auto returnVal = CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, stitcher.GetStitchedSegments());
 
                 GLOBAL_TIMER.endSection("StitchTiles");
@@ -347,38 +348,6 @@ private:
         }
 
     private:
-        void readDataFromIterator(unsigned int iteratorIndex, unsigned int tileIndex) {
-            while (iterators()[iteratorIndex] != iterators()[iteratorIndex].eos()) {
-                bytestring data;
-                while (!data.size()) {
-                    auto next = iterators()[iteratorIndex]++;
-                    data = next.downcast<CPUEncodedFrameData>().value();
-                }
-                tileGOPsQueues_[tileIndex]->push(std::move(data));
-            }
-            tileGOPsQueues_[tileIndex]->push({});
-        }
-
-        std::vector<bytestring> getMaterializedData() {
-            std::vector<bytestring> materializedData(tileGOPsQueues_.size());
-            for (auto i = 0u; i < tileGOPsQueues_.size(); ++i) {
-                while (!tileGOPsQueues_[i]->read_available())
-                    std::this_thread::yield();
-
-                materializedData[i] = std::move(tileGOPsQueues_[i]->front());
-                tileGOPsQueues_[i]->pop();
-
-                if (!materializedData[i].size()) {
-                    if (!isEos_) {
-                        assert(!i);
-                        isEos_ = true;
-                    }
-                    assert(isEos_);
-                }
-            }
-            return materializedData;
-        }
-
         const Configuration createConfiguration() {
             auto configuration = (*iterators().front()).downcast<FrameData>().configuration();
             return Configuration{physical().tileLayout().totalWidth(),
@@ -408,10 +377,6 @@ private:
         const Configuration configuration_;
         const GeometryReference geometry_;
         std::unordered_map<unsigned int, unsigned int> parentToTileNumber_;
-
-        bool isEos_;
-        std::vector<std::shared_ptr<spsc_queue<bytestring>>> tileGOPsQueues_;
-        std::vector<std::thread> tileWorkers_;
     };
 
     tiles::TileLayout tileLayout_;

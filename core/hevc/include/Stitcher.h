@@ -31,8 +31,8 @@ namespace lightdb::hevc {
          * @param data A vector with each element being the bytestring of a tile. All data is moved from this vector, rendering it useless post
          * processing
          */
-        Stitcher(StitchContext context, std::vector<bytestring> data)
-                : tiles_(std::move(data)), context_(std::move(context)), headers_(context_, GetNals().front())
+        Stitcher(StitchContext context, std::vector<bytestring> &data)
+                : tiles_(data), context_(std::move(context)), headers_(context_, GetNals().front())
         { }
 
         /**

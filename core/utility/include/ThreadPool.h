@@ -28,10 +28,10 @@ public:
         }
     }
 
-    void push(std::function<void()> task) {
+    void push(const std::function<void()> &task) {
         {
             std::unique_lock{mutex_};
-            taskQueue_.push(std::move(task));
+            taskQueue_.push(task);
             taskCount_++;
         }
         condition_.notify_one();
@@ -64,8 +64,6 @@ protected:
                     return;
                 }
 
-                assert(!taskQueue_.empty());
-                assert(taskCount_ > 0);
                 task = std::move(taskQueue_.front());
                 taskQueue_.pop();
             }

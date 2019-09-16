@@ -154,6 +154,8 @@ namespace lightdb::logical {
             return sources_[0];
         }
 
+        const metadata::MetadataManager &metadataManager() const { return metadataManager_; }
+
         // Should there be different classes of metadata selection? e.g. frames, pixels?
         const std::unordered_set<int> &framesForMetadata() const { return metadataManager_.framesForMetadata(); }
         const std::vector<int> &orderedFramesForMetadata() const { return metadataManager_.orderedFramesForMetadata(); }

@@ -119,9 +119,10 @@ TEST_F(VisitorTestFixture, testReadCrackedTiles) {
 }
 
 TEST_F(VisitorTestFixture, testScanTiled1) {
+    // Has 2x2 tiling.
     auto input = ScanTiled("jackson_square_1hr_680x512_gops_for_tiles");
     PixelsInFrameMetadataSpecification selection("LABELS", "LABEL", "car");
-    Coordinator().execute(input.Select(selection).Sink()); //.Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/selected.hevc"));
+    Coordinator().execute(input.Select(selection).Save("/home/maureen/noscope_videos/jackson_car_pixels.hevc")); //.Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/selected.hevc"));
 }
 
 TEST_F(VisitorTestFixture, testScanTiledToPixels) {
@@ -229,7 +230,6 @@ TEST_F(VisitorTestFixture, testLoadAndSelectFramesCustom) {
 
 TEST_F(VisitorTestFixture, testSavingMetadata) {
 //    auto input = Scan(videoCatalogName);
-<<<<<<< HEAD
     auto filenames = { "upper_left.hevc", "lower_left.hevc", "upper_right.hevc", "lower_right.hevc", "black_tile.hevc" };
     for (auto &file : filenames) {
         auto input = Load(std::filesystem::path("/home/maureen/noscope_videos/tiles/2x2tiles") / file, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
@@ -241,11 +241,10 @@ TEST_F(VisitorTestFixture, testSavingMetadata) {
 TEST_F(VisitorTestFixture, testLoadIntoCatalog) {
     auto input = Load("/home/maureen/noscope_videos/tiles/2x2tiles/jackson_town_square_1hr_640x512.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
     Coordinator().execute(input.Store("jackson_square_1hr_680x512"));
-=======
-    auto input = Load("/home/maureen/noscope_videos/tiles/shortened/black-tile-0.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    MetadataSpecification selection("LABELS", "LABEL", "car");
-    Coordinator().execute(input.Encode(selection).Store("jackson_square_gops_for_tiles"));
->>>>>>> 02fa776... Can crack using pre-defined tile configurations.
+
+//    auto input = Load("/home/maureen/noscope_videos/tiles/shortened/black-tile-0.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+//    MetadataSpecification selection("LABELS", "LABEL", "car");
+//    Coordinator().execute(input.Encode(selection).Store("jackson_square_gops_for_tiles"));
 }
 
 TEST_F(VisitorTestFixture, testGOPSaving250) {

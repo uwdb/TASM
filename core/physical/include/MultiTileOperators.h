@@ -59,7 +59,9 @@ private:
                     tileNumber_(tileNumber),
                     tileLocationProvider_(tileLocationProvider),
                     framesIterator_(physical.metadataManager()->orderedFramesForMetadata().begin()),
-                    endOfFramesIterator_(physical.metadataManager()->orderedFramesForMetadata().end())
+                    endOfFramesIterator_(physical.metadataManager()->orderedFramesForMetadata().end()),
+                    totalVideoWidth_(0),
+                    totalVideoHeight_(0)
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -94,6 +96,11 @@ private:
 
             GeometryReference geometry = GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples());
             Configuration configuration = video::gpac::load_configuration(*currentTilePath_);
+
+            assert(totalVideoWidth_);
+            assert(totalVideoHeight_);
+            configuration.max_width = totalVideoWidth_;
+            configuration.max_height = totalVideoHeight_;
 
             auto cpuData = MaterializedLightFieldReference::make<CPUEncodedFrameData>(
                     Codec::hevc(),
@@ -133,6 +140,12 @@ private:
             currentTilePath_ = std::make_unique<std::filesystem::path>(tileLocationProvider_->locationOfTileForFrame(tileNumber_, *framesIterator_));
             currentTileLayout_ = std::make_unique<tiles::TileLayout>(tileLocationProvider_->tileLayoutForFrame(*framesIterator_));
 
+            if (!totalVideoWidth_) {
+                assert(!totalVideoHeight_);
+                totalVideoWidth_ = currentTileLayout_->totalWidth();
+                totalVideoHeight_ = currentTileLayout_->totalHeight();
+            }
+
             std::vector<int> framesWithSamePathAndConfiguration({ *framesIterator_++ });
             while (framesIterator_ != endOfFramesIterator_) {
                 if (tileLocationProvider_->locationOfTileForFrame(tileNumber_, *framesIterator_) == *currentTilePath_)
@@ -165,6 +178,9 @@ private:
         const std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider_;
         std::vector<int>::const_iterator framesIterator_;
         std::vector<int>::const_iterator endOfFramesIterator_;
+
+        unsigned int totalVideoWidth_;
+        unsigned int totalVideoHeight_;
 
         std::unique_ptr<EncodedFrameReader> currentEncodedFrameReader_;
         std::unique_ptr<tiles::TileLayout> currentTileLayout_;

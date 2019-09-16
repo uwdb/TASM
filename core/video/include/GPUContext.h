@@ -3,7 +3,7 @@
 
 #include "errors.h"
 #include <glog/logging.h>
-#include <nvcuvid.h>
+#include "nvcuvid.h"
 #include <cuda.h>
 #include <stdexcept>
 

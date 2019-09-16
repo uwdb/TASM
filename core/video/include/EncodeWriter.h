@@ -9,14 +9,20 @@ class EncodeWriter {
 public:
     virtual NVENCSTATUS WriteFrame(const EncodeBuffer &buffer) {
         NVENCSTATUS result;
-        NV_ENC_LOCK_BITSTREAM bitstream{
-                .version = NV_ENC_LOCK_BITSTREAM_VER,
-                .doNotWait = 0,
-                .ltrFrame = 0,
-                .reservedBitFields = 0,
-                .outputBitstream = buffer.output_buffer.bitstreamBuffer,
-                0, 0, 0, 0, 0, 0, 0, nullptr, NV_ENC_PIC_TYPE_UNKNOWN, NV_ENC_PIC_STRUCT_FRAME, 0, 0, 0, 0, {}, nullptr
-        };
+        NV_ENC_LOCK_BITSTREAM bitstream;
+        memset(&bitstream, 0, sizeof(NV_ENC_LOCK_BITSTREAM));
+        bitstream.version = NV_ENC_LOCK_BITSTREAM_VER;
+        bitstream.outputBitstream = buffer.output_buffer.bitstreamBuffer;
+        bitstream.pictureType = NV_ENC_PIC_TYPE_UNKNOWN;
+        bitstream.pictureStruct = NV_ENC_PIC_STRUCT_FRAME;
+//        NV_ENC_LOCK_BITSTREAM bitstream{
+//                .version = NV_ENC_LOCK_BITSTREAM_VER,
+//                .doNotWait = 0,
+//                .ltrFrame = 0,
+//                .reservedBitFields = 0,
+//                .outputBitstream = buffer.output_buffer.bitstreamBuffer,
+//                0, 0, 0, 0, 0, 0, 0, nullptr, NV_ENC_PIC_TYPE_UNKNOWN, NV_ENC_PIC_STRUCT_FRAME, 0, 0, 0, 0, {}, nullptr
+//        };
 
         if (buffer.output_buffer.bitstreamBuffer == nullptr && !buffer.output_buffer.EOSFlag) {
             result = NV_ENC_ERR_INVALID_PARAM;

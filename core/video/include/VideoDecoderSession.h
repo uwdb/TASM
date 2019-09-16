@@ -90,12 +90,7 @@ protected:
 private:
     static void reconfigureDecoder(CudaDecoder *decoder, CUVIDEOFORMAT *format) {
         // For now only support changing the width/height.
-        auto decodeConfiguration = decoder->configuration();
-        decodeConfiguration.width = format->coded_width;
-        decodeConfiguration.height = format->coded_height;
-
-        // Not sure if this is thread-safe.
-        decoder->updateConfiguration(decodeConfiguration);
+        decoder->reconfigureDecoder(format);
     }
 
     static CudaDecoder& RestartDecoder(CudaDecoder& decoder) {

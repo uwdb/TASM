@@ -1004,7 +1004,8 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
 
     if (!pEncCfg->quantization.deltaMapFilename.empty())
     {
-        m_stEncodeConfig.rcParams.enableExtQPDeltaMap = 1;
+        m_stEncodeConfig.rcParams.qpMapMode = NV_ENC_QP_MAP_DELTA;
+//        m_stEncodeConfig.rcParams.enableExtQPDeltaMap = 1;
     }
     if (pEncCfg->codec == NV_ENC_H264)
     {

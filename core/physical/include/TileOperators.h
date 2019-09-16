@@ -101,6 +101,8 @@ private:
 
                         if (iterators()[index] == iterators()[index].eos())
                             updateMaxProcessedFrameNumber(INT32_MAX, index);
+                    } else {
+                        updateMaxProcessedFrameNumber(INT32_MAX, index);
                     }
                 }
             }
@@ -109,8 +111,8 @@ private:
             // Find rectangles that have a frame id <= the maximum processed frame, and put those into
             // the "frames" array of a GPUDecodedFramesObject thing.
             auto pixelsAsFrames = pixelsForProcessedRectangles();
-            auto returnVal = GPUPixelData(pixelsAsFrames);
-//            auto returnVal = GPUDecodedFrameData{configuration_, geometry_, pixelsAsFrames};
+//            auto returnVal = GPUPixelData(pixelsAsFrames);
+            auto returnVal = GPUDecodedFrameData{configuration_, geometry_, pixelsAsFrames};
             GLOBAL_TIMER.endSection("MergeTilePixels");
             return returnVal;
         }
@@ -118,7 +120,7 @@ private:
     private:
         void setConfiguration() {
             auto base = (*iterators().front()).downcast<GPUDecodedFrameData>().configuration();
-            configuration_ = Configuration{static_cast<unsigned int>(base.width * 2),
+            configuration_ = Configuration{static_cast<unsigned int>(base.width),
                                            static_cast<unsigned int>(base.height),
                                            0, 0,
                                            base.bitrate, base.framerate,

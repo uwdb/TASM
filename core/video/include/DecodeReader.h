@@ -2,6 +2,7 @@
 #define LIGHTDB_DECODEREADER_H
 
 #include "spsc_queue.h"
+#include "Stitcher.h"
 #include "nvcuvid.h"
 #include <thread>
 #include <experimental/filesystem>
@@ -230,6 +231,91 @@ private:
     unsigned int numberOfFrames_;
 };
 
+class BlackFrameReader {
+public:
+    explicit BlackFrameReader(std::filesystem::path filename, std::vector<int> frames, int frameOffsetInFile = 0)
+        : filename_(std::move(filename)),
+        mp4Reader_(filename_),
+        frameRetriever_(mp4Reader_.dataForSamples(1, 1), mp4Reader_.dataForSamples(2, 2)),
+        frames_(std::move(frames)),
+        frameOffsetInFile_(frameOffsetInFile)
+    {
+        if (frameOffsetInFile) {
+            std::for_each(frames_.begin(), frames_.end(), [&](auto &frame) {
+                frame -= frameOffsetInFile;
+            });
+        }
+
+        frameIterator_ = frames_.begin();
+        keyframeIterator_ = mp4Reader_.keyframeNumbers().begin();
+    }
+
+    void setNewFrames(std::vector<int> frames) {
+        frames_ = std::move(frames);
+        frameIterator_ = frames_.begin();
+    }
+
+    bool isEos() const { return frameIterator_ == frames_.end(); }
+
+    std::optional<GOPReaderPacket> read() {
+        if (frameIterator_ == frames_.end())
+            return {};
+
+        // Get number of frames to read.
+        unsigned int firstFrameToRead = 0;
+        unsigned int lastFrameToRead = 0;
+        while (haveMoreKeyframes() && *keyframeIterator_ <= *frameIterator_)
+            ++keyframeIterator_;
+
+        if (!haveMoreKeyframes())
+            frameIterator_ = frames_.end();
+        else {
+            while (haveMoreFrames() && *frameIterator_ < *keyframeIterator_)
+                ++frameIterator_;
+        }
+
+        firstFrameToRead = *std::prev(keyframeIterator_);
+        lastFrameToRead = *std::prev(frameIterator_);
+        auto numberOfFramesToRead = lastFrameToRead - firstFrameToRead + 1;
+        return std::make_optional<GOPReaderPacket>(dataForFrames(numberOfFramesToRead), firstFrameToRead + frameOffsetInFile_, numberOfFramesToRead);
+    }
+
+private:
+    bool haveMoreFrames() const { return frameIterator_ != frames_.end(); }
+    bool haveMoreKeyframes() const { return keyframeIterator_ != mp4Reader_.keyframeNumbers().end(); }
+
+    lightdb::bytestring dataForFrames(unsigned int numberOfFramesToRead) {
+        if (!numberOfFramesToRead)
+            return {};
+
+        // Compute size of output.
+        auto size = frameRetriever_.iFrameData().size()
+                        + (numberOfFramesToRead - 1) * frameRetriever_.pFrameData().size()
+                        + (numberOfFramesToRead - 1) * frameRetriever_.pFrameHeaderForPicOrder(1).size();
+
+        lightdb::bytestring output;
+        output.reserve(size);
+
+        output.insert(output.end(), frameRetriever_.iFrameData().begin(), frameRetriever_.iFrameData().end());
+        for (auto i = 1u; i < numberOfFramesToRead; ++i) {
+            auto &updatedHeader = frameRetriever_.pFrameHeaderForPicOrder(i);
+            output.insert(output.end(), updatedHeader.begin(), updatedHeader.end());
+            output.insert(output.end(), frameRetriever_.pFrameData().begin(), frameRetriever_.pFrameData().end());
+        }
+
+        return output;
+    }
+
+    std::filesystem::path filename_;
+    MP4Reader mp4Reader_;
+    lightdb::hevc::IdenticalFrameRetriever frameRetriever_;
+
+    std::vector<int> frames_;
+    std::vector<int>::iterator frameIterator_;
+    std::vector<int>::const_iterator keyframeIterator_;
+    int frameOffsetInFile_;
+};
+
 class EncodedFrameReader {
 public:
     // Assume frames is sorted.
@@ -278,20 +364,6 @@ public:
         unsigned int firstSampleToRead = 0;
         unsigned int lastSampleToRead = 0;
         if (mp4Reader_.allFramesAreKeyframes()) {
-//                // Read up to 30 frames at a time.
-//                firstSampleToRead = MP4Reader::frameNumberToSampleNumber(*frameIterator_);
-//
-//                auto maximumNumberOfFramesToRead = 100;
-//                auto distance = std::distance(frameIterator_, frames_.end());
-//                if (distance >= maximumNumberOfFramesToRead) {
-//                    std::advance(frameIterator_, maximumNumberOfFramesToRead);
-//                } else {
-//                    frameIterator_ = frames_.end();
-//                }
-//
-//                lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*std::prev(frameIterator_));
-
-
             // Read sequential portion of frames.
             firstSampleToRead = MP4Reader::frameNumberToSampleNumber(*frameIterator_);
 

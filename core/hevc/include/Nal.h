@@ -8,6 +8,7 @@
 #include <glog/logging.h>
 #include <memory>
 #include <array>
+#include <bitset>
 #include <cmath>
 #include <climits>
 #include <cassert>
@@ -118,6 +119,7 @@ namespace lightdb::hevc {
             return bytestring{0, 0, 1};
         }
 
+        static constexpr std::array<char, 4> kNalMarker4{0, 0, 0, 1};
         static constexpr std::array<char, 3> kNalMarker{0, 0, 1};
         static constexpr unsigned int kNalHeaderSize = 5u;
         static constexpr unsigned int kNalMarkerSize = kNalMarker.size();
@@ -196,6 +198,36 @@ std::shared_ptr<Nal> Load(const StitchContext &context, const bytestring &data);
 SliceSegmentLayer Load(const StitchContext &context, const bytestring &data, const Headers &headers);
 
 std::unique_ptr<Nal> LoadNal(const StitchContext &context, const bytestring &data, const Headers &headers);
+
+
+// Header processing.
+static void UpdateBitsInBytes(bytestring &data, unsigned int bitOffset, unsigned int newValue, unsigned int numberOfBitsToConsider = 0, unsigned int byteOffset = 0) {
+    std::bitset<16> newValueAsBits(newValue);
+    auto numberOfBits = floor(log2(newValue)) + 1;
+    int indexInBitset = numberOfBits - 1;
+    if (numberOfBitsToConsider)
+        indexInBitset = numberOfBitsToConsider - 1;
+
+    auto indexOfFirstByteToModify = bitOffset / 8 + byteOffset;
+    auto bitIndex = bitOffset % 8;
+    auto byteIt = data.begin() + indexOfFirstByteToModify;
+    for (; indexInBitset >= 0; --indexInBitset) {
+        bool desiredValue = newValueAsBits[indexInBitset];
+        auto shift = 7 - bitIndex;
+        if (((*byteIt >> shift) & 1) != desiredValue)
+            *byteIt ^= (1u << shift);
+
+        ++bitIndex;
+        if (bitIndex == 8) {
+            bitIndex = 0;
+            ++byteIt;
+        }
+    }
+}
+
+static void UpdatePicOrderCntLsb(bytestring &data, unsigned int offset, unsigned int value, unsigned int numberOfBits, bool containsNalMarker) {
+    UpdateBitsInBytes(data, offset, value, numberOfBits, containsNalMarker ? Nal::kNalMarker4.size() : 0);
+}
 
 }; //namespace lightdb::hevc
 

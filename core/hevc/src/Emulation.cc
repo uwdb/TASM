@@ -109,15 +109,15 @@ namespace lightdb::hevc {
 
         // The ending size is the original size, plus the number of three bytes we must add,
         // plus the nal marker size
-        auto set_size = data_size + emulation_indices.size() + Nal::kNalMarker.size();
+        auto set_size = data_size + emulation_indices.size() + Nal::kNalMarker4.size();
 
         bytestring bytes(set_size);
         auto three = static_cast<char>(0x03);
 
         // Add the NalMarker bytes
-        copy(Nal::kNalMarker.begin(), Nal::kNalMarker.end(), bytes.begin());
+        copy(Nal::kNalMarker4.begin(), Nal::kNalMarker4.end(), bytes.begin());
 
-        auto bytes_index = Nal::kNalMarker.size();
+        auto bytes_index = Nal::kNalMarker4.size();
         // Now iterate over the bit set to convert each set of 8 bits to a little endian byte
         for (auto i = 0u; i < data_size; i++) {
             // If we are meant to insert a three byte at this index, do so before adding the

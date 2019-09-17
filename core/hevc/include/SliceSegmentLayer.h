@@ -91,7 +91,11 @@ namespace lightdb::hevc {
         }
 
         inline bytestring GetHeaderBytes() {
-            return AddEmulationPreventionAndMarker(data_, GetHeaderSize(), metadata_.GetValue("updated-end-bits"), true);
+            auto end = metadata_.GetValue("end");
+            if (metadata_.ValueExists("updated-end-bits"))
+                end = metadata_.GetValue("updated-end-bits");
+
+            return AddEmulationPreventionAndMarker(data_, GetHeaderSize(), end, true);
         }
 
         unsigned long numberOfBytesInHeaderWithUpdatedAddress() const {
@@ -247,32 +251,7 @@ namespace lightdb::hevc {
 
     private:
         void updatePicOrderInPFrameBytes() {
-            // Maximum size of log2_max_pic_order_cnt_lsb_minus4 = 12.
-            std::bitset<16> encodedNewFrameNumber(pFrameNumber_);
-            auto numberOfSetBits = floor(log2(pFrameNumber_)) + 1;
-            auto numberOfLeadingZeros = sizeOfPicOrderGolomb_ - numberOfSetBits;
-            auto indexInBitset = encodedNewFrameNumber.size() - 1 - sizeOfPicOrderGolomb_;
-
-            auto indexOfFirstByteToModify = offsetOfPicOrder_ / 8 + Nal::kNalMarker.size();
-            auto bitIndexInBytes = offsetOfPicOrder_ % 8;
-            auto byteIt = pFrameHeaderBytes_.begin() + indexOfFirstByteToModify;
-            for (auto i = 0; i < sizeOfPicOrderGolomb_; ++i, --indexInBitset) {
-                bool desiredValue = encodedNewFrameNumber[indexInBitset];
-
-                auto shift = shiftWithinByte(bitIndexInBytes);
-                if (((*byteIt >> shift) & 1) != desiredValue)
-                    *byteIt ^= (1u << shift);
-
-                ++bitIndexInBytes;
-                if (bitIndexInBytes == 8) {
-                    bitIndexInBytes = 0;
-                    ++byteIt;
-                }
-            }
-        }
-
-        unsigned int shiftWithinByte(unsigned int bitIndex) {
-            return 7 - bitIndex;
+            UpdatePicOrderCntLsb(pFrameHeaderBytes_, offsetOfPicOrder_, pFrameNumber_, sizeOfPicOrderGolomb_, true);
         }
 
         const unsigned int address_;

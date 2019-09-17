@@ -338,4 +338,28 @@ namespace lightdb::hevc {
 
         return allData;
     }
+
+    SliceSegmentLayer Stitcher::loadPFrameSegment(lightdb::bytestring &data) {
+        return TrailRSliceSegmentLayer(context_, data, headers_);
+    }
+
+void IdenticalFrameRetriever::getPFrameData(Stitcher &stitcher) {
+    unsigned long numBytes;
+    unsigned long numKeyframes;
+    auto segments = stitcher.GetSegmentNals(0, &numBytes, &numKeyframes, false);
+    assert(segments.size() == 2);
+    assert(!IsKeyframe(segments[1]));
+
+    auto pFrameSegment = stitcher.loadPFrameSegment(segments[1]);
+
+    picOutputCntLsbBitOffset_ = pFrameSegment.originalOffsetOfPicOrderCnt();
+    numberOfBitsForPicOutputCntLsb_ = stitcher.headers_.GetSequence()->GetMaxPicOrder();
+
+    pFrameHeader_ = pFrameSegment.GetHeaderBytes();
+
+    auto endOfHeader = pFrameSegment.getEnd() / 8;
+    auto sizeOfData = segments[1].size() - endOfHeader;
+    pFrameData_.reserve(sizeOfData);
+    std::copy(segments[1].begin() + endOfHeader, segments[1].end(), pFrameData_.begin());
+}
 }; //namespace lightdb::hevc

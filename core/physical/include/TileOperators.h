@@ -306,24 +306,12 @@ private:
                 assert(blackFramesReader_.isEos());
                 blackFramesReader_.setNewFrames(blackFramesToRead);
                 return blackFramesReader_.read()->data();
-
-//                bytestring blackFramesEncodedData;
-//                auto numberOfFrames = 0u;
-//
-//                for (auto frames = blackFramesReader_.read(); frames.has_value(); frames = blackFramesReader_.read()) {
-//                    blackFramesEncodedData.insert(blackFramesEncodedData.end(), frames->data().begin(),
-//                                                  frames->data().end());
-//                    numberOfFrames += frames->numberOfFrames();
-//                }
-//
-//                assert(numberOfFrames == blackFramesToRead.size());
-//                return blackFramesEncodedData;
             }
         }
 
         std::vector<int>::const_iterator expectedFrameIterator_;
         std::vector<int>::const_iterator allFramesToOutputIterator_;
-        EncodedFrameReader blackFramesReader_;
+        BlackFrameReader blackFramesReader_;
     };
 
     std::vector<int> expectedFrames_;

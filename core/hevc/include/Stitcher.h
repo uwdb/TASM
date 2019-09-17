@@ -22,6 +22,7 @@ namespace lightdb::hevc {
     };
 
     class Stitcher {
+        friend class IdenticalFrameRetriever;
      public:
 
         /**
@@ -44,6 +45,7 @@ namespace lightdb::hevc {
         void addPicOutputFlagIfNecessaryKeepingFrames(const std::unordered_set<int> &framesToKeep);
         bytestring combinedNalsForTile(unsigned int tileNumber) const;
 
+        SliceSegmentLayer loadPFrameSegment(bytestring &data);
 
      private:
 
@@ -72,6 +74,43 @@ namespace lightdb::hevc {
         const StitchContext context_;
         const Headers headers_;
         std::vector<std::vector<std::unique_ptr<Nal>>> formattedNals_;
+    };
+
+    class IdenticalFrameRetriever {
+    public:
+        IdenticalFrameRetriever(bytestring iFrameBytesWithHeaders, bytestring pFrameData) {
+            StitchContext context{{1, 1}, {1, 1}};
+            bytestring combinedData(iFrameBytesWithHeaders.size() + pFrameData.size());
+            std::copy(iFrameBytesWithHeaders.begin(), iFrameBytesWithHeaders.end(), combinedData.begin());
+            std::copy(pFrameData.begin(), pFrameData.end(), combinedData.begin() + iFrameBytesWithHeaders.size());
+            iFrameDataWithHeaders_ = std::move(iFrameBytesWithHeaders);
+
+            Stitcher stitcher(context, {combinedData});
+            getPFrameData(stitcher);
+        }
+
+        const bytestring &iFrameData() const {
+            return iFrameDataWithHeaders_;
+        }
+
+        const bytestring &pFrameData() const {
+            return pFrameData_;
+        }
+
+        const bytestring &pFrameHeaderForPicOrder(unsigned int picOrder) {
+            UpdatePicOrderCntLsb(pFrameHeader_, picOutputCntLsbBitOffset_, picOrder, numberOfBitsForPicOutputCntLsb_, true);
+            return pFrameHeader_;
+        }
+
+    private:
+        void getPFrameData(Stitcher &stitcher);
+
+        bytestring iFrameDataWithHeaders_;
+        bytestring pFrameHeader_;
+        bytestring pFrameData_;
+
+        unsigned int picOutputCntLsbBitOffset_;
+        unsigned int numberOfBitsForPicOutputCntLsb_;
     };
 
 }; //namespace lightdb::hevc

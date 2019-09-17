@@ -201,6 +201,10 @@ namespace lightdb {
             return values_.at(name);
         }
 
+        bool ValueExists(const std::string &name) const {
+            return values_.count(name);
+        }
+
         void SetValue(const std::string &name, unsigned long value) {
             values_.emplace(name, value);
         }

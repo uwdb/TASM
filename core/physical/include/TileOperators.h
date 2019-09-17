@@ -3,8 +3,6 @@
 
 #include "PhysicalOperators.h"
 #include "Rectangle.h"
-#include "spsc_queue.h"
-#include "ThreadPool.h"
 
 namespace lightdb::physical {
 
@@ -342,16 +340,14 @@ private:
                   materializedData_(physical.tileLayout().numberOfTiles()),
                   configuration_(createConfiguration()),
                   geometry_(getGeometry()),
-                  parentToTileNumber_(getParentToTileNumber()),
-                  stitchedSegmentsQueue_(std::make_shared<spsc_queue<bytestring*>>(4000)),
-                  threadPool_(1)
+                  parentToTileNumber_(getParentToTileNumber())
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             GLOBAL_TIMER.startSection("StitchTiles");
             if (!all_parent_eos()) {
                 // Parent is a CoalesceSingleTile operator, which exposes a tileNumber() function.
-                std::unique_ptr<std::vector<bytestring>> materializedData(new std::vector<bytestring>(iterators().size()));
+                std::vector<bytestring> materializedData(iterators().size());
                 for (auto index = 0u; index < iterators().size(); index++) {
                     if (iterators()[index] != iterators()[index].eos()) {
                         bytestring data;
@@ -360,21 +356,16 @@ private:
                             data = next.downcast<CPUEncodedFrameData>().value();
                         }
                         auto tileIndex = parentToTileNumber_[index];
-                        (*materializedData)[tileIndex] = data;
+                        materializedData[tileIndex] = data;
                     }
                 }
                 auto numberOfRows = physical().tileLayout().numberOfRows();
                 auto numberOfColumns = physical().tileLayout().numberOfColumns();
                 hevc::StitchContext context({numberOfRows, numberOfColumns},
                                             {configuration_.height / numberOfRows, configuration_.width / numberOfColumns});
+                hevc::Stitcher stitcher(context, materializedData);
+                auto returnVal = CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, stitcher.GetStitchedSegments());
 
-                threadPool_.push(std::bind(Runtime::getStitchedSegments, context, materializedData.release(), stitchedSegmentsQueue_));
-
-                auto returnVal = readFromQueue();
-                GLOBAL_TIMER.endSection("StitchTiles");
-                return returnVal;
-            } else if (threadPool_.numberOfTasks() || stitchedSegmentsQueue_->read_available()) {
-                auto returnVal = readFromQueue(true);
                 GLOBAL_TIMER.endSection("StitchTiles");
                 return returnVal;
             } else {
@@ -384,30 +375,6 @@ private:
         }
 
     private:
-        CPUEncodedFrameData readFromQueue(bool shouldWait = false) {
-            if (shouldWait) {
-                while (!stitchedSegmentsQueue_->read_available()) {
-                    std::this_thread::yield();
-                }
-            }
-
-            if (stitchedSegmentsQueue_->read_available()) {
-                auto returnVal = CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_,
-                                                     std::unique_ptr<bytestring>(stitchedSegmentsQueue_->front()));
-                stitchedSegmentsQueue_->pop();
-                return returnVal;
-            } else {
-                return CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, bytestring());
-            }
-        }
-
-        static void getStitchedSegments(hevc::StitchContext context,
-                                        std::vector<bytestring> *materializedData,
-                                        std::shared_ptr<spsc_queue<bytestring*>> outputQueue) {
-            hevc::Stitcher stitcher(context, std::unique_ptr<std::vector<bytestring>>(materializedData));
-            outputQueue->push(stitcher.GetStitchedSegments().release());
-        }
-
         const Configuration createConfiguration() {
             auto configuration = (*iterators().front()).downcast<FrameData>().configuration();
             return Configuration{physical().tileLayout().totalWidth(),
@@ -437,9 +404,6 @@ private:
         const Configuration configuration_;
         const GeometryReference geometry_;
         std::unordered_map<unsigned int, unsigned int> parentToTileNumber_;
-
-        std::shared_ptr<spsc_queue<bytestring*>> stitchedSegmentsQueue_; // Queue type must be copyable.
-        ThreadPool threadPool_;
     };
 
     tiles::TileLayout tileLayout_;

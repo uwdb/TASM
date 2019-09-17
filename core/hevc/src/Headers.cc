@@ -2,7 +2,7 @@
 
 namespace lightdb::hevc {
 
-	Headers::Headers(const StitchContext &context, std::vector<bytestring> nals)  {
+	Headers::Headers(const StitchContext &context, const std::list<bytestring> &nals)  {
 	    auto i = 0u;
 
 	    // No need to check if it < nals.end() since any well formed stream

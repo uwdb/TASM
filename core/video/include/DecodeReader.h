@@ -216,17 +216,23 @@ private:
 struct GOPReaderPacket {
 public:
     explicit GOPReaderPacket(lightdb::bytestring data, unsigned int firstFrameIndex, unsigned int numberOfFrames)
-            : data_(std::move(data)),
+            : data_(std::make_unique<lightdb::bytestring>(data)),
               firstFrameIndex_(firstFrameIndex),
               numberOfFrames_(numberOfFrames)
     {}
 
-    const lightdb::bytestring &data() const { return data_; }
+    explicit GOPReaderPacket(std::unique_ptr<lightdb::bytestring> data, unsigned int firstFrameIndex, unsigned int numberOfFrames)
+        : data_(std::move(data)),
+        firstFrameIndex_(firstFrameIndex),
+        numberOfFrames_(numberOfFrames)
+    { }
+
+    std::unique_ptr<lightdb::bytestring> &data() { return data_; }
     unsigned int firstFrameIndex() const { return firstFrameIndex_; }
     unsigned int numberOfFrames() const { return numberOfFrames_; }
 
 private:
-    lightdb::bytestring data_;
+    std::unique_ptr<lightdb::bytestring> data_;
     unsigned int firstFrameIndex_;
     unsigned int numberOfFrames_;
 };
@@ -284,7 +290,7 @@ private:
     bool haveMoreFrames() const { return frameIterator_ != frames_.end(); }
     bool haveMoreKeyframes() const { return keyframeIterator_ != mp4Reader_.keyframeNumbers().end(); }
 
-    lightdb::bytestring dataForFrames(unsigned int numberOfFramesToRead) {
+    std::unique_ptr<lightdb::bytestring> dataForFrames(unsigned int numberOfFramesToRead) {
         if (!numberOfFramesToRead)
             return {};
 
@@ -293,14 +299,14 @@ private:
                         + (numberOfFramesToRead - 1) * frameRetriever_.pFrameData().size()
                         + (numberOfFramesToRead - 1) * frameRetriever_.pFrameHeaderForPicOrder(1).size();
 
-        lightdb::bytestring output;
-        output.reserve(size);
+        std::unique_ptr<lightdb::bytestring> output(new lightdb::bytestring);
+        output->reserve(size);
 
-        output.insert(output.end(), frameRetriever_.iFrameData().begin(), frameRetriever_.iFrameData().end());
+        output->insert(output->end(), frameRetriever_.iFrameData().begin(), frameRetriever_.iFrameData().end());
         for (auto i = 1u; i < numberOfFramesToRead; ++i) {
             auto &updatedHeader = frameRetriever_.pFrameHeaderForPicOrder(i);
-            output.insert(output.end(), updatedHeader.begin(), updatedHeader.end());
-            output.insert(output.end(), frameRetriever_.pFrameData().begin(), frameRetriever_.pFrameData().end());
+            output->insert(output->end(), updatedHeader.begin(), updatedHeader.end());
+            output->insert(output->end(), frameRetriever_.pFrameData().begin(), frameRetriever_.pFrameData().end());
         }
 
         return output;

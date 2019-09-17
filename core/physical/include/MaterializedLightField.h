@@ -88,6 +88,10 @@ namespace lightdb::physical {
                 : SerializableData(device), value_(std::make_unique<bytestring>(begin, end))
         { }
 
+        SerializedData(DeviceType device, std::unique_ptr<bytestring> value)
+            : SerializableData(device), value_(std::move(value))
+        { }
+
         inline MaterializedLightFieldReference ref() const override { return MaterializedLightFieldReference::make<SerializedData>(*this); }
 
     private:
@@ -96,7 +100,7 @@ namespace lightdb::physical {
 
     class EmptyData: public SerializedData {
     public:
-        EmptyData(DeviceType device) : SerializedData(device, {}) { }
+        EmptyData(DeviceType device) : SerializedData(device, bytestring()) { }
         inline MaterializedLightFieldReference ref() const override { return MaterializedLightFieldReference::make<EmptyData>(*this); }
     };
 
@@ -107,7 +111,7 @@ namespace lightdb::physical {
 
     protected:
         FrameData(const DeviceType device, Configuration configuration, GeometryReference geometry)
-                : SerializedData(device, {}),
+                : SerializedData(device, bytestring()),
                   configuration_(std::move(configuration)),
                   geometry_(geometry)
         { }
@@ -125,6 +129,12 @@ namespace lightdb::physical {
                 : SerializedData(device, begin, end),
                   configuration_(std::move(configuration)),
                   geometry_(geometry)
+        { }
+
+        FrameData(const DeviceType device, Configuration configuration, GeometryReference geometry, std::unique_ptr<bytestring> value)
+            : SerializedData(device, std::move(value)),
+            configuration_(std::move(configuration)),
+            geometry_(geometry)
         { }
 
     private:
@@ -148,6 +158,13 @@ namespace lightdb::physical {
                          Input begin, const Input end)
                 : FrameData(device, configuration, geometry, begin, end),
                   codec_(std::move(codec))
+        { }
+
+        EncodedFrameData(const DeviceType device, Codec codec,
+                const Configuration &configuration, const GeometryReference &geometry,
+                std::unique_ptr<bytestring> value)
+                : FrameData(device, configuration, geometry, std::move(value)),
+                codec_(std::move(codec))
         { }
 
     public:
@@ -180,6 +197,18 @@ namespace lightdb::physical {
                   firstFrameIndex_(-1),
                   numberOfFrames_(-1)
         { }
+
+        // Don't initilize packet with data for now.
+        explicit CPUEncodedFrameData(const Codec &codec,
+                const Configuration &configuration,
+                const GeometryReference &geometry,
+                std::unique_ptr<bytestring> value)
+                : EncodedFrameData(DeviceType::CPU, codec, configuration, geometry, std::move(value)),
+                packet_(),
+                firstFrameIndex_(-1),
+                numberOfFrames_(-1)
+        { }
+
 
         inline explicit operator const DecodeReaderPacket() const noexcept { return packet_; }
         inline MaterializedLightFieldReference ref() const override { return MaterializedLightFieldReference::make<CPUEncodedFrameData>(*this); }

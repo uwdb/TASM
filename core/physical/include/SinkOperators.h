@@ -27,8 +27,8 @@ private:
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if(!all_parent_eos()) {
                 std::for_each(iterators().begin(), iterators().end(), [&](auto &i) {
-//                    i++;
-                    MaterializedLightFieldReference data = i++;
+                    i++;
+//                    MaterializedLightFieldReference data = i++;
 //                    auto &value = data.downcast<SerializableData>().value();
 //                    ofs_.write(value.data(), value.size());
                 });

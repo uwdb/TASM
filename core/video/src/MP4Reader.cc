@@ -81,7 +81,7 @@ bool MP4Reader::allFrameSequencesBeginWithKeyframe(const std::vector<int> &frame
     return true;
 }
 
-lightdb::bytestring MP4Reader::dataForSamples(unsigned int firstSampleToRead, unsigned int lastSampleToRead) const {
+std::unique_ptr<lightdb::bytestring> MP4Reader::dataForSamples(unsigned int firstSampleToRead, unsigned int lastSampleToRead) const {
     unsigned long size = 0;
 
     // First read to get sizes.
@@ -92,11 +92,11 @@ lightdb::bytestring MP4Reader::dataForSamples(unsigned int firstSampleToRead, un
     }
 
     // Then read to get the actual data.
-    lightdb::bytestring videoData;
-    videoData.reserve(size);
+    std::unique_ptr<lightdb::bytestring> videoData(new lightdb::bytestring);
+    videoData->reserve(size);
     for (auto i = firstSampleToRead; i <= lastSampleToRead; i++) {
         GF_ISOSample *sample = gf_isom_get_sample(file_, trackNumber_, i, NULL);
-        videoData.insert(videoData.end(), sample->data, sample->data + sample->dataLength);
+        videoData->insert(videoData->end(), sample->data, sample->data + sample->dataLength);
         gf_isom_sample_del(&sample);
     }
 

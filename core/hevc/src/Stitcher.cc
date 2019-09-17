@@ -7,10 +7,10 @@
 namespace lightdb::hevc {
 
     //TODO typedef nested type
-    std::vector<std::vector<bytestring>> Stitcher::GetNals() {
-        tile_nals_.reserve(tiles_.size());
-        for (auto tile : tiles_) {
-            std::vector<bytestring> nals;
+    const std::vector<std::list<bytestring>> &Stitcher::GetNals(std::vector<bytestring> &data) {
+        tile_nals_.resize(data.size());
+        auto index = 0u;
+        for (auto &tile : data) {
             auto zero_count = 0u;
             auto first = true;
             auto start = tile.begin();
@@ -22,7 +22,7 @@ namespace lightdb::hevc {
                     // so we want to just discard it
                     if (!first) {
                         // -3, not -4, because the constructor is exclusive [first, last)
-                        nals.push_back(move(bytestring(make_move_iterator(start), make_move_iterator(it - 3))));
+                        tile_nals_[index].push_back(move(bytestring(make_move_iterator(start), make_move_iterator(it - 3))));
                     } else {
                         first = false;
                     }
@@ -34,16 +34,16 @@ namespace lightdb::hevc {
                     zero_count = 0;
                 }
             }
-            nals.push_back(move(bytestring(make_move_iterator(start), make_move_iterator(tile.end()))));
-            tile_nals_.push_back(nals);
+            tile_nals_[index].push_back(move(bytestring(make_move_iterator(start), make_move_iterator(tile.end()))));
+            ++index;
         }
         return tile_nals_;
     }
 
-    std::vector<bytestring> Stitcher::GetSegmentNals(const unsigned long tile_num, unsigned long *num_bytes, unsigned long *num_keyframes, bool first) {
-        auto nals = tile_nals_[tile_num];
-        std::vector<bytestring> segments;
-        for (auto nal : nals) {
+    std::list<bytestring> Stitcher::GetSegmentNals(const unsigned long tile_num, unsigned long *num_bytes, unsigned long *num_keyframes, bool first) {
+        auto &nals = tile_nals_[tile_num];
+        std::list<bytestring> segments;
+        for (auto &nal : nals) {
             if (IsSegment(nal)) {
                 if (IsKeyframe(nal) && first) {
                     (*num_keyframes)++;
@@ -82,14 +82,14 @@ namespace lightdb::hevc {
         }
     }
 
-    bytestring Stitcher::GetStitchedSegments() {
+    std::unique_ptr<bytestring> Stitcher::GetStitchedSegments() {
         headers_.GetSequence()->SetDimensions(context_.GetVideoDimensions());
         headers_.GetSequence()->SetGeneralLevelIDC(120);
         headers_.GetVideo()->SetGeneralLevelIDC(120);
         headers_.GetPicture()->SetTileDimensions(context_.GetTileDimensions());
 
-        auto tile_num = tiles_.size();
-        std::list<std::vector<bytestring>> segment_nals;
+        auto numberOfTiles = tile_nals_.size();
+        std::list<std::list<bytestring>> segment_nals;
         auto num_segments = 0u;
         unsigned long num_bytes = 0u;
         unsigned long num_keyframes = 0u;
@@ -100,10 +100,10 @@ namespace lightdb::hevc {
         // First, collect the segment nals from each tile
         // Create a SegmentAddressUpdater for each tile.
         std::vector<SegmentAddressUpdater> updaters;
-        std::vector<std::vector<bytestring>::iterator> segmentDataIterators;
-        updaters.reserve(tiles_.size());
-        segmentDataIterators.reserve(tiles_.size());
-        for (auto i = 0u; i < tiles_.size(); i++) {
+        std::vector<std::list<bytestring>::iterator> segmentDataIterators;
+        updaters.reserve(numberOfTiles);
+        segmentDataIterators.reserve(numberOfTiles);
+        for (auto i = 0u; i < numberOfTiles; i++) {
             segment_nals.emplace_back(GetSegmentNals(i, &num_bytes, &num_keyframes, i == 0u));
             num_segments += segment_nals.back().size();
 
@@ -111,53 +111,26 @@ namespace lightdb::hevc {
             segmentDataIterators.emplace_back(segment_nals.back().begin());
         }
 
-        // Check whether all p-frames in the same GOP have the same end location & address offset.
-        // If so, we can memoize the new address & end.
-        // Would be better to memoize entire header & then just fix up the slice_pic_order_cnt_lsb.
-        // See if the headers are the same up to that flag, and then after.
-//        {
-//            unsigned int tileNumber = 0;
-//            for (auto it = segment_nals.begin(); it != segment_nals.end(); ++it, ++tileNumber) {
-//                loadSegments(*it, context_, headers_);
-//            }
-//        }
-
-        // Note: this isn't the exact size of the final results since the segments will be extended
-        // with the addresses, but this is about as close as we can get. Unfortunately, since it's not
-        // the exact size, std::copy cannot be used and we must use insert
-        bytestring result;
-        result.reserve(header_bytes.size() * num_keyframes + num_bytes);
+        std::unique_ptr<bytestring> result(new bytestring);
+        result->reserve(header_bytes.size() * num_keyframes + num_bytes);
 
         auto it = segment_nals.front().begin();
         while (it != segment_nals.front().end()) {
-          for (auto i = 0u; i < tile_num; i++) {
+          for (auto i = 0u; i < numberOfTiles; i++) {
             bool isKeyframe = false;
             auto &headerData = updaters[i].updatedSegmentHeader(*segmentDataIterators[i], isKeyframe);
             if (isKeyframe) {
                 if (!i)
-                    result.insert(result.end(), header_bytes.begin(), header_bytes.end());
+                    result->insert(result->end(), header_bytes.begin(), header_bytes.end());
 
                 // For keyframes, insert all of the data.
-                result.insert(result.end(), headerData.begin(), headerData.end());
+                result->insert(result->end(), headerData.begin(), headerData.end());
             } else {
-                result.insert(result.end(), headerData.begin(), headerData.end());
+                result->insert(result->end(), headerData.begin(), headerData.end());
                 //  TODO: compensate for size containing header nals / emulation bytes.
-                result.insert(result.end(), segmentDataIterators[i]->begin() + updaters[i].offsetIntoOriginalPFrameData(), segmentDataIterators[i]->end());
+                result->insert(result->end(), segmentDataIterators[i]->begin() + updaters[i].offsetIntoOriginalPFrameData(), segmentDataIterators[i]->end());
             }
             ++segmentDataIterators[i];
-//
-//            if (IsKeyframe(*it)) {
-//                // We want to insert the header bytes before each GOP, which is indicated by a keyframe.
-//                // So, the before the first keyframe we encounter in each GOP, we will insert the header
-//                // bytes
-//                if (i == 0) {
-//                    result.insert(result.end(), header_bytes.begin(), header_bytes.end());
-//                }
-//            }
-//            current.SetAddress(addresses[i]);
-//            auto slice_bytes = current.GetBytes();
-//            // Insert the bytes of the slice
-//            result.insert(result.end(), slice_bytes.begin(), slice_bytes.end());
           }
           it++;
         }
@@ -167,7 +140,6 @@ namespace lightdb::hevc {
     static BitArray createBitArray(const bytestring &data, bytestring::iterator &currentByte, unsigned int numberOfBytesToTranslate) {
         BitArray bits(0);
         bits.reserve(numberOfBytesToTranslate * 8);
-//        auto bitIndex = 0;
         for (auto i = 0u; i < numberOfBytesToTranslate; i++) {
             unsigned char c = *currentByte++;
             if (c == 3)
@@ -348,9 +320,9 @@ void IdenticalFrameRetriever::getPFrameData(Stitcher &stitcher) {
     unsigned long numKeyframes;
     auto segments = stitcher.GetSegmentNals(0, &numBytes, &numKeyframes, false);
     assert(segments.size() == 2);
-    assert(!IsKeyframe(segments[1]));
+    assert(!IsKeyframe(segments.back()));
 
-    auto pFrameSegment = stitcher.loadPFrameSegment(segments[1]);
+    auto pFrameSegment = stitcher.loadPFrameSegment(segments.back());
 
     picOutputCntLsbBitOffset_ = pFrameSegment.originalOffsetOfPicOrderCnt();
     numberOfBitsForPicOutputCntLsb_ = stitcher.headers_.GetSequence()->GetMaxPicOrder();
@@ -358,8 +330,8 @@ void IdenticalFrameRetriever::getPFrameData(Stitcher &stitcher) {
     pFrameHeader_ = pFrameSegment.GetHeaderBytes();
 
     auto endOfHeader = pFrameSegment.getEnd() / 8;
-    auto sizeOfData = segments[1].size() - endOfHeader;
+    auto sizeOfData = segments.back().size() - endOfHeader;
     pFrameData_.reserve(sizeOfData);
-    std::copy(segments[1].begin() + endOfHeader, segments[1].end(), pFrameData_.begin());
+    std::copy(segments.back().begin() + endOfHeader, segments.back().end(), pFrameData_.begin());
 }
 }; //namespace lightdb::hevc

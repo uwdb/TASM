@@ -5,6 +5,7 @@
 #include "SequenceParameterSet.h"
 #include "VideoParameterSet.h"
 #include "PictureParameterSet.h"
+#include <list>
 
 namespace lightdb::hevc {
     class PictureParameterSetMetadata;
@@ -38,7 +39,7 @@ namespace lightdb::hevc {
          * @param context The context of the nals
          * @param nals The byte streams of the nals
          */
-        Headers(const StitchContext &context, std::vector<bytestring> nals);
+        Headers(const StitchContext &context, const std::list<bytestring> &nals);
 
         /**
          *

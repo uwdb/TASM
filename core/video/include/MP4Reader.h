@@ -106,7 +106,7 @@ public:
 
     bool allFrameSequencesBeginWithKeyframe(const std::vector<int> &frames) const;
 
-    lightdb::bytestring dataForSamples(unsigned int firstSampleToRead, unsigned int lastSampleToRead) const;
+    std::unique_ptr<lightdb::bytestring> dataForSamples(unsigned int firstSampleToRead, unsigned int lastSampleToRead) const;
 
 private:
     void setUpGFIsomFile() {

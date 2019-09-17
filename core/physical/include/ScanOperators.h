@@ -110,7 +110,7 @@ private:
                         physical().source().codec(),
                         physical().source().configuration(),
                         physical().source().geometry(),
-                        DecodeReaderPacket(gopPacket->data(), flags));
+                        DecodeReaderPacket(*gopPacket->data(), flags));
 
                 cpuData.downcast<CPUEncodedFrameData>().setFirstFrameIndexAndNumberOfFrames(gopPacket->firstFrameIndex(), gopPacket->numberOfFrames());
                 returnVal = {cpuData};

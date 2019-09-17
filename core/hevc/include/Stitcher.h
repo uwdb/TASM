@@ -6,7 +6,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "SliceSegmentLayer.h"
+
 namespace lightdb::hevc {
+
     class PicOutputFlagAdder {
     public:
         PicOutputFlagAdder(const std::unordered_set<int> &framesToKeep)
@@ -32,15 +35,15 @@ namespace lightdb::hevc {
          * @param data A vector with each element being the bytestring of a tile. All data is moved from this vector, rendering it useless post
          * processing
          */
-        Stitcher(StitchContext context, std::vector<bytestring> data)
-                : tiles_(std::move(data)), context_(std::move(context)), headers_(context_, GetNals().front())
+        Stitcher(StitchContext context, std::vector<bytestring> &data)
+                : context_(std::move(context)), headers_(context_, GetNals(data).front())
         { }
 
         /**
          *
          * @return A bytestring with all tiles passed into the constructor stitched together
          */
-        bytestring GetStitchedSegments();
+        std::unique_ptr<bytestring> GetStitchedSegments();
 
         void addPicOutputFlagIfNecessaryKeepingFrames(const std::unordered_set<int> &framesToKeep);
         bytestring combinedNalsForTile(unsigned int tileNumber) const;
@@ -54,7 +57,7 @@ namespace lightdb::hevc {
          * @return The tile_nals_ field populated with the nals of each tile. Each element of the outer vector is a tile, and each element of the inner
          * vector is a nal for tha tile
          */
-        std::vector<std::vector<bytestring>> GetNals();
+        const std::vector<std::list<bytestring>> &GetNals(std::vector<bytestring> &data);
 
         /**
          * Returns the nals that are segments for a given tile. Note that this moves the corresponding nal from the tile_nals_ field, rendering the
@@ -67,10 +70,10 @@ namespace lightdb::hevc {
          * @param first Whether or not this is the first tile being processed
          * @return The nals that are segments for this tile
          */
-        std::vector<bytestring> GetSegmentNals(unsigned long tile_num, unsigned long *num_bytes, unsigned long *num_keyframes, bool first);
+        std::list<bytestring> GetSegmentNals(unsigned long tile_num, unsigned long *num_bytes, unsigned long *num_keyframes, bool first);
 
-        const std::vector<bytestring> tiles_;
-        std::vector<std::vector<bytestring>> tile_nals_;
+//        const std::vector<bytestring> tiles_;
+        std::vector<std::list<bytestring>> tile_nals_;
         const StitchContext context_;
         const Headers headers_;
         std::vector<std::vector<std::unique_ptr<Nal>>> formattedNals_;
@@ -78,19 +81,21 @@ namespace lightdb::hevc {
 
     class IdenticalFrameRetriever {
     public:
-        IdenticalFrameRetriever(bytestring iFrameBytesWithHeaders, bytestring pFrameData) {
+        IdenticalFrameRetriever(std::unique_ptr<bytestring> iFrameBytesWithHeaders, std::unique_ptr<bytestring> pFrameData) {
             StitchContext context{{1, 1}, {1, 1}};
-            bytestring combinedData(iFrameBytesWithHeaders.size() + pFrameData.size());
-            std::copy(iFrameBytesWithHeaders.begin(), iFrameBytesWithHeaders.end(), combinedData.begin());
-            std::copy(pFrameData.begin(), pFrameData.end(), combinedData.begin() + iFrameBytesWithHeaders.size());
+            std::vector<bytestring> vectorOfCombinedData(1);
+            auto &combinedData = vectorOfCombinedData[0];
+            combinedData.resize(iFrameBytesWithHeaders->size() + pFrameData->size());
+            std::copy(iFrameBytesWithHeaders->begin(), iFrameBytesWithHeaders->end(), combinedData.begin());
+            std::copy(pFrameData->begin(), pFrameData->end(), combinedData.begin() + iFrameBytesWithHeaders->size());
             iFrameDataWithHeaders_ = std::move(iFrameBytesWithHeaders);
 
-            Stitcher stitcher(context, {combinedData});
+            Stitcher stitcher(context, vectorOfCombinedData);
             getPFrameData(stitcher);
         }
 
         const bytestring &iFrameData() const {
-            return iFrameDataWithHeaders_;
+            return *iFrameDataWithHeaders_;
         }
 
         const bytestring &pFrameData() const {
@@ -105,7 +110,7 @@ namespace lightdb::hevc {
     private:
         void getPFrameData(Stitcher &stitcher);
 
-        bytestring iFrameDataWithHeaders_;
+        std::unique_ptr<bytestring> iFrameDataWithHeaders_;
         bytestring pFrameHeader_;
         bytestring pFrameData_;
 

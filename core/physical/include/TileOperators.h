@@ -250,7 +250,11 @@ private:
 
             // Read global frames from the black tile until global frames iterator = expected frames iterator.
             auto combinedData = blackFramesData();
-            if (!combinedData.size()) {
+            if (combinedData && combinedData->size()) {
+                auto returnValue = CPUEncodedFrameData(source().codec(), source().configuration(), source().geometry(), std::move(combinedData));
+                GLOBAL_TIMER.endSection("CoalesceSingleTile");
+                return returnValue;
+            } else {
                 if (iterator() != iterator().eos()) {
                     assert(*allFramesToOutputIterator_ == *expectedFrameIterator_);
                     auto data = iterator()++;
@@ -264,16 +268,13 @@ private:
                         assert(firstFrameIndex == *expectedFrameIterator_);
                         std::advance(expectedFrameIterator_, numberOfFrames);
                         std::advance(allFramesToOutputIterator_, numberOfFrames);
-
-                        combinedData = data.value();
                     }
+                    GLOBAL_TIMER.endSection("CoalesceSingleTile");
+                    return data;
                 }
             }
-
-            auto returnValue = CPUEncodedFrameData(source().codec(), source().configuration(), source().geometry(), combinedData);
-
             GLOBAL_TIMER.endSection("CoalesceSingleTile");
-            return {returnValue};
+            return {};
         }
 
     private:
@@ -289,10 +290,10 @@ private:
             return physical().tileEntry().sources()[physical().tileNumber()];
         }
 
-        bytestring blackFramesData() {
+        std::unique_ptr<bytestring> blackFramesData() {
             // Create vector of frames to read from a black tile.
             if (!blackFramesReader_.isEos()) {
-                return blackFramesReader_.read()->data();
+                return std::move(blackFramesReader_.read()->data());
             } else {
                 std::vector<int> blackFramesToRead;
                 while (haveMoreGlobalFrames() &&
@@ -305,7 +306,7 @@ private:
 
                 assert(blackFramesReader_.isEos());
                 blackFramesReader_.setNewFrames(blackFramesToRead);
-                return blackFramesReader_.read()->data();
+                return std::move(blackFramesReader_.read()->data());
             }
         }
 

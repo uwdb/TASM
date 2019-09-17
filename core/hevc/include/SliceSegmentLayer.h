@@ -6,6 +6,7 @@
 #include "BitStream.h"
 #include "BitArray.h"
 #include "Emulation.h"
+#include <bitset>
 
 
 namespace lightdb::hevc {
@@ -89,11 +90,44 @@ namespace lightdb::hevc {
             return combinedData;
         }
 
+        inline bytestring GetHeaderBytes() {
+            return AddEmulationPreventionAndMarker(data_, GetHeaderSize(), metadata_.GetValue("updated-end-bits"), true);
+        }
+
+        unsigned long numberOfBytesInHeaderWithUpdatedAddress() const {
+            return metadata_.GetValue("updated-end-bits") / 8;
+        }
+
+        unsigned long numberOfOriginalBytesInHeader() const {
+            return numberOfTranslatedBytes_;
+        }
+
         void InsertPicOutputFlag(bool value);
 
         SliceSegmentLayer(const SliceSegmentLayer& other) = default;
         SliceSegmentLayer(SliceSegmentLayer&& other) = default;
         ~SliceSegmentLayer() = default;
+
+        unsigned int getEnd() {
+            return GetBitStream().GetValue("end");
+        }
+
+        unsigned int getAddrOffset() {
+            return GetBitStream().GetValue("address_offset");
+        }
+
+        unsigned int originalOffsetOfPicOrderCnt() {
+            return GetBitStream().GetValue("slice_pic_order_cnt_lsb");
+        }
+
+        std::vector<bool> headerUpToPicOrderCntLsb() {
+            // Get data_ up to location.
+            return std::vector<bool>(data_.begin(), data_.begin() + GetBitStream().GetValue("slice_pic_order_cnt_lsb"));
+        }
+
+        std::vector<bool> headerAfterPicOrderCntLsb() {
+            return std::vector<bool>(data_.begin() + GetBitStream().GetValue("after_slice_pic_order_cnt_lsb"), data_.begin() + GetBitStream().GetValue("end"));
+        }
 
     protected:
         inline BitStream& GetBitStream() {
@@ -154,6 +188,104 @@ namespace lightdb::hevc {
     private:
         TrailRSliceSegmentLayerMetadata trailRMetadata_;
 
+    };
+
+    class SegmentAddressUpdater {
+    public:
+        SegmentAddressUpdater(unsigned int address,
+                const StitchContext &context, const Headers &headers)
+            : address_(address),
+                context_(context),
+                headers_(headers),
+              sizeOfPicOrderGolomb_(headers_.GetSequence()->GetMaxPicOrder()),
+              sizeOfAddress_(headers_.GetSequence()->GetAddressLength()),
+              offsetOfPicOrder_(0),
+            numberOfBytesInPFrameHeader_(0),
+            pFrameNumber_(0)
+        { }
+
+        const bytestring &updatedSegmentHeader(const bytestring &segment, bool &isKeyframe) {
+            isKeyframe = false;
+            if (IsKeyframe(segment)) {
+                // Do it normal because header is different.
+                // Also reset the pFrameHeaderBytes for the new GOP.
+                pFrameHeaderBytes_.clear();
+
+                auto current = Load(context_, segment, headers_);
+                current.SetAddress(address_);
+                iFrameBytes_ = std::move(current.GetBytes());
+
+                isKeyframe = true;
+                return iFrameBytes_;
+            } else if (!pFrameHeaderBytes_.size()) {
+                // Load the next segment and extract its header bytes.
+                auto pFrame = Load(context_, segment, headers_);
+                pFrame.SetAddress(address_);
+
+                offsetOfPicOrder_ = pFrame.originalOffsetOfPicOrderCnt();
+                if (address_)
+                    offsetOfPicOrder_ += sizeOfAddress_; // The address is only added if it's not the first segment.
+
+                // TODO: This doesn't account for whether GetHeaderBytes() adds emulation prevention bytes.
+                pFrameHeaderBytes_ = std::move(pFrame.GetHeaderBytes());
+                assert(!(pFrame.getEnd() % 8));
+                numberOfBytesInPFrameHeader_ = pFrame.getEnd() / 8;
+                pFrameNumber_ = 1;
+
+                return pFrameHeaderBytes_;
+            } else {
+                // Update pic_order_lsb.
+                ++pFrameNumber_;
+                updatePicOrderInPFrameBytes();
+                return pFrameHeaderBytes_;
+            }
+        }
+
+        unsigned int offsetIntoOriginalPFrameData() const {
+            return numberOfBytesInPFrameHeader_;
+        }
+
+    private:
+        void updatePicOrderInPFrameBytes() {
+            // Maximum size of log2_max_pic_order_cnt_lsb_minus4 = 12.
+            std::bitset<16> encodedNewFrameNumber(pFrameNumber_);
+            auto numberOfSetBits = floor(log2(pFrameNumber_)) + 1;
+            auto numberOfLeadingZeros = sizeOfPicOrderGolomb_ - numberOfSetBits;
+            auto indexInBitset = encodedNewFrameNumber.size() - 1 - sizeOfPicOrderGolomb_;
+
+            auto indexOfFirstByteToModify = offsetOfPicOrder_ / 8 + Nal::kNalMarker.size();
+            auto bitIndexInBytes = offsetOfPicOrder_ % 8;
+            auto byteIt = pFrameHeaderBytes_.begin() + indexOfFirstByteToModify;
+            for (auto i = 0; i < sizeOfPicOrderGolomb_; ++i, --indexInBitset) {
+                bool desiredValue = encodedNewFrameNumber[indexInBitset];
+
+                auto shift = shiftWithinByte(bitIndexInBytes);
+                if (((*byteIt >> shift) & 1) != desiredValue)
+                    *byteIt ^= (1u << shift);
+
+                ++bitIndexInBytes;
+                if (bitIndexInBytes == 8) {
+                    bitIndexInBytes = 0;
+                    ++byteIt;
+                }
+            }
+        }
+
+        unsigned int shiftWithinByte(unsigned int bitIndex) {
+            return 7 - bitIndex;
+        }
+
+        const unsigned int address_;
+        const StitchContext &context_;
+        const Headers &headers_;
+        const unsigned int sizeOfPicOrderGolomb_;
+        unsigned int sizeOfAddress_;
+
+        unsigned int offsetOfPicOrder_;
+        unsigned int numberOfBytesInPFrameHeader_;
+        unsigned int pFrameNumber_;
+        bytestring pFrameHeaderBytes_;
+        bytestring iFrameBytes_;
     };
 }; //namespace lightdb::hevc
 

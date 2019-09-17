@@ -69,11 +69,16 @@ namespace lightdb::hevc {
         return bits;
     }
 
-    bytestring AddEmulationPreventionAndMarker(const BitArray &data, const unsigned long start, const unsigned long end) {
+    bytestring AddEmulationPreventionAndMarker(const BitArray &data, const unsigned long start, const unsigned long end, bool stopAfterEnd, unsigned int *outNumberOfEmulationBytesAdded) {
         std::list<long> emulation_indices;
 
         auto zero_count = 0u;
         auto data_size = data.size() / 8;
+        if (stopAfterEnd) {
+            assert(!(end % 8));
+            data_size = end / 8;
+        }
+
         auto range = std::min(data_size, end);
 
         // Iterate over the bit set to add back the emulation_prevention_three bytes where necessary
@@ -99,9 +104,13 @@ namespace lightdb::hevc {
 
         }
 
+        if (outNumberOfEmulationBytesAdded)
+            *outNumberOfEmulationBytesAdded = emulation_indices.size();
+
         // The ending size is the original size, plus the number of three bytes we must add,
         // plus the nal marker size
         auto set_size = data_size + emulation_indices.size() + Nal::kNalMarker.size();
+
         bytestring bytes(set_size);
         auto three = static_cast<char>(0x03);
 

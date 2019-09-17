@@ -58,6 +58,15 @@ namespace lightdb {
         return data;
     }
 
+    BitArray EncodeGolombWithSize(unsigned long value, unsigned long size) {
+        BitArray data(size);
+
+        std::list<size_t> zeroSizes;
+        size_t valueSize = GetGolombEncodeSize(value, &zeroSizes);
+        EncodeGolomb(value, data, &zeroSizes, size - valueSize);
+        return data;
+    }
+
     inline size_t GetGolombEncodeSize(const unsigned long val, std::list<size_t> *zero_sizes) {
 
         // Note that val will always be at least 0, so val + 1 is always at least 1, meaning

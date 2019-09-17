@@ -30,7 +30,7 @@ namespace lightdb::hevc {
          * @return A string of bytes representing the entirety of data with the nal marker
          * at the front, with the emulation_prevention_three bytes added
          */
-        bytestring AddEmulationPreventionAndMarker(const BitArray &data, unsigned long start, unsigned long end);
+        bytestring AddEmulationPreventionAndMarker(const BitArray &data, unsigned long start, unsigned long end, bool stopAfterEnd = false, unsigned int *outNumberOfEmulationBytesAdded = nullptr);
 
 }; //namespace lightdb::hevc
 #endif //LIGHTDB_EMULATION_H

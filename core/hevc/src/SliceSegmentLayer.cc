@@ -37,6 +37,10 @@ namespace lightdb::hevc {
         }
 
         header_bits.ByteAlign();
+
+        // Keep track of where the updated end of header is.
+        metadata_.SetValue("updated-end-bits", header_bits.size());
+
         // The new size of the data is the size of the new header plus the size of the data
         // minus the old header size
         BitArray new_data(header_bits.size() + data_.size() - header_end);
@@ -113,7 +117,9 @@ namespace lightdb::hevc {
         GetBitStream().MarkPosition("address_offset");
         GetBitStream().SkipExponentialGolomb(); // slice_type
         GetBitStream().MarkPosition("pic_output_flag_offset");
-        GetBitStream().SkipBits(headersMetadata.GetSequence().GetMaxPicOrder());
+        GetBitStream().MarkPosition("slice_pic_order_cnt_lsb");
+        GetBitStream().SkipBits(headersMetadata.GetSequence().GetMaxPicOrder()); // slice_pic_order_cnt_lsb.
+        GetBitStream().MarkPosition("after_slice_pic_order_cnt_lsb");
         GetBitStream().SkipTrue();
         GetBitStream().SkipBits(2);
         GetBitStream().SkipFalse();

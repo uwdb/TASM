@@ -201,6 +201,10 @@ namespace lightdb {
             return values_.at(name);
         }
 
+        void SetValue(const std::string &name, unsigned long value) {
+            values_.emplace(name, value);
+        }
+
         /**
          * Returns the next num of bits, leaving the iterator pointing at the next
          * unprocessed bit in the stream

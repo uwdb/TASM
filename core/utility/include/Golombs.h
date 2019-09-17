@@ -20,6 +20,8 @@ namespace lightdb {
      * @return The golomb
      */
     unsigned long DecodeGolomb(BitStream &stream);
+
+    BitArray EncodeGolombWithSize(unsigned long value, unsigned long size);
 }; //namespace lightdb
 
 #endif //LIGHTDB_GOLOMBS_H

@@ -37,6 +37,10 @@ public:
         condition_.notify_one();
     }
 
+    unsigned int numberOfTasks() const {
+        return taskCount_;
+    }
+
     void waitAll() const {
         while (taskCount_ != 0u) {
             std::this_thread::yield();

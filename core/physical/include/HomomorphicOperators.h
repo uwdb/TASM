@@ -24,7 +24,7 @@ private:
     public:
         explicit Runtime(HomomorphicUniformAngularUnion &physical)
             : runtime::Runtime<HomomorphicUniformAngularUnion>(physical),
-              materializedData_(physical.rows() * physical.columns()),
+              materializedData_(new std::vector<bytestring>(physical.rows() * physical.columns())),
               configuration_(create_configuration()),
               geometry_(get_geometry())
         { }
@@ -37,16 +37,16 @@ private:
                     if (iterators()[index] != iterators()[index].eos()) {
                         auto next = (iterators()[index]++);
                         const auto &data = next.downcast<CPUEncodedFrameData>().value();
-                        materializedData_[index].insert(std::end(materializedData_[index]), data.begin(), data.end());
+                        (*materializedData_)[index].insert(std::end((*materializedData_)[index]), data.begin(), data.end());
                     }
 
                 return CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, bytestring{});
-            } else if(!materializedData_.empty()) {
+            } else if(materializedData_) {
                 hevc::StitchContext context({physical().rows(), physical().columns()},
                                             {configuration_.height / physical().rows(),
                                              configuration_.width / physical().columns()});
-                hevc::Stitcher stitcher(context, materializedData_);
-                materializedData_.clear();
+                hevc::Stitcher stitcher(context, std::move(materializedData_));
+                materializedData_.reset();
 
                 return CPUEncodedFrameData(Codec::hevc(), configuration_, geometry_, stitcher.GetStitchedSegments());
             } else
@@ -74,7 +74,7 @@ private:
             return (*iterators().front()).expect_downcast<FrameData>().geometry();
         }
 
-        std::vector<bytestring> materializedData_;
+        std::unique_ptr<std::vector<bytestring>> materializedData_;
         const Configuration configuration_;
         const GeometryReference geometry_;
     };

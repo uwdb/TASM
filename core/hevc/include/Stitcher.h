@@ -35,8 +35,8 @@ namespace lightdb::hevc {
          * @param data A vector with each element being the bytestring of a tile. All data is moved from this vector, rendering it useless post
          * processing
          */
-        Stitcher(StitchContext context, std::vector<bytestring> &data)
-                : context_(std::move(context)), headers_(context_, GetNals(data).front())
+        Stitcher(StitchContext context, std::unique_ptr<std::vector<bytestring>> data)
+                : context_(std::move(context)), headers_(context_, GetNals(*data).front())
         { }
 
         /**
@@ -83,14 +83,14 @@ namespace lightdb::hevc {
     public:
         IdenticalFrameRetriever(std::unique_ptr<bytestring> iFrameBytesWithHeaders, std::unique_ptr<bytestring> pFrameData) {
             StitchContext context{{1, 1}, {1, 1}};
-            std::vector<bytestring> vectorOfCombinedData(1);
-            auto &combinedData = vectorOfCombinedData[0];
+            std::unique_ptr<std::vector<bytestring>> vectorOfCombinedData(new std::vector<bytestring>(1));
+            auto &combinedData = (*vectorOfCombinedData)[0];
             combinedData.resize(iFrameBytesWithHeaders->size() + pFrameData->size());
             std::copy(iFrameBytesWithHeaders->begin(), iFrameBytesWithHeaders->end(), combinedData.begin());
             std::copy(pFrameData->begin(), pFrameData->end(), combinedData.begin() + iFrameBytesWithHeaders->size());
             iFrameDataWithHeaders_ = std::move(iFrameBytesWithHeaders);
 
-            Stitcher stitcher(context, vectorOfCombinedData);
+            Stitcher stitcher(context, std::move(vectorOfCombinedData));
             getPFrameData(stitcher);
         }
 

@@ -64,8 +64,9 @@ namespace lightdb {
                                       const Codec &codec=Codec::hevc(),
                                       const std::optional<GeometryReference> &geometry={});
 
-            LightFieldReference StoreCracked(const std::string &name, const Codec &codec=Codec::hevc(),
-                                                const std::optional<GeometryReference> &geometry={});
+            LightFieldReference StoreCracked(const std::string &name,
+                                                const std::string &metadataIdentifier="",
+                                                const MetadataSpecification * const metadataSpecification=nullptr);
 
             LightFieldReference Save(const std::filesystem::path&);
             LightFieldReference Sink();

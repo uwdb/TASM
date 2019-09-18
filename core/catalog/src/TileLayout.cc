@@ -7,9 +7,9 @@ std::vector<unsigned int> TileLayout::tilesForRectangle(const Rectangle &rectang
     std::vector<unsigned int> tiles;
 
     auto leftColumn = tileColumnForX(rectangle.x);
-    auto rightColumn = tileColumnForX(rectangle.x + rectangle.width);
+    auto rightColumn = tileColumnForX(rectangle.x + rectangle.width - 1); // The last pixel will be at column width - 1.
     auto topRow = tileRowForY(rectangle.y);
-    auto bottomRow = tileRowForY(rectangle.y + rectangle.height);
+    auto bottomRow = tileRowForY(rectangle.y + rectangle.height - 1); // The last pixel will be at row height - 1.
 
     // For every row, include all horizontal tiles between left column and right column.
     for (auto column = leftColumn; column <= rightColumn; ++column) {

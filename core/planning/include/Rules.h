@@ -527,6 +527,15 @@ namespace lightdb::optimization {
                         plan().emplace<physical::GPUNaiveSelectPixels>(logical, parent, 0, tiles::NoTilesLayout);
 
                         return true;
+                    } else if (physical_parents.size() == 1 && isSelectingPixelsAlone) {
+                        assert(physical_parents[0]->parents().size() == 1);
+                        auto &parent = physical_parents[0];
+                        auto &scanParent = parent->parents()[0];
+                        auto &scan = scanParent.downcast<physical::ScanFramesFromFileEncodedReader>();
+                        scan.setFramesToRead(node.orderedFramesForMetadata());
+                        plan().emplace<physical::MergeTilePixels>(logical, physical_parents, tiles::NoTilesLayout, std::unordered_map<int, int>());
+
+                        return true;
                     }
 
                     for (auto &parent: physical_parents) {
@@ -1002,10 +1011,22 @@ namespace lightdb::optimization {
                 auto logical = plan().lookup(node);
                 auto &source =  physical_parents[0]->parents()[0].downcast<physical::ScanSingleFileDecodeReader>().source();
                 std::unordered_set<int> keyframes(source.keyframes().begin(), source.keyframes().end());
+
+                std::shared_ptr<tiles::TileConfigurationProvider> tileConfig;
+                if (node.metadataManager()) {
+                    tileConfig = std::make_shared<tiles::IdealTileConfigurationProvider>(
+                                                            node.metadataManager(),
+                                                            source.configuration().width,
+                                                            source.configuration().height);
+                } else {
+                    tileConfig = std::make_shared<tiles::GOP30TileConfigurationProvider>();
+                }
+
                 auto crack = plan().emplace<physical::CrackVideo>(
                                  logical,
                                  physical_parents[0],
-                                 keyframes);
+                                 keyframes,
+                                 tileConfig);
                 // TODO: Add encode & store for each tile.
 
 //                auto encode = plan().emplace<physical::GPUEncodeToCPU>(logical, physical_parents[0], Codec::hevc());

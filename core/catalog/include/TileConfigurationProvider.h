@@ -3,8 +3,10 @@
 
 #include "Catalog.h"
 #include "Files.h"
+#include "Metadata.h"
 #include "TileLayout.h"
 #include <boost/functional/hash.hpp>
+#include <MetadataLightField.h>
 
 namespace lightdb {
 class Interval {
@@ -17,17 +19,32 @@ public:
         end_(startAndEnd.second)
     { }
 
+    Interval(const Interval &other) = default;
+
+    Interval(const Interval &first, const Interval &second)
+        : Interval(first)
+    {
+        expandToInclude(second);
+    }
+
+    bool operator==(const Interval &other) const {
+        return start_ == other.start_
+               && end_ == other.end_;
+    }
+
+    bool operator<(const Interval &rhs) const {
+        if (start_ != rhs.start_)
+            return start_ < rhs.start_;
+        else
+            return end_ < rhs.end_;
+    }
+
     unsigned int start() const { return start_; }
 
     unsigned int end() const { return end_; }
 
     bool contains(unsigned int value) const {
         return value >= start_ && value <= end_;
-    }
-
-    bool operator==(const Interval &other) const {
-        return start_ == other.start_
-               && end_ == other.end_;
     }
 
     bool intersects(const Interval &other) const {
@@ -39,10 +56,6 @@ public:
         end_ = std::max(end_, other.end());
     }
 
-    static bool compare(const Interval &lhs, const Interval &rhs) {
-        return lhs.start() < rhs.start();
-    }
-
 private:
     unsigned int start_;
     unsigned int end_;
@@ -50,6 +63,15 @@ private:
 
 class CoalescedIntervals {
 public:
+    CoalescedIntervals()
+        : min_(UINT32_MAX),
+        max_(0)
+    { }
+
+    const std::set<Interval> &intervals() const {
+        return intervals_;
+    }
+
     void addInterval(const Interval &newInterval) {
         if (newInterval.start() < min_)
             min_ = newInterval.start();
@@ -57,20 +79,37 @@ public:
         if (newInterval.end() > max_)
             max_ = newInterval.end();
 
-        for (auto &interval : intervals_) {
-            if (newInterval.intersects(interval)) {
-                interval.expandToInclude(newInterval);
-                return;
+        bool insertedNewInterval = false;
+        for (auto intervalIt = intervals_.begin(); intervalIt != intervals_.end(); ++intervalIt) {
+            if (newInterval.intersects(*intervalIt)) {
+                auto expandedInterval = Interval(newInterval, *intervalIt);
+                intervals_.erase(intervalIt);
+                intervals_.insert(expandedInterval);
+
+                // Start again to coalesce any intervals that now overlap.
+//                intervalIt = intervals_.begin();
+
+                insertedNewInterval = true;
+                break; // TODO: Start again to find intervals that may now overlap.
             }
         }
+        if (!insertedNewInterval)
+            intervals_.insert(newInterval);
 
-        intervals_.push_back(newInterval);
     }
 
     bool contains(unsigned int value) const {
-        for (const auto &interval : intervals_) {
-            if (interval.contains(value))
+        // Use upper_bound to limit comparisons.
+        auto it = intervals_.upper_bound(Interval(value, UINT32_MAX));
+        if (it == intervals_.end())
+            std::advance(it, -1);
+
+        for (; it->end() >= value; --it) {
+            if (it->contains(value))
                 return true;
+
+            if (it == intervals_.begin())
+                break;
         }
         return false;
     }
@@ -80,9 +119,9 @@ public:
     }
 
 private:
-    std::list<Interval> intervals_;
     unsigned int min_;
     unsigned int max_;
+    std::set<Interval> intervals_;
 };
 
 
@@ -109,6 +148,83 @@ class TileConfigurationProvider {
 public:
     virtual unsigned int maximumNumberOfTiles() = 0;
     virtual const TileLayout &tileLayoutForFrame(unsigned int frame) = 0;
+
+    virtual ~TileConfigurationProvider() { }
+};
+
+class KeyframeConfigurationProvider {
+public:
+    virtual bool shouldFrameBeKeyframe(unsigned int frame) = 0;
+
+    virtual ~KeyframeConfigurationProvider() { }
+};
+
+class MetadataTileConfigurationProvider : public TileConfigurationProvider, public KeyframeConfigurationProvider {
+public:
+    // Init with metadata specification.
+    // Also have to be able to specify where keyframes should be.
+    // We may be only cracking a particular range of frames, or further cracking an existing tile.
+    MetadataTileConfigurationProvider(std::shared_ptr<metadata::MetadataManager> &metadataManager,
+            unsigned int firstFrameToConsider,
+            unsigned int lastFrameToConsider,
+            Rectangle portionOfFrameToConsider)
+        : metadataManager_(metadataManager),
+        firstFrameToConsider_(firstFrameToConsider),
+        lastFrameToConsider_(lastFrameToConsider),
+        portionOfFrameToConsider_(std::move(portionOfFrameToConsider))
+    {
+        pickKeyframes();
+        computeTileConfigurations();
+    }
+
+    unsigned int maximumNumberOfTiles() override {
+        return 0;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        return EmptyTileLayout;
+    }
+
+    bool shouldFrameBeKeyframe(unsigned int frame) override {
+        return false;
+    }
+
+private:
+    void computeTileConfigurations();
+    void pickKeyframes();
+    void setUpGOPs();
+    std::vector<int> framesForGOP(unsigned int gopNumber);
+
+    std::shared_ptr<metadata::MetadataManager> metadataManager_;
+    unsigned int firstFrameToConsider_;
+    unsigned int lastFrameToConsider_;
+    Rectangle portionOfFrameToConsider_;
+    std::set<int> keyframes_;
+    std::vector<std::vector<int>> gopFramesThatContainObject_;
+};
+
+class IdealTileConfigurationProvider : public TileConfigurationProvider {
+public:
+    IdealTileConfigurationProvider(std::shared_ptr<metadata::MetadataManager> metadataManager,
+            unsigned int frameWidth,
+            unsigned int frameHeight)
+        : metadataManager_(metadataManager),
+        frameWidth_(frameWidth),
+        frameHeight_(frameHeight)
+    { }
+
+    unsigned int maximumNumberOfTiles() override {
+        return 0;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override;
+
+private:
+    std::shared_ptr<metadata::MetadataManager> metadataManager_;
+    unsigned int frameWidth_;
+    unsigned int frameHeight_;
+
+    std::unordered_map<unsigned int, TileLayout> frameToTileLayout_;
 };
 
 class NaiveTileConfigurationProvider : public TileConfigurationProvider {
@@ -167,9 +283,9 @@ private:
 
     const catalog::MultiTileEntry entry_;
 
-    std::unordered_map<lightdb::Interval, std::list<TileLayout>> intervalToAvailableTileLayouts_;
+    std::map<lightdb::Interval, std::list<TileLayout>> intervalToAvailableTileLayouts_;
     std::map<unsigned int, lightdb::CoalescedIntervals, std::greater<unsigned int>> numberOfTilesToFrameIntervals_;
-    std::unordered_map<lightdb::Interval, std::filesystem::path> intervalToTileDirectory_;
+    std::map<lightdb::Interval, std::filesystem::path> intervalToTileDirectory_;
 };
 
 class TileLocationProvider {
@@ -179,6 +295,8 @@ public:
     unsigned int frameOffsetInTileFile(const std::filesystem::path &tilePath) const {
         return catalog::TileFiles::firstAndLastFramesFromPath(tilePath.parent_path()).first;
     }
+
+    virtual ~TileLocationProvider() { }
 };
 
 class SingleTileLocationProvider : public TileLocationProvider {

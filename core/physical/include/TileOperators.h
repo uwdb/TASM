@@ -33,6 +33,7 @@ public:
     const std::vector<Rectangle> &rectanglesForFrame(unsigned int frameNumber) const {
         return metadataManager_.rectanglesForFrame(frameNumber);
     }
+
     const logical::MetadataSubsetLightField &metadataSubsetLightField() const { return logical().downcast<logical::MetadataSubsetLightField>(); }
     const tiles::TileLayout &tileLayoutForFrame(unsigned int frameNumber) const {
         if (tileLocationProvider_)
@@ -40,8 +41,13 @@ public:
         else
             return tileLayout_;
     }
+
+    const tiles::TileLayout &tileLayout() const { return tileLayout_; }
+
     int tileNumberForParentIndex(int parentIndex) const {
         if (tileLocationProvider_)
+            return parentIndex;
+        else if (tileLayout_ == tiles::NoTilesLayout)
             return parentIndex;
         else
             return parentIndexToTileNumber_.at(parentIndex);
@@ -54,9 +60,15 @@ private:
             : runtime::GPURuntime<MergeTilePixels>(physical),
                     maxProcessedFrameNumbers_(physical.parents().size(), -1),
                     numberOfRectanglesProcessed_(0),
+                    inNoTilesCase_(false),
                     geometry_((*iterators().front()).downcast<GPUDecodedFrameData>().geometry())
         {
             setConfiguration();
+
+            if (physical.tileLayout() == tiles::NoTilesLayout) {
+                inNoTilesCase_ = true;
+                tileLayoutForNoTilesCase_ = tiles::TileLayout(1, 1, {configuration_.width}, {configuration_.height});
+            }
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -77,7 +89,7 @@ private:
                             int frameNumber = -1;
                             assert(frame->getFrameNumber(frameNumber));
 
-                            auto tileRectangle = physical().tileLayoutForFrame(frameNumber).rectangleForTile(tileNumber);
+                            auto tileRectangle = tileLayoutForFrame(frameNumber).rectangleForTile(tileNumber);
 
                             updateMaxProcessedFrameNumber(frameNumber, index);
 
@@ -118,6 +130,10 @@ private:
         }
 
     private:
+        const tiles::TileLayout &tileLayoutForFrame(unsigned int frame) const {
+            return inNoTilesCase_ ? tileLayoutForNoTilesCase_ : physical().tileLayoutForFrame(frame);
+        }
+
         void setConfiguration() {
             auto base = (*iterators().front()).downcast<GPUDecodedFrameData>().configuration();
             configuration_ = Configuration{static_cast<unsigned int>(base.width),
@@ -191,8 +207,10 @@ private:
         std::vector<int> maxProcessedFrameNumbers_;
         std::unordered_map<Rectangle, GPUFrameReference> rectangleToPixels_;
         unsigned int numberOfRectanglesProcessed_;
+        bool inNoTilesCase_;
         Configuration configuration_;
         GeometryReference geometry_;
+        tiles::TileLayout tileLayoutForNoTilesCase_;
     };
 
     const metadata::MetadataManager &getMetadataManager() {

@@ -389,10 +389,25 @@ namespace lightdb::logical {
     };
 
     class CrackedLightField : public StoredLightField {
-        using StoredLightField::StoredLightField;
+//        using StoredLightField::StoredLightField;
 
     public:
+        CrackedLightField(const LightFieldReference &source,
+                          std::string name,
+                          const catalog::Catalog &catalog,
+                          std::optional<GeometryReference> geometry={},
+                          Codec codec=Codec::hevc(),
+                          std::shared_ptr<metadata::MetadataManager> metadataManager=nullptr)
+            : StoredLightField(source, name, catalog, geometry, codec),
+            metadataManager_(metadataManager)
+        { }
+
+        std::shared_ptr<metadata::MetadataManager> metadataManager() const { return metadataManager_; }
+
         void accept(LightFieldVisitor &visitor) override { LightField::accept<CrackedLightField>(visitor); }
+
+    private:
+        std::shared_ptr<metadata::MetadataManager> metadataManager_;
     };
 
     class SavedLightField : public LightField {

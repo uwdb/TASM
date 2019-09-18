@@ -81,6 +81,16 @@ public:
 
     NVENCSTATUS Flush() override { return NV_ENC_SUCCESS; }
     const std::vector<char>& buffer() const { return buffer_; }
+
+    std::unique_ptr<std::vector<char>> dequeueToPtr(unsigned int &numberOfFrames) {
+        std::unique_ptr<std::vector<char>> value(new std::vector<char>());
+        std::lock_guard lock{lock_};
+        buffer_.swap(*value);
+        numberOfFrames = numberOfFramesInBuffer_;
+        numberOfFramesInBuffer_ = 0;
+        return value;
+    }
+
     std::vector<char> dequeue(unsigned int &numberOfFrames) {
         std::vector<char> value;
         std::lock_guard lock{lock_};

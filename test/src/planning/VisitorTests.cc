@@ -112,8 +112,20 @@ TEST_F(VisitorTestFixture, testCrackIntoTiles) {
     Coordinator().execute(input.StoreCracked("MVI_63563_960x576_100frames_cracked"));
 }
 
+TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
+    auto input = ScanByGOP("MVI_63563_960x576_100frames");
+    MetadataSpecification metadataSelection("labels", "label", "van");
+    Coordinator().execute(input.StoreCracked("MVI_63563_960x576_100frames_crackedForVan", "MVI_63563_960x576_100frames", &metadataSelection));
+}
+
 TEST_F(VisitorTestFixture, testReadCrackedTiles) {
     auto input = ScanMultiTiled("MVI_63563_960x576_100frames_cracked");
+    PixelMetadataSpecification selection("labels", "label", "van");
+    Coordinator().execute(input.Select(selection).Store("vans_from_cracked"));
+}
+
+TEST_F(VisitorTestFixture, testReadNonCracked) {
+    auto input = Scan("MVI_63563_960x576_100frames");
     PixelMetadataSpecification selection("labels", "label", "van");
     Coordinator().execute(input.Select(selection).Store("vans_from_cracked"));
 }

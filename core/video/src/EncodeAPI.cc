@@ -3,6 +3,15 @@
 #include <gtest/gtest.h>
 #include <dlfcn.h>
 
+#include <chrono>
+#include <iostream>
+
+#define START_TIMER auto start = std::chrono::high_resolution_clock::now();
+#define STOP_TIMER(print_message) void(); // std::cout << std::endl << print_message << \
+    std::chrono::duration_cast<std::chrono::milliseconds>( \
+    std::chrono::high_resolution_clock::now() - start).count() \
+    << " ms " << std::endl;
+
 // Imports from nvUtils.h
 #define FALSE 0
 #define TRUE  1
@@ -648,12 +657,14 @@ NVENCSTATUS EncodeAPI::NvEncReconfigureEncoder(const NvEncPictureCommand *pEncPi
 //        stReconfigParams.forceIDR = pEncPicCommand->bResolutionChangePending ? 1 : 0;
 //        stReconfigParams.resetEncoder = 1;
 
+        START_TIMER
         nvStatus = m_pEncodeAPI->nvEncReconfigureEncoder(encodeSessionHandle, &reconfigureParams);
         if (nvStatus != NV_ENC_SUCCESS)
         {
             LOG(ERROR) << "nvEncReconfigureEncoder";
             assert(0);
         }
+        STOP_TIMER("*** Time to reconfigure encoder: ")
     }
 
     return nvStatus;

@@ -8,6 +8,15 @@
 #include "spsc_queue.h"
 #include "cuviddec.h"
 
+#include <chrono>
+#include <iostream>
+
+#define START_TIMER auto start = std::chrono::high_resolution_clock::now();
+#define STOP_TIMER(print_message) std::cout << std::endl << print_message << \
+    std::chrono::duration_cast<std::chrono::milliseconds>( \
+    std::chrono::high_resolution_clock::now() - start).count() \
+    << " ms " << std::endl;
+
 class VideoDecoder {
 public:
     const DecodeConfiguration& configuration() const { return configuration_; }
@@ -81,11 +90,13 @@ public:
 
       reconfigParams.ulNumDecodeSurfaces = creationInfo_.ulNumDecodeSurfaces;
 
+      START_TIMER
       lock().lock();
       CUresult result;
       if ((result = cuvidReconfigureDecoder(handle_, &reconfigParams)) != CUDA_SUCCESS)
           throw GpuCudaRuntimeError("Failed to reconfigure decoder", result);
       lock().unlock();
+      STOP_TIMER("*** Time to reconfigure decoder: ")
   }
 
   void updateConfiguration(DecodeConfiguration &newConfiguration) {

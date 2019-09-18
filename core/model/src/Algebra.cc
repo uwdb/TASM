@@ -87,9 +87,12 @@ namespace lightdb::logical {
     LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType) {
         if (this_.is<ExternalLightField>())
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, std::vector<catalog::Source>({ this_.downcast<ExternalLightField>().source() }), std::optional(this_.downcast<ExternalLightField>().source().filename().parent_path()));
-        else if (this_.is<ScannedLightField>())
-            return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, this_.downcast<ScannedLightField>().sources().front());
-        else if (this_.is<ScannedTiledLightField>()) {
+        else if (this_.is<ScannedLightField>()) {
+            auto &scan = this_.downcast<ScannedLightField>();
+            return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType,
+                                                                       scan.sources(),
+                                                                       std::optional(scan.entry().name()));
+        } else if (this_.is<ScannedTiledLightField>()) {
             auto &scan = this_.downcast<ScannedTiledLightField>();
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, scan.sources(), std::optional(scan.entry().name()));
         } else if (this_.is<ScannedMultiTiledLightField>()) {
@@ -109,9 +112,16 @@ namespace lightdb::logical {
         return LightFieldReference::make<StoredLightField>(this_, name, catalog, geometry, codec);
     }
 
-    LightFieldReference Algebra::StoreCracked(const std::string &name, const lightdb::Codec &codec,
-                                              const std::optional<lightdb::GeometryReference> &geometry) {
-        return LightFieldReference::make<CrackedLightField>(this_, name, catalog::Catalog::instance(), geometry, codec);
+    LightFieldReference Algebra::StoreCracked(const std::string &name,
+                                              const std::string &metadataIdentifier,
+                                              const MetadataSpecification * const metadataSpecification) {
+        std::shared_ptr<metadata::MetadataManager> metadataManager_;
+        if (metadataIdentifier.length()) {
+            assert(metadataSpecification);
+            metadataManager_ = std::make_shared<metadata::MetadataManager>(metadataIdentifier, *metadataSpecification);
+        }
+
+        return LightFieldReference::make<CrackedLightField>(this_, name, catalog::Catalog::instance(), std::nullopt, Codec::hevc(), metadataManager_);
     }
 
     LightFieldReference Algebra::Sink() {

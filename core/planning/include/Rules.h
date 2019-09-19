@@ -486,7 +486,7 @@ namespace lightdb::optimization {
 
                 return true;
             }
-f
+
             return false;
         }
 

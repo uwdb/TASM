@@ -507,7 +507,7 @@ NVENCSTATUS EncodeAPI::NvEncDestroyEncoder()
 NVENCSTATUS EncodeAPI::ResetEncoder()
 {
     NV_ENC_RECONFIGURE_PARAMS parameters = {};
-    parameters.version = NV_ENC_RECONFIGURE_PARAMS_VER;
+    SET_VER(parameters, NV_ENC_RECONFIGURE_PARAMS)
     parameters.resetEncoder = 1;
     //parameters.forceIDR = 1;
     parameters.reInitEncodeParams = m_stCreateEncodeParams;
@@ -632,9 +632,12 @@ NVENCSTATUS EncodeAPI::NvEncReconfigureEncoder(const NvEncPictureCommand *pEncPi
 //            m_stEncodeConfig.rcParams.vbvInitialDelay = m_stEncodeConfig.rcParams.vbvBufferSize;
 //        }
 
-        NV_ENC_RECONFIGURE_PARAMS reconfigureParams = {NV_ENC_RECONFIGURE_PARAMS_VER};
+        NV_ENC_RECONFIGURE_PARAMS reconfigureParams;
+        memset(&reconfigureParams, 0, sizeof(reconfigureParams));
+        SET_VER(reconfigureParams, NV_ENC_RECONFIGURE_PARAMS);
         memcpy(&reconfigureParams.reInitEncodeParams, &m_stCreateEncodeParams, sizeof(m_stCreateEncodeParams));
-        NV_ENC_CONFIG reInitCodecConfig = { NV_ENC_CONFIG_VER };
+        NV_ENC_CONFIG reInitCodecConfig;
+        SET_VER(reInitCodecConfig, NV_ENC_CONFIG);
         memcpy(&reInitCodecConfig, m_stCreateEncodeParams.encodeConfig, sizeof(reInitCodecConfig));
         reconfigureParams.reInitEncodeParams.encodeConfig = &reInitCodecConfig;
 

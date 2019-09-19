@@ -35,6 +35,7 @@ public:
     {
         if (filename_.extension() != ".mp4") {
             invalidFile_ = true;
+            file_ = NULL;
             return;
         }
 
@@ -72,7 +73,10 @@ public:
         numberOfSamplesRead_(other.numberOfSamplesRead_),
         invalidFile_(other.invalidFile_)
     {
-        setUpGFIsomFile();
+        if (invalidFile_)
+            file_ = NULL;
+        else
+            setUpGFIsomFile();
     }
 
     ~MP4Reader() {

@@ -5,7 +5,7 @@
 #include "Rectangle.h"
 #include "MultipleEncoderManager.h"
 
-#include <ipp.h>
+#include "ipp.h"
 
 namespace lightdb::physical {
 

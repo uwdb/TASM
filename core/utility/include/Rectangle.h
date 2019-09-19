@@ -47,7 +47,7 @@ namespace lightdb {
             auto left = std::max(x, other.x);
             auto right = std::min(x + width, other.x + other.width);
 
-            return Rectangle(id, left, top, bottom - top, right - left);
+            return Rectangle(id, left, top, right - left, bottom - top);
         }
     };
 } // namespace lightdb

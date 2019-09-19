@@ -168,8 +168,10 @@ private:
 
         if(decoder == nullptr)
             LOG(ERROR) << "Unexpected null decoder during video decode (HandlePictureDisplay)";
-        else
+        else {
+            decoder->mapFrame(frame);
             decoder->frame_queue().enqueue(frame);
+        }
 
         return 1;
     }

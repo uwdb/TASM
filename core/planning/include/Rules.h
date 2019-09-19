@@ -474,6 +474,7 @@ namespace lightdb::optimization {
                                                             tileLocationProvider);
 
                     decodes.push_back(plan().emplace<physical::GPUDecodeOptionalFromCPU>(logical, scan, gpu));
+
                 }
 
                 // Add a merge operator whose parents are the decodes.
@@ -485,7 +486,7 @@ namespace lightdb::optimization {
 
                 return true;
             }
-
+f
             return false;
         }
 
@@ -523,7 +524,6 @@ namespace lightdb::optimization {
                         auto &scanParent = parent->parents()[0];
                         auto &scan = scanParent.downcast<physical::ScanFramesFromFileEncodedReader>();
                         scan.setFramesToRead(node.orderedFramesForMetadata());
-//                        auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, parent, gpu);
                         plan().emplace<physical::GPUNaiveSelectPixels>(logical, parent, 0, tiles::NoTilesLayout);
 
                         return true;
@@ -584,7 +584,7 @@ namespace lightdb::optimization {
                     // TODO: Add operator to interleave nals from different tiles.
                     if (isSelectingPixelsAlone) {
                         assert(tileLayoutPtr);
-                        plan().emplace<physical::MergeTilePixels>(
+                        auto merge = plan().emplace<physical::MergeTilePixels>(
                                 logical,
                                 lastPerTileOperators,
                                 *tileLayoutPtr,
@@ -1019,7 +1019,7 @@ namespace lightdb::optimization {
                                                             source.configuration().width,
                                                             source.configuration().height);
                 } else {
-                    tileConfig = std::make_shared<tiles::GOP30TileConfigurationProvider>();
+                    tileConfig = std::make_shared<tiles::CustomVan4x4TileConfigurationProvider>();
                 }
 
                 auto crack = plan().emplace<physical::CrackVideo>(

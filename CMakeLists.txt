@@ -6,6 +6,8 @@ SET(BOOST_MIN_VERSION "1.64.0")
 # Set the cmake Module path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
+#set(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
+#enable_language(CUDA)
 
 # Set shared library suffix
 if(APPLE)
@@ -43,6 +45,10 @@ include(cmake/nvenc.cmake)
 find_package(CUDA 8.0 REQUIRED)
 # Using SYSTEM breaks building.
 include_directories(${CUDA_INCLUDE_DIRS}) #  /usr/local/cuda-8.0/include ${CUDA_INCLUDE_DIRS}
+link_directories(/opt/intel/ipp/lib/intel64)
+include_directories(/opt/intel/ipp/include)
+set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ipps ippi ippcc)
+message("dependencies: ${LIGHTDB_LIB_DEPENDENCIES}")
 message("Cuda include: ${CUDA_INCLUDE_DIRS}")
 message("libs: ${CUDA_CUDA_LIBRARY}, ${CUDA_nvcuvenc_LIBRARY}")
 set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${CUDA_CUDA_LIBRARY} ${CUDA_nvcuvenc_LIBRARY} /usr/lib/x86_64-linux-gnu/libnvcuvid.so)

@@ -3,6 +3,9 @@
 
 #include "PhysicalOperators.h"
 #include "Rectangle.h"
+#include "MultipleEncoderManager.h"
+
+#include <ipp.h>
 
 namespace lightdb::physical {
 
@@ -84,6 +87,7 @@ private:
                     if (iterators()[index] != iterators()[index].eos()) {
                         auto tileNumber = physical().tileNumberForParentIndex(index);
                         auto decoded = (iterators()[index]++).downcast<GPUDecodedFrameData>();
+
                         for (auto &frame : decoded.frames()) {
                             // Get rectangles for frame.
                             int frameNumber = -1;
@@ -173,6 +177,7 @@ private:
         }
 
         void copyTilePixelsFromFrameToRectangleFrame(const Rectangle &tileRectangle, GPUFrameReference frame, const Rectangle &objectRectangle) {
+            // TODO: There are some artifacts from the copying.
             // If we don't have a frame for the rectangle yet, create one.
             GPUFrameReference rectangleFrame = frameForRectangle(objectRectangle);
 
@@ -426,6 +431,103 @@ private:
 
     tiles::TileLayout tileLayout_;
 };
+
+//class SaveFramesToFiles: public PhysicalOperator, public GPUOperator {
+//public:
+//    explicit SaveFramesToFiles(const LightFieldReference &logical,
+//            PhysicalOperatorReference &parent)
+//            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "SaveFramesToFiles-init")),
+//            GPUOperator(parent)
+//    { }
+//
+//private:
+//    class Runtime : public runtime::GPUUnaryRuntime<SaveFramesToFiles, GPUDecodedFrameData> {
+//    public:
+//        explicit Runtime(SaveFramesToFiles &physical)
+//            : runtime::GPUUnaryRuntime<SaveFramesToFiles, GPUDecodedFrameData>(physical)
+//        { }
+//
+//        std::optional<MaterializedLightFieldReference> read() override {
+//            static unsigned int identifier = 0;
+//            if (iterator() == iterator().eos())
+//                return {};
+//
+//            auto &decoded = *iterator();
+//            for (auto &frame : decoded.frames()) {
+//                createImage(frame->width(), frame->height(), GetLocalImage(*frame->cuda(), frame->width(), frame->height()));
+//            }
+//            ++iterator();
+//
+//            return EmptyData(DeviceType::GPU);
+//        }
+//
+//    private:
+//        std::unique_ptr<bytestring> GetLocalImage(const CudaFrame &source, unsigned int width, unsigned int height) {
+//                std::unique_ptr<bytestring> data(new bytestring(width * height * 3 / 2, 0));
+//
+//                CUresult status;
+//                auto params = CUDA_MEMCPY2D {
+//                        .srcXInBytes = 0,
+//                        .srcY = 0,
+//                        .srcMemoryType = CU_MEMORYTYPE_DEVICE,
+//                        .srcHost = nullptr,
+//                        .srcDevice = source.handle(),
+//                        .srcArray = nullptr,
+//                        .srcPitch = source.pitch(),
+//
+//                        .dstXInBytes = 0,
+//                        .dstY = 0,
+//
+//                        .dstMemoryType = CU_MEMORYTYPE_HOST,
+//                        .dstHost = data->data(),
+//                        .dstDevice = 0,
+//                        .dstArray = nullptr,
+//                        .dstPitch = 0,
+//
+//                        .WidthInBytes = width,
+//                        .Height = height * 3 / 2
+//                };
+//
+//                if((status = cuMemcpy2D(&params)) != CUDA_SUCCESS)
+//                    throw GpuCudaRuntimeError("Call to cuMemcpy2D failed", status);
+//
+//                auto max = std::max(data->begin(), data->end());
+//                return data;
+//        }
+//
+//        void createImage(int width, int height, std::unique_ptr<bytestring> frameData) {
+//            unsigned int frameSize = width * height;
+//            unsigned int totalSize = frameSize * 3;
+//
+//            std::vector<unsigned char> rgb(totalSize);
+//            std::vector<unsigned char> planes(totalSize);
+//            std::vector<float> scaled(totalSize);
+//
+//            auto y_data = reinterpret_cast<const unsigned char*>(frameData->data());
+//            auto uv_data = y_data + frameSize;
+//            IppiSize size{static_cast<int>(width), static_cast<int>(height)};
+//            ippiYCbCr420ToRGB_8u_P2C3R(y_data, width, uv_data, width, rgb.data(),
+//                                       3 * width, size);//== ippStsNoErr);
+//            assert(ippiCopy_8u_C3P3R(rgb.data(), 3 * width, std::initializer_list<unsigned char *>(
+//                    {planes.data(), planes.data() + frameSize, planes.data() + 2 * frameSize}).begin(),
+//                                     width, size) == ippStsNoErr);
+//            assert(ippsConvert_8u32f(planes.data(), scaled.data(), totalSize) == ippStsNoErr);
+//            assert(ippsDivC_32f_I(255.f, scaled.data(), totalSize) == ippStsNoErr);
+//
+//            auto path = "/home/maureen/frames_to_files/asImage.bin";
+//            std::ofstream ofs(path, std::ios::out | std::ios::binary);
+//            ofs.write(reinterpret_cast<char*>(planes.data()), planes.size());
+//            ofs.close();
+//        }
+//
+//        void saveToFile(bytestring &values) {
+//            auto path = std::string(fileStem_) + std::to_string(currentIndex_++) + ".hevc";
+//            std::ofstream ofs(path);
+//            ofs.write(values.data(), values.size());
+//            ofs.close();
+//        }
+//    };
+//};
 
 } // namespace lightdb::physical
 

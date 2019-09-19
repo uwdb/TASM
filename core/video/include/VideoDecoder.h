@@ -10,6 +10,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <mutex>
 
 #define START_TIMER auto start = std::chrono::high_resolution_clock::now();
 #define STOP_TIMER(print_message) std::cout << std::endl << print_message << \
@@ -123,11 +124,20 @@ public:
   VideoLock &lock() const {return lock_; }
   lightdb::spsc_queue<int> &frameNumberQueue() const { return frameNumberQueue_; }
 
+  void mapFrame(CUVIDPARSERDISPINFO *frame);
+  void unmapFrame(unsigned int picIndex) const;
+  std::pair<CUdeviceptr , unsigned int> &frameInfoForPicIndex(unsigned int picIndex) const;
+
 protected:
   CUvideodecoder handle_;
   VideoLock &lock_;
   lightdb::spsc_queue<int> &frameNumberQueue_;
   CUVIDDECODECREATEINFO creationInfo_;
+
+  // pic Index -> handle + pitch.
+  mutable std::mutex picIndexMutex_;
+  mutable std::unordered_map<unsigned int, std::pair<CUdeviceptr, unsigned int>> picIndexToMappedFrameInfo_;
+
 
 private:
     static bool DECODER_DESTROYED;

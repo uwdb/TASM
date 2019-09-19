@@ -72,6 +72,8 @@ namespace lightdb::associations {
                     {"/home/maureen/noscope_videos/tiles/shortened/black-tile-1.hevc", "/home/maureen/noscope_videos/tiles/jackson_town_square_1hr_resized.db"},
                     {"MVI_63563_960x576_100frames_cracked", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
                     {"MVI_63563_960x576_100frames", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
+                    {"MVI_63563_960x576_100frames_cracked_van", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
+                    {"MVI_63563_960x576_100frames_cracked_van4x4", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
             } );
 } // namespace lightdb::associations
 

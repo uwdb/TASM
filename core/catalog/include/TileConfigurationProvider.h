@@ -262,6 +262,44 @@ public:
     }
 };
 
+class CustomVanTileConfigurationProvider : public TileConfigurationProvider {
+public:
+    unsigned int maximumNumberOfTiles() override {
+        return 4;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        static TileLayout twoTileLayout = TileLayout(2, 1, {480, 480}, {576});
+        static TileLayout fourTileLayout = TileLayout(2, 2, {480, 480}, {288, 288});
+
+        if (frame <= 15)
+            return twoTileLayout;
+        else if (frame > 15 && frame < 55)
+            return fourTileLayout;
+        else
+            return twoTileLayout;
+    }
+};
+
+class CustomVan4x4TileConfigurationProvider : public TileConfigurationProvider {
+public:
+    unsigned int maximumNumberOfTiles() override {
+        return 4;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        static TileLayout twoTileLayout = TileLayout(2, 1, {480, 480}, {576});
+        static TileLayout fourTileLayout = TileLayout(2, 2, {480, 480}, {288, 288});
+
+        if (frame <= 15)
+            return fourTileLayout;
+        else if (frame > 15 && frame < 55)
+            return twoTileLayout;
+        else
+            return fourTileLayout;
+    }
+};
+
 // TODO: Should this have a TileConfigurationProvider that uses the available possible tile layouts
 // to return one for each frame?
 class TileLayoutsManager {

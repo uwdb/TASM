@@ -33,26 +33,38 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
     mapParameters.progressive_frame = frame->progressive_frame;
     mapParameters.top_field_first = frame->top_field_first;
     mapParameters.unpaired_field = frame->progressive_frame == 1 || frame->repeat_first_field <= 1;
+    {
+        std::scoped_lock lock(lock_);
+        if ((result = cuvidMapVideoFrame(handle(), frame->picture_index,
+                                         &mappedHandle, &pitch, &mapParameters)) != CUDA_SUCCESS)
+            throw GpuCudaRuntimeError("Call to cuvidMapVideoFrame failed", result);
+    }
 
-    if((result = cuvidMapVideoFrame(handle(), frame->picture_index,
-                                    &mappedHandle, &pitch, &mapParameters)) != CUDA_SUCCESS)
-        throw GpuCudaRuntimeError("Call to cuvidMapVideoFrame failed", result);
-
-    std::scoped_lock lock(picIndexMutex_);
-    assert(!picIndexToMappedFrameInfo_.count(frame->picture_index));
-    picIndexToMappedFrameInfo_.emplace(std::pair<unsigned int, DecodedFrameInformation>(
-            std::piecewise_construct,
-            std::forward_as_tuple(frame->picture_index),
-            std::forward_as_tuple(mappedHandle, pitch, format)));
+    {
+        std::scoped_lock lock(picIndexMutex_);
+        assert(!picIndexToMappedFrameInfo_.count(frame->picture_index));
+        picIndexToMappedFrameInfo_.emplace(std::pair<unsigned int, DecodedFrameInformation>(
+                std::piecewise_construct,
+                std::forward_as_tuple(frame->picture_index),
+                std::forward_as_tuple(mappedHandle, pitch, format)));
+    }
 }
 
 void CudaDecoder::unmapFrame(unsigned int picIndex) const {
-    std::scoped_lock lock(picIndexMutex_);
-    assert(picIndexToMappedFrameInfo_.count(picIndex));
-    CUresult result = cuvidUnmapVideoFrame(handle(), picIndexToMappedFrameInfo_.at(picIndex).handle);
-    assert(result == CUDA_SUCCESS);
+    CUdeviceptr frameHandle;
+    {
+        std::scoped_lock lock(picIndexMutex_);
+        assert(picIndexToMappedFrameInfo_.count(picIndex));
+        frameHandle = picIndexToMappedFrameInfo_.at(picIndex).handle;
 
-    picIndexToMappedFrameInfo_.erase(picIndex);
+        // This is an unideal ordering to erase before unmapping, but I think it will be fine.
+        picIndexToMappedFrameInfo_.erase(picIndex);
+    }
+    {
+        std::scoped_lock lock(lock_);
+        CUresult result = cuvidUnmapVideoFrame(handle(), frameHandle);
+        assert(result == CUDA_SUCCESS);
+    }
 }
 
 std::pair<CUdeviceptr, unsigned int> CudaDecoder::frameInfoForPicIndex(unsigned int picIndex) const {

@@ -145,8 +145,7 @@ public:
               size_t source_top, size_t source_left,
               size_t destination_top=0, size_t destination_left=0,
               size_t coded_height=0) {
-        // TODO: This should likely be using the coded height to find the different planes.
-        auto actualHeight = coded_height ?: height();
+        auto actualHeight = coded_height ?: source.height();
 
         CUDA_MEMCPY2D lumaPlaneParameters = {
                 .srcXInBytes   =   source_left,

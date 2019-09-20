@@ -5,8 +5,8 @@ namespace lightdb {
 void TileEncoder::updateConfiguration(unsigned int newWidth, unsigned int newHeight) {
     NvEncPictureCommand picCommand;
     picCommand.bResolutionChangePending = true;
-    picCommand.newWidth = std::max(newWidth, 128u);
-    picCommand.newHeight = std::max(newHeight, 64u);
+    picCommand.newWidth = newWidth;
+    picCommand.newHeight = newHeight;
 
     auto result = encoder_.api().NvEncReconfigureEncoder(&picCommand);
     assert(result == NV_ENC_SUCCESS);

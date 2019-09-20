@@ -64,7 +64,7 @@ private:
                     maxProcessedFrameNumbers_(physical.parents().size(), -1),
                     numberOfRectanglesProcessed_(0),
                     inNoTilesCase_(false),
-                    geometry_((*iterators().front()).downcast<GPUDecodedFrameData>().geometry())
+                    geometry_(GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()))
         {
             setConfiguration();
 
@@ -139,14 +139,23 @@ private:
         }
 
         void setConfiguration() {
-            auto base = (*iterators().front()).downcast<GPUDecodedFrameData>().configuration();
-            configuration_ = Configuration{static_cast<unsigned int>(base.width),
-                                           static_cast<unsigned int>(base.height),
-                                           0, 0,
-                                           base.bitrate, base.framerate,
-                                           {static_cast<unsigned int>(0),
-                                            static_cast<unsigned int>(0)}};
+            // Find an interator that is not eos.
+            // If they are all eos, then no configuration.
+            for (auto & iterator : iterators()) {
+                if (iterator == iterator.eos())
+                    continue;
 
+                auto base = (*iterator).downcast<GPUDecodedFrameData>().configuration();
+                configuration_ = Configuration{static_cast<unsigned int>(base.width),
+                                               static_cast<unsigned int>(base.height),
+                                               0, 0,
+                                               base.bitrate, base.framerate,
+                                               {static_cast<unsigned int>(0),
+                                                static_cast<unsigned int>(0)}};
+                return;
+            }
+            // There should always be at least some data.
+            assert(false);
         }
 
         void updateMaxProcessedFrameNumber(int frameNumber, int parentIndex) {

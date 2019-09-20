@@ -7,6 +7,7 @@
 #include "errors.h"
 #include "spsc_queue.h"
 #include "cuviddec.h"
+#include "nvcuvid.h"
 
 #include <chrono>
 #include <iostream>
@@ -41,10 +42,12 @@ public:
   CudaDecoder(const DecodeConfiguration &configuration, FrameQueue& frame_queue, VideoLock& lock, lightdb::spsc_queue<int>& frameNumberQueue)
           : VideoDecoder(configuration, frame_queue), handle_(nullptr),
             lock_(lock),
-            frameNumberQueue_(frameNumberQueue)
+            frameNumberQueue_(frameNumberQueue),
+            currentBitrate_(0)
   {
       CUresult result;
       creationInfo_ = this->configuration().AsCuvidCreateInfo(lock);
+      currentFormat_ = FormatFromCreateInfo(creationInfo_);
 
       if((result = cuvidCreateDecoder(&handle_, &creationInfo_)) != CUDA_SUCCESS) {
           throw GpuCudaRuntimeError("Call to cuvidCreateDecoder failed", result);
@@ -69,55 +72,50 @@ public:
       }
   }
 
-  void reconfigureDecoder(CUVIDEOFORMAT *newFormat) {
-      if (newFormat->coded_width > creationInfo_.ulMaxWidth)
-          assert(false);
-      if (newFormat->coded_height > creationInfo_.ulMaxHeight)
-          assert(false);
+  bool reconfigureDecoderIfNecessary(CUVIDEOFORMAT *newFormat) {
+      assert(newFormat->coded_width <= creationInfo_.ulMaxWidth);
+      assert(newFormat->coded_height <= creationInfo_.ulMaxHeight);
+
+      // For now, only support reconfiguring dimensions.
+      if (!currentBitrate_)
+          currentBitrate_ = newFormat->bitrate;
+      else
+          assert(currentBitrate_ == newFormat->bitrate);
+
+      if (currentFormat_.coded_width == newFormat->coded_width
+            && currentFormat_.coded_height == newFormat->coded_height
+            && currentFormat_.display_area.top == newFormat->display_area.top
+            && currentFormat_.display_area.left == newFormat->display_area.left
+            && currentFormat_.display_area.right == newFormat->display_area.right
+            && currentFormat_.display_area.bottom == newFormat->display_area.bottom)
+          return false;
+
+      memcpy(&currentFormat_, newFormat, sizeof(currentFormat_));
 
       CUVIDRECONFIGUREDECODERINFO reconfigParams;
       memset(&reconfigParams, 0, sizeof(CUVIDRECONFIGUREDECODERINFO));
       reconfigParams.ulWidth = newFormat->coded_width;
       reconfigParams.ulHeight = newFormat->coded_height;
 
-      // Assume top and left offsets are 0.
-      reconfigParams.display_area.top = 0;
-      reconfigParams.display_area.left = 0;
-      reconfigParams.display_area.right = newFormat->coded_width;
-      reconfigParams.display_area.bottom = newFormat->coded_height;
+      reconfigParams.display_area.top = newFormat->display_area.top;
+      reconfigParams.display_area.left = newFormat->display_area.left;
+      reconfigParams.display_area.right = newFormat->display_area.right;
+      reconfigParams.display_area.bottom = newFormat->display_area.bottom;
 
       reconfigParams.ulTargetWidth = newFormat->coded_width;
       reconfigParams.ulTargetHeight = newFormat->coded_height;
 
-      reconfigParams.ulNumDecodeSurfaces = creationInfo_.ulNumDecodeSurfaces;
+      reconfigParams.ulNumDecodeSurfaces = newFormat->min_num_decode_surfaces;
 
-      START_TIMER
+//      START_TIMER
       lock().lock();
       CUresult result;
       if ((result = cuvidReconfigureDecoder(handle_, &reconfigParams)) != CUDA_SUCCESS)
           throw GpuCudaRuntimeError("Failed to reconfigure decoder", result);
       lock().unlock();
-      STOP_TIMER("*** Time to reconfigure decoder: ")
-  }
+//      STOP_TIMER("*** Time to reconfigure decoder: ")
 
-  void updateConfiguration(DecodeConfiguration &newConfiguration) {
-      // Will this mess up if pictures are currently being decoded?
-      CUresult result;
-      // As a hack for now, just update the configuration's width and height.
-      configuration_.width = newConfiguration.width;
-      configuration_.height = newConfiguration.height;
-      auto decoderCreateInfo = this->configuration().AsCuvidCreateInfo(lock_);
-
-      if ((result = cuvidDestroyDecoder(handle_)) != CUDA_SUCCESS) {
-          throw GpuCudaRuntimeError("Call to cuvidDestroyDecoder failed", result);
-      }
-
-      handle_ = nullptr;
-      if ((result = cuvidCreateDecoder(&handle_, &decoderCreateInfo)) != CUDA_SUCCESS) {
-          throw GpuCudaRuntimeError("Call to cuvidCreateDecoder failed", result);
-      } else {
-          LOG(INFO) << "made decoder";
-      }
+      return true;
   }
 
   CUvideodecoder handle() const { return handle_; }
@@ -134,12 +132,17 @@ protected:
   lightdb::spsc_queue<int> &frameNumberQueue_;
   CUVIDDECODECREATEINFO creationInfo_;
 
+  CUVIDEOFORMAT currentFormat_;
+  unsigned int currentBitrate_;
+
   // pic Index -> handle + pitch.
   mutable std::mutex picIndexMutex_;
   mutable std::unordered_map<unsigned int, std::pair<CUdeviceptr, unsigned int>> picIndexToMappedFrameInfo_;
 
 
 private:
+    static CUVIDEOFORMAT FormatFromCreateInfo(CUVIDDECODECREATEINFO);
+
     static bool DECODER_DESTROYED;
 };
 

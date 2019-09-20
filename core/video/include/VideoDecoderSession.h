@@ -88,11 +88,6 @@ protected:
     }
 
 private:
-    static void reconfigureDecoder(CudaDecoder *decoder, CUVIDEOFORMAT *format) {
-        // For now only support changing the width/height.
-        decoder->reconfigureDecoder(format);
-    }
-
     static CudaDecoder& RestartDecoder(CudaDecoder& decoder) {
         decoder.frame_queue().reset();
         return decoder;
@@ -134,14 +129,11 @@ private:
 
         if(decoder == nullptr)
             LOG(ERROR) << "Unexpected null decoder during video decode (HandleVideoSequence)";
-        else if (format->coded_width != decoder->configuration().width
-                    || format->coded_height != decoder->configuration().height)
-            reconfigureDecoder(decoder, format);
-        else if ((format->codec != decoder->configuration().codec.cudaId()) ||
-                 ((static_cast<unsigned int>(format->display_area.right - format->display_area.left)) != decoder->configuration().width) ||
-                 ((static_cast<unsigned int>(format->display_area.bottom - format->display_area.top)) != decoder->configuration().height) ||
-                 (format->coded_width < decoder->configuration().width) ||
-                 (format->coded_height < decoder->configuration().height) ||
+        else if (decoder->reconfigureDecoderIfNecessary(format)) {
+            // Pass to skip the check below. Do the check if the decoder was not reconfigured because those are cases
+            // where it should have been reconfigured.
+            return 1;
+        } else if ((format->codec != decoder->configuration().codec.cudaId()) ||
                  (format->chroma_format != decoder->configuration().chroma_format))
             throw GpuRuntimeError("Video format changed but not currently supported");
 

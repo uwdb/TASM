@@ -6,29 +6,10 @@
 #include "gpac/internal/isomedia_dev.h"
 #include "gpac/list.h"
 #include <filesystem>
+#include <mutex>
 
 class MP4Reader {
 public:
-//    static std::vector<int> keyframesForFile(const std::filesystem::path &filename) {
-//        if (filename.extension() != ".mp4")
-//            return {};
-//
-//        static const int trackNumber = 1;
-//
-//        GF_ISOFile *file = gf_isom_open(filename.c_str(), GF_ISOM_OPEN_READ, nullptr);
-//        GF_TrackBox *trak = gf_isom_get_track_from_file2(file, trackNumber);
-//        GF_SyncSampleBox *sampleBox = trak->Media->information->sampleTable->SyncSample;
-//
-//        if (!sampleBox)
-//            return {};
-//
-//        std::vector<int> keyframes(sampleBox->nb_entries);
-//        for (auto i = 0; i < sampleBox->nb_entries; ++i)
-//            keyframes[i] = sampleNumberToFrameNumber(sampleBox->sampleNumbers[i]);
-//
-//        return keyframes;
-//    }
-
     explicit MP4Reader(const std::filesystem::path &filename)
         : filename_(filename),
         invalidFile_(false)
@@ -80,6 +61,8 @@ public:
     }
 
     ~MP4Reader() {
+        // Was getting segfaults here. Seems like there may be threading issues but have to look more into it.
+        std::scoped_lock lock(fileMutex_);
         if (file_) {
             gf_isom_close(file_);
             file_ = NULL;
@@ -114,6 +97,7 @@ public:
 
 private:
     void setUpGFIsomFile() {
+        std::scoped_lock lock(fileMutex_);
         file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
         u32 flags = GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG | GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG;
         // I think the ANNEXB flag adds AUD NALS.
@@ -142,6 +126,7 @@ private:
     unsigned int numberOfSamples_;
     unsigned int numberOfSamplesRead_ = 0;
     bool invalidFile_;
+    std::mutex fileMutex_;
 };
 
 #endif //LIGHTDB_MP4READER_H

@@ -45,13 +45,14 @@ include(cmake/nvenc.cmake)
 find_package(CUDA 8.0 REQUIRED)
 # Using SYSTEM breaks building.
 include_directories(${CUDA_INCLUDE_DIRS}) #  /usr/local/cuda-8.0/include ${CUDA_INCLUDE_DIRS}
-link_directories(/opt/intel/ipp/lib/intel64)
-include_directories(/opt/intel/ipp/include)
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ipps ippi ippcc)
-message("dependencies: ${LIGHTDB_LIB_DEPENDENCIES}")
 message("Cuda include: ${CUDA_INCLUDE_DIRS}")
 message("libs: ${CUDA_CUDA_LIBRARY}, ${CUDA_nvcuvenc_LIBRARY}")
 set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${CUDA_CUDA_LIBRARY} ${CUDA_nvcuvenc_LIBRARY} /usr/lib/x86_64-linux-gnu/libnvcuvid.so)
+
+# For ipp stuff in saving frames as images.
+link_directories(/opt/intel/ipp/lib/intel64)
+include_directories(/opt/intel/ipp/include)
+set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ipps ippi ippcc)
 
 #TODO add FindLLV.cmake; clean this up
 #TODO Do we still depend on OpenCV outside of plugins?

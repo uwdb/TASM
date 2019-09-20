@@ -144,6 +144,7 @@ public:
     void copy(VideoLock &lock, const CudaFrame &source,
               size_t source_top, size_t source_left,
               size_t destination_top=0, size_t destination_left=0) {
+        // TODO: This should likely be using the coded height to find the different planes.
 
         CUDA_MEMCPY2D lumaPlaneParameters = {
                 .srcXInBytes   =   source_left,

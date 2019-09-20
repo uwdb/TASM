@@ -14,8 +14,9 @@ CUVIDDECODECREATEINFO DecodeConfiguration::AsCuvidCreateInfo(CUvideoctxlock lock
     else if(!codec.cudaId().has_value())
         throw GpuCudaRuntimeError("Codec does not have a CUDA equivalent", CUDA_ERROR_INVALID_VALUE);
     else {
-        CUVIDDECODECREATEINFO info = { 0 };
-        info.ulWidth = width;
+        CUVIDDECODECREATEINFO info;
+        memset(&info, 0, sizeof(info));
+        info.ulWidth = width; // TODO: This should use coded width/height from configuration.
         info.ulHeight = height;
         info.ulNumDecodeSurfaces = decode_surfaces;
         info.CodecType = codec.cudaId().value();

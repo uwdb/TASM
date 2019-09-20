@@ -186,6 +186,7 @@ static std::vector<unsigned int> tileDimensionsForIntervals(const CoalescedInter
         startPosition = newOffset;
     };
 
+    // TODO: Dimensions have to be an even number.
     for (const auto &interval : intervals.intervals()) {
         // If iterator.start - start_position >= minimum distance, we can make that range a tile.
         if (interval.start() - startPosition >= minimumDistance) {
@@ -216,8 +217,8 @@ static std::vector<unsigned int> tileDimensionsForIntervals(const CoalescedInter
 }
 
 const TileLayout &IdealTileConfigurationProvider::tileLayoutForFrame(unsigned int frame) {
-    static constexpr unsigned int const &minimumTileWidth = 256;
-    static constexpr unsigned int const &minimumTileHeight = 64;
+    static constexpr unsigned int const &minimumTileWidth = 256; // The spec says minimum width is 256, but decoder can do >= 136.
+    static constexpr unsigned int const &minimumTileHeight = 136; // The spec says that the minimum height is 64, but the decoder can only decode >= 136.
     static unsigned int maximumNumberOfTiles = 0;
 
     if (frameToTileLayout_.count(frame))

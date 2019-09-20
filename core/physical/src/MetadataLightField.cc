@@ -74,6 +74,7 @@ namespace lightdb::associations {
                     {"MVI_63563_960x576_100frames", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
                     {"MVI_63563_960x576_100frames_cracked_van", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
                     {"MVI_63563_960x576_100frames_cracked_van4x4", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
+                    {"MVI_63563_960x576_100frames_crackedForVan", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
             } );
 } // namespace lightdb::associations
 

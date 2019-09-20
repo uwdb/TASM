@@ -122,9 +122,18 @@ public:
   VideoLock &lock() const {return lock_; }
   lightdb::spsc_queue<int> &frameNumberQueue() const { return frameNumberQueue_; }
 
-  void mapFrame(CUVIDPARSERDISPINFO *frame);
+  CUVIDEOFORMAT currentFormat() const { return currentFormat_; }
+  void mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format);
   void unmapFrame(unsigned int picIndex) const;
-  std::pair<CUdeviceptr , unsigned int> &frameInfoForPicIndex(unsigned int picIndex) const;
+  std::pair<CUdeviceptr, unsigned int> frameInfoForPicIndex(unsigned int picIndex) const;
+
+  struct DecodedDimensions {
+      unsigned int displayWidth;
+      unsigned int displayHeight;
+      unsigned int codedWidth;
+      unsigned int codedHeight;
+  };
+  DecodedDimensions decodedDimensionsForPicIndex(unsigned int picIndex) const;
 
 protected:
   CUvideodecoder handle_;
@@ -137,7 +146,18 @@ protected:
 
   // pic Index -> handle + pitch.
   mutable std::mutex picIndexMutex_;
-  mutable std::unordered_map<unsigned int, std::pair<CUdeviceptr, unsigned int>> picIndexToMappedFrameInfo_;
+  struct DecodedFrameInformation {
+      DecodedFrameInformation(CUdeviceptr handle, unsigned int pitch, CUVIDEOFORMAT format)
+        : handle(handle),
+        pitch(pitch),
+        format(format)
+      { }
+
+      CUdeviceptr handle;
+      unsigned int pitch;
+      CUVIDEOFORMAT format;
+  };
+  mutable std::unordered_map<unsigned int, DecodedFrameInformation> picIndexToMappedFrameInfo_;
 
 
 private:

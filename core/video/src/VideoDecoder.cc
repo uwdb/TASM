@@ -24,7 +24,7 @@ CUVIDEOFORMAT CudaDecoder::FormatFromCreateInfo(CUVIDDECODECREATEINFO createInfo
     return format;
 }
 
-void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame) {
+void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
     CUresult result;
     CUdeviceptr mappedHandle;
     unsigned int pitch;
@@ -40,19 +40,33 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame) {
 
     std::scoped_lock lock(picIndexMutex_);
     assert(!picIndexToMappedFrameInfo_.count(frame->picture_index));
-    picIndexToMappedFrameInfo_.emplace(frame->picture_index, std::make_pair(mappedHandle, pitch));
+    picIndexToMappedFrameInfo_.emplace(std::pair<unsigned int, DecodedFrameInformation>(
+            std::piecewise_construct,
+            std::forward_as_tuple(frame->picture_index),
+            std::forward_as_tuple(mappedHandle, pitch, format)));
 }
 
 void CudaDecoder::unmapFrame(unsigned int picIndex) const {
     std::scoped_lock lock(picIndexMutex_);
     assert(picIndexToMappedFrameInfo_.count(picIndex));
-    CUresult result = cuvidUnmapVideoFrame(handle(), picIndexToMappedFrameInfo_.at(picIndex).first);
+    CUresult result = cuvidUnmapVideoFrame(handle(), picIndexToMappedFrameInfo_.at(picIndex).handle);
     assert(result == CUDA_SUCCESS);
 
     picIndexToMappedFrameInfo_.erase(picIndex);
 }
 
-std::pair<CUdeviceptr, unsigned int> &CudaDecoder::frameInfoForPicIndex(unsigned int picIndex) const {
+std::pair<CUdeviceptr, unsigned int> CudaDecoder::frameInfoForPicIndex(unsigned int picIndex) const {
     std::scoped_lock lock(picIndexMutex_);
-    return picIndexToMappedFrameInfo_.at(picIndex);
+    auto &decodedInfo = picIndexToMappedFrameInfo_.at(picIndex);
+    return std::make_pair(decodedInfo.handle, decodedInfo.pitch);
+}
+
+CudaDecoder::DecodedDimensions CudaDecoder::decodedDimensionsForPicIndex(unsigned int picIndex) const {
+    std::scoped_lock lock(picIndexMutex_);
+    auto &format = picIndexToMappedFrameInfo_.at(picIndex).format;
+
+    return {static_cast<unsigned int>(format.display_area.right - format.display_area.left),
+            static_cast<unsigned int>(format.display_area.bottom - format.display_area.top),
+            format.coded_width,
+            format.coded_height};
 }

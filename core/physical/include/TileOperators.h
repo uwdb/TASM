@@ -194,13 +194,17 @@ private:
             // Find the part of the tile that overlaps with the rectangle.
             auto overlappingRectangle = tileRectangle.overlappingRectangle(objectRectangle);
             auto topLeftOffsets = topAndLeftOffsetsOfTileIntoRectangle(tileRectangle, objectRectangle);
+
+            unsigned int codedHeight = frame.is<DecodedFrame>() ? frame.downcast<DecodedFrame>().codedHeight() : 0;
+
             rectangleFrame.downcast<CudaFrame>().copy(
                     lock(),
                     *frame->cuda(),
                     overlappingRectangle.y - tileRectangle.y,
                     overlappingRectangle.x - tileRectangle.x,
                     topLeftOffsets.first,
-                    topLeftOffsets.second);
+                    topLeftOffsets.second,
+                    codedHeight);
         }
 
         std::pair<int, int> topAndLeftOffsetsOfTileIntoRectangle(const Rectangle &tileRectangle, const Rectangle &objectRectangle) {

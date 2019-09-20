@@ -143,8 +143,10 @@ public:
 
     void copy(VideoLock &lock, const CudaFrame &source,
               size_t source_top, size_t source_left,
-              size_t destination_top=0, size_t destination_left=0) {
+              size_t destination_top=0, size_t destination_left=0,
+              size_t coded_height=0) {
         // TODO: This should likely be using the coded height to find the different planes.
+        auto actualHeight = coded_height ?: height();
 
         CUDA_MEMCPY2D lumaPlaneParameters = {
                 .srcXInBytes   =   source_left,
@@ -164,12 +166,14 @@ public:
                 .dstPitch      = pitch(),
 
                 .WidthInBytes  = std::min(width() - destination_left, source.width() - source_left),
+                // Only copy the display-height worth of luma/chroma values.
                 .Height        = std::min(height() - destination_top, source.height() - source_top) ,
         };
 
         CUDA_MEMCPY2D chromaPlaneParameters = {
                 .srcXInBytes   = source_left,
-                .srcY          = source.height() + source_top / 2,
+                // Use the coded height to find the start of the chroma plane.
+                .srcY          = actualHeight + source_top / 2,
                 .srcMemoryType = CU_MEMORYTYPE_DEVICE,
                 .srcHost       = nullptr,
                 .srcDevice     = source.handle(),
@@ -249,7 +253,8 @@ using CudaFrameReference = lightdb::shared_reference<CudaFrame>;
 class DecodedFrame : public GPUFrame {
 public:
     DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters, int frameNumber)
-            : GPUFrame(decoder.configuration(), extract_type(parameters), frameNumber), decoder_(decoder), parameters_(parameters)
+            : GPUFrame(decoder.configuration(), extract_type(parameters), frameNumber), decoder_(decoder), parameters_(parameters),
+            frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
     {
         cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
         // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
@@ -257,7 +262,8 @@ public:
     }
 
     DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters)
-        : GPUFrame(decoder.configuration(), extract_type(parameters)), decoder_(decoder), parameters_(parameters)
+        : GPUFrame(decoder.configuration(), extract_type(parameters)), decoder_(decoder), parameters_(parameters),
+          frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
     {
         cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
     }
@@ -269,14 +275,11 @@ public:
 
     const CudaDecoder &decoder() const { return decoder_; }
     const CUVIDPARSERDISPINFO& parameters() const { return *parameters_; }
-    unsigned int height() const override { return decoder_.configuration().height; }
-    unsigned int width() const override { return decoder_.configuration().width; }
+    unsigned int height() const override { return frameDimensions_.displayHeight; }
+    unsigned int width() const override { return frameDimensions_.displayWidth; }
 
-//    ~DecodedFrame() override {
-//        // Seems like cuda frame isn't always created.
-//        // This object gets destroyed very frequently.
-//        decoder().unmapFrame(parameters().picture_index);
-//    }
+    unsigned int codedHeight() const { return frameDimensions_.codedHeight; }
+    unsigned int codedWidth() const { return frameDimensions_.codedWidth; }
 
 private:
     static NV_ENC_PIC_STRUCT extract_type(const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters) {
@@ -290,6 +293,7 @@ private:
     const CudaDecoder &decoder_;
     const std::shared_ptr<CUVIDPARSERDISPINFO> parameters_;
     std::shared_ptr<CudaFrame> cuda_;
+    CudaDecoder::DecodedDimensions frameDimensions_;
 };
 
 class CudaDecodedFrame: public DecodedFrame, public CudaFrame {

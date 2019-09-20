@@ -161,7 +161,8 @@ private:
         if(decoder == nullptr)
             LOG(ERROR) << "Unexpected null decoder during video decode (HandlePictureDisplay)";
         else {
-            decoder->mapFrame(frame);
+            // TODO: This should happen on a separate thread than cuvidDecodePicture() for performance.
+            decoder->mapFrame(frame, decoder->currentFormat());
             decoder->frame_queue().enqueue(frame);
         }
 

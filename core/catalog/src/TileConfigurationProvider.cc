@@ -6,6 +6,8 @@
 namespace lightdb::tiles {
 
 void TileLayoutsManager::loadAllTileConfigurations() {
+    std::scoped_lock lock(mutex_);
+
     // Get directory path from entry_.
     auto &catalogEntryPath = entry_.path();
 
@@ -28,6 +30,8 @@ void TileLayoutsManager::loadAllTileConfigurations() {
 }
 
 std::list<TileLayout> TileLayoutsManager::tileLayoutsForFrame(unsigned int frameNumber) const {
+    std::scoped_lock lock(mutex_);
+
     // Find the intervals that contain the frame number, and splice their lists together.
     std::list<TileLayout> layouts;
 
@@ -51,6 +55,8 @@ std::list<TileLayout> TileLayoutsManager::tileLayoutsForFrame(unsigned int frame
 }
 
 unsigned int TileLayoutsManager::maximumNumberOfTilesForFrames(const std::vector<int> &orderedFrames) const {
+    std::scoped_lock lock(mutex_);
+
     assert(orderedFrames.size());
 
     for (auto it = numberOfTilesToFrameIntervals_.begin(); it != numberOfTilesToFrameIntervals_.end(); ++it) {
@@ -70,23 +76,13 @@ unsigned int TileLayoutsManager::maximumNumberOfTilesForFrames(const std::vector
     // Each frame should be covered by at least one tile layout.
     assert(false);
     return 0;
-
-//    unsigned int currentMax = 0;
-//    for (auto &frame : frames) {
-//        auto layouts = tileLayoutsForFrame(frame);
-//        auto maxNumberOfTiles = std::max_element(layouts.begin(), layouts.end(), [](TileLayout &first, TileLayout &second) {
-//            return first.numberOfTiles() < second.numberOfTiles();
-//        })->numberOfTiles();
-//        if (maxNumberOfTiles > currentMax)
-//            currentMax = maxNumberOfTiles;
-//    }
-//
-//    return currentMax;
 }
 
 std::filesystem::path TileLayoutsManager::locationOfTileForFrameAndConfiguration(unsigned int tileNumber,
                                                                                  unsigned int frame,
                                                                                  const lightdb::tiles::TileLayout &tileLayout) const {
+    std::scoped_lock lock(mutex_);
+
     // TODO: Figure out how to go from layout -> intervals -> directory.
     // For now, assume that each frame is covered by a single tile configuration.
     // TODO: Make finding correct interval faster.
@@ -189,20 +185,20 @@ static std::vector<unsigned int> tileDimensionsForIntervals(const CoalescedInter
     // TODO: Dimensions have to be an even number.
     for (const auto &interval : intervals.intervals()) {
         // If iterator.start - start_position >= minimum distance, we can make that range a tile.
-        if (interval.start() - startPosition >= minimumDistance) {
+        if (interval.start() > startPosition && interval.start() - startPosition >= minimumDistance) {
             if (totalDimension - interval.start() < minimumDistance) {
                 // There isn't room for another tile starting at interval.start().
                 // See if we can go back further and still be ok given the current starting position.
                 if ((totalDimension - minimumDistance) - startPosition >= minimumDistance)
                     addNewDelimiter(totalDimension - minimumDistance);
-            } else
+            } else if (interval.start() > startPosition)
                 addNewDelimiter(interval.start());
         }
 
         // We don't want to use something less than the end of the interval else the object would be cut into two tiles.
         // Also don't go past the end of the frame. If the end is close enough to the edge of the frame, just extend the tile
         // to the edge.
-        if (interval.end() - startPosition >= minimumDistance && totalDimension - interval.end() >= minimumDistance) {
+        if (interval.end() > startPosition && interval.end() - startPosition >= minimumDistance && totalDimension - interval.end() >= minimumDistance) {
             addNewDelimiter(interval.end());
         } else if (totalDimension - (startPosition + minimumDistance) >= minimumDistance) {
             // The end of the interval isn't far enough away, so go past it such that we satisfy the minimum distance.
@@ -212,6 +208,10 @@ static std::vector<unsigned int> tileDimensionsForIntervals(const CoalescedInter
 
     // Add width/height from total dimension to last offset.
     dimensions.push_back(totalDimension - startPosition);
+
+    unsigned int total = std::accumulate(dimensions.begin(), dimensions.end(), 0);
+    if (total > totalDimension)
+        assert(false);
 
     return dimensions;
 }
@@ -234,8 +234,8 @@ const TileLayout &IdealTileConfigurationProvider::tileLayoutForFrame(unsigned in
     CoalescedIntervals horizontalRectIntervals;
 
     for (auto &rect : rects) {
-        verticalRectIntervals.addInterval({rect.y, rect.y + rect.height});
-        horizontalRectIntervals.addInterval({rect.x, rect.x + rect.width});
+        verticalRectIntervals.addInterval({rect.y, std::min(rect.y + rect.height, frameHeight_)});
+        horizontalRectIntervals.addInterval({rect.x, std::min(rect.x + rect.width, frameWidth_)});
     }
 
     // Compute tile dimensions given the intervals.
@@ -246,7 +246,7 @@ const TileLayout &IdealTileConfigurationProvider::tileLayoutForFrame(unsigned in
 
     for (auto &rect : rects) {
         auto tilesThatIntersect = layoutForFrame.tilesForRectangle(rect);
-        assert(tilesThatIntersect.size() == 1);
+//        assert(tilesThatIntersect.size() == 1);
     }
     if (layoutForFrame.numberOfTiles() > maximumNumberOfTiles)
         maximumNumberOfTiles = layoutForFrame.numberOfTiles();
@@ -256,6 +256,26 @@ const TileLayout &IdealTileConfigurationProvider::tileLayoutForFrame(unsigned in
 //                                std::forward_as_tuple(frame),
 //                                std::forward_as_tuple(columnWidths.size(), rowHeights.size(), columnWidths, rowHeights)));
     return frameToTileLayout_.at(frame);
+}
+
+const TileLayout &CustomJacksonSquareTileConfigurationProvider::tileLayoutForFrame(unsigned int frame) {
+    // total dimensions are 640 x 512.
+    static TileLayout zeroToNine(2, 2, {226, 414}, {136, 376});
+    static TileLayout tenTo89(2, 2, {175, 465}, {136, 376});
+    static TileLayout eightyNineTo99(1, 2, {640}, {230, 282});
+    static TileLayout oneHundredTo103(2, 2, {230, 410}, {216, 296});
+    static TileLayout one04To105(1, 2, {640}, {180, 332});
+    static TileLayout one06To116(2, 2, {320, 320}, {136, 376});
+    static TileLayout one17To126(2, 1, {360, 280}, {512});
+    static TileLayout one27To130(2, 2, {400, 240}, {372, 140});
+    static TileLayout one31To139(2, 1, {412, 228}, {512});
+    static TileLayout one40To159(2, 2, {504, 136}, {376, 136});
+    static TileLayout one60To165(1, 2, {640}, {300, 212});
+    static TileLayout one66To168(1, 1, {640}, {512});
+    static TileLayout one69To170(2, 1, {140, 500}, {512});
+
+
+    return zeroToNine;
 }
 
 } // namespace lightdb::tiles

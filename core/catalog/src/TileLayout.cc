@@ -23,6 +23,9 @@ std::vector<unsigned int> TileLayout::tilesForRectangle(const Rectangle &rectang
 
 
 unsigned int TileLayout::tileColumnForX(unsigned int x) const {
+    if (x >= totalWidth())
+        return numberOfColumns_ - 1;
+
     unsigned int startingX = 0;
     for (unsigned int i = 0; i < numberOfColumns_; ++i) {
         if (startingX <= x && x < startingX + widthsOfColumns_[i]) {
@@ -36,6 +39,9 @@ unsigned int TileLayout::tileColumnForX(unsigned int x) const {
 }
 
 unsigned int TileLayout::tileRowForY(unsigned int y) const {
+    if (y >= totalHeight())
+        return numberOfRows_ - 1;
+
     unsigned int startingY = 0;
     for (unsigned int i = 0; i < numberOfRows_; ++i) {
         if (startingY <= y && y < startingY + heightsOfRows_[i]) {

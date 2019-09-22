@@ -17,6 +17,7 @@
 #include <unordered_set>
 
 #include <map>
+#include <mutex>
 
 namespace lightdb::physical {
     class MetadataLightField;
@@ -99,6 +100,7 @@ namespace lightdb::metadata {
         mutable std::unordered_set<int> idealKeyframesForMetadata_;
         mutable std::unordered_map<int, std::vector<lightdb::Rectangle>> frameToRectangles_;
         sqlite3 *db_;
+        mutable std::mutex mutex_;
     };
 } // namespace lightdb::metadata
 

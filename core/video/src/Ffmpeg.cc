@@ -90,8 +90,8 @@ namespace lightdb::video::ffmpeg {
                 DecodeConfiguration{
                     static_cast<unsigned int>(stream->codecpar->height),
                     static_cast<unsigned int>(stream->codecpar->width),
-                    0u,
-                    0u,
+                    static_cast<unsigned int>(stream->codec->coded_height),
+                    static_cast<unsigned int>(stream->codec->coded_width),
                     lightdb::rational{stream->r_frame_rate.num,
                                       stream->r_frame_rate.den},
                                       bitrate,

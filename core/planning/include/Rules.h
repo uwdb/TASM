@@ -479,7 +479,8 @@ namespace lightdb::optimization {
 
                 // Add a merge operator whose parents are the decodes.
                 // Start by assuming that its parents will be in the order of tiles.
-                plan().emplace<physical::MergeTilePixels>(logical, decodes, tileLocationProvider);
+                auto merge = plan().emplace<physical::MergeTilePixels>(logical, decodes, tileLocationProvider);
+//                plan().emplace<physical::SaveFramesToFiles>(logical, merge);
 
                 // TODO: Remove placeholder from plan.
                 plan().remove_operator(physical_parents[0]);
@@ -533,7 +534,8 @@ namespace lightdb::optimization {
                         auto &scanParent = parent->parents()[0];
                         auto &scan = scanParent.downcast<physical::ScanFramesFromFileEncodedReader>();
                         scan.setFramesToRead(node.orderedFramesForMetadata());
-                        plan().emplace<physical::MergeTilePixels>(logical, physical_parents, tiles::NoTilesLayout, std::unordered_map<int, int>());
+                        auto merge = plan().emplace<physical::MergeTilePixels>(logical, physical_parents, tiles::NoTilesLayout, std::unordered_map<int, int>());
+//                        plan().emplace<physical::SaveFramesToFiles>(logical, merge);
 
                         return true;
                     }

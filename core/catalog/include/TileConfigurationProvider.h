@@ -7,6 +7,7 @@
 #include "TileLayout.h"
 #include <boost/functional/hash.hpp>
 #include <MetadataLightField.h>
+#include <mutex>
 
 namespace lightdb {
 class Interval {
@@ -300,6 +301,16 @@ public:
     }
 };
 
+class CustomJacksonSquareTileConfigurationProvider : public TileConfigurationProvider {
+public:
+    unsigned int maximumNumberOfTiles() override {
+        return 0;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override;
+
+};
+
 // TODO: Should this have a TileConfigurationProvider that uses the available possible tile layouts
 // to return one for each frame?
 class TileLayoutsManager {
@@ -324,6 +335,7 @@ private:
     std::map<lightdb::Interval, std::list<TileLayout>> intervalToAvailableTileLayouts_;
     std::map<unsigned int, lightdb::CoalescedIntervals, std::greater<unsigned int>> numberOfTilesToFrameIntervals_;
     std::map<lightdb::Interval, std::filesystem::path> intervalToTileDirectory_;
+    mutable std::mutex mutex_;
 };
 
 class TileLocationProvider {
@@ -348,6 +360,8 @@ public:
     }
 
     const TileLayout &tileLayoutForFrame(unsigned int frame) const override {
+        std::scoped_lock lock(mutex_);
+
         if (frameToTileLayout_.count(frame))
             return *frameToTileLayout_.at(frame);
 
@@ -366,6 +380,7 @@ private:
     mutable std::unordered_map<TileLayout, std::shared_ptr<const TileLayout>> tileLayoutReferences_;
     // This should probably be a LRU cache to avoid it growing extremely large for a long video.
     mutable std::unordered_map<unsigned int, std::shared_ptr<const TileLayout>> frameToTileLayout_;
+    mutable std::mutex mutex_;
 };
 
 } // namespace lightdb::tiles

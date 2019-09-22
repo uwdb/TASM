@@ -103,7 +103,7 @@ TEST_F(VisitorTestFixture, testLoadAndSelectFrames) {
 }
 
 TEST_F(VisitorTestFixture, testScanAndSink) {
-    auto input = Scan("MVI_63563_combined");
+    auto input = Scan("traffic-4k");
     Coordinator().execute(input.Sink());
 }
 
@@ -112,10 +112,27 @@ TEST_F(VisitorTestFixture, testCrackIntoTiles) {
     Coordinator().execute(input.StoreCracked("MVI_63563_960x576_100frames_cracked_van4x4"));
 }
 
+TEST_F(VisitorTestFixture, testScanAndSave) {
+    auto input = Load("/home/bhaynes/projects/visualroad/scale4k-short/traffic-003.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Store("traffic-4k"));
+}
+
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
-    auto input = ScanByGOP("MVI_63563_960x576_100frames");
+    auto input = ScanByGOP("MVI_63563_960x576");
     MetadataSpecification metadataSelection("labels", "label", "van");
-    Coordinator().execute(input.StoreCracked("MVI_63563_960x576_100frames_crackedForVan", "MVI_63563_960x576_100frames", &metadataSelection));
+    Coordinator().execute(input.StoreCracked("MVI_63563_960x576_crackedForVan", "MVI_63563_960x576", &metadataSelection));
+}
+
+TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
+    PixelMetadataSpecification selection("labels", "label", "car");
+
+    std::cout << std::endl << "\n\nStep: Selecting pixels in not cracked video." << std::endl;
+    auto notCracked = Scan("traffic-2k");
+    Coordinator().execute(notCracked.Select(selection).Sink());
+
+//    std::cout << std::endl << "\n\nStep: Selecting pixels in ideal cracked video." << std::endl;
+//    auto idealCracked = ScanMultiTiled("MVI_63563_960x576_crackedForVan");
+//    Coordinator().execute(idealCracked.Select(selection).Sink());
 }
 
 TEST_F(VisitorTestFixture, testReadCrackedTiles) {
@@ -166,10 +183,6 @@ TEST_F(VisitorTestFixture, testScanCrop) {
     Coordinator().execute(selection.Store("cropped_mvi"));
 }
 
-TEST_F(VisitorTestFixture, testScanAndSave) {
-    auto input = Load("/home/maureen/uadetrac_videos/MVI_63563/multi-tile/mvi63563_960x576.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Store("MVI_63563_960x576_100frames"));
-}
 
 TEST_F(VisitorTestFixture, testSaveToCatalog) {
     auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));

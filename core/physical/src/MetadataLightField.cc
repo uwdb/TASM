@@ -75,6 +75,9 @@ namespace lightdb::associations {
                     {"MVI_63563_960x576_100frames_cracked_van", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
                     {"MVI_63563_960x576_100frames_cracked_van4x4", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
                     {"MVI_63563_960x576_100frames_crackedForVan", "/home/maureen/uadetrac_videos/MVI_63563/multi-tile/MVI_63563_100frames.db"},
+                    {"MVI_63563_960x576", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"MVI_63563_960x576_crackedForVan", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
+                    {"traffic-2k", "/home/maureen/visualroad/2k-short/traffic-003.db"},
             } );
 } // namespace lightdb::associations
 
@@ -93,16 +96,19 @@ std::vector<Rectangle> MetadataLightField::allRectangles() {
 namespace lightdb::metadata {
 
     void MetadataManager::openDatabase() {
+        std::scoped_lock lock(mutex_);
         int openResult = sqlite3_open_v2(lightdb::associations::VideoPathToLabelsPath.at(videoIdentifier_).c_str(), &db_, SQLITE_OPEN_READONLY, NULL);
         assert(openResult == SQLITE_OK);
     }
 
     void MetadataManager::closeDatabase() {
+        std::scoped_lock lock(mutex_);
         int closeResult = sqlite3_close(db_);
         assert(closeResult == SQLITE_OK);
     }
 
     void MetadataManager::selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn) const {
+        // Assume that mutex is already held.
         if (afterOpeningFn)
             afterOpeningFn(db_);
 
@@ -129,6 +135,7 @@ namespace lightdb::metadata {
     }
 
 const std::unordered_set<int> &MetadataManager::framesForMetadata() const {
+        std::scoped_lock lock(mutex_);
     if (didSetFramesForMetadata_)
         return framesForMetadata_;
 
@@ -141,11 +148,15 @@ const std::unordered_set<int> &MetadataManager::framesForMetadata() const {
 }
 
 const std::vector<int> &MetadataManager::orderedFramesForMetadata() const {
-    if (didSetOrderedFramesForMetadata_)
-        return orderedFramesForMetadata_;
+    {
+        std::scoped_lock lock(mutex_);
+        if (didSetOrderedFramesForMetadata_)
+            return orderedFramesForMetadata_;
+    }
 
     std::unordered_set<int> frames = framesForMetadata();
 
+        std::scoped_lock lock(mutex_);
     orderedFramesForMetadata_.resize(frames.size());
     auto currentIndex = 0;
     for (auto &frame : frames)
@@ -158,12 +169,20 @@ const std::vector<int> &MetadataManager::orderedFramesForMetadata() const {
 }
 
 const std::unordered_set<int> &MetadataManager::idealKeyframesForMetadata() const {
-    if (didSetIdealKeyframesForMetadata_)
-        return idealKeyframesForMetadata_;
+    {
+        std::scoped_lock lock(mutex_);
+        if (didSetIdealKeyframesForMetadata_)
+            return idealKeyframesForMetadata_;
+    }
 
-    didSetIdealKeyframesForMetadata_ = true;
-    idealKeyframesForMetadata_ = MetadataManager::idealKeyframesForFrames(orderedFramesForMetadata());
-    return idealKeyframesForMetadata_;
+    auto &orderedFrames = orderedFramesForMetadata();
+
+    {
+        std::scoped_lock lock(mutex_);
+        didSetIdealKeyframesForMetadata_ = true;
+        idealKeyframesForMetadata_ = MetadataManager::idealKeyframesForFrames(orderedFrames);
+        return idealKeyframesForMetadata_;
+    }
 }
 
 std::unordered_set<int> MetadataManager::idealKeyframesForFrames(const std::vector<int> &orderedFrames) {
@@ -185,6 +204,7 @@ std::unordered_set<int> MetadataManager::idealKeyframesForFrames(const std::vect
 }
 
 const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) const {
+    std::scoped_lock lock(mutex_);
     if (frameToRectangles_.count(frame))
         return frameToRectangles_[frame];
 

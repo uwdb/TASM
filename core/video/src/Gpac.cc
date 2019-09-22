@@ -10,6 +10,8 @@
 #include "gpac/media_tools.h"
 #include "linux/videodev2.h"
 
+#include "Ffmpeg.h"
+
 #include "TileConfiguration.pb.h"
 
 namespace lightdb::video::gpac {
@@ -172,6 +174,10 @@ namespace lightdb::video::gpac {
                 if(entry == nullptr && default_volume.has_value() && volume.bounding().t() != default_volume->t())
                     LOG(INFO) << "Video duration did not match specified temporal range and was automatically increased.";
 
+                auto streamConfigurations = ffmpeg::GetStreamConfigurations(filename, true);
+                assert(streamConfigurations.size() == 1);
+                auto &streamConfig = streamConfigurations[0];
+
                 sources.emplace_back(catalog::Source{
                         track_index - 1,
                         std::filesystem::absolute(url != nullptr ? url : filename),
@@ -179,8 +185,8 @@ namespace lightdb::video::gpac {
                         Configuration{
                                 width,
                                 height,
-                                0u,
-                                0u,
+                                streamConfig.decode.max_width,
+                                streamConfig.decode.max_height,
                                 bitrate,
                                 {scale * samples, static_cast<unsigned int>(duration)},
                                 {static_cast<unsigned int>(left), static_cast<unsigned int>(top)}},

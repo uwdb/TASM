@@ -18,6 +18,11 @@ void CrackVideo::Runtime::saveTileGroupsToDisk() {
     // Maybe make new transaction type?
     // TODO: Read should probably be writing to this transaction all along.
     // For now just do it here for ease of debugging.
+    if (currentTileLayout_ == tiles::EmptyTileLayout) {
+        return;
+    }
+
+    assert(tilesCurrentlyBeingEncoded_.size());
     transactions::TileCrackingTransaction transaction(physical().catalog(),
                                                     physical().outputEntryName(),
                                                     currentTileLayout_,

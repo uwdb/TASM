@@ -172,18 +172,18 @@ public:
         CUDA_MEMCPY2D chromaPlaneParameters = {
                 .srcXInBytes   = source_left,
                 // Use the coded height to find the start of the chroma plane.
-                .srcY          = actualHeight + source_top / 2,
+                .srcY          = source_top / 2,
                 .srcMemoryType = CU_MEMORYTYPE_DEVICE,
                 .srcHost       = nullptr,
-                .srcDevice     = source.handle(),
+                .srcDevice     = source.handle() + source.pitch() * actualHeight,
                 .srcArray      = nullptr,
                 .srcPitch      = source.pitch(),
 
                 .dstXInBytes   = destination_left,
-                .dstY          = height() + destination_top / 2,
+                .dstY          = destination_top / 2,
                 .dstMemoryType = CU_MEMORYTYPE_DEVICE,
                 .dstHost       = nullptr,
-                .dstDevice     = handle(),
+                .dstDevice     = handle() + pitch() * height(),
                 .dstArray      = nullptr,
                 .dstPitch      = pitch(),
 

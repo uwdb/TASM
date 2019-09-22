@@ -35,36 +35,66 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
     mapParameters.unpaired_field = frame->progressive_frame == 1 || frame->repeat_first_field <= 1;
     {
         std::scoped_lock lock(lock_);
+        std::scoped_lock lock2(picIndexMutex_);
+
         if ((result = cuvidMapVideoFrame(handle(), frame->picture_index,
                                          &mappedHandle, &pitch, &mapParameters)) != CUDA_SUCCESS)
             throw GpuCudaRuntimeError("Call to cuvidMapVideoFrame failed", result);
-    }
 
-    {
-        std::scoped_lock lock(picIndexMutex_);
+        CUdeviceptr newHandle;
+        size_t newPitch;
+        result = cuMemAllocPitch(&newHandle, &newPitch, format.coded_width, format.coded_height * 3 / 2, 16);
+        assert(result == CUDA_SUCCESS);
+
+        CUDA_MEMCPY2D m;
+        memset(&m, 0, sizeof(m));
+        m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+        m.srcDevice = mappedHandle;
+        m.srcPitch = pitch;
+        m.dstMemoryType = CU_MEMORYTYPE_DEVICE;
+        m.dstDevice = newHandle;
+        m.dstPitch = newPitch;
+        m.WidthInBytes = format.coded_width;
+        m.Height = format.coded_height;
+        result = cuMemcpy2D(&m);
+        assert(result == CUDA_SUCCESS);
+
+        m.srcDevice = mappedHandle + pitch * format.coded_height;
+        m.dstDevice = newHandle + newPitch * format.coded_height;
+        m.Height = format.coded_height / 2;
+        result = cuMemcpy2D(&m);
+        assert(result == CUDA_SUCCESS);
+
+        if ((result = cuvidUnmapVideoFrame(handle(), mappedHandle)) != CUDA_SUCCESS)
+            throw GpuCudaRuntimeError("Call to unmap failed", result);
+
         assert(!picIndexToMappedFrameInfo_.count(frame->picture_index));
         picIndexToMappedFrameInfo_.emplace(std::pair<unsigned int, DecodedFrameInformation>(
                 std::piecewise_construct,
                 std::forward_as_tuple(frame->picture_index),
-                std::forward_as_tuple(mappedHandle, pitch, format)));
+                std::forward_as_tuple(newHandle, newPitch, format)));
     }
 }
 
 void CudaDecoder::unmapFrame(unsigned int picIndex) const {
     CUdeviceptr frameHandle;
     {
+        std::scoped_lock lock1(lock_);
         std::scoped_lock lock(picIndexMutex_);
         assert(picIndexToMappedFrameInfo_.count(picIndex));
         frameHandle = picIndexToMappedFrameInfo_.at(picIndex).handle;
 
         // This is an unideal ordering to erase before unmapping, but I think it will be fine.
         picIndexToMappedFrameInfo_.erase(picIndex);
-    }
-    {
-        std::scoped_lock lock(lock_);
-        CUresult result = cuvidUnmapVideoFrame(handle(), frameHandle);
+
+        CUresult result = cuMemFree(frameHandle);
         assert(result == CUDA_SUCCESS);
     }
+//    {
+//        std::scoped_lock lock(lock_);
+//        CUresult result = cuvidUnmapVideoFrame(handle(), frameHandle);
+//        assert(result == CUDA_SUCCESS);
+//    }
 }
 
 std::pair<CUdeviceptr, unsigned int> CudaDecoder::frameInfoForPicIndex(unsigned int picIndex) const {

@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <utility>
 #include <fstream>
+#include <mutex>
 
 namespace lightdb {
     class LightField;

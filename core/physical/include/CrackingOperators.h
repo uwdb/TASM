@@ -36,20 +36,7 @@ private:
                     firstFrameInGroup_(-1),
                     lastFrameInGroup_(-1),
                     frameNumber_(0)
-        {
-            // TODO: Keep track of which tiles are in play at any given time.
-            // Communicate with tileEncodersManager_ for those tiles.
-
-            // Create a tile encoder for each of the maximum number of tiles.
-//            auto numberOfTiles = tileConfigurationProvider_->maximumNumberOfTiles();
-//            tileEncoders_.reserve(numberOfTiles);
-//            for (auto i = 0u; i < numberOfTiles; ++i) {
-//                // Configuration should have width of full video, which is the maximum possible width of any tile.
-//                tileEncoders_.emplace_back(EncodeConfiguration(configuration(), Codec::hevc().nvidiaId().value(), 1000),
-//                        context(),
-//                        lock());
-//            }
-        }
+        { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if (iterator() == iterator().eos()) {

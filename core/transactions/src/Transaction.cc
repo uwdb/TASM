@@ -92,11 +92,6 @@ void TileCrackingTransaction::abort() {
 void TileCrackingTransaction::commit() {
     complete_ = true;
 
-    std::vector<std::filesystem::path> muxedFiles;
-    muxedFiles.reserve(outputs().size());
-    std::vector<OutputStream> muxedOutputs;
-    muxedOutputs.reserve(outputs().size());
-
     for (auto &output : outputs()) {
         output.stream().close();
 
@@ -104,21 +99,18 @@ void TileCrackingTransaction::commit() {
         auto muxedFile = output.filename();
         muxedFile.replace_extension(catalog::TileFiles::muxedFilenameExtension());
         video::gpac::mux_media(output.filename(), muxedFile, output.codec());
-
-        muxedOutputs.emplace_back(output, muxedFile);
-        muxedFiles.push_back(std::move(muxedFile));
     }
 
     // TODO: write metadata and tile configuration to same file.
-    video::gpac::write_metadata(catalog::Files::metadata_filename(catalog::TileFiles::directoryForTilesInFrames(entry_, firstFrame_, lastFrame_), 1), muxedOutputs);
-    writeTileMetadata(muxedFiles);
+//    video::gpac::write_metadata(catalog::Files::metadata_filename(catalog::TileFiles::directoryForTilesInFrames(entry_, firstFrame_, lastFrame_), 1), muxedOutputs);
+    writeTileMetadata();
 
     catalog::Entry::increment_tile_version(entry_.path());
 }
 
-void TileCrackingTransaction::writeTileMetadata(const std::vector<std::filesystem::path> &muxedFiles) {
+void TileCrackingTransaction::writeTileMetadata() {
     auto metadataFilename = catalog::TileFiles::tileMetadataFilename(entry_, firstFrame_, lastFrame_);
-    video::gpac::write_tile_configuration(metadataFilename, tileLayout_, muxedFiles);
+    video::gpac::write_tile_configuration(metadataFilename, tileLayout_);
 }
 
 } // namespace lightdb::transactions

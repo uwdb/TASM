@@ -79,6 +79,7 @@ namespace lightdb::metadata {
         const std::unordered_set<int> &idealKeyframesForMetadata() const;
 
         const std::vector<Rectangle> &rectanglesForFrame(int frame) const;
+        std::list<Rectangle> rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
 
         static std::unordered_set<int> idealKeyframesForFrames(const std::vector<int> &orderedFrames);
 

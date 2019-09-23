@@ -10,12 +10,13 @@
 #include <mutex>
 
 namespace lightdb {
+template <typename T>
 class Interval {
 public:
-    Interval(unsigned int start, unsigned int end)
+    Interval(T start, T end)
             : start_(start), end_(end) {}
 
-    Interval(std::pair<unsigned int, unsigned int> startAndEnd)
+    Interval(std::pair<T, T> startAndEnd)
         : start_(startAndEnd.first),
         end_(startAndEnd.second)
     { }
@@ -27,6 +28,8 @@ public:
     {
         expandToInclude(second);
     }
+
+    Interval() = default;
 
     bool operator==(const Interval &other) const {
         return start_ == other.start_
@@ -40,9 +43,9 @@ public:
             return end_ < rhs.end_;
     }
 
-    unsigned int start() const { return start_; }
+    T start() const { return start_; }
 
-    unsigned int end() const { return end_; }
+    T end() const { return end_; }
 
     bool contains(unsigned int value) const {
         return value >= start_ && value <= end_;
@@ -58,10 +61,11 @@ public:
     }
 
 private:
-    unsigned int start_;
-    unsigned int end_;
+    T start_;
+    T end_;
 };
 
+template <typename T>
 class CoalescedIntervals {
 public:
     CoalescedIntervals()
@@ -69,11 +73,11 @@ public:
         max_(0)
     { }
 
-    const std::set<Interval> &intervals() const {
+    const std::set<Interval<T>> &intervals() const {
         return intervals_;
     }
 
-    void addInterval(const Interval &newInterval) {
+    void addInterval(const Interval<T> &newInterval) {
         if (newInterval.start() < min_)
             min_ = newInterval.start();
 
@@ -99,7 +103,7 @@ public:
 
     }
 
-    bool contains(unsigned int value) const {
+    bool contains(T value) const {
         // Use upper_bound to limit comparisons.
         auto it = intervals_.upper_bound(Interval(value, UINT32_MAX));
         if (it == intervals_.end())
@@ -115,23 +119,23 @@ public:
         return false;
     }
 
-    Interval extents() const {
-        return Interval(min_, max_);
+    Interval<T> extents() const {
+        return Interval<T>(min_, max_);
     }
 
 private:
-    unsigned int min_;
-    unsigned int max_;
-    std::set<Interval> intervals_;
+    T min_;
+    T max_;
+    std::set<Interval<T>> intervals_;
 };
 
 
 } // namespace lightdb
 
 namespace std {
-template<>
-struct hash<lightdb::Interval> {
-    size_t operator()(const lightdb::Interval &interval) const {
+template <typename T>
+struct hash<lightdb::Interval<T>> {
+    size_t operator()(const lightdb::Interval<T> &interval) const {
         size_t seed = 0;
         boost::hash_combine(seed, interval.start());
         boost::hash_combine(seed, interval.end());
@@ -263,6 +267,25 @@ public:
     }
 };
 
+class GOP30TileConfigurationProvider2x2And3x3 : public TileConfigurationProvider {
+public:
+    unsigned int maximumNumberOfTiles() override {
+        return 9;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+//        static TileLayout fourTileLayout = TileLayout(2, 2, {960, 960}, {540, 540});
+        static TileLayout nineTileLayout = TileLayout(3, 3, {640, 640, 640}, {360, 360, 360});
+
+        return nineTileLayout;
+//        if ((frame / 30) % 30)
+//            return fourTileLayout;
+//        else
+//            return nineTileLayout;
+    }
+
+};
+
 class CustomVanTileConfigurationProvider : public TileConfigurationProvider {
 public:
     unsigned int maximumNumberOfTiles() override {
@@ -311,6 +334,34 @@ public:
 
 };
 
+class GroupingTileConfigurationProvider : public TileConfigurationProvider {
+public:
+    GroupingTileConfigurationProvider(unsigned int gop,
+                                        std::shared_ptr<metadata::MetadataManager> metadataManager,
+                                        unsigned int frameWidth,
+                                        unsigned int frameHeight)
+        : gop_(gop),
+        metadataManager_(metadataManager),
+        frameWidth_(frameWidth),
+        frameHeight_(frameHeight)
+    { }
+
+    unsigned int maximumNumberOfTiles() override {
+        return 0;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override;
+
+private:
+    std::vector<unsigned int> tileDimensions(const std::vector<Interval<int>> &sortedIntervals, int minDistance, int totalDimension);
+
+    unsigned int gop_;
+    std::shared_ptr<metadata::MetadataManager> metadataManager_;
+    unsigned int frameWidth_;
+    unsigned int frameHeight_;
+    std::unordered_map<unsigned int, TileLayout> gopToTileLayout_;
+};
+
 // TODO: Should this have a TileConfigurationProvider that uses the available possible tile layouts
 // to return one for each frame?
 class TileLayoutsManager {
@@ -332,9 +383,9 @@ private:
 
     const catalog::MultiTileEntry entry_;
 
-    std::map<lightdb::Interval, std::list<TileLayout>> intervalToAvailableTileLayouts_;
-    std::map<unsigned int, lightdb::CoalescedIntervals, std::greater<unsigned int>> numberOfTilesToFrameIntervals_;
-    std::map<lightdb::Interval, std::filesystem::path> intervalToTileDirectory_;
+    std::map<lightdb::Interval<unsigned int>, std::list<TileLayout>> intervalToAvailableTileLayouts_;
+    std::map<unsigned int, lightdb::CoalescedIntervals<unsigned int>, std::greater<unsigned int>> numberOfTilesToFrameIntervals_;
+    std::map<lightdb::Interval<unsigned int>, std::filesystem::path> intervalToTileDirectory_;
     mutable std::mutex mutex_;
 };
 

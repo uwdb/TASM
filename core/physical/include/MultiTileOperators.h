@@ -95,7 +95,14 @@ private:
                 flags |= CUVID_PKT_ENDOFSTREAM;
 
             GeometryReference geometry = GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples());
-            Configuration configuration = video::gpac::load_configuration(*currentTilePath_);
+
+            Configuration configuration;
+            if (tilePathToConfiguration_.count(*currentTilePath_))
+                configuration = tilePathToConfiguration_.at(*currentTilePath_);
+            else {
+                configuration = video::gpac::load_configuration(*currentTilePath_);
+                tilePathToConfiguration_[*currentTilePath_] = configuration;
+            }
 
             assert(totalVideoWidth_);
             assert(totalVideoHeight_);
@@ -185,6 +192,7 @@ private:
         std::unique_ptr<EncodedFrameReader> currentEncodedFrameReader_;
         std::unique_ptr<tiles::TileLayout> currentTileLayout_;
         std::unique_ptr<std::filesystem::path> currentTilePath_;
+        std::unordered_map<std::string, Configuration> tilePathToConfiguration_;
     };
 
     unsigned int tileNumber_;

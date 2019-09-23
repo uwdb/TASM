@@ -204,7 +204,7 @@ public:
 
 private:
     void prepareTileDirectory();
-    void writeTileMetadata(const std::vector<std::filesystem::path> &muxedFiles);
+    void writeTileMetadata();
 
     const catalog::Entry entry_;
     const tiles::TileLayout tileLayout_;

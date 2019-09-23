@@ -173,7 +173,7 @@ void MetadataTileConfigurationProvider::setUpGOPs() {
     }
 }
 
-static std::vector<unsigned int> tileDimensionsForIntervals(const CoalescedIntervals &intervals, unsigned int minimumDistance, unsigned int totalDimension) {
+static std::vector<unsigned int> tileDimensionsForIntervals(const CoalescedIntervals<unsigned int> &intervals, unsigned int minimumDistance, unsigned int totalDimension) {
     std::vector<unsigned int> dimensions;
     auto startPosition = 0u;
 
@@ -230,8 +230,8 @@ const TileLayout &IdealTileConfigurationProvider::tileLayoutForFrame(unsigned in
         return EmptyTileLayout;
 
     // For each dimension, create intervals from rectangles.
-    CoalescedIntervals verticalRectIntervals;
-    CoalescedIntervals horizontalRectIntervals;
+    CoalescedIntervals<unsigned int> verticalRectIntervals;
+    CoalescedIntervals<unsigned int> horizontalRectIntervals;
 
     for (auto &rect : rects) {
         verticalRectIntervals.addInterval({rect.y, std::min(rect.y + rect.height, frameHeight_)});
@@ -276,6 +276,106 @@ const TileLayout &CustomJacksonSquareTileConfigurationProvider::tileLayoutForFra
 
 
     return zeroToNine;
+}
+
+const TileLayout &GroupingTileConfigurationProvider::tileLayoutForFrame(unsigned int frame) {
+    unsigned int gopForFrame = frame / gop_;
+    if (gopToTileLayout_.count(gopForFrame))
+        return gopToTileLayout_.at(gopForFrame);
+
+    // Get rectangles that are in the gop.
+    std::list<Rectangle> rectanglesForGOP = metadataManager_->rectanglesForFrames(gopForFrame * gop_, (gopForFrame + 1) * gop_);
+
+    // Compute horizontal and vertical intervals for all of the rectangles.
+    std::vector<Interval<int>> horizontalIntervals(rectanglesForGOP.size());
+    std::transform(rectanglesForGOP.begin(), rectanglesForGOP.end(), horizontalIntervals.begin(), [](Rectangle &rect) {
+        return Interval<int>(rect.x, rect.x + rect.width);
+    });
+    std::sort(horizontalIntervals.begin(), horizontalIntervals.end());
+    auto tileWidths = horizontalIntervals.size() ? tileDimensions(horizontalIntervals, 256, frameWidth_) : std::vector<unsigned int>({ frameWidth_ });
+
+    std::vector<Interval<int>> verticalIntervals(rectanglesForGOP.size());
+    std::transform(rectanglesForGOP.begin(), rectanglesForGOP.end(), verticalIntervals.begin(), [](Rectangle &rect) {
+        return Interval<int>(rect.y, rect.y + rect.height);
+    });
+    std::sort(verticalIntervals.begin(), verticalIntervals.end());
+    auto tileHeights = verticalIntervals.size() ? tileDimensions(verticalIntervals, 136, frameHeight_) : std::vector<unsigned int>({ frameHeight_ });
+
+    gopToTileLayout_.emplace(std::pair<unsigned int, TileLayout>(
+            std::piecewise_construct,
+            std::forward_as_tuple(gopForFrame),
+            std::forward_as_tuple(tileWidths.size(), tileHeights.size(), tileWidths, tileHeights)));
+
+    return gopToTileLayout_.at(gopForFrame);
+}
+
+std::vector<unsigned int> GroupingTileConfigurationProvider::tileDimensions(const std::vector<lightdb::Interval<int>> &sortedIntervals, int minDistance, int totalDimension) {
+    std::vector<int> offsets;
+    std::vector<int> intervalEnds;
+    int lastOffset = 0;
+
+    auto doesOffsetStrictlyIntersect = [&](int proposedOffset, unsigned int intervalIndex) {
+        for (auto i = 0u; i < sortedIntervals.size(); ++i) {
+            if (i == intervalIndex)
+                continue;
+
+            // Don't use the normal definition of "contains" because we don't want to consider the case where proposed == start as containment.
+            auto &interval = sortedIntervals[i];
+            if (proposedOffset > interval.start() && proposedOffset < interval.end()) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    auto tryAppend = [&](int offset, bool tryToMoveBack = false, unsigned int intervalIndex = 0) {
+        if (!intervalEnds.size() || offset >= intervalEnds.back()) {
+            if (totalDimension - offset >= minDistance) {
+                offsets.push_back(offset);
+                lastOffset = offset;
+            } else if (tryToMoveBack && totalDimension - minDistance - lastOffset >= minDistance && !doesOffsetStrictlyIntersect(totalDimension - minDistance, intervalIndex)) {
+                auto newOffset = totalDimension - minDistance;
+                offsets.push_back(newOffset);
+                lastOffset = newOffset;
+            }
+        }
+    };
+
+    for (auto index = 0u; index < sortedIntervals.size(); ++index) {
+        auto &interval = sortedIntervals[index];
+        bool isLastInterval = index == sortedIntervals.size() - 1;
+        if (interval.start() - lastOffset >= minDistance && !doesOffsetStrictlyIntersect(interval.start(), index))
+            tryAppend(interval.start(), true, index);
+
+        if (interval.end() - lastOffset >= minDistance and totalDimension - interval.end() >= minDistance) {
+            if (!doesOffsetStrictlyIntersect(interval.end(), index)) {
+                tryAppend(interval.end());
+            }
+        } else if (!isLastInterval
+                    && lastOffset + minDistance >= interval.end()
+                    && sortedIntervals[index + 1].start() - (lastOffset + minDistance) >= minDistance) {
+            tryAppend(lastOffset + minDistance);
+        } else if (isLastInterval
+                    && lastOffset < interval.end()
+                    && totalDimension - (lastOffset + minDistance) >= minDistance
+                    && lastOffset + minDistance >= interval.end()) {
+            tryAppend(lastOffset + minDistance);
+        }
+        intervalEnds.push_back(interval.end());
+    }
+
+    // Now transform offsets into widths/heights.
+    assert(offsets.size());
+    std::vector<unsigned int> dimensions(offsets.size() + 1);
+    dimensions[0] = offsets[0];
+    for (auto i = 1u; i < offsets.size(); ++i) {
+        assert(offsets[i] > offsets[i-1]);
+        dimensions[i] = offsets[i] - offsets[i - 1];
+    }
+    assert(totalDimension > offsets.back());
+    dimensions.back() = totalDimension - offsets.back();
+    return dimensions;
 }
 
 } // namespace lightdb::tiles

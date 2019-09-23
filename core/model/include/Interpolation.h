@@ -3,6 +3,7 @@
 
 #include "Geometry.h"
 #include "Color.h"
+#include "Visitor.h"
 #include <functional>
 
 

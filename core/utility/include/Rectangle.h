@@ -28,8 +28,8 @@ namespace lightdb {
         bool containsPoint(const unsigned int &posX, const unsigned int &posY) const {
             return x <= posX
                 && y <= posY
-                && x + width >= posX
-                && y + height >= posY;
+                && x + width > posX
+                && y + height > posY;
         }
 
         bool intersects(const Rectangle &other) {
@@ -49,6 +49,67 @@ namespace lightdb {
 
             return Rectangle(id, left, top, right - left, bottom - top);
         }
+
+        Rectangle expand(const Rectangle &other) {
+            auto left = std::min(x, other.x);
+            auto right = std::max(x + width, other.x + other.width);
+            x = left;
+            width = right - left;
+
+            auto top = std::min(y, other.y);
+            auto bottom = std::max(y + height, other.y + other.height);
+            y = top;
+            height = bottom - top;
+
+            return *this;
+        }
+    };
+
+    class RectangleMerger {
+    public:
+        RectangleMerger(const std::list<Rectangle> &rectangles)
+            : rectangles_(rectangles)
+        {
+            merge();
+        }
+
+        void addRectangle(const Rectangle &other) {
+            auto merged = false;
+            for (auto &rectangle : rectangles_) {
+                if (rectangle.intersects(other)) {
+                    rectangle.expand(other);
+                    merged = true;
+                }
+            }
+            if (!merged)
+                rectangles_.push_back(other);
+
+            merge();
+        }
+
+        const std::list<Rectangle> &rectangles() const { return rectangles_; }
+
+    private:
+        void merge() {
+            bool changed = true;
+            while (changed) {
+                changed = false;
+                for (auto it = rectangles_.begin(); it != rectangles_.end(); ++it) {
+                    for (auto it2 = std::next(it, 1); it2 != rectangles_.end(); ++it2) {
+                        if (it->intersects(*it2)) {
+                            it->expand(*it2);
+                            rectangles_.erase(it2);
+                            changed = true;
+                            break;
+                        }
+                    }
+                    if (changed)
+                        break;
+                }
+            }
+        }
+
+        std::list<Rectangle> rectangles_;
     };
 } // namespace lightdb
 

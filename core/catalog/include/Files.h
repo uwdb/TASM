@@ -81,7 +81,7 @@ private:
     }
 
     static constexpr auto tile_version_filename_ = "tile-version";
-    static constexpr auto tile_metadata_filename_ = "tile-metadata.mp4";
+    static constexpr auto tile_metadata_filename_ = "tile-metadata.bin";
     static constexpr auto separating_string_ = "-";
 };
 

@@ -119,8 +119,8 @@ namespace lightdb::optimization {
 //                        plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
 //                        return true;
 
-//                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
-                        auto &scan = plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
+                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
+//                        auto &scan = plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 
                         auto children = plan().children(plan().lookup(node));
@@ -480,7 +480,7 @@ namespace lightdb::optimization {
                 // Add a merge operator whose parents are the decodes.
                 // Start by assuming that its parents will be in the order of tiles.
                 auto merge = plan().emplace<physical::MergeTilePixels>(logical, decodes, tileLocationProvider);
-//                plan().emplace<physical::SaveFramesToFiles>(logical, merge);
+                plan().emplace<physical::SaveFramesToFiles>(logical, merge);
 
                 // TODO: Remove placeholder from plan.
                 plan().remove_operator(physical_parents[0]);
@@ -1016,12 +1016,13 @@ namespace lightdb::optimization {
 
                 std::shared_ptr<tiles::TileConfigurationProvider> tileConfig;
                 if (node.metadataManager()) {
-                    tileConfig = std::make_shared<tiles::IdealTileConfigurationProvider>(
+                    tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                                                            30,
                                                             node.metadataManager(),
                                                             source.configuration().width,
                                                             source.configuration().height);
                 } else {
-                    tileConfig = std::make_shared<tiles::CustomVan4x4TileConfigurationProvider>();
+                    tileConfig = std::make_shared<tiles::GOP30TileConfigurationProvider2x2And3x3>();
                 }
 
                 auto crack = plan().emplace<physical::CrackVideo>(

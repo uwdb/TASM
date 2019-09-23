@@ -78,6 +78,9 @@ namespace lightdb::associations {
                     {"MVI_63563_960x576", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
                     {"MVI_63563_960x576_crackedForVan", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
                     {"traffic-2k", "/home/maureen/visualroad/2k-short/traffic-003.db"},
+                    {"traffic-2k-cracked3x3", "/home/maureen/visualroad/2k-short/traffic-003.db"},
+                    {"traffic-2k-cracked", "/home/maureen/visualroad/2k-short/traffic-003.db"},
+                    {"traffic-2k-cracked-2", "/home/maureen/visualroad/2k-short/traffic-003.db"},
             } );
 } // namespace lightdb::associations
 
@@ -221,6 +224,21 @@ const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) con
         frameToRectangles_[frame].emplace_back(queryFrame, x, y, width, height);
     });
     return frameToRectangles_[frame];
+}
+
+std::list<Rectangle> MetadataManager::rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const {
+    std::list<Rectangle> rectangles;
+    std::string query = "SELECT frame, x, y, width, height FROM %s WHERE %s = '%s' and frame >= " + std::to_string(firstFrameInclusive) + " and frame < " + std::to_string(lastFrameExclusive);
+    selectFromMetadataAndApplyFunction(query.c_str(), [&](sqlite3_stmt *stmt) {
+        unsigned int frame = sqlite3_column_int(stmt, 0);
+        unsigned int x = sqlite3_column_int(stmt, 1);
+        unsigned int y = sqlite3_column_int(stmt, 2);
+        unsigned int width = sqlite3_column_int(stmt, 3);
+        unsigned int height = sqlite3_column_int(stmt, 4);
+
+        rectangles.emplace_back(frame, x, y, width, height);
+    });
+    return rectangles;
 }
 
 static void doesRectangleIntersectTileRectangle(sqlite3_context *context, int argc, sqlite3_value **argv) {

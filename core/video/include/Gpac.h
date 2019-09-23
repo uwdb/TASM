@@ -4,6 +4,7 @@
 #include "Transaction.h"
 #include <vector>
 #include <filesystem>
+#include <mutex>
 
 namespace lightdb::video::gpac {
     std::vector<catalog::Source> load_metadata(const std::filesystem::path&, bool strict=true,
@@ -16,10 +17,9 @@ namespace lightdb::video::gpac {
                    const std::optional<Codec>& ={}, bool remove_source=true);
 
     Configuration load_configuration(const std::filesystem::path &filename);
-    void write_tile_configuration(const std::filesystem::path &metadata_filenamme, const tiles::TileLayout &tileLayout, const std::vector<std::filesystem::path> &muxedFiles);
+    void write_tile_configuration(const std::filesystem::path &metadata_filename, const tiles::TileLayout &tileLayouts);
     tiles::TileLayout load_tile_configuration(const std::filesystem::path &metadataFilename);
 
-
-    } // namespace lightdb::video::gpac
+} // namespace lightdb::video::gpac
 
 #endif //LIGHTDB_GPAC_H

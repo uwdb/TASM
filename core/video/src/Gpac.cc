@@ -74,54 +74,42 @@ namespace lightdb::video::gpac {
             return {};
     }
 
-    static Configuration load_configuration(GF_ISOFile *file, unsigned int track_index, unsigned int stream) {
-        GF_Err result;
-        unsigned int height, width;
-        unsigned int samples, scale;
-        unsigned long duration;
-        int left, top;
-
-        auto bitrate = get_average_bitrate(file, track_index, stream);
-
-        if((samples = gf_isom_get_sample_count(file, track_index)) == 0)
-            throw GpacRuntimeError("Unexpected error getting sample count", GF_NOT_FOUND);
-        else if((duration = gf_isom_get_media_duration(file, track_index)) == 0)
-            throw GpacRuntimeError("Unexpected error getting duration", GF_NOT_FOUND);
-        else if((scale = gf_isom_get_media_timescale(file, track_index)) == 0)
-            throw GpacRuntimeError("Unexpected error getting scale", GF_NOT_FOUND);
-        else if((result = gf_isom_get_track_layout_info(file, track_index, &width, &height, &left, &top, nullptr)) != GF_OK)
-            throw GpacRuntimeError("Unexpected error getting track layout", result);
-
-        CHECK_GE(left, 0);
-        CHECK_GE(top, 0);
-
-
-        return Configuration{
-                width,
-                height,
-                0u,
-                0u,
-                bitrate,
-                {scale * samples, static_cast<unsigned int>(duration)},
-                {static_cast<unsigned int>(left), static_cast<unsigned int>(top)}};
-    }
+//    static Configuration load_configuration(GF_ISOFile *file, unsigned int track_index, unsigned int stream) {
+//        GF_Err result;
+//        unsigned int height, width;
+//        unsigned int samples, scale;
+//        unsigned long duration;
+//        int left, top;
+//
+//        auto bitrate = get_average_bitrate(file, track_index, stream);
+//
+//        if((samples = gf_isom_get_sample_count(file, track_index)) == 0)
+//            throw GpacRuntimeError("Unexpected error getting sample count", GF_NOT_FOUND);
+//        else if((duration = gf_isom_get_media_duration(file, track_index)) == 0)
+//            throw GpacRuntimeError("Unexpected error getting duration", GF_NOT_FOUND);
+//        else if((scale = gf_isom_get_media_timescale(file, track_index)) == 0)
+//            throw GpacRuntimeError("Unexpected error getting scale", GF_NOT_FOUND);
+//        else if((result = gf_isom_get_track_layout_info(file, track_index, &width, &height, &left, &top, nullptr)) != GF_OK)
+//            throw GpacRuntimeError("Unexpected error getting track layout", result);
+//
+//        CHECK_GE(left, 0);
+//        CHECK_GE(top, 0);
+//
+//
+//        return Configuration{
+//                width,
+//                height,
+//                0u,
+//                0u,
+//                bitrate,
+//                {scale * samples, static_cast<unsigned int>(duration)},
+//                {static_cast<unsigned int>(left), static_cast<unsigned int>(top)}};
+//    }
 
     Configuration load_configuration(const std::filesystem::path &filename) {
-        GF_ISOFile *file;
-        if((file = gf_isom_open(filename.c_str(), GF_ISOM_OPEN_READ_DUMP, nullptr)) == nullptr)
-            throw GpacRuntimeError("Error opening file", GF_IO_ERR);
-
-        unsigned int tracks;
-        if ((tracks = gf_isom_get_track_count(file)) == static_cast<unsigned int>(-1))
-            throw GpacRuntimeError("Unable to get track count", GF_IO_ERR);
-
-        assert(tracks == 1);
-
-        // Get number of streams for the track. Not sure what it is, but assume there is one, I guess.
-        const auto streams = gf_isom_get_sample_description_count(file, tracks);
-        assert(streams == 1);
-
-        return load_configuration(file, tracks, streams);
+        auto configurations = ffmpeg::GetStreamConfigurations(filename, false);
+        assert(configurations.size() == 1);
+        return static_cast<Configuration>(configurations[0].decode);
     }
 
     static std::vector<catalog::Source> load_tracks(GF_ISOFile *file, const serialization::Metadata_Entry* entry,
@@ -217,6 +205,7 @@ namespace lightdb::video::gpac {
         GF_Err result;
         unsigned int tracks;
 
+        std::scoped_lock lock(GPAC_MUTEX);
         if((file = gf_isom_open(filename.c_str(), GF_ISOM_OPEN_READ_DUMP, nullptr)) == nullptr)
             throw GpacRuntimeError("Error opening file", GF_IO_ERR);
         else if((tracks = gf_isom_get_track_count(file)) == static_cast<unsigned int>(-1))
@@ -248,11 +237,13 @@ namespace lightdb::video::gpac {
     void write_metadata(const std::filesystem::path &metadata_filename,
                         const std::vector<std::filesystem::path> &stream_filenames,
                         const serialization::Metadata &metadata) {
+        std::scoped_lock lock(GPAC_MUTEX);
+
         GF_MediaImporter import{};
         GF_Err result;
 
         import.flags = GF_IMPORT_USE_DATAREF;
-        if((import.dest = gf_isom_open(metadata_filename.c_str(), GF_ISOM_OPEN_WRITE, nullptr)) == nullptr)
+        if ((import.dest = gf_isom_open(metadata_filename.c_str(), GF_ISOM_OPEN_WRITE, nullptr)) == nullptr)
             throw GpacRuntimeError("Error opening metadata file", GF_IO_ERR);
 
         for(const auto &stream_filename: stream_filenames) {
@@ -289,87 +280,58 @@ namespace lightdb::video::gpac {
         write_metadata(metadata_filename, filenames, metadata);
     }
 
-    static std::optional<serialization::TileConfiguration> load_tile_configuration(GF_ISOFile *file) {
-        serialization::TileConfiguration tileConfiguration;
-        GF_Err result;
-
-        auto numberOfUDTAs = gf_isom_get_udta_count(file, 0);
-        unsigned int boxType;
-        unsigned int indexOfTileBox = 0;
-        for (auto i = 1u; i <= numberOfUDTAs; ++i) {
-            if ((result = gf_isom_get_udta_type(file, 0, i, &boxType, nullptr)) != GF_OK)
-                throw GpacRuntimeError("Couldn't retrieve box type", result);
-
-            if (boxType == TILE_FOURCC) {
-                indexOfTileBox = i;
-                break;
-            }
-        }
-        if (!indexOfTileBox)
-            throw GpacRuntimeError("Could not find tile box", GF_IO_ERR);
-
-        char *rawData = nullptr;
-        unsigned int size = 0;
-        if ((result = gf_isom_get_user_data(file, 0, boxType, nullptr, indexOfTileBox, &rawData, &size)) != GF_OK)
-            throw GpacRuntimeError("Couldn't retrieve tile data", result);
-
-        std::shared_ptr<char> data(rawData, free);
-        if (size > 0 && tileConfiguration.ParseFromArray(data.get(), size))
-            return tileConfiguration;
-        else
-            throw GpacRuntimeError("Couldn't parse tile data", GF_IO_ERR);
-    }
+//    static std::optional<serialization::TileConfiguration> load_tile_configuration(GF_ISOFile *file) {
+//        serialization::TileConfiguration tileConfiguration;
+//        GF_Err result;
+//
+//        auto numberOfUDTAs = gf_isom_get_udta_count(file, 0);
+//        unsigned int boxType;
+//        unsigned int indexOfTileBox = 0;
+//        for (auto i = 1u; i <= numberOfUDTAs; ++i) {
+//            if ((result = gf_isom_get_udta_type(file, 0, i, &boxType, nullptr)) != GF_OK)
+//                throw GpacRuntimeError("Couldn't retrieve box type", result);
+//
+//            if (boxType == TILE_FOURCC) {
+//                indexOfTileBox = i;
+//                break;
+//            }
+//        }
+//        if (!indexOfTileBox)
+//            throw GpacRuntimeError("Could not find tile box", GF_IO_ERR);
+//
+//        char *rawData = nullptr;
+//        unsigned int size = 0;
+//        if ((result = gf_isom_get_user_data(file, 0, boxType, nullptr, indexOfTileBox, &rawData, &size)) != GF_OK)
+//            throw GpacRuntimeError("Couldn't retrieve tile data", result);
+//
+//        std::shared_ptr<char> data(rawData, free);
+//        if (size > 0 && tileConfiguration.ParseFromArray(data.get(), size))
+//            return tileConfiguration;
+//        else
+//            throw GpacRuntimeError("Couldn't parse tile data", GF_IO_ERR);
+//    }
 
     tiles::TileLayout load_tile_configuration(const std::filesystem::path &metadataFilename) {
-        GF_ISOFile *file;
-        unsigned int numberOfTiles = 0;
-
-        if ((file = gf_isom_open(metadataFilename.c_str(), GF_ISOM_OPEN_READ_DUMP, nullptr)) == nullptr)
-            throw GpacRuntimeError("Error opening metadata file", GF_IO_ERR);
-        else if ((numberOfTiles = gf_isom_get_track_count(file)) == static_cast<unsigned int>(-1))
-            throw GpacRuntimeError("Error loading metadata file tracks", GF_IO_ERR);
-
-        std::optional<serialization::TileConfiguration> tileConfiguration;
-        if (!(tileConfiguration = load_tile_configuration(file)).has_value())
-            throw GpacRuntimeError("Couldn't load tile configuration", GF_IO_ERR);
+        serialization::TileConfiguration tileConfiguration;
+        std::fstream input(metadataFilename, std::ios::in | std::ios::binary);
+        if (!tileConfiguration.ParseFromIstream(&input))
+            throw GpacRuntimeError("Failed to read tile configuration from input stream", 0);
 
         // Construct tile layout object.
-        std::vector<unsigned int> widthsOfColumns(tileConfiguration->widthsofcolumns().begin(), tileConfiguration->widthsofcolumns().end());
-        std::vector<unsigned int> heightsOfRows(tileConfiguration->heightsofrows().begin(), tileConfiguration->heightsofrows().end());
-        return tiles::TileLayout(tileConfiguration->numberofcolumns(), tileConfiguration->numberofrows(), widthsOfColumns, heightsOfRows);
+        std::vector<unsigned int> widthsOfColumns(tileConfiguration.widthsofcolumns().begin(), tileConfiguration.widthsofcolumns().end());
+        std::vector<unsigned int> heightsOfRows(tileConfiguration.heightsofrows().begin(), tileConfiguration.heightsofrows().end());
+        return tiles::TileLayout(tileConfiguration.numberofcolumns(), tileConfiguration.numberofrows(), widthsOfColumns, heightsOfRows);
     }
 
     static void write_tile_configuration(const std::filesystem::path &metadata_filename,
-            const serialization::TileConfiguration &tileConfiguration,
-            const std::vector<std::filesystem::path> &muxedFiles) {
-        // TODO: Make metadata mp4 reference all of the tile mp4s.
-
-        GF_MediaImporter metadataMediaImporter{};
-        GF_Err result;
-
-        metadataMediaImporter.flags = GF_IMPORT_USE_DATAREF;
-        if ((metadataMediaImporter.dest = gf_isom_open(metadata_filename.c_str(), GF_ISOM_OPEN_WRITE, nullptr)) == nullptr)
-            throw GpacRuntimeError("Error opening metadata file", GF_IO_ERR);
-
-        for (const auto &muxedFilename : muxedFiles) {
-            if ((metadataMediaImporter.orig = gf_isom_open(std::filesystem::relative(muxedFilename).c_str(), GF_ISOM_OPEN_READ, nullptr)) == nullptr)
-                throw GpacRuntimeError("Error opening tile file", GF_IO_ERR);
-            else if ((result = gf_media_import(&metadataMediaImporter)) != GF_OK)
-                throw GpacRuntimeError("Error importing tile track", result);
-            else if ((result = gf_isom_close(metadataMediaImporter.orig)) != GF_OK)
-                throw GpacRuntimeError("Error closing tile file", result);
-        }
-
-        auto tileConfigurationString = tileConfiguration.SerializeAsString();
-        if ((result = gf_isom_add_user_data(metadataMediaImporter.dest, 0, TILE_FOURCC, nullptr, tileConfigurationString.data(), tileConfigurationString.length())) != GF_OK)
-            throw GpacRuntimeError("Error writing tile configuration box", result);
-        else if ((result = gf_isom_close(metadataMediaImporter.dest)))
-            throw GpacRuntimeError("Error closing metadata file", result);
+            const serialization::TileConfiguration &tileConfiguration) {
+        std::fstream output(metadata_filename, std::ios::out | std::ios::trunc | std::ios::binary);
+        if (!tileConfiguration.SerializeToOstream(&output))
+            throw GpacRuntimeError("Failed to write tile configuration to file", 0);
     }
 
     void write_tile_configuration(const std::filesystem::path &metadata_filename,
-                             const tiles::TileLayout &tileLayout,
-                             const std::vector<std::filesystem::path> &muxedFiles) {
+                             const tiles::TileLayout &tileLayout) {
         lightdb::serialization::TileConfiguration tileConfiguration;
         tileConfiguration.set_version(TILE_CONFIGURATION_VERSION);
 
@@ -379,18 +341,13 @@ namespace lightdb::video::gpac {
         tileConfiguration.set_numberofcolumns(numberOfColumns);
         tileConfiguration.set_numberofrows(numberOfRows);
 
-//        tileConfiguration.mutable_widthsofcolumns()->Reserve(numberOfColumns);
-//        memcpy(tileConfiguration.mutable_widthsofcolumns()->mutable_data(),
-//                tileLayout.widthsOfColumns().data(),
-//                numberOfColumns * sizeof(unsigned int))
-
         for (auto &width : tileLayout.widthsOfColumns())
             tileConfiguration.add_widthsofcolumns(width);
 
         for (auto &height : tileLayout.heightsOfRows())
             tileConfiguration.add_heightsofrows(height);
 
-        write_tile_configuration(metadata_filename, tileConfiguration, muxedFiles);
+        write_tile_configuration(metadata_filename, tileConfiguration);
     }
 
     bool can_mux(const std::filesystem::path &filename) {
@@ -409,6 +366,7 @@ namespace lightdb::video::gpac {
         import.in_name = input.data();
         import.force_ext = extension.data();
 
+        std::scoped_lock lock(GPAC_MUTEX);
         if((import.dest = gf_isom_open(destination.c_str(), GF_ISOM_OPEN_WRITE, nullptr)) == nullptr)
             throw GpacRuntimeError("Error opening destination file", GF_IO_ERR);
         else if((result = gf_media_import(&import)) != GF_OK)

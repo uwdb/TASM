@@ -12,7 +12,6 @@
 //#include "gpac/list.h"
 
 #include "MP4Reader.h"
-
 #include <iostream>
 
 
@@ -50,6 +49,8 @@ private:
 
 class DecodeReader {
 public:
+    virtual ~DecodeReader() { }
+
     class iterator {
         friend class DecodeReader;
 
@@ -459,11 +460,20 @@ public:
         decodedBytes_(0)
     {
         // In order to get the headers, mode cannot be READ_DUMP, and the extract mode must be set.
-        file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
-        assert(gf_isom_set_nalu_extract_mode(file_, 1, GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG | GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG) == GF_OK);
+        {
+            std::scoped_lock lock(lightdb::GPAC_MUTEX);
+            file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
+            assert(gf_isom_set_nalu_extract_mode(file_, 1, GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG |
+                                                           GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG) == GF_OK);
+        }
 
         frames_ = {};
         frameIterator_ = frames_.begin();
+    }
+
+    ~FrameDecodeReader() {
+        std::scoped_lock lock(lightdb::GPAC_MUTEX);
+        gf_isom_close(file_);
     }
 
     std::optional<DecodeReaderPacket> read() override {

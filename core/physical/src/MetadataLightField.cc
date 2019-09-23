@@ -79,6 +79,7 @@ namespace lightdb::associations {
                     {"MVI_63563_960x576_crackedForVan", "/home/maureen/uadetrac_videos/MVI_63563/MVI_63563.db"},
                     {"traffic-2k", "/home/maureen/visualroad/2k-short/traffic-003.db"},
                     {"traffic-2k-cracked3x3", "/home/maureen/visualroad/2k-short/traffic-003.db"},
+                    {"traffic-2k-cracked3x3-2", "/home/maureen/visualroad/2k-short/traffic-003.db"},
                     {"traffic-2k-cracked", "/home/maureen/visualroad/2k-short/traffic-003.db"},
                     {"traffic-2k-cracked-2", "/home/maureen/visualroad/2k-short/traffic-003.db"},
             } );
@@ -137,12 +138,41 @@ namespace lightdb::metadata {
         free(selectFramesStatement);
     }
 
+void MetadataManager::selectFromMetadataAndApplyFunctionWithFrameLimits(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn) const {
+    // Assume that mutex is already held.
+    if (afterOpeningFn)
+        afterOpeningFn(db_);
+
+    char *selectFramesStatement = nullptr;
+    int size = asprintf(&selectFramesStatement, query,
+                        metadataSpecification_.tableName().c_str(),
+                        metadataSpecification_.columnName().c_str(),
+                        metadataSpecification_.expectedValue().c_str(),
+                        std::to_string(metadataSpecification_.firstFrame()).c_str(),
+                        std::to_string(metadataSpecification_.lastFrame()).c_str());
+    assert(size != -1);
+
+    sqlite3_stmt *select;
+    auto prepareResult = sqlite3_prepare_v2(db_, selectFramesStatement, size, &select, nullptr);
+    ASSERT_SQLITE_OK(prepareResult);
+
+    // Step and get results.
+    int result;
+    while ((result = sqlite3_step(select)) == SQLITE_ROW)
+        resultFn(select);
+
+    assert(result == SQLITE_DONE);
+
+    sqlite3_finalize(select);
+    free(selectFramesStatement);
+}
+
 const std::unordered_set<int> &MetadataManager::framesForMetadata() const {
         std::scoped_lock lock(mutex_);
     if (didSetFramesForMetadata_)
         return framesForMetadata_;
 
-    selectFromMetadataAndApplyFunction("SELECT DISTINCT FRAME FROM %s WHERE %s = '%s';", [this](sqlite3_stmt *stmt) {
+    selectFromMetadataAndApplyFunctionWithFrameLimits("SELECT DISTINCT frame FROM %s WHERE %s = '%s' AND frame >= %s AND frame < %s;", [this](sqlite3_stmt *stmt) {
         framesForMetadata_.insert(sqlite3_column_int(stmt, 0));
     });
 
@@ -159,7 +189,7 @@ const std::vector<int> &MetadataManager::orderedFramesForMetadata() const {
 
     std::unordered_set<int> frames = framesForMetadata();
 
-        std::scoped_lock lock(mutex_);
+    std::scoped_lock lock(mutex_);
     orderedFramesForMetadata_.resize(frames.size());
     auto currentIndex = 0;
     for (auto &frame : frames)
@@ -207,6 +237,10 @@ std::unordered_set<int> MetadataManager::idealKeyframesForFrames(const std::vect
 }
 
 const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) const {
+    static std::vector<Rectangle> emptyVector;
+    if (frame < metadataSpecification_.firstFrame() || frame >= metadataSpecification_.lastFrame())
+        return emptyVector;
+
     std::scoped_lock lock(mutex_);
     if (frameToRectangles_.count(frame))
         return frameToRectangles_[frame];
@@ -330,10 +364,10 @@ std::vector<int> MetadataManager::framesForTileAndMetadata(unsigned int tile, co
         ASSERT_SQLITE_OK(sqlite3_create_function(db, "RECTANGLEINTERSECT", 4, SQLITE_UTF8 | SQLITE_DETERMINISTIC, &tileRectangle, doesRectangleIntersectTileRectangle, NULL, NULL));
     };
 
-    std::string query = "SELECT DISTINCT frame FROM %s WHERE %s = '%s' AND RECTANGLEINTERSECT(x, y, width, height) == 1;";
+    std::string query = "SELECT DISTINCT frame FROM %s WHERE %s = '%s' AND frame >= %s AND frame < %s AND RECTANGLEINTERSECT(x, y, width, height) == 1;";
 
     std::vector<int> frames;
-    selectFromMetadataAndApplyFunction(query.c_str(), [&](sqlite3_stmt *stmt) {
+    selectFromMetadataAndApplyFunctionWithFrameLimits(query.c_str(), [&](sqlite3_stmt *stmt) {
         int queryFrame = sqlite3_column_int(stmt, 0);
         frames.push_back(queryFrame);
     }, registerIntersectionFunction);

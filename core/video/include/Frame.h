@@ -37,6 +37,9 @@ public:
 
     virtual unsigned int height() const { return height_; }
     virtual unsigned int width() const { return width_; }
+    virtual unsigned int codedHeight() const { return 0; }
+    virtual unsigned int codedWidth() const { return 0; }
+
     //TODO move this to GPUFrame
     NV_ENC_PIC_STRUCT type() const { return type_; }
     bool getFrameNumber(int &outFrameNumber) const {
@@ -172,18 +175,18 @@ public:
         CUDA_MEMCPY2D chromaPlaneParameters = {
                 .srcXInBytes   = source_left,
                 // Use the coded height to find the start of the chroma plane.
-                .srcY          = source_top / 2,
+                .srcY          = actualHeight + source_top / 2,
                 .srcMemoryType = CU_MEMORYTYPE_DEVICE,
                 .srcHost       = nullptr,
-                .srcDevice     = source.handle() + source.pitch() * actualHeight,
+                .srcDevice     = source.handle(),
                 .srcArray      = nullptr,
                 .srcPitch      = source.pitch(),
 
                 .dstXInBytes   = destination_left,
-                .dstY          = destination_top / 2,
+                .dstY          = height() + destination_top / 2,
                 .dstMemoryType = CU_MEMORYTYPE_DEVICE,
                 .dstHost       = nullptr,
-                .dstDevice     = handle() + pitch() * height(),
+                .dstDevice     = handle(),
                 .dstArray      = nullptr,
                 .dstPitch      = pitch(),
 
@@ -277,8 +280,8 @@ public:
     unsigned int height() const override { return frameDimensions_.displayHeight; }
     unsigned int width() const override { return frameDimensions_.displayWidth; }
 
-    unsigned int codedHeight() const { return frameDimensions_.codedHeight; }
-    unsigned int codedWidth() const { return frameDimensions_.codedWidth; }
+    unsigned int codedHeight() const override { return frameDimensions_.codedHeight; }
+    unsigned int codedWidth() const override { return frameDimensions_.codedWidth; }
 
 private:
     static NV_ENC_PIC_STRUCT extract_type(const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters) {
@@ -313,6 +316,8 @@ public:
 
     unsigned int height() const override { return DecodedFrame::height(); }
     unsigned int width() const override { return DecodedFrame::width(); }
+    unsigned int codedHeight() const override { return DecodedFrame::codedHeight(); }
+    unsigned int codedWidth() const override { return DecodedFrame::codedWidth(); }
 
 private:
     static std::pair<CUdeviceptr, unsigned int> map_frame(const DecodedFrame &frame) {

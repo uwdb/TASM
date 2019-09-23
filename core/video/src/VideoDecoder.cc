@@ -43,7 +43,9 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
 
         CUdeviceptr newHandle;
         size_t newPitch;
-        result = cuMemAllocPitch(&newHandle, &newPitch, format.coded_width, format.coded_height * 3 / 2, 16);
+        auto width = format.coded_width; //  format.display_area.right - format.display_area.left;
+        auto height = format.coded_height; // format.display_area.bottom - format.display_area.top;
+        result = cuMemAllocPitch(&newHandle, &newPitch, width, height * 3 / 2, 16);
         assert(result == CUDA_SUCCESS);
 
         CUDA_MEMCPY2D m;
@@ -54,14 +56,8 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
         m.dstMemoryType = CU_MEMORYTYPE_DEVICE;
         m.dstDevice = newHandle;
         m.dstPitch = newPitch;
-        m.WidthInBytes = format.coded_width;
-        m.Height = format.coded_height;
-        result = cuMemcpy2D(&m);
-        assert(result == CUDA_SUCCESS);
-
-        m.srcDevice = mappedHandle + pitch * format.coded_height;
-        m.dstDevice = newHandle + newPitch * format.coded_height;
-        m.Height = format.coded_height / 2;
+        m.WidthInBytes = width;
+        m.Height = height * 3 / 2;
         result = cuMemcpy2D(&m);
         assert(result == CUDA_SUCCESS);
 
@@ -90,11 +86,6 @@ void CudaDecoder::unmapFrame(unsigned int picIndex) const {
         CUresult result = cuMemFree(frameHandle);
         assert(result == CUDA_SUCCESS);
     }
-//    {
-//        std::scoped_lock lock(lock_);
-//        CUresult result = cuvidUnmapVideoFrame(handle(), frameHandle);
-//        assert(result == CUDA_SUCCESS);
-//    }
 }
 
 std::pair<CUdeviceptr, unsigned int> CudaDecoder::frameInfoForPicIndex(unsigned int picIndex) const {

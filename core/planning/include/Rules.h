@@ -77,8 +77,9 @@ namespace lightdb::optimization {
 
                 auto gpu = plan().allocator().gpu();
                 auto logical = plan().lookup(node);
-//                auto &scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, node.entry().sources()[0]);
-                auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, node.entry().sources()[0]);
+                auto scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, node.entry().sources()[0]);
+                scan.downcast<physical::ScanFramesFromFileEncodedReader>().setFramesToRead({7218});
+//                auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, node.entry().sources()[0]);
                 plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
                 return true;
             }
@@ -119,8 +120,8 @@ namespace lightdb::optimization {
 //                        plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
 //                        return true;
 
-                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
-//                        auto &scan = plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
+//                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
+                        auto &scan = plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 
                         auto children = plan().children(plan().lookup(node));
@@ -1011,16 +1012,28 @@ namespace lightdb::optimization {
                 // Add an encode operator.
                 // Tell it the tile configuration for each GOP.
                 auto logical = plan().lookup(node);
-                auto &source =  physical_parents[0]->parents()[0].downcast<physical::ScanSingleFileDecodeReader>().source();
-                std::unordered_set<int> keyframes(source.keyframes().begin(), source.keyframes().end());
+                std::unordered_set<int> keyframes;
+                unsigned int width;
+                unsigned int height;
+                if (physical_parents[0]->parents()[0].is<physical::ScanSingleFileDecodeReader>()) {
+                    auto &source = physical_parents[0]->parents()[0].downcast<physical::ScanSingleFileDecodeReader>().source();
+                    keyframes.insert(source.keyframes().begin(), source.keyframes().end());
+                    width = source.configuration().width;
+                    height = source.configuration().height;
+                } else if (physical_parents[0]->parents()[0].is<physical::ScanFramesFromFileEncodedReader>()) {
+                    auto &source = physical_parents[0]->parents()[0].downcast<physical::ScanFramesFromFileEncodedReader>().source();
+                    width = source.configuration().width;
+                    height = source.configuration().height;
+                } else
+                    assert(false);
 
                 std::shared_ptr<tiles::TileConfigurationProvider> tileConfig;
                 if (node.metadataManager()) {
                     tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
                                                             30,
                                                             node.metadataManager(),
-                                                            source.configuration().width,
-                                                            source.configuration().height);
+                                                            width,
+                                                            height);
                 } else {
                     tileConfig = std::make_shared<tiles::GOP30TileConfigurationProvider2x2And3x3>();
                 }

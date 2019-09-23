@@ -88,6 +88,7 @@ namespace lightdb::metadata {
 
     private:
         void selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn = nullptr) const;
+        void selectFromMetadataAndApplyFunctionWithFrameLimits(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn = nullptr) const;
         void openDatabase();
         void closeDatabase();
 

@@ -8,18 +8,25 @@
 namespace lightdb {
     class MetadataSpecification {
     public:
-        MetadataSpecification(const std::string &tableName, const std::string &columnName, const std::string &expectedValue)
-            : tableName_(tableName), columnName_(columnName), expectedValue_(expectedValue)
+        MetadataSpecification(const std::string &tableName, const std::string &columnName, const std::string &expectedValue,
+                unsigned int firstFrame = 0, unsigned int lastFrame = UINT32_MAX)
+            : tableName_(tableName), columnName_(columnName), expectedValue_(expectedValue),
+            firstFrame_(firstFrame), lastFrame_(lastFrame)
         { }
 
         const std::string &tableName() const { return tableName_; }
         const std::string &columnName() const { return columnName_; }
         const std::string &expectedValue() const { return expectedValue_; }
 
+        unsigned int firstFrame() const { return firstFrame_; }
+        unsigned int lastFrame() const { return lastFrame_; }
+
     private:
         std::string tableName_;
         std::string columnName_;
         std::string expectedValue_;
+        unsigned int firstFrame_;
+        unsigned int lastFrame_;
     };
 
     enum MetadataSubsetType : int {

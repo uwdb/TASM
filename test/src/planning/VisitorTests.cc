@@ -109,7 +109,7 @@ TEST_F(VisitorTestFixture, testScanAndSink) {
 
 TEST_F(VisitorTestFixture, testCrackIntoTiles) {
     auto input = ScanByGOP("traffic-2k");
-    Coordinator().execute(input.StoreCracked("traffic-2k-cracked3x3"));
+    Coordinator().execute(input.StoreCracked("traffic-2k-cracked3x3-2"));
 }
 
 TEST_F(VisitorTestFixture, testScanMultiTiled) {
@@ -129,19 +129,19 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
 }
 
 TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
-    PixelMetadataSpecification selection("labels", "label", "car");
+    PixelMetadataSpecification selection("labels", "label", "car", 7200, 7219);
 
 //    std::cout << std::endl << "\n\nStep: Selecting pixels in not cracked video." << std::endl;
 //    auto notCracked = Scan("traffic-2k");
 //    Coordinator().execute(notCracked.Select(selection).Sink());
 
-//    std::cout << std::endl << "\n\nStep: Selecting pixels in an evenly tiled video." << std::endl;
-//    auto evenCracked = ScanMultiTiled("traffic-2k-cracked3x3");
-//    Coordinator().execute(evenCracked.Select(selection).Sink());
+    std::cout << std::endl << "\n\nStep: Selecting pixels in an evenly tiled video." << std::endl;
+    auto evenCracked = ScanMultiTiled("traffic-2k-cracked3x3-2");
+    Coordinator().execute(evenCracked.Select(selection).Sink());
 
-    std::cout << std::endl << "\n\nStep: Selecting pixels in a custom-tiled video." << std::endl;
-    auto idealCracked = ScanMultiTiled("traffic-2k-cracked-2");
-    Coordinator().execute(idealCracked.Select(selection).Sink());
+//    std::cout << std::endl << "\n\nStep: Selecting pixels in a custom-tiled video." << std::endl;
+//    auto idealCracked = ScanMultiTiled("traffic-2k-cracked-2");
+//    Coordinator().execute(idealCracked.Select(selection).Sink());
 }
 
 TEST_F(VisitorTestFixture, testReadCrackedTiles) {

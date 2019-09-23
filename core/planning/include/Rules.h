@@ -481,7 +481,7 @@ namespace lightdb::optimization {
                 // Add a merge operator whose parents are the decodes.
                 // Start by assuming that its parents will be in the order of tiles.
                 auto merge = plan().emplace<physical::MergeTilePixels>(logical, decodes, tileLocationProvider);
-                plan().emplace<physical::SaveFramesToFiles>(logical, merge);
+//                plan().emplace<physical::SaveFramesToFiles>(logical, merge);
 
                 // TODO: Remove placeholder from plan.
                 plan().remove_operator(physical_parents[0]);

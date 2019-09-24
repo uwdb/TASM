@@ -42,7 +42,8 @@ std::list<TileLayout> TileLayoutsManager::tileLayoutsForFrame(unsigned int frame
         std::advance(it, -1);
 
     // Once the interval's end is less than the frame number, the frame cannot be in that interval.
-    for (; it->first.end() >= frameNumber; --it) {
+    // This breaks for the case where we have one large interval that covers e.g. 0->max, but then shorter intervals between.
+    for (; ; --it) {
         if (it->first.contains(frameNumber))
             layouts.insert(layouts.end(), it->second.begin(), it->second.end());
 
@@ -90,7 +91,7 @@ std::filesystem::path TileLayoutsManager::locationOfTileForFrameAndConfiguration
     if (it == intervalToTileDirectory_.end())
         std::advance(it, -1);
 
-    for (; it->first.end() >= frame; --it) {
+    for (; ; --it) {
         if (it->first.contains(frame)) {
             return catalog::TileFiles::tileFilename(it->second, tileNumber);
         }
@@ -284,7 +285,8 @@ const TileLayout &GroupingTileConfigurationProvider::tileLayoutForFrame(unsigned
         return gopToTileLayout_.at(gopForFrame);
 
     // Get rectangles that are in the gop.
-    std::list<Rectangle> rectanglesForGOP = metadataManager_->rectanglesForFrames(gopForFrame * gop_, (gopForFrame + 1) * gop_);
+    std::unique_ptr<std::list<Rectangle>> rectanglesForGOPPtr = metadataManager_->rectanglesForFrames(gopForFrame * gop_, (gopForFrame + 1) * gop_);
+    auto &rectanglesForGOP = *rectanglesForGOPPtr;
 
     // Compute horizontal and vertical intervals for all of the rectangles.
     std::vector<Interval<int>> horizontalIntervals(rectanglesForGOP.size());
@@ -376,6 +378,67 @@ std::vector<unsigned int> GroupingTileConfigurationProvider::tileDimensions(cons
     assert(totalDimension > offsets.back());
     dimensions.back() = totalDimension - offsets.back();
     return dimensions;
+}
+
+void MultiTileLocationProvider::insertTileLayoutForGOP(TileLayout &layout, unsigned int gop) const {
+    std::scoped_lock lock(mutex_);
+
+    if (!tileLayoutReferences_.count(layout))
+        tileLayoutReferences_[layout] = std::make_shared<const TileLayout>(layout);
+
+    gopToTileLayout_[gop] = tileLayoutReferences_.at(layout);
+}
+
+const TileLayout &MultiTileLocationProvider::tileLayoutForFrame(unsigned int frame) const {
+    std::scoped_lock lock(mutex_);
+
+    auto gop = gopForFrame(frame);
+    if (gopToTileLayout_.count(gop))
+        return *gopToTileLayout_.at(gop);
+
+    auto layouts = tileLayoutsManager_->tileLayoutsForFrame(frame);
+
+    if (layouts.size() == 1) {
+        insertTileLayoutForGOP(layouts.front(), gop);
+        return *gopToTileLayout_.at(gop);
+    }
+
+    // Else we have to pick between the layouts.
+    // Get the boxes that are in this GOP from the metadata manager.
+    // Find the overlapping rectangles so we can compare those vs. the tile layouts.
+    RectangleMerger rectangleMerger(metadataManager_->rectanglesForFrames(gop * gopSize_, (gop + 1) * gopSize_));
+
+    // For each layout:
+        // For each merged rectangle, compute which tiles intersect it.
+        // Compute the difference in area between the intersecting tiles and the rectangle.
+        // The cost for the layout is the sum of these costs over all rectangles.
+    unsigned int minCost = UINT32_MAX;
+    auto bestLayoutIt = layouts.end();
+    for (auto layoutIt = layouts.begin(); layoutIt != layouts.end(); ++layoutIt) {
+        unsigned int layoutCost = 0;
+        for (auto &rectangle : rectangleMerger.rectangles()) {
+            auto intersectingTiles = layoutIt->tilesForRectangle(rectangle);
+            auto areaOfIntersectingTiles = 0u;
+            for (auto &intersectingTile : intersectingTiles)
+                areaOfIntersectingTiles += layoutIt->rectangleForTile(intersectingTile).area();
+
+            layoutCost += areaOfIntersectingTiles;
+            layoutCost -= rectangle.area();
+
+            // Cost will only go up.
+            if (layoutCost > minCost)
+                break;
+        }
+
+        if (layoutCost < minCost) {
+            minCost = layoutCost;
+            bestLayoutIt = layoutIt;
+        }
+    }
+
+    // Pick the layout with the lowest cost.
+    insertTileLayoutForGOP(*bestLayoutIt, gop);
+    return *gopToTileLayout_.at(gop);
 }
 
 } // namespace lightdb::tiles

@@ -109,7 +109,7 @@ TEST_F(VisitorTestFixture, testScanAndSink) {
 
 TEST_F(VisitorTestFixture, testCrackIntoTiles) {
     auto input = ScanByGOP("traffic-2k");
-    Coordinator().execute(input.StoreCracked("traffic-2k-cracked3x3-2"));
+    Coordinator().execute(input.StoreCracked("traffic-2k-single-tile"));
 }
 
 TEST_F(VisitorTestFixture, testScanMultiTiled) {
@@ -128,9 +128,20 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
     Coordinator().execute(input.StoreCracked("traffic-2k-cracked-2", "traffic-2k", &metadataSelection));
 }
 
+TEST_F(VisitorTestFixture, testExecuteCracking) {
+    PixelMetadataSpecification selection("labels", "label", "car", 8670, 8790);
+//
+//    auto input = Scan("traffic-2k");
+//    Coordinator().execute(input.Select(selection).Sink());
+
+    auto input = ScanMultiTiled("traffic-2k-single-tile");
+    Coordinator().execute(input.Select(selection, true).Sink());
+}
+
+
 TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
     srand(10);
-    auto numberOfRounds = 3u;
+    auto numberOfRounds = 2u;
 
     for (auto i = 0u; i < numberOfRounds; ++i) {
         unsigned int start = (rand() % 25200) / 30 * 30;
@@ -152,22 +163,13 @@ TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
         }
 
         sleep(3);
+
+        {
+            std::cout << std::endl << "\n\nStep: Selecting pixels while cracking from frames " << start << " to " << start+1800 << std::endl;
+            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
+            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
+        }
     }
-
-//    std::cout << std::endl << "\n\nStep: Selecting pixels in an evenly tiled video." << std::endl;
-//    auto evenCracked = ScanMultiTiled("traffic-2k-cracked3x3");
-//    Coordinator().execute(evenCracked.Select(selection).Sink());
-
-
-
-//    for (auto i = 0u; i < numberOfRounds; ++i) {
-//        unsigned int start = (rand() % 25200) / 30 * 30;
-//
-//
-//
-//
-//        sleep(3);
-//    }
 }
 
 TEST_F(VisitorTestFixture, testReadCrackedTiles) {

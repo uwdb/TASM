@@ -77,9 +77,8 @@ namespace lightdb::optimization {
 
                 auto gpu = plan().allocator().gpu();
                 auto logical = plan().lookup(node);
-                auto scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, node.entry().sources()[0]);
-                scan.downcast<physical::ScanFramesFromFileEncodedReader>().setFramesToRead({7218});
-//                auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, node.entry().sources()[0]);
+//                auto scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, node.entry().sources()[0]);
+                auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, node.entry().sources()[0]);
                 plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
                 return true;
             }
@@ -452,31 +451,10 @@ namespace lightdb::optimization {
                 auto metadataManager = node.metadataManager();
 
                 auto tileLayoutsManager = multiTiledLightField.tileLayoutsManager();
-//                auto maximumNumberOfTiles = tileLayoutsManager->maximumNumberOfTilesForFrames(metadataManager->orderedFramesForMetadata());
+                unsigned int gop = 30;
 
-                // Create a scan operator for each possible tile.
-                // The scan operator doesn't have a single file to read from -- that will depend on which tile layout is wanted for each frame.
-                // Scan gets global frames, tile number, and configuration/location provider.
-                // Scan will have to reset its frame reader whenever location changes.
-                // Scan also will have to know the conversion from sample number in the tile file to global frame number.
-                // For each frame, if the tile number in the tile configuration intersects any rectangles, it will have to be decoded.
-
-                // Create a tile location provider that can be shared amongst the scanners.
-//                std::vector<PhysicalOperatorReference> scans;
-                auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
-//                std::vector<PhysicalOperatorReference> decodes;
-//                for (auto i = 0u; i < maximumNumberOfTiles; ++i) {
-//                    // Only create a scan and decode if any rectangle intersects the tile.
-//
-//                    auto scan = plan().emplace<physical::ScanMultiTileOperator>(
-//                                                            physical_parents[0]->logical(),
-//                                                            i,
-//                                                            metadataManager,
-//                                                            tileLocationProvider);
-//
-//                    decodes.push_back(plan().emplace<physical::GPUDecodeOptionalFromCPU>(logical, scan, gpu));
-//
-//                }
+//                auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
+                auto tileLocationProvider = std::make_shared<tiles::MultiTileLocationProvider>(tileLayoutsManager, metadataManager, gop);
 
                 auto scan = plan().emplace<physical::ScanMultiTileOperator>(
                         physical_parents[0]->logical(),
@@ -484,9 +462,27 @@ namespace lightdb::optimization {
                         tileLocationProvider);
                 auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 
+                // TODO: Should we place the cracking operator in between decode and merge?
+                // And then the cracking operator could keep a reference to the frames, but pass them on immediately.
+                // Make sure the encoding is happening on different threads.
+                // TODO:  Need to get output entry name from multi-tiledlight field.
+                std::shared_ptr<tiles::TileConfigurationProvider> tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                            gop,
+                            node.metadataManager(),
+                            1920,
+                            1080); // TODO: Get width/height from actual source.
+
+                if (node.shouldCrack()) {
+                    auto crack = plan().emplace<physical::CrackVideo>(logical, decode, std::unordered_set<int>(),
+                                                                      tileConfig, tileLayoutsManager->entry().name());
+                    auto merge = plan().emplace<physical::MergeTilePixels>(logical, crack, tileLocationProvider);
+//                    plan().emplace<physical::SaveFramesToFiles>(logical, merge);
+                } else
+                    auto merge = plan().emplace<physical::MergeTilePixels>(logical, decode, tileLocationProvider);
+
                 // Add a merge operator whose parents are the decodes.
                 // Start by assuming that its parents will be in the order of tiles.
-                auto merge = plan().emplace<physical::MergeTilePixels>(logical, decode, tileLocationProvider);
+//                auto merge = plan().emplace<physical::MergeTilePixels>(logical, crack, tileLocationProvider);
 //                plan().emplace<physical::SaveFramesToFiles>(logical, merge);
 
                 // TODO: Remove placeholder from plan.
@@ -1041,7 +1037,7 @@ namespace lightdb::optimization {
                                                             width,
                                                             height);
                 } else {
-                    tileConfig = std::make_shared<tiles::GOP30TileConfigurationProvider2x2And3x3>();
+                    tileConfig = std::make_shared<tiles::SingleTileFor2kConfigurationProvider>();
                 }
 
                 auto crack = plan().emplace<physical::CrackVideo>(

@@ -79,7 +79,7 @@ namespace lightdb::metadata {
         const std::unordered_set<int> &idealKeyframesForMetadata() const;
 
         const std::vector<Rectangle> &rectanglesForFrame(int frame) const;
-        std::list<Rectangle> rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
+        std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
 
         static std::unordered_set<int> idealKeyframesForFrames(const std::vector<int> &orderedFrames);
 
@@ -112,21 +112,25 @@ namespace lightdb::logical {
         MetadataSubsetLightFieldWithoutSources(const LightFieldReference &lightField,
                                                 const MetadataSpecification &metadataSpecification,
                                                 MetadataSubsetType subsetType,
-                                                const std::string metadataIdentifier)
+                                                const std::string metadataIdentifier,
+                                                bool shouldCrack = false)
                 : LightField(lightField),
                 metadataSpecification_(metadataSpecification),
                 subsetType_(subsetType),
-                metadataManager_(std::make_shared<metadata::MetadataManager>(metadataIdentifier, metadataSpecification_))
+                metadataManager_(std::make_shared<metadata::MetadataManager>(metadataIdentifier, metadataSpecification_)),
+                shouldCrack_(shouldCrack)
         { }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightFieldWithoutSources>(visitor); }
 
         std::shared_ptr<const metadata::MetadataManager> metadataManager() const { return metadataManager_; }
+        bool shouldCrack() const { return shouldCrack_; }
 
     private:
         const MetadataSpecification metadataSpecification_;
         const MetadataSubsetType subsetType_;
         std::shared_ptr<const metadata::MetadataManager> metadataManager_;
+        bool shouldCrack_;
     };
 
     class MetadataSubsetLightField : public LightField {

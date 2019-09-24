@@ -267,6 +267,18 @@ public:
     }
 };
 
+class SingleTileFor2kConfigurationProvider: public TileConfigurationProvider {
+public:
+    unsigned int maximumNumberOfTiles() override {
+        return 1;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        static TileLayout oneTileLayout = TileLayout(1, 1, {1920}, {1080});
+        return oneTileLayout;
+    }
+};
+
 class GOP30TileConfigurationProvider2x2And3x3 : public TileConfigurationProvider {
 public:
     unsigned int maximumNumberOfTiles() override {
@@ -337,7 +349,7 @@ public:
 class GroupingTileConfigurationProvider : public TileConfigurationProvider {
 public:
     GroupingTileConfigurationProvider(unsigned int gop,
-                                        std::shared_ptr<metadata::MetadataManager> metadataManager,
+                                        std::shared_ptr<const metadata::MetadataManager> metadataManager,
                                         unsigned int frameWidth,
                                         unsigned int frameHeight)
         : gop_(gop),
@@ -356,7 +368,7 @@ private:
     std::vector<unsigned int> tileDimensions(const std::vector<Interval<int>> &sortedIntervals, int minDistance, int totalDimension);
 
     unsigned int gop_;
-    std::shared_ptr<metadata::MetadataManager> metadataManager_;
+    std::shared_ptr<const metadata::MetadataManager> metadataManager_;
     unsigned int frameWidth_;
     unsigned int frameHeight_;
     std::unordered_map<unsigned int, TileLayout> gopToTileLayout_;
@@ -398,6 +410,38 @@ public:
     }
 
     virtual ~TileLocationProvider() { }
+};
+
+class MultiTileLocationProvider : public TileLocationProvider {
+public:
+    MultiTileLocationProvider(std::shared_ptr<const TileLayoutsManager> tileLayoutsManager,
+            std::shared_ptr<const metadata::MetadataManager> metadataManager,
+            unsigned int gopSize = 30)
+        : tileLayoutsManager_(tileLayoutsManager),
+        metadataManager_(metadataManager),
+        gopSize_(gopSize)
+    { }
+
+    std::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const override {
+        return tileLayoutsManager_->locationOfTileForFrameAndConfiguration(tileNumber, frame, tileLayoutForFrame(frame));
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) const override;
+
+
+private:
+    void insertTileLayoutForGOP(TileLayout &layout, unsigned int frame) const;
+    unsigned int gopForFrame(unsigned int frame) const {
+        return frame / gopSize_;
+    }
+
+    std::shared_ptr<const TileLayoutsManager> tileLayoutsManager_;
+    std::shared_ptr<const metadata::MetadataManager> metadataManager_;
+    unsigned int gopSize_;
+
+    mutable std::unordered_map<TileLayout, std::shared_ptr<const TileLayout>> tileLayoutReferences_;
+    mutable std::unordered_map<unsigned int, std::shared_ptr<const TileLayout>> gopToTileLayout_;
+    mutable std::recursive_mutex mutex_;
 };
 
 class SingleTileLocationProvider : public TileLocationProvider {

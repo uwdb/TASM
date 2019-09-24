@@ -107,7 +107,7 @@ namespace lightdb::video::gpac {
 //    }
 
     Configuration load_configuration(const std::filesystem::path &filename) {
-        auto configurations = ffmpeg::GetStreamConfigurations(filename, false);
+        auto configurations = ffmpeg::GetStreamConfigurations(filename, true);
         assert(configurations.size() == 1);
         return static_cast<Configuration>(configurations[0].decode);
     }

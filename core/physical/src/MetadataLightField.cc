@@ -82,6 +82,7 @@ namespace lightdb::associations {
                     {"traffic-2k-cracked3x3-2", "/home/maureen/visualroad/2k-short/traffic-003.db"},
                     {"traffic-2k-cracked", "/home/maureen/visualroad/2k-short/traffic-003.db"},
                     {"traffic-2k-cracked-2", "/home/maureen/visualroad/2k-short/traffic-003.db"},
+                    {"traffic-2k-single-tile", "/home/maureen/visualroad/2k-short/traffic-003.db"},
             } );
 } // namespace lightdb::associations
 
@@ -260,8 +261,8 @@ const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) con
     return frameToRectangles_[frame];
 }
 
-std::list<Rectangle> MetadataManager::rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const {
-    std::list<Rectangle> rectangles;
+std::unique_ptr<std::list<Rectangle>> MetadataManager::rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const {
+    std::unique_ptr<std::list<Rectangle>> rectangles(new std::list<Rectangle>());
     std::string query = "SELECT frame, x, y, width, height FROM %s WHERE %s = '%s' and frame >= " + std::to_string(firstFrameInclusive) + " and frame < " + std::to_string(lastFrameExclusive);
     selectFromMetadataAndApplyFunction(query.c_str(), [&](sqlite3_stmt *stmt) {
         unsigned int frame = sqlite3_column_int(stmt, 0);
@@ -270,7 +271,7 @@ std::list<Rectangle> MetadataManager::rectanglesForFrames(int firstFrameInclusiv
         unsigned int width = sqlite3_column_int(stmt, 3);
         unsigned int height = sqlite3_column_int(stmt, 4);
 
-        rectangles.emplace_back(frame, x, y, width, height);
+        rectangles->emplace_back(frame, x, y, width, height);
     });
     return rectangles;
 }

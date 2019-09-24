@@ -26,7 +26,6 @@
 #include "SelectFramesOperators.h"
 #include "SelectPixelsOperators.h"
 #include "TileOperators.h"
-#include "SharedDecodeOperators.h"
 
 namespace lightdb::optimization {
     class ChooseMaterializedScans : public OptimizerRule {
@@ -465,26 +464,23 @@ namespace lightdb::optimization {
                 // Create a tile location provider that can be shared amongst the scanners.
 //                std::vector<PhysicalOperatorReference> scans;
                 auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
-                std::vector<PhysicalOperatorReference> scans;
+                std::vector<PhysicalOperatorReference> decodes;
                 for (auto i = 0u; i < maximumNumberOfTiles; ++i) {
                     // Only create a scan and decode if any rectangle intersects the tile.
 
-                    scans.push_back(plan().emplace<physical::ScanMultiTileOperator>(
+                    auto scan = plan().emplace<physical::ScanMultiTileOperator>(
                                                             physical_parents[0]->logical(),
                                                             i,
                                                             metadataManager,
-                                                            tileLocationProvider));
+                                                            tileLocationProvider);
 
-//                    decodes.push_back(plan().emplace<physical::GPUDecodeOptionalFromCPU>(logical, scan, gpu));
+                    decodes.push_back(plan().emplace<physical::GPUDecodeOptionalFromCPU>(logical, scan, gpu));
 
                 }
 
-                auto sharedDecode = plan().emplace<physical::SharedDecode>(logical, scans, gpu);
-                auto merge = plan().emplace<physical::MergeTilePixels>(logical, sharedDecode, tileLocationProvider);
-
                 // Add a merge operator whose parents are the decodes.
                 // Start by assuming that its parents will be in the order of tiles.
-//                auto merge = plan().emplace<physical::MergeTilePixels>(logical, decodes, tileLocationProvider);
+                auto merge = plan().emplace<physical::MergeTilePixels>(logical, decodes, tileLocationProvider);
 //                plan().emplace<physical::SaveFramesToFiles>(logical, merge);
 
                 // TODO: Remove placeholder from plan.

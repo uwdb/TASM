@@ -28,7 +28,7 @@ public:
     }
 
     DecodedFrame decode() {
-        return DecodedFrame(&decoder_, decoder_.frame_queue().dequeue_wait<CUVIDPARSERDISPINFO>());
+        return DecodedFrame(decoder_, decoder_.frame_queue().dequeue_wait<CUVIDPARSERDISPINFO>());
     }
 
     template<typename Rep, typename Period, size_t interval=4>
@@ -41,9 +41,9 @@ public:
                 if((packet = decoder_.frame_queue().try_dequeue<CUVIDPARSERDISPINFO>()) != nullptr) {
                     auto frameNumber = -1;
                     if (decoder_.frameNumberQueue().pop(frameNumber)) {
-                        return {DecodedFrame(&decoder_, packet, frameNumber)};
+                        return {DecodedFrame(decoder_, packet, frameNumber)};
                     } else
-                        return {DecodedFrame(&decoder_, packet)};
+                        return {DecodedFrame(decoder_, packet)};
                 }
             }
 

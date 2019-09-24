@@ -90,9 +90,9 @@ private:
             assert(gopPacket.has_value());
             assert(gopPacket->firstFrameIndex() >= tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_));
 
-            unsigned long flags = CUVID_PKT_DISCONTINUITY | CUVID_PKT_ENDOFSTREAM | CUVID_PKT_NOTIFY_EOS;
-//            if (currentEncodedFrameReader_->isEos())
-//                flags |= CUVID_PKT_ENDOFSTREAM | CUVID_PKT_NOTIFY_EOS;
+            unsigned long flags = CUVID_PKT_DISCONTINUITY;
+            if (currentEncodedFrameReader_->isEos())
+                flags |= CUVID_PKT_ENDOFSTREAM;
 
             GeometryReference geometry = GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples());
 

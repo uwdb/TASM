@@ -331,24 +331,6 @@ namespace lightdb::physical {
         bytestring serialized_;
     };
 
-class MultiGPUDecodedFrameData: public MaterializedLightField {
-public:
-    MultiGPUDecodedFrameData(std::unique_ptr<std::unordered_map<unsigned int, GPUDecodedFrameData>> data, std::vector<int> completeTiles)
-            : MaterializedLightField(DeviceType::GPU),
-              tileToData_(std::move(data)),
-              completeTiles_(std::move(completeTiles))
-    { }
-
-    inline MaterializedLightFieldReference ref() const override { return MaterializedLightFieldReference::make<MultiGPUDecodedFrameData>(*this); }
-
-    const std::unordered_map<unsigned int, GPUDecodedFrameData> &tileToData() const { return *tileToData_; }
-    const std::vector<int> &completeTiles() const { return completeTiles_; }
-
-private:
-    std::shared_ptr<std::unordered_map<unsigned int, GPUDecodedFrameData>> tileToData_;
-    std::vector<int> completeTiles_;
-};
-
     template<typename BaseType>
     class InterpolatedData: public BaseType {
     public:

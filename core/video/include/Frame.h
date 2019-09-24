@@ -254,9 +254,20 @@ using CudaFrameReference = lightdb::shared_reference<CudaFrame>;
 
 class DecodedFrame : public GPUFrame {
 public:
+    DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters, int frameNumber, int tileNumber)
+            : GPUFrame(decoder.configuration(), extract_type(parameters), frameNumber), decoder_(decoder), parameters_(parameters),
+              frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
+              tileNumber_(tileNumber)
+    {
+        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
+        // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
+        // with that.
+    }
+
     DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters, int frameNumber)
             : GPUFrame(decoder.configuration(), extract_type(parameters), frameNumber), decoder_(decoder), parameters_(parameters),
-            frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
+            frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
+            tileNumber_(-1)
     {
         cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
         // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
@@ -265,7 +276,8 @@ public:
 
     DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters)
         : GPUFrame(decoder.configuration(), extract_type(parameters)), decoder_(decoder), parameters_(parameters),
-          frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
+          frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
+          tileNumber_(-1)
     {
         cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
     }
@@ -283,6 +295,8 @@ public:
     unsigned int codedHeight() const override { return frameDimensions_.codedHeight; }
     unsigned int codedWidth() const override { return frameDimensions_.codedWidth; }
 
+    int tileNumber() const { return tileNumber_; }
+
 private:
     static NV_ENC_PIC_STRUCT extract_type(const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters) {
         return (parameters == nullptr || parameters->progressive_frame || parameters->repeat_first_field >= 2
@@ -296,6 +310,7 @@ private:
     const std::shared_ptr<CUVIDPARSERDISPINFO> parameters_;
     std::shared_ptr<CudaFrame> cuda_;
     CudaDecoder::DecodedDimensions frameDimensions_;
+    int tileNumber_;
 };
 
 class CudaDecodedFrame: public DecodedFrame, public CudaFrame {

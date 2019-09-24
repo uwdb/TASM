@@ -346,6 +346,13 @@ public:
         keyframeIterator_ = mp4Reader_.keyframeNumbers().begin(); // 0-indexed.
     }
 
+    void setNewFileWithSameKeyframes(const std::filesystem::path &newFilename) {
+        mp4Reader_.setNewFileWithSameKeyframes(newFilename);
+
+        frameIterator_ = frames_.begin();
+        keyframeIterator_ = mp4Reader_.keyframeNumbers().begin();
+    }
+
     void setGlobalFrames(const std::vector<int> &globalFrames) {
         globalFrames_ = globalFrames;
         globalFramesIterator_ = globalFrames_.begin();

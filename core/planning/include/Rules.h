@@ -452,7 +452,7 @@ namespace lightdb::optimization {
                 auto metadataManager = node.metadataManager();
 
                 auto tileLayoutsManager = multiTiledLightField.tileLayoutsManager();
-                auto maximumNumberOfTiles = tileLayoutsManager->maximumNumberOfTilesForFrames(metadataManager->orderedFramesForMetadata());
+//                auto maximumNumberOfTiles = tileLayoutsManager->maximumNumberOfTilesForFrames(metadataManager->orderedFramesForMetadata());
 
                 // Create a scan operator for each possible tile.
                 // The scan operator doesn't have a single file to read from -- that will depend on which tile layout is wanted for each frame.
@@ -464,23 +464,29 @@ namespace lightdb::optimization {
                 // Create a tile location provider that can be shared amongst the scanners.
 //                std::vector<PhysicalOperatorReference> scans;
                 auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
-                std::vector<PhysicalOperatorReference> decodes;
-                for (auto i = 0u; i < maximumNumberOfTiles; ++i) {
-                    // Only create a scan and decode if any rectangle intersects the tile.
+//                std::vector<PhysicalOperatorReference> decodes;
+//                for (auto i = 0u; i < maximumNumberOfTiles; ++i) {
+//                    // Only create a scan and decode if any rectangle intersects the tile.
+//
+//                    auto scan = plan().emplace<physical::ScanMultiTileOperator>(
+//                                                            physical_parents[0]->logical(),
+//                                                            i,
+//                                                            metadataManager,
+//                                                            tileLocationProvider);
+//
+//                    decodes.push_back(plan().emplace<physical::GPUDecodeOptionalFromCPU>(logical, scan, gpu));
+//
+//                }
 
-                    auto scan = plan().emplace<physical::ScanMultiTileOperator>(
-                                                            physical_parents[0]->logical(),
-                                                            i,
-                                                            metadataManager,
-                                                            tileLocationProvider);
-
-                    decodes.push_back(plan().emplace<physical::GPUDecodeOptionalFromCPU>(logical, scan, gpu));
-
-                }
+                auto scan = plan().emplace<physical::ScanMultiTileOperator>(
+                        physical_parents[0]->logical(),
+                        metadataManager,
+                        tileLocationProvider);
+                auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 
                 // Add a merge operator whose parents are the decodes.
                 // Start by assuming that its parents will be in the order of tiles.
-                auto merge = plan().emplace<physical::MergeTilePixels>(logical, decodes, tileLocationProvider);
+                auto merge = plan().emplace<physical::MergeTilePixels>(logical, decode, tileLocationProvider);
 //                plan().emplace<physical::SaveFramesToFiles>(logical, merge);
 
                 // TODO: Remove placeholder from plan.

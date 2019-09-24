@@ -60,8 +60,9 @@ private:
               configuration_{configuration(), codec()}, // FIXME: This fails if there is no data from the parent.
               geometry_{geometry()},
               queue_{lock()},
-              frameNumberQueue_(4000), // Not sure what size makes sense here.
-              decoder_{configuration_, queue_, lock(), frameNumberQueue_},
+              frameNumberQueue_(4000),
+              tileNumberQueue_(4000), // Not sure what size makes sense here.
+              decoder_{configuration_, queue_, lock(), frameNumberQueue_, tileNumberQueue_},
               session_{decoder_, iterator(), iterator().eos()}
 //              nextFrameToBeDecoded_(physical.framesThatWillBeDecoded().begin())
         { }
@@ -100,6 +101,7 @@ private:
         const GeometryReference geometry_;
         CUVIDFrameQueue queue_;
         spsc_queue<int> frameNumberQueue_;
+        spsc_queue<int> tileNumberQueue_;
         CudaDecoder decoder_;
         VideoDecoderSession<Runtime::downcast_iterator<CPUEncodedFrameData>> session_;
     };
@@ -143,7 +145,7 @@ private:
                     queue_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<CUVIDFrameQueue>(lock())},
                     frameNumberQueue_(iterator() == iterator().eos() ? 0 : 4000),
                     // Decoder needs to be initialized with some default configuration always, and then in its DecodeAll it can get updated as necessary.
-                    decoder_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<CudaDecoder>(*currentDecodeConfiguration_, *queue_, lock(), frameNumberQueue_)},
+                    decoder_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<CudaDecoder>(*currentDecodeConfiguration_, *queue_, lock(), frameNumberQueue_, frameNumberQueue_)},
                     session_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<VideoDecoderSession<Runtime::downcast_iterator<CPUEncodedFrameData>>>(*decoder_, iterator(), iterator().eos())}
 
         { }

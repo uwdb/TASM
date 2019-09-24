@@ -23,6 +23,17 @@ public:
     { }
 
     explicit MergeTilePixels(const LightFieldReference &logical,
+                             PhysicalOperatorReference parent,
+                             std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider)
+            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "MergeTilePixels-init")),
+              GPUOperator(parent),
+              metadataManager_(getMetadataManager()),
+              tileLayout_(tiles::EmptyTileLayout),
+              parentIndexToTileNumber_{},
+              tileLocationProvider_(tileLocationProvider)
+    { }
+
+    explicit MergeTilePixels(const LightFieldReference &logical,
             std::vector<PhysicalOperatorReference> &parents,
             const tiles::TileLayout &tileLayout,
             std::unordered_map<int, int> parentIndexToTileNumber)
@@ -85,17 +96,17 @@ private:
             if (!all_parent_eos()) {
                 for (auto index = 0u; index < iterators().size(); index++) {
                     if (iterators()[index] != iterators()[index].eos()) {
-                        auto tileNumber = physical().tileNumberForParentIndex(index);
+//                        auto tileNumber = physical().tileNumberForParentIndex(index);
                         auto decoded = (iterators()[index]++).downcast<GPUDecodedFrameData>();
 
                         for (auto &frame : decoded.frames()) {
                             // Get rectangles for frame.
                             int frameNumber = -1;
                             assert(frame->getFrameNumber(frameNumber));
+                            int tileNumber = inNoTilesCase_ ? 0 : frame.downcast<DecodedFrame>().tileNumber();
 
-                            auto tileRectangle = tileLayoutForFrame(frameNumber).rectangleForTile(tileNumber);
-
-                            updateMaxProcessedFrameNumber(frameNumber, index);
+                            auto &tileLayout = tileLayoutForFrame(frameNumber);
+                            auto tileRectangle = tileLayout.rectangleForTile(tileNumber);
 
                             const auto &rectanglesForFrame = physical().rectanglesForFrame(frameNumber);
                             bool anyRectangleIntersectsTile = std::any_of(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](auto &rect) {
@@ -111,14 +122,14 @@ private:
                                 if (!tileRectangle.intersects(rectangle))
                                     return;
 
-                                copyTilePixelsFromFrameToRectangleFrame(tileRectangle, frame, rectangle);
+                                copyTilePixelsFromFrameToRectangleFrame(tileRectangle, frame, rectangle, tileLayout);
                             });
                         }
 
-                        if (iterators()[index] == iterators()[index].eos())
-                            updateMaxProcessedFrameNumber(INT32_MAX, index);
+//                        if (iterators()[index] == iterators()[index].eos())
+//                            updateMaxProcessedFrameNumber(INT32_MAX, index);
                     } else {
-                        updateMaxProcessedFrameNumber(INT32_MAX, index);
+//                        updateMaxProcessedFrameNumber(INT32_MAX, index);
                     }
                 }
             }
@@ -169,15 +180,15 @@ private:
 
         std::vector<GPUFrameReference> pixelsForProcessedRectangles() {
             std::vector<GPUFrameReference> pixelsAsFrames;
-            int maximumFrame = minimumProcessedFrameNumber();
             auto findNextProcessedRectangle = [&]() {
                 return std::find_if(rectangleToPixels_.begin(), rectangleToPixels_.end(), [&](std::pair<Rectangle, GPUFrameReference> item) {
-                    return static_cast<int>(item.first.id) <= maximumFrame;
+                    return !rectangleToRemainingCopiesNeeded_[item.first];
                 });
             };
 
             for (auto it = findNextProcessedRectangle(); it != rectangleToPixels_.end(); it = findNextProcessedRectangle()) {
                 pixelsAsFrames.push_back(it->second);
+                rectangleToRemainingCopiesNeeded_.erase(it->first);
                 rectangleToPixels_.erase(it);
             }
 
@@ -185,10 +196,11 @@ private:
             return pixelsAsFrames;
         }
 
-        void copyTilePixelsFromFrameToRectangleFrame(const Rectangle &tileRectangle, GPUFrameReference frame, const Rectangle &objectRectangle) {
+        void copyTilePixelsFromFrameToRectangleFrame(const Rectangle &tileRectangle, GPUFrameReference frame, const Rectangle &objectRectangle, const tiles::TileLayout &tileLayout) {
             // TODO: There are some artifacts from the copying.
             // If we don't have a frame for the rectangle yet, create one.
-            GPUFrameReference rectangleFrame = frameForRectangle(objectRectangle);
+            GPUFrameReference rectangleFrame = frameForRectangle(objectRectangle, tileLayout);
+            --rectangleToRemainingCopiesNeeded_[objectRectangle];
 
             // Copy the rectangle pixels for the object to the correct location in the rectangle frame.
             // Find the part of the tile that overlaps with the rectangle.
@@ -213,22 +225,28 @@ private:
             return std::make_pair(top, left);
         }
 
-        GPUFrameReference frameForRectangle(const Rectangle &rect) {
+        GPUFrameReference frameForRectangle(const Rectangle &rect, const tiles::TileLayout &tileLayout) {
             if (rectangleToPixels_.count(rect))
                 return rectangleToPixels_.at(rect);
 
             // Create a CudaFrame with the dimensions of the rectangle.
             rectangleToPixels_.emplace(rect, GPUFrameReference::make<CudaFrame>(rect.height, rect.width, NV_ENC_PIC_STRUCT::NV_ENC_PIC_STRUCT_FRAME));
+            rectangleToRemainingCopiesNeeded_.emplace(rect, tileLayout.tilesForRectangle(rect).size());
+
             return rectangleToPixels_.at(rect);
         }
 
         std::vector<int> maxProcessedFrameNumbers_;
         std::unordered_map<Rectangle, GPUFrameReference> rectangleToPixels_;
+        std::unordered_map<Rectangle, unsigned int> rectangleToRemainingCopiesNeeded_;
         unsigned int numberOfRectanglesProcessed_;
         bool inNoTilesCase_;
         Configuration configuration_;
         GeometryReference geometry_;
         tiles::TileLayout tileLayoutForNoTilesCase_;
+
+//        int maxProcessedFrameNumber_;
+//        int tentativeMaxProcessedFrameNumber_;
     };
 
     const metadata::MetadataManager &getMetadataManager() {

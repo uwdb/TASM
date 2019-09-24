@@ -184,7 +184,8 @@ namespace lightdb::physical {
                                    data.begin(), data.end()),
                   packet_(data),
                   firstFrameIndex_(-1),
-                  numberOfFrames_(-1)
+                  numberOfFrames_(-1),
+                  tileNumber_(-1)
         { }
 
         explicit CPUEncodedFrameData(const Codec &codec,
@@ -195,7 +196,8 @@ namespace lightdb::physical {
                                    packet.payload, packet.payload + packet.payload_size),
                   packet_(packet),
                   firstFrameIndex_(-1),
-                  numberOfFrames_(-1)
+                  numberOfFrames_(-1),
+                  tileNumber_(-1)
         { }
 
         // Don't initilize packet with data for now.
@@ -206,7 +208,8 @@ namespace lightdb::physical {
                 : EncodedFrameData(DeviceType::CPU, codec, configuration, geometry, std::move(value)),
                 packet_(),
                 firstFrameIndex_(-1),
-                numberOfFrames_(-1)
+                numberOfFrames_(-1),
+                tileNumber_(-1)
         { }
 
 
@@ -219,6 +222,11 @@ namespace lightdb::physical {
             assert(numberOfFrames_ == -1);
             firstFrameIndex_ = firstFrameIndex;
             numberOfFrames_ = numberOfFrames;
+        }
+
+        void setTileNumber(int tileNumber) {
+            assert(tileNumber_ == -1);
+            tileNumber_ = tileNumber;
         }
 
         bool getFirstFrameIndexIfSet(int &outFirstFrameIndex) const {
@@ -237,10 +245,19 @@ namespace lightdb::physical {
             return true;
         }
 
+        bool getTileNumberIfSet(int &outTileNumber) const {
+            if (tileNumber_ == -1)
+                return false;
+
+            outTileNumber = tileNumber_;
+            return true;
+        }
+
     private:
         const DecodeReaderPacket packet_;
         int firstFrameIndex_;
         int numberOfFrames_;
+        int tileNumber_;
     };
 
     class CPUDecodedFrameData: public FrameData {

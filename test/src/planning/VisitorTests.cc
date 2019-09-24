@@ -129,19 +129,45 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
 }
 
 TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
-    PixelMetadataSpecification selection("labels", "label", "car", 7200, 9000);
+    srand(10);
+    auto numberOfRounds = 3u;
 
-//    std::cout << std::endl << "\n\nStep: Selecting pixels in not cracked video." << std::endl;
-//    auto notCracked = Scan("traffic-2k");
-//    Coordinator().execute(notCracked.Select(selection).Sink());
+    for (auto i = 0u; i < numberOfRounds; ++i) {
+        unsigned int start = (rand() % 25200) / 30 * 30;
+
+        PixelMetadataSpecification selection("labels", "label", "car", start, start + 1800);
+
+        {
+            std::cout << std::endl << "\n\nStep: Selecting pixels in not cracked video from frames " << start << " to " << start+1800 << std::endl;
+            auto notCracked = Scan("traffic-2k");
+            Coordinator().execute(notCracked.Select(selection).Sink());
+        }
+
+        sleep(3);
+
+        {
+            std::cout << std::endl << "\n\nStep: Selecting pixels in a custom-tiled video from frames " << start << " to " << start+1800 << std::endl;
+            auto idealCracked = ScanMultiTiled("traffic-2k-cracked-2");
+            Coordinator().execute(idealCracked.Select(selection).Sink());
+        }
+
+        sleep(3);
+    }
 
 //    std::cout << std::endl << "\n\nStep: Selecting pixels in an evenly tiled video." << std::endl;
 //    auto evenCracked = ScanMultiTiled("traffic-2k-cracked3x3");
 //    Coordinator().execute(evenCracked.Select(selection).Sink());
 
-    std::cout << std::endl << "\n\nStep: Selecting pixels in a custom-tiled video." << std::endl;
-    auto idealCracked = ScanMultiTiled("traffic-2k-cracked-2");
-    Coordinator().execute(idealCracked.Select(selection).Sink());
+
+
+//    for (auto i = 0u; i < numberOfRounds; ++i) {
+//        unsigned int start = (rand() % 25200) / 30 * 30;
+//
+//
+//
+//
+//        sleep(3);
+//    }
 }
 
 TEST_F(VisitorTestFixture, testReadCrackedTiles) {

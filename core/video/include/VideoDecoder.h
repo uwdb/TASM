@@ -39,10 +39,11 @@ private:
 
 class CudaDecoder: public VideoDecoder {
 public:
-  CudaDecoder(const DecodeConfiguration &configuration, FrameQueue& frame_queue, VideoLock& lock, lightdb::spsc_queue<int>& frameNumberQueue)
+  CudaDecoder(const DecodeConfiguration &configuration, FrameQueue& frame_queue, VideoLock& lock, lightdb::spsc_queue<int>& frameNumberQueue, lightdb::spsc_queue<int>& tileNumberQueue)
           : VideoDecoder(configuration, frame_queue), handle_(nullptr),
             lock_(lock),
             frameNumberQueue_(frameNumberQueue),
+            tileNumberQueue_(tileNumberQueue),
             currentBitrate_(0)
   {
       CUresult result;
@@ -59,7 +60,8 @@ public:
           : VideoDecoder(std::move(other)),
             handle_(other.handle_),
             lock_(other.lock_),
-            frameNumberQueue_(other.frameNumberQueue_) {
+            frameNumberQueue_(other.frameNumberQueue_),
+            tileNumberQueue_(other.tileNumberQueue_) {
       other.handle_ = nullptr;
   }
 
@@ -121,6 +123,7 @@ public:
   CUvideodecoder handle() const { return handle_; }
   VideoLock &lock() const {return lock_; }
   lightdb::spsc_queue<int> &frameNumberQueue() const { return frameNumberQueue_; }
+  lightdb::spsc_queue<int> &tileNumberQueue() const { return tileNumberQueue_; }
 
   CUVIDEOFORMAT currentFormat() const { return currentFormat_; }
   void mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format);
@@ -139,6 +142,7 @@ protected:
   CUvideodecoder handle_;
   VideoLock &lock_;
   lightdb::spsc_queue<int> &frameNumberQueue_;
+  lightdb::spsc_queue<int> &tileNumberQueue_;
   CUVIDDECODECREATEINFO creationInfo_;
 
   CUVIDEOFORMAT currentFormat_;

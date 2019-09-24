@@ -40,8 +40,10 @@ public:
             std::this_thread::sleep_for(duration / interval)) {
                 if((packet = decoder_.frame_queue().try_dequeue<CUVIDPARSERDISPINFO>()) != nullptr) {
                     auto frameNumber = -1;
+                    auto tileNumber = -1;
                     if (decoder_.frameNumberQueue().pop(frameNumber)) {
-                        return {DecodedFrame(decoder_, packet, frameNumber)};
+                        decoder_.tileNumberQueue().pop(tileNumber);
+                        return {DecodedFrame(decoder_, packet, frameNumber, tileNumber)};
                     } else
                         return {DecodedFrame(decoder_, packet)};
                 }
@@ -66,11 +68,16 @@ protected:
             if (reader != end) {
                 int firstFrameIndex = -1;
                 int numberOfFrames = -1;
+                int tileNumber = -1;
                 bool gotFirstFrameIndex = (*reader).getFirstFrameIndexIfSet(firstFrameIndex);
                 bool gotNumberOfFrames = (*reader).getNumberOfFramesIfSet(numberOfFrames);
+                bool gotTileNumber = (*reader).getTileNumberIfSet(tileNumber);
                 if (gotFirstFrameIndex && gotNumberOfFrames) {
                     for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
                         decoder.frameNumberQueue().push(i);
+
+                        if (gotTileNumber)
+                            decoder.tileNumberQueue().push(tileNumber);
                     }
                 }
 

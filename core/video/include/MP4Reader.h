@@ -40,17 +40,6 @@ public:
         numberOfSamples_ = gf_isom_get_sample_count(file_, trackNumber_);
     }
 
-    /*
-     *
-     *    static const unsigned int trackNumber_ = 1;
-    std::filesystem::path filename_;
-    GF_ISOFile *file_;
-    std::vector<int> keyframeNumbers_;
-    unsigned int numberOfSamples_;
-    unsigned int numberOfSamplesRead_ = 0;
-    bool invalidFile_;
-    bool forDecoding_;
-     */
     MP4Reader(const MP4Reader &other)
         : filename_(other.filename_),
         keyframeNumbers_(other.keyframeNumbers_),
@@ -80,6 +69,12 @@ public:
             gf_isom_close(file_);
             file_ = NULL;
         }
+    }
+
+    void setNewFileWithSameKeyframes(const std::filesystem::path &filename) {
+        closeFile();
+        filename_ = filename;
+        setUpGFIsomFile();
     }
 
     const std::vector<int> &keyframeNumbers() const {

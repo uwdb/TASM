@@ -43,7 +43,8 @@ public:
           : VideoDecoder(configuration, frame_queue), handle_(nullptr),
             lock_(lock),
             frameNumberQueue_(frameNumberQueue),
-            currentBitrate_(0)
+            currentBitrate_(0),
+            streamIsComplete_(false)
   {
       CUresult result;
       creationInfo_ = this->configuration().AsCuvidCreateInfo(lock);
@@ -59,7 +60,8 @@ public:
           : VideoDecoder(std::move(other)),
             handle_(other.handle_),
             lock_(other.lock_),
-            frameNumberQueue_(other.frameNumberQueue_) {
+            frameNumberQueue_(other.frameNumberQueue_),
+            streamIsComplete_(other.streamIsComplete_) {
       other.handle_ = nullptr;
   }
 
@@ -70,6 +72,18 @@ public:
           cuvidDestroyDecoder(handle());
           CudaDecoder::DECODER_DESTROYED = true;
       }
+  }
+
+  int nextFrame() const;
+
+  bool streamIsComplete() const {
+      std::scoped_lock lock(streamMutex_);
+      return streamIsComplete_;
+  }
+
+  void setIsStreamComplete(bool isComplete) {
+      std::scoped_lock lock(streamMutex_);
+      streamIsComplete_ = isComplete;
   }
 
   bool reconfigureDecoderIfNecessary(CUVIDEOFORMAT *newFormat) {
@@ -125,9 +139,18 @@ public:
   CUVIDEOFORMAT currentFormat() const { return currentFormat_; }
   void mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format);
   void unmapFrame(unsigned int picIndex) const;
+  void removeFrameInfoForPicIndex(unsigned int picIndex) const;
   std::pair<CUdeviceptr, unsigned int> frameInfoForPicIndex(unsigned int picIndex) const;
+  CUVIDEOFORMAT &videoFormatForPicIndex(unsigned int picIndex) const;
 
   struct DecodedDimensions {
+      DecodedDimensions(CUVIDEOFORMAT &format)
+        : displayWidth(static_cast<unsigned int>(format.display_area.right - format.display_area.left)),
+            displayHeight(static_cast<unsigned int>(format.display_area.bottom - format.display_area.top)),
+            codedWidth(format.coded_height),
+            codedHeight(format.coded_height)
+      { }
+
       unsigned int displayWidth;
       unsigned int displayHeight;
       unsigned int codedWidth;
@@ -162,6 +185,9 @@ protected:
 
 private:
     static CUVIDEOFORMAT FormatFromCreateInfo(CUVIDDECODECREATEINFO);
+
+    mutable std::mutex streamMutex_;
+    bool streamIsComplete_;
 
     static bool DECODER_DESTROYED;
 };

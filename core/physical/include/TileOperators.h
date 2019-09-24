@@ -33,6 +33,17 @@ public:
         parentIndexToTileNumber_(std::move(parentIndexToTileNumber))
     { }
 
+    explicit MergeTilePixels(const LightFieldReference &logical,
+            PhysicalOperatorReference &parent,
+            std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider)
+        : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "MergeTilePixels-init")),
+        GPUOperator(parent),
+        metadataManager_(getMetadataManager()),
+        tileLayout_(tiles::EmptyTileLayout),
+        parentIndexToTileNumber_{},
+        tileLocationProvider_(tileLocationProvider)
+    { }
+
     const std::vector<Rectangle> &rectanglesForFrame(unsigned int frameNumber) const {
         return metadataManager_.rectanglesForFrame(frameNumber);
     }
@@ -61,7 +72,7 @@ private:
     public:
         explicit Runtime(MergeTilePixels &physical)
             : runtime::GPURuntime<MergeTilePixels>(physical),
-                    maxProcessedFrameNumbers_(physical.parents().size(), -1),
+//                    maxProcessedFrameNumbers_(physical.parents().size(), -1),
                     numberOfRectanglesProcessed_(0),
                     inNoTilesCase_(false),
                     geometry_(GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()))
@@ -75,18 +86,26 @@ private:
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
-            if (all_parent_eos()) {
+            if (all_parent_eos() && rectangleToPixels_.empty()) {
                 assert(rectangleToPixels_.empty());
                 std::cout << "Number of processed rectangles: " << numberOfRectanglesProcessed_ << std::endl;
                 return {};
+            } else if (all_parent_eos() && !rectangleToPixels_.empty()) {
+                for (auto it = maxProcessedFrameNumbers_.begin(); it != maxProcessedFrameNumbers_.end(); ++it) {
+                    it->second = INT32_MAX;
+                }
             }
 
             GLOBAL_TIMER.startSection("MergeTilePixels");
             if (!all_parent_eos()) {
-                for (auto index = 0u; index < iterators().size(); index++) {
-                    if (iterators()[index] != iterators()[index].eos()) {
-                        auto tileNumber = physical().tileNumberForParentIndex(index);
-                        auto decoded = (iterators()[index]++).downcast<GPUDecodedFrameData>();
+                if (iterators().size() == 1) {
+                    auto multiDecoded = (iterators()[0]++).downcast<MultiGPUDecodedFrameData>();
+                    for (auto &completeTile : multiDecoded.completeTiles())
+                        updateMaxProcessedFrameNumber(INT32_MAX, completeTile);
+
+                    for (auto it = multiDecoded.tileToData().begin(); it != multiDecoded.tileToData().end(); ++it) {
+                        auto tileNumber = it->first;
+                        auto decoded = it->second;
 
                         for (auto &frame : decoded.frames()) {
                             // Get rectangles for frame.
@@ -95,30 +114,74 @@ private:
 
                             auto tileRectangle = tileLayoutForFrame(frameNumber).rectangleForTile(tileNumber);
 
-                            updateMaxProcessedFrameNumber(frameNumber, index);
+                            updateMaxProcessedFrameNumber(frameNumber, tileNumber);
 
                             const auto &rectanglesForFrame = physical().rectanglesForFrame(frameNumber);
-                            bool anyRectangleIntersectsTile = std::any_of(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](auto &rect) {
-                                return tileRectangle.intersects(rect);
-                            });
+                            bool anyRectangleIntersectsTile = std::any_of(rectanglesForFrame.begin(),
+                                                                          rectanglesForFrame.end(),
+                                                                          [&](auto &rect) {
+                                                                              return tileRectangle.intersects(rect);
+                                                                          });
 
                             if (!anyRectangleIntersectsTile)
                                 continue;
 
                             // For each rectangle that the tile overlaps, copy the tile's pixels to the correct
                             // location in the rectangle's frame.
-                            std::for_each(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](const Rectangle &rectangle) {
-                                if (!tileRectangle.intersects(rectangle))
-                                    return;
+                            std::for_each(rectanglesForFrame.begin(), rectanglesForFrame.end(),
+                                          [&](const Rectangle &rectangle) {
+                                              if (!tileRectangle.intersects(rectangle))
+                                                  return;
 
-                                copyTilePixelsFromFrameToRectangleFrame(tileRectangle, frame, rectangle);
-                            });
+                                              copyTilePixelsFromFrameToRectangleFrame(tileRectangle, frame,
+                                                                                      rectangle);
+                                          });
                         }
 
-                        if (iterators()[index] == iterators()[index].eos())
+                    }
+                } else {
+
+                    for (auto index = 0u; index < iterators().size(); index++) {
+                        if (iterators()[index] != iterators()[index].eos()) {
+                            auto tileNumber = physical().tileNumberForParentIndex(index);
+                            auto decoded = (iterators()[index]++).downcast<GPUDecodedFrameData>();
+
+                            for (auto &frame : decoded.frames()) {
+                                // Get rectangles for frame.
+                                int frameNumber = -1;
+                                assert(frame->getFrameNumber(frameNumber));
+
+                                auto tileRectangle = tileLayoutForFrame(frameNumber).rectangleForTile(tileNumber);
+
+                                updateMaxProcessedFrameNumber(frameNumber, index);
+
+                                const auto &rectanglesForFrame = physical().rectanglesForFrame(frameNumber);
+                                bool anyRectangleIntersectsTile = std::any_of(rectanglesForFrame.begin(),
+                                                                              rectanglesForFrame.end(),
+                                                                              [&](auto &rect) {
+                                                                                  return tileRectangle.intersects(rect);
+                                                                              });
+
+                                if (!anyRectangleIntersectsTile)
+                                    continue;
+
+                                // For each rectangle that the tile overlaps, copy the tile's pixels to the correct
+                                // location in the rectangle's frame.
+                                std::for_each(rectanglesForFrame.begin(), rectanglesForFrame.end(),
+                                              [&](const Rectangle &rectangle) {
+                                                  if (!tileRectangle.intersects(rectangle))
+                                                      return;
+
+                                                  copyTilePixelsFromFrameToRectangleFrame(tileRectangle, frame,
+                                                                                          rectangle);
+                                              });
+                            }
+
+                            if (iterators()[index] == iterators()[index].eos())
+                                updateMaxProcessedFrameNumber(INT32_MAX, index);
+                        } else {
                             updateMaxProcessedFrameNumber(INT32_MAX, index);
-                    } else {
-                        updateMaxProcessedFrameNumber(INT32_MAX, index);
+                        }
                     }
                 }
             }
@@ -139,32 +202,44 @@ private:
         }
 
         void setConfiguration() {
+            memset(&configuration_, 0, sizeof(configuration_));
+
             // Find an interator that is not eos.
             // If they are all eos, then no configuration.
-            for (auto & iterator : iterators()) {
-                if (iterator == iterator.eos())
-                    continue;
-
-                auto base = (*iterator).downcast<GPUDecodedFrameData>().configuration();
-                configuration_ = Configuration{static_cast<unsigned int>(base.width),
-                                               static_cast<unsigned int>(base.height),
-                                               0, 0,
-                                               base.bitrate, base.framerate,
-                                               {static_cast<unsigned int>(0),
-                                                static_cast<unsigned int>(0)}};
-                return;
-            }
-            // There should always be at least some data.
-            assert(false);
+//            for (auto & iterator : iterators()) {
+//                if (iterator == iterator.eos())
+//                    continue;
+//
+//                auto base = (*iterator).downcast<GPUDecodedFrameData>().configuration();
+//                configuration_ = Configuration{static_cast<unsigned int>(base.width),
+//                                               static_cast<unsigned int>(base.height),
+//                                               0, 0,
+//                                               base.bitrate, base.framerate,
+//                                               {static_cast<unsigned int>(0),
+//                                                static_cast<unsigned int>(0)}};
+//                return;
+//            }
+//            // There should always be at least some data.
+//            assert(false);
         }
 
         void updateMaxProcessedFrameNumber(int frameNumber, int parentIndex) {
             if (maxProcessedFrameNumbers_[parentIndex] < frameNumber)
                 maxProcessedFrameNumbers_[parentIndex] = frameNumber;
+
+//            if (maxProcessedFrameNumbers_[parentIndex] < frameNumber)
+//                maxProcessedFrameNumbers_[parentIndex] = frameNumber;
         }
 
         int minimumProcessedFrameNumber() const {
-            return *std::min_element(maxProcessedFrameNumbers_.begin(), maxProcessedFrameNumbers_.end());
+//            return *std::min_element(maxProcessedFrameNumbers_.begin(), maxProcessedFrameNumbers_.end());
+
+            auto min = INT32_MAX;
+            for (auto it = maxProcessedFrameNumbers_.begin(); it != maxProcessedFrameNumbers_.end(); ++it) {
+                if (it->second < min)
+                    min = it->second;
+            }
+            return min;
         }
 
         std::vector<GPUFrameReference> pixelsForProcessedRectangles() {
@@ -222,7 +297,8 @@ private:
             return rectangleToPixels_.at(rect);
         }
 
-        std::vector<int> maxProcessedFrameNumbers_;
+//        std::vector<int> maxProcessedFrameNumbers_;
+        std::unordered_map<int, int> maxProcessedFrameNumbers_;
         std::unordered_map<Rectangle, GPUFrameReference> rectangleToPixels_;
         unsigned int numberOfRectanglesProcessed_;
         bool inNoTilesCase_;

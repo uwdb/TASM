@@ -4,6 +4,7 @@
 #include "spsc_queue.h"
 #include "Stitcher.h"
 #include "nvcuvid.h"
+#include "GPUContext.h"
 #include <thread>
 #include <experimental/filesystem>
 

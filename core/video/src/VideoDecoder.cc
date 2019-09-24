@@ -72,6 +72,17 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
     }
 }
 
+int CudaDecoder::nextFrame() const {
+    assert(frameNumberQueue_.read_available());
+    return frameNumberQueue_.front();
+}
+
+void CudaDecoder::removeFrameInfoForPicIndex(unsigned int picIndex) const {
+    std::scoped_lock lock(picIndexMutex_);
+    assert(picIndexToMappedFrameInfo_.count(picIndex));
+    picIndexToMappedFrameInfo_.erase(picIndex);
+}
+
 void CudaDecoder::unmapFrame(unsigned int picIndex) const {
     CUdeviceptr frameHandle;
     {
@@ -94,12 +105,14 @@ std::pair<CUdeviceptr, unsigned int> CudaDecoder::frameInfoForPicIndex(unsigned 
     return std::make_pair(decodedInfo.handle, decodedInfo.pitch);
 }
 
+CUVIDEOFORMAT &CudaDecoder::videoFormatForPicIndex(unsigned int picIndex) const {
+    std::scoped_lock lock(picIndexMutex_);
+    return picIndexToMappedFrameInfo_.at(picIndex).format;
+}
+
 CudaDecoder::DecodedDimensions CudaDecoder::decodedDimensionsForPicIndex(unsigned int picIndex) const {
     std::scoped_lock lock(picIndexMutex_);
     auto &format = picIndexToMappedFrameInfo_.at(picIndex).format;
 
-    return {static_cast<unsigned int>(format.display_area.right - format.display_area.left),
-            static_cast<unsigned int>(format.display_area.bottom - format.display_area.top),
-            format.coded_width,
-            format.coded_height};
+    return DecodedDimensions(format);
 }

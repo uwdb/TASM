@@ -6,6 +6,7 @@
 #include "bytestring.h"
 #include "reference.h"
 #include "errors.h"
+#include "nvcuvid.h"
 #include <utility>
 #include <mutex>
 #include <utility>
@@ -216,7 +217,7 @@ protected:
         std::for_each(parameters.begin(), parameters.end(), [](const CUDA_MEMCPY2D &parameters) {
             CUresult result;
             if ((result = cuMemcpy2D(&parameters)) != CUDA_SUCCESS) {
-                throw GpuCudaRuntimeError("Call to cuMemcpy2D failed", result);
+git                 throw GpuCudaRuntimeError("Call to cuMemcpy2D failed", result);
             }
         });
     }
@@ -252,22 +253,40 @@ private:
 };
 using CudaFrameReference = lightdb::shared_reference<CudaFrame>;
 
+namespace decoded {
+struct DecodedFrameInformation {
+    unsigned int displayWidth() const { return static_cast<unsigned int>(format.display_area.right - format.display_area.left); }
+    unsigned int displayHeight() const { return static_cast<unsigned int>(format.display_area.bottom - format.display_area.top); }
+
+    unsigned int frameNumber;
+    CUdeviceptr handle;
+    unsigned int pitch;
+    CUVIDEOFORMAT format;
+};
+} // namespace lightdb::decoded
+
 class DecodedFrame : public GPUFrame {
 public:
-    DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters, int frameNumber)
-            : GPUFrame(decoder.configuration(), extract_type(parameters), frameNumber), decoder_(decoder), parameters_(parameters),
-            frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
+    DecodedFrame(const CudaDecoder * const decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters, int frameNumber)
+            : GPUFrame(decoder->configuration(), extract_type(parameters), frameNumber), decoder_(decoder), parameters_(parameters),
+            frameDimensions_(decoder_->decodedDimensionsForPicIndex(parameters_->picture_index))
     {
         cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
         // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
         // with that.
     }
 
-    DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters)
-        : GPUFrame(decoder.configuration(), extract_type(parameters)), decoder_(decoder), parameters_(parameters),
-          frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
+    DecodedFrame(const CudaDecoder * const decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters)
+        : GPUFrame(decoder->configuration(), extract_type(parameters)), decoder_(decoder), parameters_(parameters),
+          frameDimensions_(decoder_->decodedDimensionsForPicIndex(parameters_->picture_index))
     {
         cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
+    }
+
+    DecodedFrame(decoded::DecodedFrameInformation decodeInformation)
+        : GPUFrame(decodeInformation.displayHeight(), decodeInformation.displayWidth(), NV_ENC_PIC_STRUCT_FRAME, decodeInformation.frameNumber), decoder_(nullptr), parameters_(nullptr),
+        frameDimensions_(decodeInformation.format), decodedFrameInfo_(decodeInformation) {
+        cuda();
     }
 
     DecodedFrame(const DecodedFrame&) = default;
@@ -275,13 +294,16 @@ public:
 
     std::shared_ptr<CudaFrame> cuda() override;
 
-    const CudaDecoder &decoder() const { return decoder_; }
+    const CudaDecoder &decoder() const { return *decoder_; }
+    bool hasParameters() const { return (bool)parameters_; }
     const CUVIDPARSERDISPINFO& parameters() const { return *parameters_; }
     unsigned int height() const override { return frameDimensions_.displayHeight; }
     unsigned int width() const override { return frameDimensions_.displayWidth; }
 
     unsigned int codedHeight() const override { return frameDimensions_.codedHeight; }
     unsigned int codedWidth() const override { return frameDimensions_.codedWidth; }
+
+    const decoded::DecodedFrameInformation &decodedFrameInformation() const { return decodedFrameInfo_.value(); }
 
 private:
     static NV_ENC_PIC_STRUCT extract_type(const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters) {
@@ -292,10 +314,11 @@ private:
                       : NV_ENC_PIC_STRUCT_FIELD_BOTTOM_TOP));
     }
 
-    const CudaDecoder &decoder_;
+    const CudaDecoder * const decoder_;
     const std::shared_ptr<CUVIDPARSERDISPINFO> parameters_;
     std::shared_ptr<CudaFrame> cuda_;
     CudaDecoder::DecodedDimensions frameDimensions_;
+    std::optional<decoded::DecodedFrameInformation> decodedFrameInfo_;
 };
 
 class CudaDecodedFrame: public DecodedFrame, public CudaFrame {
@@ -308,7 +331,13 @@ public:
     CudaDecodedFrame(CudaDecodedFrame &&) noexcept = delete;
 
     ~CudaDecodedFrame() override {
-        decoder().unmapFrame(parameters().picture_index);
+        if (hasParameters())
+            decoder().unmapFrame(parameters().picture_index);
+        else {
+            CUresult result = cuMemFree(decodedFrameInformation().handle);
+            if (result != CUDA_SUCCESS)
+                LOG(WARNING) << "Ignoring error freeing frame data";
+        }
 //        CUresult result = cuvidUnmapVideoFrame(decoder().handle(), handle());
 //        if(result != CUDA_SUCCESS)
 //            LOG(WARNING) << "Ignoring error << " << result << " in cuvidUnmapVideoFrame destructor.";
@@ -321,7 +350,12 @@ public:
 
 private:
     static std::pair<CUdeviceptr, unsigned int> map_frame(const DecodedFrame &frame) {
-        return frame.decoder().frameInfoForPicIndex(frame.parameters().picture_index);
+        if (frame.hasParameters())
+            return frame.decoder().frameInfoForPicIndex(frame.parameters().picture_index);
+        else {
+            auto &frameInfo = frame.decodedFrameInformation();
+            return std::make_pair(frameInfo.handle, frameInfo.pitch);
+        }
 
 //        CUresult result;
 //        CUdeviceptr handle;

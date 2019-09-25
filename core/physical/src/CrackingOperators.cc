@@ -53,7 +53,7 @@ void CrackVideo::Runtime::readDataFromEncoders(bool shouldFlush) {
     }
 }
 
-void CrackVideo::Runtime::encodeFrameToTiles(GPUFrameReference &frame, int frameNumber) {
+void CrackVideo::Runtime::encodeFrameToTiles(const GPUFrameReference &frame, int frameNumber) {
     bool shouldBeKeyframe = physical().desiredKeyframes().count(frameNumber);
     tiles::KeyframeConfigurationProvider *keyframeProvider = nullptr;
     if ((keyframeProvider = dynamic_cast<tiles::KeyframeConfigurationProvider *>(tileConfigurationProvider_.get())) != nullptr) {

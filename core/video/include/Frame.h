@@ -10,6 +10,19 @@
 #include <mutex>
 #include <utility>
 
+#include <iostream>
+
+class FrameWriter {
+public:
+    static void writeUpdate(std::string operation, CUdeviceptr handle) {
+        std::scoped_lock lock(FrameWriter::mutex_);
+        std::cout << operation << ": " << handle << std::endl;
+    }
+
+private:
+    static std::mutex mutex_;
+};
+
 //TODO move into lightdb namespace
 
 class Frame {
@@ -100,8 +113,11 @@ public:
     ~CudaFrame() override {
         CUresult result;
 
-        if(owner_ && (result = cuMemFree(handle_)) != CUDA_SUCCESS)
-            LOG(ERROR) << "Swallowed failure to free CudaFrame resources (" << result << ")";
+        if (owner_) {
+//            FrameWriter::writeUpdate("free", handle_);
+            if (owner_ && (result = cuMemFree(handle_)) != CUDA_SUCCESS)
+                LOG(ERROR) << "Swallowed failure to free CudaFrame resources (" << result << ")";
+        }
     }
 
     virtual CUdeviceptr handle() const { return handle_; }
@@ -242,8 +258,10 @@ private:
                                      frame.height() * 3 / 2,
                                      16)) != CUDA_SUCCESS)
             throw GpuCudaRuntimeError("Call to cuMemAllocPitch failed", result);
-        else
+        else {
+//            FrameWriter::writeUpdate("alloc", handle);
             return std::make_pair(handle, static_cast<unsigned int>(pitch));
+        }
     }
 
     const CUdeviceptr handle_;

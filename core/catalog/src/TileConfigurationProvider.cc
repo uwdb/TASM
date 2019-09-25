@@ -377,6 +377,11 @@ std::vector<unsigned int> GroupingTileConfigurationProvider::tileDimensions(cons
     }
     assert(totalDimension > offsets.back());
     dimensions.back() = totalDimension - offsets.back();
+
+//    for (auto &dimension : dimensions) {
+//        assert(!(dimension % 2));
+//    }
+
     return dimensions;
 }
 

@@ -1,5 +1,7 @@
 #include "Frame.h"
 
+std::mutex FrameWriter::mutex_;
+
 std::shared_ptr<CudaFrame> DecodedFrame::cuda() {
     return cuda_ != nullptr
            ? cuda_

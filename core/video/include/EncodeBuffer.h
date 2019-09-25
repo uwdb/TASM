@@ -76,6 +76,8 @@ struct EncodeBuffer
                 size, &output_buffer.bitstreamBuffer)) != NV_ENC_SUCCESS)
             throw GpuEncodeRuntimeError("Call to api.NvEncCreateBitstreamBuffer failed", status);
 
+//        FrameWriter::writeUpdate("alloc", input_buffer.NV12devPtr);
+
         input_buffer.buffer_format = NV_ENC_BUFFER_FORMAT_NV12_PL;
         input_buffer.width = encoder.configuration().width;
         input_buffer.height = encoder.configuration().height;
@@ -86,6 +88,8 @@ struct EncodeBuffer
     ~EncodeBuffer() {
         NVENCSTATUS status;
         CUresult result;
+
+//        FrameWriter::writeUpdate("free", input_buffer.NV12devPtr);
 
         if((status = encoder.api().NvEncDestroyBitstreamBuffer(output_buffer.bitstreamBuffer)) != NV_ENC_SUCCESS)
             LOG(ERROR) << "Call to NvEncDestroyBitstreamBuffer failed with status " << status;

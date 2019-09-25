@@ -1,5 +1,6 @@
 #include "VideoDecoder.h"
 
+#include "Frame.h"
 #include <cassert>
 #include <nvcuvid.h>
 

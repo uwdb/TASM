@@ -81,7 +81,7 @@ namespace lightdb::associations {
                     {"traffic-2k-cracked3x3", "/home/maureen/visualroad/2k-short/traffic-003.db"},
                     {"traffic-2k-cracked3x3-2", "/home/maureen/visualroad/2k-short/traffic-003.db"},
                     {"traffic-2k-cracked", "/home/maureen/visualroad/2k-short/traffic-003.db"},
-                    {"traffic-2k-cracked-2", "/home/maureen/visualroad/2k-short/traffic-003.db"},
+                    {"traffic-2k-cracked-gop60", "/home/maureen/visualroad/2k-short/traffic-003.db"},
                     {"traffic-2k-single-tile", "/home/maureen/visualroad/2k-short/traffic-003.db"},
             } );
 } // namespace lightdb::associations

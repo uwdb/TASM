@@ -125,7 +125,7 @@ TEST_F(VisitorTestFixture, testScanAndSave) {
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
     auto input = Scan("traffic-2k");
     MetadataSpecification metadataSelection("labels", "label", "car");
-    Coordinator().execute(input.StoreCracked("traffic-2k-cracked-2", "traffic-2k", &metadataSelection));
+    Coordinator().execute(input.StoreCracked("traffic-2k-cracked-gop60", "traffic-2k", &metadataSelection));
 }
 
 TEST_F(VisitorTestFixture, testExecuteCracking) {
@@ -141,34 +141,40 @@ TEST_F(VisitorTestFixture, testExecuteCracking) {
 
 TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
     srand(10);
-    auto numberOfRounds = 2u;
+
+    auto timeRangeInMinutes = 5;
+    // * 60 seconds / minute * 30 frames / second
+    auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
+    auto totalNumberOfFrames = 27000;
+
+    auto numberOfRounds = 30u;
 
     for (auto i = 0u; i < numberOfRounds; ++i) {
-        unsigned int start = (rand() % 25200) / 30 * 30;
+        unsigned int start = (rand() % (totalNumberOfFrames - numberOfFramesInTimeRange)) / 30 * 30;
 
-        PixelMetadataSpecification selection("labels", "label", "car", start, start + 1800);
+        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
+
+//        {
+//            std::cout << std::endl << "\n\nStep: Selecting pixels in not cracked video from frames " << start << " to " << start+1800 << std::endl;
+//            auto notCracked = Scan("traffic-2k");
+//            Coordinator().execute(notCracked.Select(selection).Sink());
+//        }
+//
+//        sleep(3);
 
         {
-            std::cout << std::endl << "\n\nStep: Selecting pixels in not cracked video from frames " << start << " to " << start+1800 << std::endl;
-            auto notCracked = Scan("traffic-2k");
-            Coordinator().execute(notCracked.Select(selection).Sink());
-        }
-
-        sleep(3);
-
-        {
-            std::cout << std::endl << "\n\nStep: Selecting pixels in a custom-tiled video from frames " << start << " to " << start+1800 << std::endl;
-            auto idealCracked = ScanMultiTiled("traffic-2k-cracked-2");
+            std::cout << std::endl << "\n\nStep: Selecting pixels in a custom-tiled video from frames " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+            auto idealCracked = ScanMultiTiled("traffic-2k-cracked-gop60");
             Coordinator().execute(idealCracked.Select(selection).Sink());
         }
 
         sleep(3);
-
-        {
-            std::cout << std::endl << "\n\nStep: Selecting pixels while cracking from frames " << start << " to " << start+1800 << std::endl;
-            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
-            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
-        }
+//
+//        {
+//            std::cout << std::endl << "\n\nStep: Selecting pixels while cracking from frames " << start << " to " << start+1800 << std::endl;
+//            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
+//            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
+//        }
     }
 }
 

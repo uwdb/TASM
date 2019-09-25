@@ -231,6 +231,7 @@ private:
 
             // Create a CudaFrame with the dimensions of the rectangle.
             rectangleToPixels_.emplace(rect, GPUFrameReference::make<CudaFrame>(rect.height, rect.width, NV_ENC_PIC_STRUCT::NV_ENC_PIC_STRUCT_FRAME));
+//            auto numberOfTilesForRectangle = tileLayout.tilesForRectangle(rect).size();
             rectangleToRemainingCopiesNeeded_.emplace(rect, tileLayout.tilesForRectangle(rect).size());
 
             return rectangleToPixels_.at(rect);

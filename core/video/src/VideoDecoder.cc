@@ -26,28 +26,32 @@ CUVIDEOFORMAT CudaDecoder::FormatFromCreateInfo(CUVIDDECODECREATEINFO createInfo
 }
 
 void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
-    CUresult result;
-    CUdeviceptr mappedHandle;
-    unsigned int pitch;
-    CUVIDPROCPARAMS mapParameters;
-    memset(&mapParameters, 0, sizeof(CUVIDPROCPARAMS));
-    mapParameters.progressive_frame = frame->progressive_frame;
-    mapParameters.top_field_first = frame->top_field_first;
-    mapParameters.unpaired_field = frame->progressive_frame == 1 || frame->repeat_first_field <= 1;
+//    CUresult result;
+//    CUdeviceptr mappedHandle;
+//    unsigned int pitch;
+//    CUVIDPROCPARAMS mapParameters;
+//    memset(&mapParameters, 0, sizeof(CUVIDPROCPARAMS));
+//    mapParameters.progressive_frame = frame->progressive_frame;
+//    mapParameters.top_field_first = frame->top_field_first;
+//    mapParameters.unpaired_field = frame->progressive_frame == 1 || frame->repeat_first_field <= 1;
     {
         std::scoped_lock lock(lock_);
         std::scoped_lock lock2(picIndexMutex_);
 
-        if ((result = cuvidMapVideoFrame(handle(), frame->picture_index,
-                                         &mappedHandle, &pitch, &mapParameters)) != CUDA_SUCCESS)
-            throw GpuCudaRuntimeError("Call to cuvidMapVideoFrame failed", result);
+//        if ((result = cuvidMapVideoFrame(handle(), frame->picture_index,
+//                                         &mappedHandle, &pitch, &mapParameters)) != CUDA_SUCCESS)
+//            throw GpuCudaRuntimeError("Call to cuvidMapVideoFrame failed", result);
 
+//        FrameWriter::writeUpdate("map", mappedHandle);
+
+/*
         CUdeviceptr newHandle;
         size_t newPitch;
         auto width = format.coded_width; //  format.display_area.right - format.display_area.left;
         auto height = format.coded_height; // format.display_area.bottom - format.display_area.top;
         result = cuMemAllocPitch(&newHandle, &newPitch, width, height * 3 / 2, 16);
         assert(result == CUDA_SUCCESS);
+//        FrameWriter::writeUpdate("alloc", newHandle);
 
         CUDA_MEMCPY2D m;
         memset(&m, 0, sizeof(m));
@@ -62,14 +66,16 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
         result = cuMemcpy2D(&m);
         assert(result == CUDA_SUCCESS);
 
+//        FrameWriter::writeUpdate("unmap", mappedHandle);
         if ((result = cuvidUnmapVideoFrame(handle(), mappedHandle)) != CUDA_SUCCESS)
             throw GpuCudaRuntimeError("Call to unmap failed", result);
 
-        assert(!picIndexToMappedFrameInfo_.count(frame->picture_index));
+ */
+//        assert(!picIndexToMappedFrameInfo_.count(frame->picture_index));
         picIndexToMappedFrameInfo_.emplace(std::pair<unsigned int, DecodedFrameInformation>(
                 std::piecewise_construct,
                 std::forward_as_tuple(frame->picture_index),
-                std::forward_as_tuple(newHandle, newPitch, format)));
+                std::forward_as_tuple(0, 0, format)));
     }
 }
 
@@ -81,10 +87,11 @@ void CudaDecoder::unmapFrame(unsigned int picIndex) const {
         assert(picIndexToMappedFrameInfo_.count(picIndex));
         frameHandle = picIndexToMappedFrameInfo_.at(picIndex).handle;
 
-        // This is an unideal ordering to erase before unmapping, but I think it will be fine.
         picIndexToMappedFrameInfo_.erase(picIndex);
 
-        CUresult result = cuMemFree(frameHandle);
+//        FrameWriter::writeUpdate("free", frameHandle);
+//        CUresult result = cuMemFree(frameHandle);
+        CUresult result = cuvidUnmapVideoFrame(handle(), frameHandle);
         assert(result == CUDA_SUCCESS);
     }
 }

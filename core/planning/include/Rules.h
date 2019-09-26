@@ -119,8 +119,8 @@ namespace lightdb::optimization {
 //                        plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
 //                        return true;
 
-                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
-//                        auto &scan = plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
+//                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
+                        auto &scan = plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 
                         auto children = plan().children(plan().lookup(node));

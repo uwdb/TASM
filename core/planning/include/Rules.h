@@ -451,10 +451,10 @@ namespace lightdb::optimization {
                 auto metadataManager = node.metadataManager();
 
                 auto tileLayoutsManager = multiTiledLightField.tileLayoutsManager();
-                unsigned int gop = 30;
+                unsigned int gop = 60;
 
 //                auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
-                auto tileLocationProvider = std::make_shared<tiles::MultiTileLocationProvider>(tileLayoutsManager, metadataManager, gop);
+                auto tileLocationProvider = std::make_shared<tiles::MultiTileLocationProvider>(tileLayoutsManager, metadataManager, 30);
 
                 auto scan = plan().emplace<physical::ScanMultiTileOperator>(
                         physical_parents[0]->logical(),
@@ -477,8 +477,10 @@ namespace lightdb::optimization {
                                                                       tileConfig, tileLayoutsManager->entry().name());
                     auto merge = plan().emplace<physical::MergeTilePixels>(logical, crack, tileLocationProvider);
 //                    plan().emplace<physical::SaveFramesToFiles>(logical, merge);
-                } else
+                } else {
                     auto merge = plan().emplace<physical::MergeTilePixels>(logical, decode, tileLocationProvider);
+//                    plan().emplace<physical::SaveFramesToFiles>(logical, merge);
+                }
 
                 // Add a merge operator whose parents are the decodes.
                 // Start by assuming that its parents will be in the order of tiles.
@@ -1032,7 +1034,7 @@ namespace lightdb::optimization {
                 std::shared_ptr<tiles::TileConfigurationProvider> tileConfig;
                 if (node.metadataManager()) {
                     tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
-                                                            60,
+                                                            300,
                                                             node.metadataManager(),
                                                             width,
                                                             height);

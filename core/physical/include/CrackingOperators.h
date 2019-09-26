@@ -52,23 +52,24 @@ private:
             if (iterators().front() == iterators().front().eos()) {
                 // Read encoded data.
                 GLOBAL_TIMER.startSection("CrackVideo");
-                threadPool_.push([this]() {
+//                threadPool_.push([this]() {
                     readDataFromEncoders(true);
 
                     // Save data to disk.
                     saveTileGroupsToDisk();
-                });
+//                });
 
-                threadPool_.waitAll(); // This blocks the last iteration of merge.
+//                threadPool_.waitAll(); // This blocks the last iteration of merge.
 
                 GLOBAL_TIMER.endSection("CrackVideo");
                 return {};
             }
 
-            GLOBAL_TIMER.startSection("CrackVideo");
             auto decodedReference = iterators().front()++;
 
-            threadPool_.push([this, decodedReference]() {
+            GLOBAL_TIMER.startSection("CrackVideo");
+
+//            threadPool_.push([this, decodedReference]() {
                 auto &decoded = decodedReference.downcast<GPUDecodedFrameData>();
                 for (auto &frame: decoded.frames()) {
                     // Get the tile configuration for this frame.
@@ -109,7 +110,7 @@ private:
                         }
                     }
 
-                    if (tileLayout != currentTileLayout_) {
+                    if (tileLayout != currentTileLayout_ || frameNumber != lastFrameInGroup_ + 1) {
                         // Read the data that was flushed from the encoders because it has the rest of the frames that were
                         // encoded with the last configuration.
                         // Only save data if we were actually encoding it.
@@ -136,7 +137,7 @@ private:
 
                 // Move information from encode buffers so they don't fill up.
                 readDataFromEncoders(false);
-            });
+//            });
 
 //            ++iterator();
 

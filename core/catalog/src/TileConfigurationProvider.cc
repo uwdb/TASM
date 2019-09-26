@@ -368,7 +368,10 @@ std::vector<unsigned int> GroupingTileConfigurationProvider::tileDimensions(cons
     }
 
     // Now transform offsets into widths/heights.
-    assert(offsets.size());
+//    assert(offsets.size()); // Offsets may be empty if no tiles should be added in a given dimension.
+    if (offsets.empty())
+        return { static_cast<unsigned int>(totalDimension) };
+
     std::vector<unsigned int> dimensions(offsets.size() + 1);
     dimensions[0] = offsets[0];
     for (auto i = 1u; i < offsets.size(); ++i) {

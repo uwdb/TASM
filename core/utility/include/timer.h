@@ -57,6 +57,12 @@ public:
             std::cout << "ANALYSIS " << it->first << " took " << toMillis_(it->second) << " ms" << std::endl;
         }
     }
+
+    void reset() {
+        currentOperation_.clear();
+        operatorsInProgress_.clear();
+        operatorToExecutionTime_.clear();
+    }
 private:
     double toMillis_(std::chrono::system_clock::duration duration) const {
         return std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();

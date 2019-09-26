@@ -11,6 +11,7 @@
 
 #include "timer.h"
 #include <iostream>
+#include <random>
 
 using namespace lightdb;
 using namespace lightdb::logical;
@@ -118,8 +119,8 @@ TEST_F(VisitorTestFixture, testScanMultiTiled) {
 }
 
 TEST_F(VisitorTestFixture, testScanAndSave) {
-    auto input = Load("/home/bhaynes/projects/visualroad/scale4k-short/traffic-003.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Store("traffic-4k"));
+    auto input = Load("/home/bhaynes/projects/visualroad/2k-short-2/traffic-001.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Store("traffic-2k-001"));
 }
 
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
@@ -139,31 +140,35 @@ TEST_F(VisitorTestFixture, testExecuteCracking) {
 }
 
 TEST_F(VisitorTestFixture, testrand) {
-    srand(10);
+    std::default_random_engine generator(1);
 
-    auto timeRangeInMinutes = 5;
+    auto timeRangeInMinutes = 3;
     auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
     auto totalNumberOfFrames = 27000;
 
+    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
+
     for (auto i = 0u; i < 30u; ++i) {
-        unsigned int start = rand() % (totalNumberOfFrames - numberOfFramesInTimeRange);
+        unsigned int start = distribution(generator);
         std::cout << "start: " << start << std::endl;
     }
 }
 
 
 TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
-    srand(10);
+    std::default_random_engine generator(1);
 
-    auto timeRangeInMinutes = 1;
+    auto timeRangeInMinutes = 2;
     // * 60 seconds / minute * 30 frames / second
     auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
     auto totalNumberOfFrames = 27000;
 
+    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
+
     auto numberOfRounds = 30u;
 
     for (auto i = 0u; i < numberOfRounds; ++i) {
-        unsigned int start = (rand() % (totalNumberOfFrames - numberOfFramesInTimeRange)) / 30 * 30;
+        unsigned int start = distribution(generator);
 
         PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
 

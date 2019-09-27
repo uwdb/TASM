@@ -277,7 +277,7 @@ public:
               frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
               tileNumber_(tileNumber)
     {
-//        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
+        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
         // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
         // with that.
     }
@@ -287,7 +287,7 @@ public:
             frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
             tileNumber_(-1)
     {
-//        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
+        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
         // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
         // with that.
     }
@@ -341,11 +341,10 @@ public:
     CudaDecodedFrame(CudaDecodedFrame &&) noexcept = delete;
 
     ~CudaDecodedFrame() override {
-//        decoder().unmapFrame(parameters().picture_index);
-//        FrameWriter::writeUpdate("unmap", handle());
-        CUresult result = cuvidUnmapVideoFrame(decoder().handle(), handle());
-        if(result != CUDA_SUCCESS)
-            LOG(WARNING) << "Ignoring error << " << result << " in cuvidUnmapVideoFrame destructor.";
+        decoder().unmapFrame(parameters().picture_index);
+//        CUresult result = cuvidUnmapVideoFrame(decoder().handle(), handle());
+//        if(result != CUDA_SUCCESS)
+//            LOG(WARNING) << "Ignoring error << " << result << " in cuvidUnmapVideoFrame destructor.";
     }
 
     unsigned int height() const override { return DecodedFrame::height(); }
@@ -355,28 +354,27 @@ public:
 
 private:
     static std::pair<CUdeviceptr, unsigned int> map_frame(const DecodedFrame &frame) {
-//        return frame.decoder().frameInfoForPicIndex(frame.parameters().picture_index);
+        return frame.decoder().frameInfoForPicIndex(frame.parameters().picture_index);
 
-        CUresult result;
-        CUdeviceptr handle;
-        unsigned int pitch;
-        CUVIDPROCPARAMS mapParameters;
-        memset(&mapParameters, 0, sizeof(CUVIDPROCPARAMS));
-        mapParameters.progressive_frame = frame.parameters().progressive_frame;
-        mapParameters.top_field_first = frame.parameters().top_field_first;
-        mapParameters.unpaired_field = frame.parameters().progressive_frame == 1 || frame.parameters().repeat_first_field <= 1;
-//        CUVIDPROCPARAMS mapParameters{
-//                .progressive_frame = frame.parameters().progressive_frame,
-//                .second_field = 0,
-//                .top_field_first = frame.parameters().top_field_first,
-//                .unpaired_field = frame.parameters().progressive_frame == 1 || frame.parameters().repeat_first_field <= 1,
-//                0, 0, 0, 0, 0, 0, 0, {0}, {0}};
-        if((result = cuvidMapVideoFrame(frame.decoder().handle(), frame.parameters().picture_index,
-                                        &handle, &pitch, &mapParameters)) != CUDA_SUCCESS)
-            throw GpuCudaRuntimeError("Call to cuvidMapVideoFrame failed", result);
-
-//        FrameWriter::writeUpdate("map", handle);
-        return std::make_pair(handle, pitch);
+//        CUresult result;
+//        CUdeviceptr handle;
+//        unsigned int pitch;
+//        CUVIDPROCPARAMS mapParameters;
+//        memset(&mapParameters, 0, sizeof(CUVIDPROCPARAMS));
+//        mapParameters.progressive_frame = frame.parameters().progressive_frame;
+//        mapParameters.top_field_first = frame.parameters().top_field_first;
+//        mapParameters.unpaired_field = frame.parameters().progressive_frame == 1 || frame.parameters().repeat_first_field <= 1;
+////        CUVIDPROCPARAMS mapParameters{
+////                .progressive_frame = frame.parameters().progressive_frame,
+////                .second_field = 0,
+////                .top_field_first = frame.parameters().top_field_first,
+////                .unpaired_field = frame.parameters().progressive_frame == 1 || frame.parameters().repeat_first_field <= 1,
+////                0, 0, 0, 0, 0, 0, 0, {0}, {0}};
+//        if((result = cuvidMapVideoFrame(frame.decoder().handle(), frame.parameters().picture_index,
+//                                        &handle, &pitch, &mapParameters)) != CUDA_SUCCESS)
+//            throw GpuCudaRuntimeError("Call to cuvidMapVideoFrame failed", result);
+//
+//        return std::make_pair(handle, pitch);
     }
 };
 

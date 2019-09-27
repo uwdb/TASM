@@ -158,17 +158,17 @@ TEST_F(VisitorTestFixture, testrand) {
 TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
     std::default_random_engine generator(1);
 
-    auto timeRangeInMinutes = 2;
+    auto timeRangeInMinutes = 1;
     // * 60 seconds / minute * 30 frames / second
     auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
 
-    auto numberOfRounds = 30u;
+    auto numberOfRounds = 60u;
 
     for (auto i = 0u; i < numberOfRounds; ++i) {
-        unsigned int start = distribution(generator);
+        unsigned int start = distribution(generator) / 30 * 30;
 
         PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
 
@@ -180,20 +180,20 @@ TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
 //
 //        sleep(3);
 
-//        {
-//            std::cout << std::endl << "\n\nStep: Selecting pixels in a custom-tiled video from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-//            auto idealCracked = ScanMultiTiled("traffic-2k-cracked-gop60");
-//            Coordinator().execute(idealCracked.Select(selection).Sink());
-//        }
+        {
+            std::cout << std::endl << "\n\nStep: Selecting pixels in a custom-tiled video from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+            auto idealCracked = ScanMultiTiled("traffic-2k-cracked-gop60");
+            Coordinator().execute(idealCracked.Select(selection).Sink());
+        }
 
         sleep(3);
         GLOBAL_TIMER.reset();
 
-        {
-            std::cout << std::endl << "\n\nStep: Selecting pixels while cracking from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
-            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
-        }
+//        {
+//            std::cout << std::endl << "\n\nStep: Selecting pixels while cracking from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+//            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
+//            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
+//        }
     }
 }
 

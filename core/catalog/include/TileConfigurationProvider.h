@@ -398,6 +398,7 @@ private:
     std::map<lightdb::Interval<unsigned int>, std::list<TileLayout>> intervalToAvailableTileLayouts_;
     std::map<unsigned int, lightdb::CoalescedIntervals<unsigned int>, std::greater<unsigned int>> numberOfTilesToFrameIntervals_;
     std::map<lightdb::Interval<unsigned int>, std::filesystem::path> intervalToTileDirectory_;
+    std::unordered_map<std::string, TileLayout> tileDirectoryToLayout_;
     mutable std::mutex mutex_;
 };
 

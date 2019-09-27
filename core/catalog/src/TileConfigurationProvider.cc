@@ -26,6 +26,7 @@ void TileLayoutsManager::loadAllTileConfigurations() {
         intervalToAvailableTileLayouts_[firstAndLastFrame].push_back(tileLayout);
         numberOfTilesToFrameIntervals_[tileLayout.numberOfTiles()].addInterval(firstAndLastFrame);
         intervalToTileDirectory_[firstAndLastFrame] = tileDirectoryPath;
+        tileDirectoryToLayout_[tileDirectoryPath] = tileLayout;
     }
 }
 
@@ -91,8 +92,9 @@ std::filesystem::path TileLayoutsManager::locationOfTileForFrameAndConfiguration
     if (it == intervalToTileDirectory_.end())
         std::advance(it, -1);
 
+    // This needs to double check that the tile layout is the same.
     for (; ; --it) {
-        if (it->first.contains(frame)) {
+        if (it->first.contains(frame) && tileDirectoryToLayout_.at(it->second) == tileLayout) {
             return catalog::TileFiles::tileFilename(it->second, tileNumber);
         }
 

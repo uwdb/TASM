@@ -142,10 +142,10 @@ TEST_F(VisitorTestFixture, testExecuteCracking) {
 TEST_F(VisitorTestFixture, testTileLayoutDurationOnSelectPixels) {
     std::vector<unsigned int> timeRanges{2, 5};
     for (auto timeRange : timeRanges) {
-        std::vector<std::string> entries{"traffic-2k-001-cracked-layoutduration30-pedestrian",
-                                         "traffic-2k-001-cracked-layoutduration60-pedestrian",
-                                         "traffic-2k-001-cracked-layoutduration120-pedestrian",
-                                         "traffic-2k-001-cracked-layoutduration240-pedestrian"};
+        std::vector<std::string> entries{"traffic-2k-001-cracked-layoutduration30-car",
+                                         "traffic-2k-001-cracked-layoutduration60-car",
+                                         "traffic-2k-001-cracked-layoutduration120-car",
+                                         "traffic-2k-001-cracked-layoutduration240-car"};
         for (auto &entry : entries) {
             std::default_random_engine generator(1);
 
@@ -159,7 +159,7 @@ TEST_F(VisitorTestFixture, testTileLayoutDurationOnSelectPixels) {
             for (auto i = 0u; i < numberOfRounds; ++i) {
                 unsigned int start = distribution(generator) / 30 * 30;
 
-                PixelMetadataSpecification selection("labels", "label", "pedestrian", start,
+                PixelMetadataSpecification selection("labels", "label", "car", start,
                                                      start + numberOfFramesInTimeRange);
 
                 {

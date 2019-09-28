@@ -110,8 +110,8 @@ private:
             assert(totalVideoWidth_);
             assert(totalVideoHeight_);
             // TODO: Figure out how to get maximum coded width/height.
-            configuration.max_width = 1920; //std::max(totalVideoWidth_, configuration.max_width);
-            configuration.max_height = 1088; //std::max(totalVideoHeight_, configuration.max_height);
+            configuration.max_width = std::max(totalVideoWidth_, configuration.max_width);
+            configuration.max_height = std::max(totalVideoHeight_, configuration.max_height);
 
             auto cpuData = MaterializedLightFieldReference::make<CPUEncodedFrameData>(
                     Codec::hevc(),

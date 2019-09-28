@@ -16,8 +16,8 @@ CUVIDDECODECREATEINFO DecodeConfiguration::AsCuvidCreateInfo(CUvideoctxlock lock
     else {
         CUVIDDECODECREATEINFO info;
         memset(&info, 0, sizeof(info));
-        info.ulWidth = 1920; // TODO: This should use coded width/height from configuration.
-        info.ulHeight = 1088;
+        info.ulWidth = width; // TODO: This should use coded width/height from configuration.
+        info.ulHeight = height;
         info.ulNumDecodeSurfaces = decode_surfaces;
         info.CodecType = codec.cudaId().value();
         info.ChromaFormat = chroma_format;
@@ -30,13 +30,13 @@ CUVIDDECODECREATEINFO DecodeConfiguration::AsCuvidCreateInfo(CUvideoctxlock lock
         };
         info.OutputFormat = output_format;
         info.DeinterlaceMode = deinterlace_mode;
-        info.ulTargetWidth = 1920;
-        info.ulTargetHeight = 1088;
+        info.ulTargetWidth = width;
+        info.ulTargetHeight = height;
         info.ulNumOutputSurfaces = output_surfaces;
         info.vidLock = lock;
 
-        info.ulMaxWidth = 1920;
-        info.ulMaxHeight = 1088; // TODO: This should be max height.
+        info.ulMaxWidth = max_width;
+        info.ulMaxHeight = max_height; // TODO: This should be max height.
 
         return info;
     }

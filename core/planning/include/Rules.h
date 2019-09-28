@@ -1033,8 +1033,9 @@ namespace lightdb::optimization {
 
                 std::shared_ptr<tiles::TileConfigurationProvider> tileConfig;
                 if (node.metadataManager()) {
+                    auto tileLayoutDuration = 240;
                     tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
-                                                            300,
+                                                            tileLayoutDuration,
                                                             node.metadataManager(),
                                                             width,
                                                             height);

@@ -86,6 +86,15 @@ namespace lightdb::associations {
                     {"traffic-2k-cracked-gop240", "/home/maureen/visualroad/2k-short/traffic-003.db"},
                     {"traffic-2k-cracked-gop300", "/home/maureen/visualroad/2k-short/traffic-003.db"},
                     {"traffic-2k-single-tile", "/home/maureen/visualroad/2k-short/traffic-003.db"},
+                    {"traffic-2k-001", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-layoutduration240-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-layoutduration120-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-layoutduration60-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-layoutduration30-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-layoutduration240-pedestrian", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-layoutduration120-pedestrian", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-layoutduration60-pedestrian", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-layoutduration30-pedestrian", "/home/maureen/visualroad/2k-short/traffic-001.db"},
             } );
 } // namespace lightdb::associations
 

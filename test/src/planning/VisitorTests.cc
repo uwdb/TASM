@@ -193,6 +193,90 @@ TEST_F(VisitorTestFixture, testrand) {
     }
 }
 
+TEST_F(VisitorTestFixture, testPerformanceOnRandomSelectPixels) {
+    std::default_random_engine generator(1);
+
+    const unsigned int fps = 30;
+    const unsigned int minimumNumberOfSelectionSeconds = 30;
+    const unsigned int maximumNumberOfSelectionSeconds = 180;
+    std::uniform_int_distribution<int> timeRangeDistribution(minimumNumberOfSelectionSeconds, maximumNumberOfSelectionSeconds);
+
+    auto totalNumberOfFrames = 27000;
+    // Make sure that no matter what start point we pick, it is far enough from the end even for the maximum selection range.
+    // *30 because 30 FPS
+    std::uniform_int_distribution<int> startingPointDistribution(0, totalNumberOfFrames - maximumNumberOfSelectionSeconds * fps);
+
+    auto numberOfRounds = 40u;
+    for (auto i = 0u; i < numberOfRounds; ++i) {
+        auto start = startingPointDistribution(generator) / 30 * 30;
+        auto duration = timeRangeDistribution(generator);
+        auto numberOfFramesInTimeRange = duration * fps;
+
+        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
+
+        {
+            auto catalogEntry = "traffic-2k";
+            std::cout << std::endl << "\n\nStep: Selecting pixels with method not-tiled at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+            auto notCracked = Scan("traffic-2k");
+            Coordinator().execute(notCracked.Select(selection).Sink());
+        }
+
+//        {
+//            auto catalogEntry = "traffic-2k-cracked-gop60";
+//            std::cout << std::endl << "\n\nStep: Selecting pixels with method ideal-tiled at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+//            auto idealCracked = ScanMultiTiled(catalogEntry);
+//            Coordinator().execute(idealCracked.Select(selection).Sink());
+//        }
+//
+//        sleep(3);
+//        GLOBAL_TIMER.reset();
+//
+//        {
+//            auto catalogEntry = "traffic-2k-single-tile";
+//            std::cout << std::endl << "\n\nStep: Selecting pixels with method cracking at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+//            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
+//            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
+//        }
+//
+//        sleep(3);
+//        GLOBAL_TIMER.reset();
+
+    }
+}
+
+TEST_F(VisitorTestFixture, testCrackingPerformanceOnRandomSelectPixels) {
+    std::default_random_engine generator(1);
+
+    const unsigned int fps = 30;
+    const unsigned int minimumNumberOfSelectionSeconds = 30;
+    const unsigned int maximumNumberOfSelectionSeconds = 180;
+    std::uniform_int_distribution<int> timeRangeDistribution(minimumNumberOfSelectionSeconds, maximumNumberOfSelectionSeconds);
+
+    auto totalNumberOfFrames = 27000;
+    // Make sure that no matter what start point we pick, it is far enough from the end even for the maximum selection range.
+    // *30 because 30 FPS
+    std::uniform_int_distribution<int> startingPointDistribution(0, totalNumberOfFrames - maximumNumberOfSelectionSeconds * fps);
+
+    auto numberOfRounds = 40u;
+    for (auto i = 0u; i < numberOfRounds; ++i) {
+        auto start = startingPointDistribution(generator) / 30 * 30;
+        auto duration = timeRangeDistribution(generator);
+        auto numberOfFramesInTimeRange = duration * fps;
+
+        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
+
+        {
+            std::cout << std::endl << "\n\nStep: Selecting pixels when cracking video from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
+            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
+        }
+
+        sleep(3);
+        GLOBAL_TIMER.reset();
+
+    }
+}
+
 
 TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
     std::default_random_engine generator(1);

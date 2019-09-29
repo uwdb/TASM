@@ -38,8 +38,9 @@ class ScanMultiTileOperator : public PhysicalOperator {
 public:
     explicit ScanMultiTileOperator(const LightFieldReference &logical,
             std::shared_ptr<const metadata::MetadataManager> metadataManager,
-            std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider)
-        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanMultiTileOperator-init", tileLocationProvider)),
+            std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider,
+            bool shouldReadEntireGOPs = false)
+        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanMultiTileOperator-init", tileLocationProvider, shouldReadEntireGOPs)),
         tileNumber_(0),
         metadataManager_(metadataManager),
         tileLocationProvider_(tileLocationProvider)
@@ -53,12 +54,13 @@ public:
 private:
     class Runtime: public runtime::Runtime<ScanMultiTileOperator> {
     public:
-        explicit Runtime(ScanMultiTileOperator &physical, std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider)
+        explicit Runtime(ScanMultiTileOperator &physical, std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider, bool shouldReadEntireGOPs)
             : runtime::Runtime<ScanMultiTileOperator>(physical),
                     tileNumberForCurrentLayout_(0),
                     tileLocationProvider_(tileLocationProvider),
                     framesIterator_(physical.metadataManager()->orderedFramesForMetadata().begin()),
                     endOfFramesIterator_(physical.metadataManager()->orderedFramesForMetadata().end()),
+                    shouldReadEntireGOPs_(shouldReadEntireGOPs),
                     totalVideoWidth_(0),
                     totalVideoHeight_(0)
         { }
@@ -147,7 +149,8 @@ private:
                 currentEncodedFrameReader_ = std::make_unique<EncodedFrameReader>(
                         catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), *tileNumberIt_),
                         possibleFramesToRead,
-                        tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_));
+                        tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_),
+                        shouldReadEntireGOPs_);
             } else
                 currentEncodedFrameReader_ = nullptr;
         }
@@ -228,6 +231,7 @@ private:
         const std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider_;
         std::vector<int>::const_iterator framesIterator_;
         std::vector<int>::const_iterator endOfFramesIterator_;
+        bool shouldReadEntireGOPs_;
 
         unsigned int totalVideoWidth_;
         unsigned int totalVideoHeight_;

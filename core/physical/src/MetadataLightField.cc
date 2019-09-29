@@ -95,6 +95,9 @@ namespace lightdb::associations {
                     {"traffic-2k-001-cracked-layoutduration120-pedestrian", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     {"traffic-2k-001-cracked-layoutduration60-pedestrian", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     {"traffic-2k-001-cracked-layoutduration30-pedestrian", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-single-tile-pedestrian", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-single-tile-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-single-tile", "/home/maureen/visualroad/2k-short/traffic-001.db"},
             } );
 } // namespace lightdb::associations
 

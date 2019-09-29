@@ -35,7 +35,7 @@ CUVIDDECODECREATEINFO DecodeConfiguration::AsCuvidCreateInfo(CUvideoctxlock lock
         info.ulNumOutputSurfaces = output_surfaces;
         info.vidLock = lock;
 
-        info.ulMaxWidth = 1920;
+        info.ulMaxWidth = max_width;
         info.ulMaxHeight = 1088; // TODO: This should be max height.
 
         return info;

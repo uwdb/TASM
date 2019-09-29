@@ -92,8 +92,10 @@ private:
                         // See if its dimensions equal those that are specified by the tile layout.
                         if (tileNumber >= 0) {
                             auto desiredTileRect = tileLayout.rectangleForTile(tileNumber);
-                            if (desiredTileRect.width == decodedFrame.width() &&
-                                desiredTileRect.height == decodedFrame.height()) {
+                            if ((desiredTileRect.width == decodedFrame.width() &&
+                                desiredTileRect.height == decodedFrame.height())
+                                    || (decodedFrame.width() < tileLayout.totalWidth()
+                                            && decodedFrame.height() < tileLayout.totalHeight())) {
                                 // We don't have any more cracking to do.
                                 // Flush the encoders because this represents a gap in the cracked frames.
                                 if (currentTileLayout_ != tiles::EmptyTileLayout) {

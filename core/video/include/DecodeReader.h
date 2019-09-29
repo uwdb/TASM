@@ -327,13 +327,14 @@ class EncodedFrameReader {
 public:
     // Assume frames is sorted.
     // Frames is in global frame numbers (e.g. starting from frameOffsetInFile, not 0).
-    explicit EncodedFrameReader(std::filesystem::path filename, std::vector<int> frames, int frameOffsetInFile = 0)
+    explicit EncodedFrameReader(std::filesystem::path filename, std::vector<int> frames, int frameOffsetInFile = 0, bool shouldReadEntireGOPs=false)
         : filename_(std::move(filename)),
         mp4Reader_(filename_),
         frames_(std::move(frames)),
         numberOfSamplesRead_(0),
         shouldReadFramesExactly_(false),
-        frameOffsetInFile_(frameOffsetInFile)
+        frameOffsetInFile_(frameOffsetInFile),
+        shouldReadEntireGOPs_(shouldReadEntireGOPs)
     {
         // Update frames to be 0-indexed.
         if (frameOffsetInFile) {
@@ -410,6 +411,15 @@ public:
             firstSampleToRead = MP4Reader::frameNumberToSampleNumber(shouldReadFramesExactly_ ? firstFrame : *std::prev(keyframeIterator_));
             lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*std::prev(frameIterator_));
 
+            if (shouldReadEntireGOPs_) {
+                // If there are more keyframes, then read to before the next one.
+                if (haveMoreKeyframes()) {
+                    lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*keyframeIterator_ - 1);
+                } else {
+                    lastSampleToRead = mp4Reader_.numberOfSamples();
+                }
+            }
+
             if (globalFrames_.size()) {
                 // Finish reading frames in this GOP, even if they aren't in the frames list.
                 // Make the last sample the last global frame in this GOP.
@@ -455,6 +465,7 @@ private:
     std::vector<int>::const_iterator globalFramesIterator_;
     bool shouldReadFramesExactly_;
     int frameOffsetInFile_;
+    bool shouldReadEntireGOPs_;
 };
 
 class FrameDecodeReader: public DecodeReader {

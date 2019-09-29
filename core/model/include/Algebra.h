@@ -40,9 +40,9 @@ namespace lightdb {
             // For now just support equality.
             // Can create a class, like the ranges, to enable specifying all this.
             LightFieldReference Select(const FrameMetadataSpecification&);
-            LightFieldReference Select(const PixelMetadataSpecification&, bool shouldCrack=false);
+            LightFieldReference Select(const PixelMetadataSpecification&, bool shouldCrack=false, bool shouldReadEntireGOPs=false);
             LightFieldReference Select(const PixelsInFrameMetadataSpecification&);
-            LightFieldReference Select(const MetadataSpecification&, MetadataSubsetType subsetType = MetadataSubsetTypeFrame, bool shouldCrack = false);
+            LightFieldReference Select(const MetadataSpecification&, MetadataSubsetType subsetType = MetadataSubsetTypeFrame, bool shouldCrack = false, bool shouldReadEntireGOPs=false);
 
 
             LightFieldReference Union(std::vector<LightFieldReference>); //TODO needs merge function

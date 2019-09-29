@@ -76,15 +76,15 @@ namespace lightdb::logical {
         return Select(frameMetadataSpecification, MetadataSubsetTypeFrame);
     }
 
-    LightFieldReference Algebra::Select(const PixelMetadataSpecification &pixelMetadataSpecification, bool shouldCrack) {
-        return Select(pixelMetadataSpecification, MetadataSubsetTypePixel, shouldCrack);
+    LightFieldReference Algebra::Select(const PixelMetadataSpecification &pixelMetadataSpecification, bool shouldCrack, bool shouldReadEntireGOPs) {
+        return Select(pixelMetadataSpecification, MetadataSubsetTypePixel, shouldCrack, shouldReadEntireGOPs);
     }
 
     LightFieldReference Algebra::Select(const PixelsInFrameMetadataSpecification &pixelsInFrameMetadataSpecification) {
         return Select(pixelsInFrameMetadataSpecification, MetadataSubsetTypePixelsInFrame);
     }
 
-    LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType, bool shouldCrack) {
+    LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType, bool shouldCrack, bool shouldReadEntireGOPs) {
         if (this_.is<ExternalLightField>())
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, std::vector<catalog::Source>({ this_.downcast<ExternalLightField>().source() }), std::optional(this_.downcast<ExternalLightField>().source().filename().parent_path()));
         else if (this_.is<ScannedLightField>()) {
@@ -97,7 +97,7 @@ namespace lightdb::logical {
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, scan.sources(), std::optional(scan.entry().name()));
         } else if (this_.is<ScannedMultiTiledLightField>()) {
             auto &scan = this_.downcast<ScannedMultiTiledLightField>();
-            return LightFieldReference::make<MetadataSubsetLightFieldWithoutSources>(this_, metadataSpecification, subsetType, scan.tileLayoutsManager()->entry().name(), shouldCrack);
+            return LightFieldReference::make<MetadataSubsetLightFieldWithoutSources>(this_, metadataSpecification, subsetType, scan.tileLayoutsManager()->entry().name(), shouldCrack, shouldReadEntireGOPs);
         } else
             assert(false);
     }

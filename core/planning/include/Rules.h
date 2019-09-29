@@ -459,7 +459,8 @@ namespace lightdb::optimization {
                 auto scan = plan().emplace<physical::ScanMultiTileOperator>(
                         physical_parents[0]->logical(),
                         metadataManager,
-                        tileLocationProvider);
+                        tileLocationProvider,
+                        node.shouldReadEntireGOPs());
                 auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 
                 // TODO: Should we place the cracking operator in between decode and merge?

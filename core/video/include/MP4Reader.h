@@ -75,6 +75,8 @@ public:
         closeFile();
         filename_ = filename;
         setUpGFIsomFile();
+
+        numberOfSamples_ = gf_isom_get_sample_count(file_, trackNumber_);
     }
 
     const std::vector<int> &keyframeNumbers() const {

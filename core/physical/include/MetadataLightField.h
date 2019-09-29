@@ -113,24 +113,28 @@ namespace lightdb::logical {
                                                 const MetadataSpecification &metadataSpecification,
                                                 MetadataSubsetType subsetType,
                                                 const std::string metadataIdentifier,
-                                                bool shouldCrack = false)
+                                                bool shouldCrack = false,
+                                                bool shouldReadEntireGOPs = false)
                 : LightField(lightField),
                 metadataSpecification_(metadataSpecification),
                 subsetType_(subsetType),
                 metadataManager_(std::make_shared<metadata::MetadataManager>(metadataIdentifier, metadataSpecification_)),
-                shouldCrack_(shouldCrack)
+                shouldCrack_(shouldCrack),
+                shouldReadEntireGOPs_(shouldReadEntireGOPs)
         { }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightFieldWithoutSources>(visitor); }
 
         std::shared_ptr<const metadata::MetadataManager> metadataManager() const { return metadataManager_; }
         bool shouldCrack() const { return shouldCrack_; }
+        bool shouldReadEntireGOPs() const { return shouldReadEntireGOPs_; }
 
     private:
         const MetadataSpecification metadataSpecification_;
         const MetadataSubsetType subsetType_;
         std::shared_ptr<const metadata::MetadataManager> metadataManager_;
         bool shouldCrack_;
+        bool shouldReadEntireGOPs_;
     };
 
     class MetadataSubsetLightField : public LightField {

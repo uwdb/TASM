@@ -150,7 +150,7 @@ TEST_F(VisitorTestFixture, testIdealCrackingOnAlternatingSelections) {
             {3, 30}};
 
     for (auto it = timeRangeToNumIterations.begin(); it != timeRangeToNumIterations.end(); ++it) {
-        REMOVE_TILES()
+//        REMOVE_TILES()
 
         auto timeRange = it->first;
         auto numberOfRounds = it->second;
@@ -167,9 +167,10 @@ TEST_F(VisitorTestFixture, testIdealCrackingOnAlternatingSelections) {
 
             unsigned int start = distribution(generator) / 30 * 30;
 
-            auto method = "cracking";
+            auto method = "not-tiled";
             {
-                auto catalogEntry = "traffic-2k-001-single-tile";
+//                auto catalogEntry = "traffic-2k-001-single-tile";
+                auto catalogEntry = "traffic-2k-001";
                 PixelMetadataSpecification selection("labels", "label", label, start,
                                                      start + numberOfFramesInTimeRange);
 
@@ -179,8 +180,10 @@ TEST_F(VisitorTestFixture, testIdealCrackingOnAlternatingSelections) {
                           << " from frames for " << timeRange
                           << " min, from " << start << " to " << start + numberOfFramesInTimeRange << std::endl;
 
-                auto idealTiled = ScanMultiTiled(catalogEntry);
-                Coordinator().execute(idealTiled.Select(selection, true, true).Sink());
+//                auto idealTiled = ScanMultiTiled(catalogEntry);
+                auto notTiled = Scan(catalogEntry);
+                Coordinator().execute(notTiled.Select(selection).Sink());
+//                Coordinator().execute(idealTiled.Select(selection, true, true).Sink());
             }
 
             sleep(3);
@@ -328,14 +331,31 @@ TEST_F(VisitorTestFixture, testPerformanceOnRandomSelectPixels) {
         auto duration = timeRangeDistribution(generator);
         auto numberOfFramesInTimeRange = duration * fps;
 
-        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
-
         {
-            auto catalogEntry = "traffic-2k";
-            std::cout << std::endl << "\n\nStep: Selecting pixels with method not-tiled at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-            auto notCracked = Scan("traffic-2k");
+            auto label = "car";
+            PixelMetadataSpecification selection("labels", "label", label, start, start + numberOfFramesInTimeRange);
+
+            auto catalogEntry = "traffic-2k-001";
+            std::cout << std::endl << "\n\nStep: Selecting pixels with method not-tiled for object " << label << " at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+            auto notCracked = Scan(catalogEntry);
             Coordinator().execute(notCracked.Select(selection).Sink());
         }
+
+        sleep(3);
+        GLOBAL_TIMER.reset();
+
+        {
+            auto label = "pedestrian";
+            PixelMetadataSpecification selection("labels", "label", label, start, start + numberOfFramesInTimeRange);
+
+            auto catalogEntry = "traffic-2k-001";
+            std::cout << std::endl << "\n\nStep: Selecting pixels with method not-tiled for object " << label << " at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+            auto notCracked = Scan(catalogEntry);
+            Coordinator().execute(notCracked.Select(selection).Sink());
+        }
+
+        sleep(3);
+        GLOBAL_TIMER.reset();
 
 //        {
 //            auto catalogEntry = "traffic-2k-cracked-gop60";

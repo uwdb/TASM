@@ -95,7 +95,7 @@ private:
                             if ((desiredTileRect.width == decodedFrame.width() &&
                                 desiredTileRect.height == decodedFrame.height())
                                     || (decodedFrame.width() < tileLayout.totalWidth()
-                                            && decodedFrame.height() < tileLayout.totalHeight())) {
+                                            || decodedFrame.height() < tileLayout.totalHeight())) {
                                 // We don't have any more cracking to do.
                                 // Flush the encoders because this represents a gap in the cracked frames.
                                 if (currentTileLayout_ != tiles::EmptyTileLayout) {

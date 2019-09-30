@@ -467,7 +467,7 @@ namespace lightdb::optimization {
                 // And then the cracking operator could keep a reference to the frames, but pass them on immediately.
                 // Make sure the encoding is happening on different threads.
                 // TODO:  Need to get output entry name from multi-tiledlight field.
-                std::shared_ptr<tiles::TileConfigurationProvider> tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                std::shared_ptr<tiles::TileConfigurationProvider> tileConfig = std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
                             gop,
                             node.metadataManager(),
                             1920,

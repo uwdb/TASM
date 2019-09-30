@@ -351,11 +351,13 @@ public:
     GroupingExtentsTileConfigurationProvider(unsigned int tileLayoutDuration,
                                                 std::shared_ptr<const metadata::MetadataManager> metadataManager,
                                                 unsigned int frameWidth,
-                                                unsigned int frameHeight)
+                                                unsigned int frameHeight,
+                                                bool shouldConsiderAllObjectsInFrames = false)
         : tileLayoutDuration_(tileLayoutDuration),
         metadataManager_(metadataManager),
         frameWidth_(frameWidth),
-        frameHeight_(frameHeight)
+        frameHeight_(frameHeight),
+        shouldConsiderAllObjectsInFrames_(shouldConsiderAllObjectsInFrames)
     { }
 
     unsigned int maximumNumberOfTiles() override { return 0; }
@@ -369,6 +371,7 @@ private:
     std::shared_ptr<const metadata::MetadataManager> metadataManager_;
     unsigned int frameWidth_;
     unsigned int frameHeight_;
+    bool shouldConsiderAllObjectsInFrames_;
     std::unordered_map<unsigned int, TileLayout> layoutIntervalToTileLayout_;
 };
 

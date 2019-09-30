@@ -471,7 +471,8 @@ namespace lightdb::optimization {
                             gop,
                             node.metadataManager(),
                             1920,
-                            1080); // TODO: Get width/height from actual source.
+                            1080,
+                            true); // TODO: Get width/height from actual source.
 
                 if (node.shouldCrack()) {
                     auto crack = plan().emplace<physical::CrackVideo>(logical, decode, std::unordered_set<int>(),
@@ -1039,7 +1040,8 @@ namespace lightdb::optimization {
                                                             tileLayoutDuration,
                                                             node.metadataManager(),
                                                             width,
-                                                            height);
+                                                            height,
+                                                            true);
                 } else {
                     tileConfig = std::make_shared<tiles::SingleTileFor2kConfigurationProvider>();
                 }

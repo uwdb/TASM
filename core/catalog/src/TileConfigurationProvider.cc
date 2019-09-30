@@ -288,7 +288,11 @@ const TileLayout &GroupingExtentsTileConfigurationProvider::tileLayoutForFrame(u
         return layoutIntervalToTileLayout_.at(tileLayoutIntervalForFrame);
 
     // Get rectangles that are in this duration.
-    std::unique_ptr<std::list<Rectangle>> rectanglesForLayoutIntervalPtr = metadataManager_->rectanglesForFrames(tileLayoutIntervalForFrame * tileLayoutDuration_, (tileLayoutIntervalForFrame + 1) * tileLayoutDuration_);
+    auto startFrame = tileLayoutIntervalForFrame * tileLayoutDuration_;
+    auto endFrame = (tileLayoutIntervalForFrame + 1) * tileLayoutDuration_;
+    std::unique_ptr<std::list<Rectangle>> rectanglesForLayoutIntervalPtr = shouldConsiderAllObjectsInFrames_
+            ? metadataManager_->rectanglesForAllObjectsForFrames(startFrame, endFrame)
+            : metadataManager_->rectanglesForFrames(startFrame, endFrame);
     auto &rectanglesForLayoutInterval = *rectanglesForLayoutIntervalPtr;
 
     // Combine all of the rectangles into one giant one that contains all of them.

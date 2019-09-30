@@ -80,6 +80,7 @@ namespace lightdb::metadata {
 
         const std::vector<Rectangle> &rectanglesForFrame(int frame) const;
         std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
+        std::unique_ptr<std::list<Rectangle>> rectanglesForAllObjectsForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
 
         static std::unordered_set<int> idealKeyframesForFrames(const std::vector<int> &orderedFrames);
 
@@ -88,6 +89,7 @@ namespace lightdb::metadata {
 
     private:
         void selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn = nullptr) const;
+        void selectFromMetadataWithoutQuerySubstitutionsAndApplyFunction(const char* query, unsigned int querySize, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn = nullptr) const;
         void selectFromMetadataAndApplyFunctionWithFrameLimits(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn = nullptr) const;
         void openDatabase();
         void closeDatabase();

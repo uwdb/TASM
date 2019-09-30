@@ -131,19 +131,23 @@ namespace lightdb::metadata {
     }
 
     void MetadataManager::selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn) const {
-        // Assume that mutex is already held.
-        if (afterOpeningFn)
-            afterOpeningFn(db_);
-
         char *selectFramesStatement = nullptr;
         int size = asprintf(&selectFramesStatement, query,
                             metadataSpecification_.tableName().c_str(),
                             metadataSpecification_.columnName().c_str(),
                             metadataSpecification_.expectedValue().c_str());
         assert(size != -1);
+        selectFromMetadataWithoutQuerySubstitutionsAndApplyFunction(selectFramesStatement, size, resultFn, afterOpeningFn);
+        free(selectFramesStatement);
+    }
+
+    void MetadataManager::selectFromMetadataWithoutQuerySubstitutionsAndApplyFunction(const char* query, unsigned int querySize, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn) const {
+        // Assume that mutex is already held.
+        if (afterOpeningFn)
+            afterOpeningFn(db_);
 
         sqlite3_stmt *select;
-        auto prepareResult = sqlite3_prepare_v2(db_, selectFramesStatement, size, &select, nullptr);
+        auto prepareResult = sqlite3_prepare_v2(db_, query, querySize, &select, nullptr);
         ASSERT_SQLITE_OK(prepareResult);
 
         // Step and get results.
@@ -154,7 +158,6 @@ namespace lightdb::metadata {
         assert(result == SQLITE_DONE);
 
         sqlite3_finalize(select);
-        free(selectFramesStatement);
     }
 
 void MetadataManager::selectFromMetadataAndApplyFunctionWithFrameLimits(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn) const {
@@ -283,6 +286,21 @@ std::unique_ptr<std::list<Rectangle>> MetadataManager::rectanglesForFrames(int f
     std::unique_ptr<std::list<Rectangle>> rectangles(new std::list<Rectangle>());
     std::string query = "SELECT frame, x, y, width, height FROM %s WHERE %s = '%s' and frame >= " + std::to_string(firstFrameInclusive) + " and frame < " + std::to_string(lastFrameExclusive);
     selectFromMetadataAndApplyFunction(query.c_str(), [&](sqlite3_stmt *stmt) {
+        unsigned int frame = sqlite3_column_int(stmt, 0);
+        unsigned int x = sqlite3_column_int(stmt, 1);
+        unsigned int y = sqlite3_column_int(stmt, 2);
+        unsigned int width = sqlite3_column_int(stmt, 3);
+        unsigned int height = sqlite3_column_int(stmt, 4);
+
+        rectangles->emplace_back(frame, x, y, width, height);
+    });
+    return rectangles;
+}
+
+std::unique_ptr<std::list<Rectangle>> MetadataManager::rectanglesForAllObjectsForFrames(int firstFrameInclusive, int lastFrameExclusive) const {
+    std::unique_ptr<std::list<Rectangle>> rectangles(new std::list<Rectangle>());
+    std::string query = "SELECT frame, x, y, width, height FROM " + metadataSpecification_.tableName() + " where frame >= " + std::to_string(firstFrameInclusive) + " and frame < " + std::to_string(lastFrameExclusive) + ";";
+    selectFromMetadataWithoutQuerySubstitutionsAndApplyFunction(query.c_str(), query.length(), [&](sqlite3_stmt *stmt) {
         unsigned int frame = sqlite3_column_int(stmt, 0);
         unsigned int x = sqlite3_column_int(stmt, 1);
         unsigned int y = sqlite3_column_int(stmt, 2);

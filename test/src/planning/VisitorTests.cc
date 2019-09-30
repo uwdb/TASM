@@ -167,7 +167,7 @@ TEST_F(VisitorTestFixture, testIdealCrackingOnAlternatingSelections) {
 
             unsigned int start = distribution(generator) / 30 * 30;
 
-            auto method = "cracking-to-groupextents";
+            auto method = "cracking-to-groupextents-around-all-objects";
             {
                 auto catalogEntry = "traffic-2k-001-single-tile";
 //                auto catalogEntry = "traffic-2k-001";

@@ -126,7 +126,7 @@ TEST_F(VisitorTestFixture, testScanAndSave) {
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
     auto input = Scan("traffic-4k-002");
     MetadataSpecification metadataSelection("labels", "label", "pedestrian");
-    Coordinator().execute(input.StoreCracked("traffic-4k-002-cracked-groupingextent-layoutduration60-pedestrian", "traffic-4k-002", &metadataSelection));
+    Coordinator().execute(input.StoreCracked("traffic-4k-002-cracked-layoutduration60-pedestrian", "traffic-4k-002", &metadataSelection));
 }
 
 TEST_F(VisitorTestFixture, testExecuteCracking) {
@@ -214,37 +214,17 @@ TEST_F(VisitorTestFixture, testLayoutImpactOnSelection) {
             unsigned int start = distribution(generator) / 30 * 30;
 
             auto method = "ideal-tiled";
-//            {
-//                auto label = "pedestrian";
-//                auto catalogEntry = "traffic-4k-002-cracked-groupingextent-layoutduration60";
-////                auto catalogEntry = "traffic-2k-001-single-tile-pedestrian";
-//                PixelMetadataSpecification selection("labels", "label", label, start, start+numberOfFramesInTimeRange);
-//
-//
-//                std::cout << std::endl << "\n\nStep: Selecting pixels with method " << method << " for object " << label
-//                                                << " from " << catalogEntry
-//                                                << " from frames for " << timeRange
-//                                                << " min, from " << start << " to " << start + numberOfFramesInTimeRange << std::endl;
-//
-////                auto notTiled = Scan(catalogEntry);
-//                auto idealTiled = ScanMultiTiled(catalogEntry);
-//                Coordinator().execute(idealTiled.Select(selection).Sink());
-//            }
-//
-//            sleep(3);
-//            GLOBAL_TIMER.reset();
-
             {
-                auto label = "car";
-                auto catalogEntry = "traffic-4k-002-cracked-layoutduration60-car";
-//                auto catalogEntry = "traffic-2k-001-single-tile-car";
+                auto label = "pedestrian";
+                auto catalogEntry = "traffic-4k-002-cracked-layoutduration60-pedestrian";
+//                auto catalogEntry = "traffic-2k-001-single-tile-pedestrian";
                 PixelMetadataSpecification selection("labels", "label", label, start, start+numberOfFramesInTimeRange);
 
 
                 std::cout << std::endl << "\n\nStep: Selecting pixels with method " << method << " for object " << label
-                          << " from " << catalogEntry
-                          << " from frames for " << timeRange
-                          << " min, from " << start << " to " << start + numberOfFramesInTimeRange << std::endl;
+                                                << " from " << catalogEntry
+                                                << " from frames for " << timeRange
+                                                << " min, from " << start << " to " << start + numberOfFramesInTimeRange << std::endl;
 
 //                auto notTiled = Scan(catalogEntry);
                 auto idealTiled = ScanMultiTiled(catalogEntry);
@@ -253,6 +233,26 @@ TEST_F(VisitorTestFixture, testLayoutImpactOnSelection) {
 
             sleep(3);
             GLOBAL_TIMER.reset();
+
+//            {
+//                auto label = "car";
+//                auto catalogEntry = "traffic-4k-002-cracked-layoutduration60-car";
+////                auto catalogEntry = "traffic-2k-001-single-tile-car";
+//                PixelMetadataSpecification selection("labels", "label", label, start, start+numberOfFramesInTimeRange);
+//
+//
+//                std::cout << std::endl << "\n\nStep: Selecting pixels with method " << method << " for object " << label
+//                          << " from " << catalogEntry
+//                          << " from frames for " << timeRange
+//                          << " min, from " << start << " to " << start + numberOfFramesInTimeRange << std::endl;
+//
+////                auto notTiled = Scan(catalogEntry);
+//                auto idealTiled = ScanMultiTiled(catalogEntry);
+//                Coordinator().execute(idealTiled.Select(selection).Sink());
+//            }
+//
+//            sleep(3);
+//            GLOBAL_TIMER.reset();
         }
     }
 }

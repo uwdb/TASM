@@ -1040,8 +1040,7 @@ namespace lightdb::optimization {
                                                             tileLayoutDuration,
                                                             node.metadataManager(),
                                                             width,
-                                                            height,
-                                                            true);
+                                                            height);
                 } else {
                     tileConfig = std::make_shared<tiles::SingleTileFor2kConfigurationProvider>();
                 }

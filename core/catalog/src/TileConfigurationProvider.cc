@@ -219,6 +219,7 @@ static std::vector<unsigned int> tileDimensionsForIntervals(const CoalescedInter
     return dimensions;
 }
 
+
 const TileLayout &IdealTileConfigurationProvider::tileLayoutForFrame(unsigned int frame) {
     static constexpr unsigned int const &minimumTileWidth = 256; // The spec says minimum width is 256, but decoder can do >= 136.
     static constexpr unsigned int const &minimumTileHeight = 136; // The spec says that the minimum height is 64, but the decoder can only decode >= 136.
@@ -281,6 +282,41 @@ const TileLayout &CustomJacksonSquareTileConfigurationProvider::tileLayoutForFra
     return zeroToNine;
 }
 
+const TileLayout &GroupingExtentsTileConfigurationProvider::tileLayoutForFrame(unsigned int frame) {
+    unsigned int tileLayoutIntervalForFrame = frame / tileLayoutDuration_;
+    if (layoutIntervalToTileLayout_.count(tileLayoutIntervalForFrame))
+        return layoutIntervalToTileLayout_.at(tileLayoutIntervalForFrame);
+
+    // Get rectangles that are in this duration.
+    std::unique_ptr<std::list<Rectangle>> rectanglesForLayoutIntervalPtr = metadataManager_->rectanglesForFrames(tileLayoutIntervalForFrame * tileLayoutDuration_, (tileLayoutIntervalForFrame + 1) * tileLayoutDuration_);
+    auto &rectanglesForLayoutInterval = *rectanglesForLayoutIntervalPtr;
+
+    // Combine all of the rectangles into one giant one that contains all of them.
+    if (rectanglesForLayoutInterval.size()) {
+        auto superRectangle = rectanglesForLayoutInterval.front();
+        for (auto it = std::next(rectanglesForLayoutInterval.begin(), 1); it != rectanglesForLayoutInterval.end(); ++it) {
+            superRectangle.expand(*it);
+        }
+
+
+        auto tileHeights = tileDimensions(Interval<int>(superRectangle.y, superRectangle.y + superRectangle.height), 136, frameHeight_);
+        auto tileWidths = tileDimensions(Interval<int>(superRectangle.x, superRectangle.x + superRectangle.width), 256, frameWidth_);
+
+        layoutIntervalToTileLayout_.emplace(std::pair<unsigned int, TileLayout>(
+                std::piecewise_construct,
+                std::forward_as_tuple(tileLayoutIntervalForFrame),
+                std::forward_as_tuple(tileWidths.size(), tileHeights.size(), tileWidths, tileHeights)));
+    } else {
+        layoutIntervalToTileLayout_.emplace(std::pair<unsigned int, TileLayout>(
+                std::piecewise_construct,
+                std::forward_as_tuple(tileLayoutIntervalForFrame),
+                std::forward_as_tuple(1, 1, std::vector<unsigned int>({ frameWidth_ }), std::vector<unsigned int>({ frameHeight_ }))));
+    }
+
+    return layoutIntervalToTileLayout_.at(tileLayoutIntervalForFrame);
+
+}
+
 const TileLayout &GroupingTileConfigurationProvider::tileLayoutForFrame(unsigned int frame) {
     unsigned int gopForFrame = frame / gop_;
     if (gopToTileLayout_.count(gopForFrame))
@@ -311,6 +347,45 @@ const TileLayout &GroupingTileConfigurationProvider::tileLayoutForFrame(unsigned
             std::forward_as_tuple(tileWidths.size(), tileHeights.size(), tileWidths, tileHeights)));
 
     return gopToTileLayout_.at(gopForFrame);
+}
+
+std::vector<unsigned int> GroupingExtentsTileConfigurationProvider::tileDimensions(Interval<int> interval, int minDistance, int totalDimension) {
+    std::vector<int> offsets;
+    int lastOffset = 0;
+
+    auto start = interval.start();
+    if (start >= minDistance) {
+        if (totalDimension - start >= minDistance) {
+            offsets.push_back(start);
+            lastOffset = start;
+        } else if (totalDimension - minDistance >= minDistance) {
+            offsets.push_back(totalDimension - minDistance);
+            lastOffset = totalDimension - minDistance;
+        }
+    }
+
+    auto end = interval.end();
+    if (end - lastOffset >= minDistance) {
+        if (totalDimension - end >= minDistance)
+            offsets.push_back(end);
+    } else if (lastOffset + minDistance >= end) {
+        if (totalDimension - (lastOffset + minDistance) >= minDistance)
+            offsets.push_back(lastOffset + minDistance);
+    }
+
+    if (offsets.empty())
+        return { static_cast<unsigned int>(totalDimension) };
+
+    std::vector<unsigned int> dimensions(offsets.size() + 1);
+    dimensions[0] = offsets[0];
+    for (auto i = 1u; i < offsets.size(); ++i) {
+        assert(offsets[i] > offsets[i-1]);
+        dimensions[i] = offsets[i] - offsets[i - 1];
+    }
+    assert(totalDimension > offsets.back());
+    dimensions.back() = totalDimension - offsets.back();
+
+    return dimensions;
 }
 
 std::vector<unsigned int> GroupingTileConfigurationProvider::tileDimensions(const std::vector<lightdb::Interval<int>> &sortedIntervals, int minDistance, int totalDimension) {

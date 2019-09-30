@@ -346,6 +346,32 @@ public:
 
 };
 
+class GroupingExtentsTileConfigurationProvider : public TileConfigurationProvider {
+public:
+    GroupingExtentsTileConfigurationProvider(unsigned int tileLayoutDuration,
+                                                std::shared_ptr<const metadata::MetadataManager> metadataManager,
+                                                unsigned int frameWidth,
+                                                unsigned int frameHeight)
+        : tileLayoutDuration_(tileLayoutDuration),
+        metadataManager_(metadataManager),
+        frameWidth_(frameWidth),
+        frameHeight_(frameHeight)
+    { }
+
+    unsigned int maximumNumberOfTiles() override { return 0; }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override;
+
+private:
+    std::vector<unsigned int> tileDimensions(Interval<int> interval, int minDistance, int totalDimension);
+
+    unsigned int tileLayoutDuration_;
+    std::shared_ptr<const metadata::MetadataManager> metadataManager_;
+    unsigned int frameWidth_;
+    unsigned int frameHeight_;
+    std::unordered_map<unsigned int, TileLayout> layoutIntervalToTileLayout_;
+};
+
 class GroupingTileConfigurationProvider : public TileConfigurationProvider {
 public:
     GroupingTileConfigurationProvider(unsigned int gop,

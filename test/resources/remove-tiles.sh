@@ -35,4 +35,17 @@ rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-
 rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-2k-001-single-tile/8*
 rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-2k-001-single-tile/9*
 rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-2k-001-single-tile/0-59*
-echo 0 > /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-2k-001-single-tile-car/tile-version
+echo 0 > /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-2k-001-single-tile/tile-version
+
+rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/1*
+rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/2*
+rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/3*
+rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/4*
+rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/5*
+rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/6*
+rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/7*
+rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/8*
+rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/9*
+rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/0-59*
+rm -r /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/0-29*
+echo 0 > /home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002-single-tile/tile-version

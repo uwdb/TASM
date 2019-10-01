@@ -451,7 +451,7 @@ namespace lightdb::optimization {
                 auto metadataManager = node.metadataManager();
 
                 auto tileLayoutsManager = multiTiledLightField.tileLayoutsManager();
-                unsigned int gop = 60;
+//                unsigned int gop = 30;
 
 //                auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
                 auto tileLocationProvider = std::make_shared<tiles::MultiTileLocationProvider>(tileLayoutsManager, metadataManager, 30);
@@ -468,10 +468,10 @@ namespace lightdb::optimization {
                 // Make sure the encoding is happening on different threads.
                 // TODO:  Need to get output entry name from multi-tiledlight field.
                 std::shared_ptr<tiles::TileConfigurationProvider> tileConfig = std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
-                            gop,
+                            30,
                             node.metadataManager(),
-                            1920,
-                            1080,
+                            3840,
+                            1980,
                             true); // TODO: Get width/height from actual source.
 
                 if (node.shouldCrack()) {

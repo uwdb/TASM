@@ -213,10 +213,10 @@ TEST_F(VisitorTestFixture, testLayoutImpactOnSelection) {
         for (auto i = 0u; i < numberOfRounds; ++i) {
             unsigned int start = distribution(generator) / 30 * 30;
 
-            auto method = "ideal-tiled";
+            auto method = "grouping-extent-tiled";
             {
                 auto label = "pedestrian";
-                auto catalogEntry = "traffic-4k-002-cracked-layoutduration60-pedestrian";
+                auto catalogEntry = "traffic-4k-002-cracked-groupingextent-layoutduration60-pedestrian";
 //                auto catalogEntry = "traffic-2k-001-single-tile-pedestrian";
                 PixelMetadataSpecification selection("labels", "label", label, start, start+numberOfFramesInTimeRange);
 

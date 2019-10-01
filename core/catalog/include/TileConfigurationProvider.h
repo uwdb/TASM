@@ -279,6 +279,19 @@ public:
     }
 };
 
+
+class SingleTileFor4kConfigurationProvider: public TileConfigurationProvider {
+public:
+    unsigned int maximumNumberOfTiles() override {
+        return 1;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        static TileLayout oneTileLayout = TileLayout(1, 1, {3840}, {1980});
+        return oneTileLayout;
+    }
+};
+
 class GOP30TileConfigurationProvider2x2And3x3 : public TileConfigurationProvider {
 public:
     unsigned int maximumNumberOfTiles() override {

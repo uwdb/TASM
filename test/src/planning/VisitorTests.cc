@@ -151,7 +151,7 @@ TEST_F(VisitorTestFixture, testRemoveTiles) {
 
 TEST_F(VisitorTestFixture, testIdealCrackingOnAlternatingSelections) {
     std::unordered_map<unsigned int, unsigned int> timeRangeToNumIterations{
-            {1, 60},
+//            {1, 60},
             {2, 30},
             {3, 30}};
 
@@ -173,9 +173,9 @@ TEST_F(VisitorTestFixture, testIdealCrackingOnAlternatingSelections) {
 
             unsigned int start = distribution(generator) / 30 * 30;
 
-            auto method = "cracking-to-groupextents-around-all-objects";
+            auto method = "not-tiled";
             {
-                auto catalogEntry = "traffic-2k-001-single-tile";
+                auto catalogEntry = "traffic-4k-002";
 //                auto catalogEntry = "traffic-2k-001";
                 PixelMetadataSpecification selection("labels", "label", label, start,
                                                      start + numberOfFramesInTimeRange);
@@ -186,10 +186,10 @@ TEST_F(VisitorTestFixture, testIdealCrackingOnAlternatingSelections) {
                           << " from frames for " << timeRange
                           << " min, from " << start << " to " << start + numberOfFramesInTimeRange << std::endl;
 
-                auto tiled = ScanMultiTiled(catalogEntry);
-//                auto notTiled = Scan(catalogEntry);
-//                Coordinator().execute(notTiled.Select(selection).Sink());
-                Coordinator().execute(tiled.Select(selection, true, true).Sink());
+//                auto tiled = ScanMultiTiled(catalogEntry);
+                auto notTiled = Scan(catalogEntry);
+                Coordinator().execute(notTiled.Select(selection).Sink());
+//                Coordinator().execute(tiled.Select(selection, true, true).Sink());
             }
 
             sleep(3);

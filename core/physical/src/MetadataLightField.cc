@@ -104,6 +104,7 @@ namespace lightdb::associations {
                     {"traffic-2k-001-cracked-groupingextent-layoutduration30-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     {"traffic-2k-cracked-groupingextent-layoutduration60-car", "/home/maureen/visualroad/2k-short/traffic-003.db"},
                     {"traffic-2k-001-cracked-grouped_around_all_objects-layoutduration60", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    // 4k-002
                     {"traffic-4k-002", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     {"traffic-4k-002-cracked-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     {"traffic-4k-002-cracked-layoutduration30-car", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
@@ -112,11 +113,14 @@ namespace lightdb::associations {
                     {"traffic-4k-002-cracked-layoutduration60-pedestrian", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     {"traffic-4k-002-cracked-groupingextent-layoutduration60-pedestrian", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     {"traffic-4k-002-single-tile", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
+                    // 4k-000
                     {"traffic-4k-000", "/home/maureen/visualroad/4k-short/traffic-4k-000.db"},
                     {"traffic-4k-000-cracked-groupingextent-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-000.db"},
                     {"traffic-4k-000-cracked-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-000.db"},
                     {"traffic-4k-000-cracked-groupingextent-layoutduration30-car", "/home/maureen/visualroad/4k-short/traffic-4k-000.db"},
                     {"traffic-4k-000-cracked-layoutduration30-car", "/home/maureen/visualroad/4k-short/traffic-4k-000.db"},
+                    // 4k-002 downsampled
+                    {"traffic-4k-002-downsampled-to-2k", "/home/maureen/visualroad/4k-short/traffic-4k-002-downsampled-to-2k.db"},
             } );
 } // namespace lightdb::associations
 

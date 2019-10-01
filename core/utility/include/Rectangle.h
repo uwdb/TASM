@@ -11,7 +11,11 @@ namespace lightdb {
 
         Rectangle(unsigned int id = 0, unsigned int x = 0, unsigned int y = 0, unsigned int width = 0, unsigned int height = 0)
             : id(id), x(x % 2 ? x - 1 : x), y(y % 2 ? y - 1 : y), width(width % 2 ? width + 1 : width), height(height % 2 ? height + 1 : height)
-        { }
+        {
+            if (y + height == 1080) {
+                this->y -=1;
+            }
+        }
 
         bool operator==(const Rectangle &other) const {
             return id == other.id

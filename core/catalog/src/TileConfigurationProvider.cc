@@ -336,7 +336,7 @@ const TileLayout &GroupingTileConfigurationProvider::tileLayoutForFrame(unsigned
         return Interval<int>(rect.x, rect.x + rect.width);
     });
     std::sort(horizontalIntervals.begin(), horizontalIntervals.end());
-    auto tileWidths = horizontalIntervals.size() ? tileDimensions(horizontalIntervals, 256, frameWidth_) : std::vector<unsigned int>({ frameWidth_ });
+    auto tileWidths = horizontalIntervals.size() ? tileDimensions(horizontalIntervals, 512, frameWidth_) : std::vector<unsigned int>({ frameWidth_ });
 
     std::vector<Interval<int>> verticalIntervals(rectanglesForGOP.size());
     std::transform(rectanglesForGOP.begin(), rectanglesForGOP.end(), verticalIntervals.begin(), [](Rectangle &rect) {

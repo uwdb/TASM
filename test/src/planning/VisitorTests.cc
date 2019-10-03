@@ -131,8 +131,8 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
 
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata2) {
     auto input = Scan("traffic-2k-001");
-    MetadataSpecification metadataSelection("labels", "label", "pedestrian");
-    Coordinator().execute(input.StoreCracked("traffic-2k-cracked-groupingextent-layoutduration30-pedestrian", "traffic-2k-001", &metadataSelection));
+    MetadataSpecification metadataSelection("labels", "label", "car");
+    Coordinator().execute(input.StoreCracked("traffic-2k-cracked-smalltiles-minwidth512-layoutduration30-car", "traffic-2k-001", &metadataSelection));
 }
 
 TEST_F(VisitorTestFixture, testExecuteCracking) {
@@ -292,9 +292,9 @@ TEST_F(VisitorTestFixture, testTilingOnDecode) {
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
     auto numberOfRounds = 30u;
-    auto method = "ideal-tiled";
-    auto layoutDuration = 60;
-    auto catalogEntry = "traffic-2k-001-cracked-layoutduration60-car";
+    auto method = "ideal-tiled-minwidth512";
+    auto layoutDuration = 30;
+    auto catalogEntry = "traffic-2k-cracked-smalltiles-minwidth512-layoutduration30-car";
     for (auto i = 0u; i < numberOfRounds; ++i) {
         unsigned int start = distribution(generator) / 30 * 30;
 

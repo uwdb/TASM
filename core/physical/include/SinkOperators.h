@@ -20,8 +20,8 @@ public:
 private:
     class Runtime: public runtime::Runtime<> {
     public:
-        explicit Runtime(PhysicalOperator &physical) : runtime::Runtime<>(physical),
-                ofs_("/home/maureen/noscope_videos/jackson_car_pixels.hevc")
+        explicit Runtime(PhysicalOperator &physical) : runtime::Runtime<>(physical)
+//                ofs_("/home/maureen/noscope_videos/jackson_car_pixels.hevc")
             { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {

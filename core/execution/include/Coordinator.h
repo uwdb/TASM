@@ -85,6 +85,8 @@ public:
         std::cout << "ANALYSIS query took " << timer.totalTimeInMillis("query") << " ms\n";
 
         GLOBAL_TIMER.printAllTimes();
+        RECONFIGURE_DECODER_TIMER.printAllTimes();
+        READ_FROM_NEW_FILE_TIMER.printAllTimes();
     }
 
     std::string serialize(const LightFieldReference &query) {

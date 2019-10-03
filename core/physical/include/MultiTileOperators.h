@@ -131,7 +131,9 @@ private:
             // TODO: If there is another tile with the same layout that contains objects, set up the encoded reader for that.
             if (!tileNumbersForCurrentLayout_.empty() && std::next(tileNumberIt_, 1) != tileNumbersForCurrentLayout_.end()) {
                 ++tileNumberIt_;
+                READ_FROM_NEW_FILE_TIMER.startSection("setUpNewReader");
                 currentEncodedFrameReader_->setNewFileWithSameKeyframes(catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), *tileNumberIt_));
+                READ_FROM_NEW_FILE_TIMER.endSection("setUpNewReader");
             } else if (framesIterator_ != endOfFramesIterator_) {
                 // Get all of next frames that are in the same file.
                 auto possibleFramesToRead = nextGroupOfFramesWithTheSameLayoutAndFromTheSameFile();
@@ -146,11 +148,20 @@ private:
 
                 // Create an frame reader with the frames.
                 // TODO: Enable creating the encoded frame reader with a frame offset, so that it can tell the mp4 reader to read the correct samples.
-                currentEncodedFrameReader_ = std::make_unique<EncodedFrameReader>(
+                READ_FROM_NEW_FILE_TIMER.startSection("setUpNewReader");
+//                if (currentEncodedFrameReader_) {
+//                    currentEncodedFrameReader_->setNewFileWithSameKeyframesButNewFrames(
+//                            catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), *tileNumberIt_),
+//                            possibleFramesToRead,
+//                            tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_));
+//                } else {
+                    currentEncodedFrameReader_ = std::make_unique<EncodedFrameReader>(
                         catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), *tileNumberIt_),
                         possibleFramesToRead,
                         tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_),
                         shouldReadEntireGOPs_);
+//                }
+                READ_FROM_NEW_FILE_TIMER.endSection("setUpNewReader");
             } else
                 currentEncodedFrameReader_ = nullptr;
         }

@@ -76,6 +76,9 @@ private:
 };
 
 static Timer GLOBAL_TIMER{};
+
+static Timer RECONFIGURE_DECODER_TIMER{};
+static Timer READ_FROM_NEW_FILE_TIMER{};
 } // namespace lightdb
 
 #endif //LIGHTDB_TIMER_H

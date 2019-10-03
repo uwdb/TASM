@@ -480,8 +480,9 @@ namespace lightdb::optimization {
                     auto merge = plan().emplace<physical::MergeTilePixels>(logical, crack, tileLocationProvider);
 //                    plan().emplace<physical::SaveFramesToFiles>(logical, merge);
                 } else {
-                    auto merge = plan().emplace<physical::MergeTilePixels>(logical, decode, tileLocationProvider);
+//                    auto merge = plan().emplace<physical::MergeTilePixels>(logical, decode, tileLocationProvider);
 //                    plan().emplace<physical::SaveFramesToFiles>(logical, merge);
+                    plan().emplace<physical::Sink>(logical, decode);
                 }
 
                 // Add a merge operator whose parents are the decodes.
@@ -517,7 +518,6 @@ namespace lightdb::optimization {
                     // There should be a parent for each tile.
                     // Find out what frames are wanted for metadata.
                     // Get rectangle for tile.
-                    auto gpu = plan().allocator().gpu();
                     auto logical = plan().lookup(node);
 
                     std::vector<PhysicalOperatorReference> lastPerTileOperators;
@@ -541,12 +541,14 @@ namespace lightdb::optimization {
                         auto &scanParent = parent->parents()[0];
                         auto &scan = scanParent.downcast<physical::ScanFramesFromFileEncodedReader>();
                         scan.setFramesToRead(node.orderedFramesForMetadata());
-                        auto merge = plan().emplace<physical::MergeTilePixels>(logical, physical_parents, tiles::NoTilesLayout, std::unordered_map<int, int>());
+//                        auto merge = plan().emplace<physical::MergeTilePixels>(logical, physical_parents, tiles::NoTilesLayout, std::unordered_map<int, int>());
 //                        plan().emplace<physical::SaveFramesToFiles>(logical, merge);
+                        plan().emplace<physical::Sink>(logical, parent);
 
                         return true;
                     }
 
+                    auto gpu = plan().allocator().gpu();
                     for (auto &parent: physical_parents) {
                         auto &scan = parent.downcast<physical::ScanFramesFromFileEncodedReader>();
                         auto tileNumber = scan.source().index();
@@ -1042,7 +1044,7 @@ namespace lightdb::optimization {
                                                             width,
                                                             height);
                 } else {
-                    tileConfig = std::make_shared<tiles::SingleTileFor2kConfigurationProvider>();
+                    tileConfig = std::make_shared<tiles::AlternatingTileFor4kConfigurationProvider>();
                 }
 
                 auto crack = plan().emplace<physical::CrackVideo>(

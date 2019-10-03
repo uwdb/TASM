@@ -12,6 +12,7 @@
 #include <chrono>
 #include <iostream>
 #include <mutex>
+#include "timer.h"
 
 #define START_TIMER auto start = std::chrono::high_resolution_clock::now();
 #define STOP_TIMER(print_message) std::cout << std::endl << print_message << \
@@ -110,11 +111,13 @@ public:
       reconfigParams.ulNumDecodeSurfaces = newFormat->min_num_decode_surfaces;
 
 //      START_TIMER
+      lightdb::RECONFIGURE_DECODER_TIMER.startSection("reconfigureDecoder");
       lock().lock();
       CUresult result;
       if ((result = cuvidReconfigureDecoder(handle_, &reconfigParams)) != CUDA_SUCCESS)
           throw GpuCudaRuntimeError("Failed to reconfigure decoder", result);
       lock().unlock();
+      lightdb::RECONFIGURE_DECODER_TIMER.endSection("reconfigureDecoder");
 //      STOP_TIMER("*** Time to reconfigure decoder: ")
 
       return true;

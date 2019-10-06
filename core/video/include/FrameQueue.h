@@ -121,6 +121,8 @@ protected:
 
   CUvideoctxlock m_ctxLock;
   size_t nPitch;
+
+  unsigned long long int waitsForFrame_;
 };
 
 class CUVIDFrameQueue : public FrameQueue {

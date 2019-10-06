@@ -62,7 +62,12 @@ private:
                     endOfFramesIterator_(physical.metadataManager()->orderedFramesForMetadata().end()),
                     shouldReadEntireGOPs_(shouldReadEntireGOPs),
                     totalVideoWidth_(0),
-                    totalVideoHeight_(0)
+                    totalVideoHeight_(0),
+                    totalNumberOfPixels_(0),
+                    totalNumberOfIFrames_(0),
+                    totalNumberOfFrames_(0),
+                    totalNumberOfBytes_(0),
+                    didSignalEOS_(false)
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -77,8 +82,21 @@ private:
             if (framesIterator_ == endOfFramesIterator_
                     && currentEncodedFrameReader_
                     && currentEncodedFrameReader_->isEos()
-                    && tileNumberIt_ == tileNumbersForCurrentLayout_.end())
+                    && tileNumberIt_ == tileNumbersForCurrentLayout_.end()) {
+                std::cout << "ANALYSIS: Total number of pixels decoded " << totalNumberOfPixels_ << std::endl;
+                std::cout << "ANALYSIS: Total number of keyframes decoded " << totalNumberOfIFrames_ << std::endl;
+                std::cout << "ANALYSIS: num-frames-decoded " << totalNumberOfFrames_ << std::endl;
+                std::cout << "ANALYSIS: num-bytes-decoded " << totalNumberOfBytes_ << std::endl;
                 return {};
+            }
+
+            if (didSignalEOS_) {
+                std::cout << "ANALYSIS: num-pixels-decoded " << totalNumberOfPixels_ << std::endl;
+                std::cout << "ANALYSIS: num-keyframes-decoded " << totalNumberOfIFrames_ << std::endl;
+                std::cout << "ANALYSIS: num-frames-decoded " << totalNumberOfFrames_ << std::endl;
+                std::cout << "ANALYSIS: num-bytes-decoded " << totalNumberOfBytes_ << std::endl;
+                return {};
+            }
 
             if (!currentEncodedFrameReader_ || currentEncodedFrameReader_->isEos()) {
                 do {
@@ -108,6 +126,11 @@ private:
                 configuration = video::gpac::load_configuration(*currentTilePath_);
                 tilePathToConfiguration_[*currentTilePath_] = configuration;
             }
+
+            totalNumberOfPixels_ += gopPacket->numberOfFrames() * currentTileLayout_->rectangleForTile(*tileNumberIt_).area();
+            ++totalNumberOfIFrames_;
+            totalNumberOfFrames_ += gopPacket->numberOfFrames();
+            totalNumberOfBytes_ += gopPacket->data()->size();
 
             assert(totalVideoWidth_);
             assert(totalVideoHeight_);
@@ -246,6 +269,12 @@ private:
 
         unsigned int totalVideoWidth_;
         unsigned int totalVideoHeight_;
+
+        unsigned long long int totalNumberOfPixels_;
+        unsigned long long int totalNumberOfIFrames_;
+        unsigned long long int totalNumberOfFrames_;
+        unsigned long long int totalNumberOfBytes_;
+        bool didSignalEOS_;
 
         std::unique_ptr<EncodedFrameReader> currentEncodedFrameReader_;
         std::unique_ptr<tiles::TileLayout> currentTileLayout_;

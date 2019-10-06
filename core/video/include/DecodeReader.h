@@ -232,7 +232,7 @@ public:
     unsigned int firstFrameIndex() const { return firstFrameIndex_; }
     unsigned int numberOfFrames() const { return numberOfFrames_; }
 
-private:
+public:
     std::unique_ptr<lightdb::bytestring> data_;
     unsigned int firstFrameIndex_;
     unsigned int numberOfFrames_;

@@ -45,7 +45,8 @@ public:
             lock_(lock),
             frameNumberQueue_(frameNumberQueue),
             tileNumberQueue_(tileNumberQueue),
-            currentBitrate_(0)
+            currentBitrate_(0),
+            numberOfReconfigures_(0)
   {
       CUresult result;
       creationInfo_ = this->configuration().AsCuvidCreateInfo(lock);
@@ -62,11 +63,14 @@ public:
             handle_(other.handle_),
             lock_(other.lock_),
             frameNumberQueue_(other.frameNumberQueue_),
-            tileNumberQueue_(other.tileNumberQueue_) {
+            tileNumberQueue_(other.tileNumberQueue_),
+            numberOfReconfigures_(other.numberOfReconfigures_) {
       other.handle_ = nullptr;
   }
 
   virtual ~CudaDecoder() {
+      std::cout << "ANALYSIS number-of-reconfigures " << numberOfReconfigures_ << std::endl;
+
       // I tried calling the destructor at the last call, but it segfaulted.
       // I think it has to be called the first time.
       if(handle() != nullptr) {
@@ -92,6 +96,8 @@ public:
             && currentFormat_.display_area.right == newFormat->display_area.right
             && currentFormat_.display_area.bottom == newFormat->display_area.bottom)
           return false;
+
+      ++numberOfReconfigures_;
 
       memcpy(&currentFormat_, newFormat, sizeof(currentFormat_));
 
@@ -168,8 +174,9 @@ protected:
 
 
 private:
-    static CUVIDEOFORMAT FormatFromCreateInfo(CUVIDDECODECREATEINFO);
+    unsigned long int numberOfReconfigures_;
 
+    static CUVIDEOFORMAT FormatFromCreateInfo(CUVIDDECODECREATEINFO);
     static bool DECODER_DESTROYED;
 };
 

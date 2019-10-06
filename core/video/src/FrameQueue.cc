@@ -11,13 +11,14 @@
 
 #include "FrameQueue.h"
 #include <cassert>
+#include <iostream>
 
 FrameQueue::FrameQueue(VideoLock &lock)
         : FrameQueue(lock.get())
 { }
 
 FrameQueue::FrameQueue(CUvideoctxlock ctxLock)
-    : hEvent_(nullptr), nReadPosition_(0), nWritePosition_(0), nFramesInQueue_(0), bEndOfDecode_(0), m_ctxLock(ctxLock) {
+    : hEvent_(nullptr), nReadPosition_(0), nWritePosition_(0), nFramesInQueue_(0), bEndOfDecode_(0), m_ctxLock(ctxLock), waitsForFrame_(0) {
 #ifdef _WIN32
   hEvent_ = CreateEvent(NULL, false, false, NULL);
   InitializeCriticalSection(&oCriticalSection_);
@@ -29,6 +30,7 @@ FrameQueue::FrameQueue(CUvideoctxlock ctxLock)
 }
 
 FrameQueue::~FrameQueue() {
+    std::cout << "ANALYSIS: num-waits-for-frame  " << waitsForFrame_ << std::endl;
 #ifdef _WIN32
   DeleteCriticalSection(&oCriticalSection_);
   CloseHandle(hEvent_);
@@ -92,6 +94,7 @@ void FrameQueue::endDecode() {
 // available, the method returns false.
 bool FrameQueue::waitUntilFrameAvailable(int nPictureIndex) {
   while (isInUse(nPictureIndex)) {
+      ++waitsForFrame_;
     usleep(1000); // Decoder is getting too far ahead from display
     if (isEndOfDecode())
       return false;

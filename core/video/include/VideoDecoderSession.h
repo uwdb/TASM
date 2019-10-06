@@ -6,12 +6,16 @@
 #include <thread>
 #include <chrono>
 
+#include "cudaProfiler.h"
+#include "timer.h"
+
 template<typename Input=DecodeReader::iterator>
 class VideoDecoderSession {
 public:
     VideoDecoderSession(CudaDecoder& decoder, Input reader, const Input end)
             : decoder_(RestartDecoder(decoder)),
-              worker_{std::make_unique<std::thread>(&VideoDecoderSession::DecodeAll, std::ref(decoder), reader, end)}
+              worker_{std::make_unique<std::thread>(&VideoDecoderSession::DecodeAll, std::ref(decoder), reader, end)},
+              numberOfWaits_(0)
     { }
 
     VideoDecoderSession(VideoDecoderSession&& other) noexcept
@@ -25,6 +29,8 @@ public:
             decoder_.frame_queue().endDecode();
             worker_->join();
         }
+
+//        std::cout << "ANALYSIS: number-of-decoder-waits " << numberOfWaits_ << std::endl;
     }
 
     DecodedFrame decode() {
@@ -47,6 +53,7 @@ public:
                     } else
                         return {DecodedFrame(decoder_, packet)};
                 }
+//                ++numberOfWaits_;
             }
 
         return std::nullopt;
@@ -58,8 +65,13 @@ protected:
     CudaDecoder &decoder_;
     std::unique_ptr<std::thread> worker_;
     bool moved_ = false;
+    unsigned int numberOfWaits_;
 
     static void DecodeAll(CudaDecoder &decoder, Input reader, const Input end) {
+        cuProfilerStart();
+        lightdb::Timer timer;
+        timer.startSection("DecodeAll");
+
         CUresult status;
 
         auto parser = CreateParser(decoder);
@@ -89,8 +101,11 @@ protected:
             }
         } while (!decoder.frame_queue().isEndOfDecode() && reader != end);
 
+        cuProfilerStop();
         cuvidDestroyVideoParser(parser);
         decoder.frame_queue().endDecode();
+        timer.endSection("DecodeAll");
+        timer.printAllTimes();
         LOG(INFO) << "Decode complete; thread terminating.";
     }
 

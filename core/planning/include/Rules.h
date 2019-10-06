@@ -119,8 +119,8 @@ namespace lightdb::optimization {
 //                        plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
 //                        return true;
 
-//                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
-                        auto &scan = plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
+                        auto &scan = plan().emplace<physical::ScanSingleFileDecodeReader>(logical, stream);
+//                        auto &scan = plan().emplace<physical::ScanNonSequentialFramesFromFileEncodedReader>(logical, stream);
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
 
                         auto children = plan().children(plan().lookup(node));
@@ -1037,7 +1037,7 @@ namespace lightdb::optimization {
 
                 std::shared_ptr<tiles::TileConfigurationProvider> tileConfig;
                 if (node.metadataManager()) {
-                    auto tileLayoutDuration = 30;
+                    auto tileLayoutDuration = 60;
                     tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
                                                             tileLayoutDuration,
                                                             node.metadataManager(),

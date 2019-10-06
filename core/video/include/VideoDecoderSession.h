@@ -77,37 +77,23 @@ protected:
         auto parser = CreateParser(decoder);
 
         do {
-            std::vector<unsigned char> combinedData;
-            unsigned long flags = 0;
             if (reader != end) {
-                for (auto i = 0u; i < 10; ++i) {
-                    if (reader != end) {
-                        int firstFrameIndex = -1;
-                        int numberOfFrames = -1;
-                        int tileNumber = -1;
-                        bool gotFirstFrameIndex = (*reader).getFirstFrameIndexIfSet(firstFrameIndex);
-                        bool gotNumberOfFrames = (*reader).getNumberOfFramesIfSet(numberOfFrames);
-                        bool gotTileNumber = (*reader).getTileNumberIfSet(tileNumber);
-                        if (gotFirstFrameIndex && gotNumberOfFrames) {
-                            for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
-                                decoder.frameNumberQueue().push(i);
+                int firstFrameIndex = -1;
+                int numberOfFrames = -1;
+                int tileNumber = -1;
+                bool gotFirstFrameIndex = (*reader).getFirstFrameIndexIfSet(firstFrameIndex);
+                bool gotNumberOfFrames = (*reader).getNumberOfFramesIfSet(numberOfFrames);
+                bool gotTileNumber = (*reader).getTileNumberIfSet(tileNumber);
+                if (gotFirstFrameIndex && gotNumberOfFrames) {
+                    for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
+                        decoder.frameNumberQueue().push(i);
 
-                                if (gotTileNumber)
-                                    decoder.tileNumberQueue().push(tileNumber);
-                            }
-                        }
-
-                        auto packet = static_cast<DecodeReaderPacket>(reader++);
-                        combinedData.insert(combinedData.end(), packet.payload, packet.payload + packet.payload_size);
-                        flags |= packet.flags;
+                        if (gotTileNumber)
+                            decoder.tileNumberQueue().push(tileNumber);
                     }
                 }
-                CUVIDSOURCEDATAPACKET packet;
-                memset(&packet, 0, sizeof(packet));
-                packet.flags = flags;
-                packet.payload_size = combinedData.size();
-                packet.payload = combinedData.data();
-//            auto packet = static_cast<DecodeReaderPacket>(reader++);
+
+                auto packet = static_cast<DecodeReaderPacket>(reader++);
                 if ((status = cuvidParseVideoData(parser, &packet)) != CUDA_SUCCESS) {
                     cuvidDestroyVideoParser(parser);
                     throw GpuCudaRuntimeError("Call to cuvidParseVideoData failed", status);

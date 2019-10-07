@@ -102,9 +102,9 @@ public:
 
       ++numberOfReconfigures_;
 
-      auto oldCodedWidth = currentFormat_.coded_width;
+//      auto oldCodedWidth = currentFormat_.coded_width;
       auto oldDisplayWidth = currentFormat_.display_area.right - currentFormat_.display_area.left;
-      auto oldCodedHeight = currentFormat_.coded_height;
+//      auto oldCodedHeight = currentFormat_.coded_height;
       auto oldDisplayHeight = currentFormat_.display_area.bottom - currentFormat_.display_area.top;
 
 
@@ -130,8 +130,8 @@ public:
       nvtxNameOsThread(std::hash<std::thread::id>()(std::this_thread::get_id()), "DECODE");
 
       // Include old width/new width old, height/new height in message.
-      auto newDisplayWidth = newFormat->display_area.right - newFormat->display_area.left;
-      auto newDisplayHeight = newFormat->display_area.bottom - newFormat->display_area.top;
+      unsigned int newDisplayWidth = newFormat->display_area.right - newFormat->display_area.left;
+      unsigned int newDisplayHeight = newFormat->display_area.bottom - newFormat->display_area.top;
       std::stringstream markMessage;
       markMessage << "ReconfigureDecoder width: " << oldDisplayWidth << "->" << newDisplayWidth << ", equals-coded: " << (newDisplayWidth == newFormat->coded_width)
                     << ", height: " << oldDisplayHeight << "->" << newDisplayHeight << ", equals-coded: " << (newDisplayHeight == newFormat->coded_height);

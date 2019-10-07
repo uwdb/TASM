@@ -132,7 +132,7 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata2) {
     auto input = Scan("traffic-2k-001");
     MetadataSpecification metadataSelection("labels", "label", "car");
-    Coordinator().execute(input.StoreCracked("traffic-2k-cracked-smalltiles-minwidth512-layoutduration60-car", "traffic-2k-001", &metadataSelection));
+    Coordinator().execute(input.StoreCracked("traffic-2k-cracked-alignedTo32-layoutduration30-car", "traffic-2k-001", &metadataSelection));
 }
 
 TEST_F(VisitorTestFixture, testExecuteCracking) {
@@ -291,10 +291,10 @@ TEST_F(VisitorTestFixture, testTilingOnDecode30) {
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 1u;
-    auto method = "group-extent";
+    auto numberOfRounds = 5u;
+    auto method = "ideal-tiled-orderedScan";
     auto layoutDuration = 30;
-    auto catalogEntry = "traffic-4k-002-cracked-groupingextent-layoutduration30-car"; // "traffic-2k-001-cracked-layoutduration30-car";
+    auto catalogEntry = "traffic-2k-001-cracked-layoutduration30-car";
     for (auto i = 0u; i < numberOfRounds; ++i) {
         unsigned int start = distribution(generator) / 30 * 30;
 
@@ -326,10 +326,10 @@ TEST_F(VisitorTestFixture, testTilingOnDecode60) {
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 1u;
-    auto method = "single-tiled";
-    auto layoutDuration = "inf";
-    auto catalogEntry = "traffic-4k-002-single-tile"; //"traffic-4k-002-cracked-layoutduration60-car"; //"traffic-2k-001-cracked-layoutduration60-car";
+    auto numberOfRounds = 5u;
+    auto method = "ideal-tiled-orderedScan";
+    auto layoutDuration = 60;
+    auto catalogEntry = "traffic-2k-001-cracked-layoutduration60-car"; //"traffic-2k-001-cracked-layoutduration60-car";
     for (auto i = 0u; i < numberOfRounds; ++i) {
         unsigned int start = distribution(generator) / 30 * 30;
 

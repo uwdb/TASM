@@ -53,6 +53,28 @@ public:
 
 private:
     class Runtime: public runtime::Runtime<ScanMultiTileOperator> {
+    private:
+        struct TileInformation {
+            std::filesystem::path filename;
+            int tileNumber;
+            unsigned int width;
+            unsigned int height;
+            std::vector<int> framesToRead;
+            unsigned int frameOffsetInFile;
+
+            // Considers only dimensions for the purposes of ordering reads.
+            bool operator<(const TileInformation &other) {
+                if (width < other.width)
+                    return true;
+                else if (width > other.width)
+                    return false;
+                else if (height < other.height)
+                    return true;
+                else
+                    return false;
+            }
+        };
+
     public:
         explicit Runtime(ScanMultiTileOperator &physical, std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider, bool shouldReadEntireGOPs)
             : runtime::Runtime<ScanMultiTileOperator>(physical),
@@ -67,8 +89,11 @@ private:
                     totalNumberOfIFrames_(0),
                     totalNumberOfFrames_(0),
                     totalNumberOfBytes_(0),
+                    numberOfTilesRead_(0),
                     didSignalEOS_(false)
-        { }
+        {
+            preprocess();
+        }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             // Find all of the frames that have to be read from the same file, and create an EncodedFrameReader for them.
@@ -87,6 +112,7 @@ private:
                 std::cout << "ANALYSIS: Total number of keyframes decoded " << totalNumberOfIFrames_ << std::endl;
                 std::cout << "ANALYSIS: num-frames-decoded " << totalNumberOfFrames_ << std::endl;
                 std::cout << "ANALYSIS: num-bytes-decoded " << totalNumberOfBytes_ << std::endl;
+                std::cout << "ANALYSIS: num-tiles-read " << numberOfTilesRead_ << std::endl;
                 return {};
             }
 
@@ -95,6 +121,7 @@ private:
                 std::cout << "ANALYSIS: num-keyframes-decoded " << totalNumberOfIFrames_ << std::endl;
                 std::cout << "ANALYSIS: num-frames-decoded " << totalNumberOfFrames_ << std::endl;
                 std::cout << "ANALYSIS: num-bytes-decoded " << totalNumberOfBytes_ << std::endl;
+                std::cout << "ANALYSIS: num-tiles-read " << numberOfTilesRead_ << std::endl;
                 return {};
             }
 
@@ -104,14 +131,20 @@ private:
                 } while (framesIterator_ != endOfFramesIterator_ && !currentEncodedFrameReader_);
 
                 // If we get out of the loop and the frame reader is still empty, then there are no more frames to read.
-                if (!currentEncodedFrameReader_)
+                if (!currentEncodedFrameReader_) {
+                    std::cout << "ANALYSIS: num-pixels-decoded " << totalNumberOfPixels_ << std::endl;
+                    std::cout << "ANALYSIS: num-keyframes-decoded " << totalNumberOfIFrames_ << std::endl;
+                    std::cout << "ANALYSIS: num-frames-decoded " << totalNumberOfFrames_ << std::endl;
+                    std::cout << "ANALYSIS: num-bytes-decoded " << totalNumberOfBytes_ << std::endl;
+                    std::cout << "ANALYSIS: num-tiles-read " << numberOfTilesRead_ << std::endl;
                     return {};
+                }
             }
 
             // Read frames from reader.
             auto gopPacket = currentEncodedFrameReader_->read();
             assert(gopPacket.has_value());
-            assert(gopPacket->firstFrameIndex() >= tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_));
+//            assert(gopPacket->firstFrameIndex() >= tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_));
 
             unsigned long flags = CUVID_PKT_DISCONTINUITY | CUVID_PKT_ENDOFSTREAM;
 //            if (currentEncodedFrameReader_->isEos())
@@ -150,43 +183,64 @@ private:
         }
 
     private:
+        void preprocess();
+
         void setUpNextEncodedFrameReader() {
-            // TODO: If there is another tile with the same layout that contains objects, set up the encoded reader for that.
-            if (!tileNumbersForCurrentLayout_.empty() && std::next(tileNumberIt_, 1) != tileNumbersForCurrentLayout_.end()) {
-                ++tileNumberIt_;
-                READ_FROM_NEW_FILE_TIMER.startSection("setUpNewReader");
-                currentEncodedFrameReader_->setNewFileWithSameKeyframes(catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), *tileNumberIt_));
-                READ_FROM_NEW_FILE_TIMER.endSection("setUpNewReader");
-            } else if (framesIterator_ != endOfFramesIterator_) {
-                // Get all of next frames that are in the same file.
-                auto possibleFramesToRead = nextGroupOfFramesWithTheSameLayoutAndFromTheSameFile();
-
-                // Filter out the ones that don't contain any of the object.
-                auto lastIntersectingFrameIt = removeFramesThatDoNotContainObject(possibleFramesToRead);
-                possibleFramesToRead.resize(std::distance(possibleFramesToRead.begin(), lastIntersectingFrameIt));
-                if (!possibleFramesToRead.size()) {
-                    currentEncodedFrameReader_ = nullptr;
-                    return;
-                }
-
-                // Create an frame reader with the frames.
-                // TODO: Enable creating the encoded frame reader with a frame offset, so that it can tell the mp4 reader to read the correct samples.
-                READ_FROM_NEW_FILE_TIMER.startSection("setUpNewReader");
-//                if (currentEncodedFrameReader_) {
-//                    currentEncodedFrameReader_->setNewFileWithSameKeyframesButNewFrames(
-//                            catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), *tileNumberIt_),
-//                            possibleFramesToRead,
-//                            tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_));
-//                } else {
-                    currentEncodedFrameReader_ = std::make_unique<EncodedFrameReader>(
-                        catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), *tileNumberIt_),
-                        possibleFramesToRead,
-                        tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_),
-                        shouldReadEntireGOPs_);
-//                }
-                READ_FROM_NEW_FILE_TIMER.endSection("setUpNewReader");
-            } else
+            if (orderedTileInformationIt_ == orderedTileInformation_.end()) {
                 currentEncodedFrameReader_ = nullptr;
+            } else {
+                ++numberOfTilesRead_;
+                READ_FROM_NEW_FILE_TIMER.startSection("setUpNewReader");
+
+                currentEncodedFrameReader_ = std::make_unique<EncodedFrameReader>(
+                        orderedTileInformationIt_->filename,
+                        orderedTileInformationIt_->framesToRead,
+                        orderedTileInformationIt_->frameOffsetInFile,
+                        shouldReadEntireGOPs_);
+
+                ++orderedTileInformationIt_;
+                READ_FROM_NEW_FILE_TIMER.endSection("setUpNewReader");
+            }
+
+
+            // TODO: If there is another tile with the same layout that contains objects, set up the encoded reader for that.
+//            if (!tileNumbersForCurrentLayout_.empty() && std::next(tileNumberIt_, 1) != tileNumbersForCurrentLayout_.end()) {
+//                ++tileNumberIt_;
+//                ++numberOfTilesRead_;
+//                READ_FROM_NEW_FILE_TIMER.startSection("setUpNewReader");
+//                currentEncodedFrameReader_->setNewFileWithSameKeyframes(catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), *tileNumberIt_));
+//                READ_FROM_NEW_FILE_TIMER.endSection("setUpNewReader");
+//            } else if (framesIterator_ != endOfFramesIterator_) {
+//                // Get all of next frames that are in the same file.
+//                auto possibleFramesToRead = nextGroupOfFramesWithTheSameLayoutAndFromTheSameFile();
+//
+//                // Filter out the ones that don't contain any of the object.
+//                auto lastIntersectingFrameIt = removeFramesThatDoNotContainObject(possibleFramesToRead);
+//                possibleFramesToRead.resize(std::distance(possibleFramesToRead.begin(), lastIntersectingFrameIt));
+//                if (!possibleFramesToRead.size()) {
+//                    currentEncodedFrameReader_ = nullptr;
+//                    return;
+//                }
+//
+//                // Create an frame reader with the frames.
+//                // TODO: Enable creating the encoded frame reader with a frame offset, so that it can tell the mp4 reader to read the correct samples.
+//                ++numberOfTilesRead_;
+//                READ_FROM_NEW_FILE_TIMER.startSection("setUpNewReader");
+////                if (currentEncodedFrameReader_) {
+////                    currentEncodedFrameReader_->setNewFileWithSameKeyframesButNewFrames(
+////                            catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), *tileNumberIt_),
+////                            possibleFramesToRead,
+////                            tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_));
+////                } else {
+//                    currentEncodedFrameReader_ = std::make_unique<EncodedFrameReader>(
+//                        catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), *tileNumberIt_),
+//                        possibleFramesToRead,
+//                        tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_),
+//                        shouldReadEntireGOPs_);
+////                }
+//                READ_FROM_NEW_FILE_TIMER.endSection("setUpNewReader");
+//            } else
+//                currentEncodedFrameReader_ = nullptr;
         }
 
         // Updates current tile path & layout.
@@ -249,16 +303,6 @@ private:
             tileNumberIt_ = tileNumbersForCurrentLayout_.begin();
 
             return std::find(possibleFrames.begin(), possibleFrames.end(), maximumFrame) + 1;
-
-//            auto tileRect = currentTileLayout_->rectangleForTile(tileNumber_);
-//
-//            return std::remove_if(possibleFrames.begin(), possibleFrames.end(), [&](auto &frameNumber) {
-//               // Return true if there is no intersection.
-//               auto &rectanglesForFrame = physical().metadataManager()->rectanglesForFrame(frameNumber);
-//               return std::none_of(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](auto &rectangle) {
-//                   return tileRect.intersects(rectangle);
-//               });
-//            });
         }
 
         unsigned int tileNumberForCurrentLayout_;
@@ -274,7 +318,11 @@ private:
         unsigned long long int totalNumberOfIFrames_;
         unsigned long long int totalNumberOfFrames_;
         unsigned long long int totalNumberOfBytes_;
+        unsigned int numberOfTilesRead_;
         bool didSignalEOS_;
+
+        std::vector<TileInformation> orderedTileInformation_;
+        std::vector<TileInformation>::const_iterator orderedTileInformationIt_;
 
         std::unique_ptr<EncodedFrameReader> currentEncodedFrameReader_;
         std::unique_ptr<tiles::TileLayout> currentTileLayout_;

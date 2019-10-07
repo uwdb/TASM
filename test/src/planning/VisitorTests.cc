@@ -291,10 +291,10 @@ TEST_F(VisitorTestFixture, testTilingOnDecode30) {
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 5u;
-    auto method = "ideal-tiled-orderedScan";
+    auto numberOfRounds = 15u;
+    auto method = "ideal-tiled-alignedTo32";
     auto layoutDuration = 30;
-    auto catalogEntry = "traffic-2k-001-cracked-layoutduration30-car";
+    auto catalogEntry = "traffic-2k-001-cracked-alignedTo32-layoutduration30-car";
     for (auto i = 0u; i < numberOfRounds; ++i) {
         unsigned int start = distribution(generator) / 30 * 30;
 
@@ -326,10 +326,10 @@ TEST_F(VisitorTestFixture, testTilingOnDecode60) {
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 5u;
-    auto method = "ideal-tiled-orderedScan";
+    auto numberOfRounds = 15u;
+    auto method = "ideal-tiled-alignedTo32";
     auto layoutDuration = 60;
-    auto catalogEntry = "traffic-2k-001-cracked-layoutduration60-car"; //"traffic-2k-001-cracked-layoutduration60-car";
+    auto catalogEntry = "traffic-2k-001-cracked-alignedTo32-layoutduration60-car"; //"traffic-2k-001-cracked-layoutduration60-car";
     for (auto i = 0u; i < numberOfRounds; ++i) {
         unsigned int start = distribution(generator) / 30 * 30;
 

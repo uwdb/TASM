@@ -9,6 +9,8 @@
 #include "cudaProfiler.h"
 #include "timer.h"
 
+#include "nvToolsExtCuda.h"
+
 template<typename Input=DecodeReader::iterator>
 class VideoDecoderSession {
 public:
@@ -94,10 +96,24 @@ protected:
                 }
 
                 auto packet = static_cast<DecodeReaderPacket>(reader++);
+
+                nvtxNameOsThread(std::hash<std::thread::id>()(std::this_thread::get_id()), "DECODE");
+                nvtxEventAttributes_t eventAttributes;
+                memset(&eventAttributes, 9, sizeof(eventAttributes));
+                eventAttributes.version = NVTX_VERSION;
+                eventAttributes.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
+                eventAttributes.colorType = NVTX_COLOR_ARGB;
+                eventAttributes.color = 0xFF0000FF;
+                eventAttributes.messageType = NVTX_MESSAGE_TYPE_ASCII;
+                eventAttributes.message.ascii = "parse packet";
+                nvtxRangePushEx(&eventAttributes);
+
                 if ((status = cuvidParseVideoData(parser, &packet)) != CUDA_SUCCESS) {
                     cuvidDestroyVideoParser(parser);
                     throw GpuCudaRuntimeError("Call to cuvidParseVideoData failed", status);
                 }
+                nvtxRangePop();
+
             }
         } while (!decoder.frame_queue().isEndOfDecode() && reader != end);
 

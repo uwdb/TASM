@@ -47,7 +47,7 @@ find_package(CUDA 8.0 REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS}) #  /usr/local/cuda-8.0/include ${CUDA_INCLUDE_DIRS}
 message("Cuda include: ${CUDA_INCLUDE_DIRS}")
 message("libs: ${CUDA_CUDA_LIBRARY}, ${CUDA_nvcuvenc_LIBRARY}")
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${CUDA_CUDA_LIBRARY} ${CUDA_nvcuvenc_LIBRARY} /usr/lib/x86_64-linux-gnu/libnvcuvid.so)
+set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${CUDA_CUDA_LIBRARY} ${CUDA_nvcuvenc_LIBRARY} /usr/lib/x86_64-linux-gnu/libnvcuvid.so /usr/local/cuda-9.0/lib64/libnvToolsExt.so)
 
 # For ipp stuff in saving frames as images.
 link_directories(/opt/intel/ipp/lib/intel64)

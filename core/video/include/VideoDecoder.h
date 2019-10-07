@@ -14,6 +14,8 @@
 #include <mutex>
 #include "timer.h"
 
+#include "nvToolsExtCuda.h"
+
 #define START_TIMER auto start = std::chrono::high_resolution_clock::now();
 #define STOP_TIMER(print_message) std::cout << std::endl << print_message << \
     std::chrono::duration_cast<std::chrono::milliseconds>( \
@@ -118,6 +120,9 @@ public:
 
 //      START_TIMER
       lightdb::RECONFIGURE_DECODER_TIMER.startSection("reconfigureDecoder");
+      nvtxNameOsThread(std::hash<std::thread::id>()(std::this_thread::get_id()), "DECODE");
+      nvtxMark("ReconfigureDecoder");
+
       lock().lock();
       CUresult result;
       if ((result = cuvidReconfigureDecoder(handle_, &reconfigParams)) != CUDA_SUCCESS)

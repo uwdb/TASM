@@ -286,48 +286,15 @@ TEST_F(VisitorTestFixture, testLayoutImpactOnSelection) {
 
 TEST_F(VisitorTestFixture, testTilingOnDecode30) {
     std::default_random_engine generator(1);
-    unsigned int timeRange = 3;
+    unsigned int timeRange = 2;
     auto numberOfFramesInTimeRange = timeRange * 60 * 30;
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
     auto numberOfRounds = 1u;
-    auto method = "ideal-tiled-decodeAllRead10-eosOnlyAtEnd";
+    auto method = "ideal-tiled";
     auto layoutDuration = 30;
-    auto catalogEntry = "traffic-2k-001-cracked-layoutduration30-car";
-    for (auto i = 0u; i < numberOfRounds; ++i) {
-        unsigned int start = distribution(generator) / 30 * 30;
-
-        auto object = "car";
-        PixelMetadataSpecification selection("labels", "label", object, start, start + numberOfFramesInTimeRange);
-        {
-            std::cout << std::endl << "\n\nStep: entry: " << catalogEntry << ", object: " << object
-                                            << ", time-range: " << timeRange << ", strategy: " << method
-                                            << ", tile-layout-duration: " << layoutDuration << std::endl;
-
-            auto input = ScanMultiTiled(catalogEntry);
-            Coordinator().execute(input.Select(selection));
-
-            sleep(3);
-            GLOBAL_TIMER.reset();
-            RECONFIGURE_DECODER_TIMER.reset();
-            READ_FROM_NEW_FILE_TIMER.reset();
-        }
-    }
-}
-
-
-TEST_F(VisitorTestFixture, testTilingOnDecode60) {
-    std::default_random_engine generator(1);
-    unsigned int timeRange = 3;
-    auto numberOfFramesInTimeRange = timeRange * 60 * 30;
-    auto totalNumberOfFrames = 27000;
-
-    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 1u;
-    auto method = "ideal-tiled-decodeAllRead10-eosOnlyAtEnd";
-    auto layoutDuration = 60;
-    auto catalogEntry = "traffic-2k-001-cracked-layoutduration60-car";
+    auto catalogEntry = "traffic-4k-002-cracked-layoutduration30-car"; // "traffic-2k-001-cracked-layoutduration30-car";
     for (auto i = 0u; i < numberOfRounds; ++i) {
         unsigned int start = distribution(generator) / 30 * 30;
 
@@ -336,16 +303,53 @@ TEST_F(VisitorTestFixture, testTilingOnDecode60) {
         {
             std::cout << std::endl << "\n\nStep: entry: " << catalogEntry << ", object: " << object
                       << ", time-range: " << timeRange << ", strategy: " << method
-                      << ", tile-layout-duration: " << layoutDuration << std::endl;
+                      << ", tile-layout-duration: " << layoutDuration
+                      << ", first-frame: " << start
+                      << ", last-frame: " << start + numberOfFramesInTimeRange << std::endl;
 
             auto input = ScanMultiTiled(catalogEntry);
             Coordinator().execute(input.Select(selection));
-
-            sleep(3);
-            GLOBAL_TIMER.reset();
-            RECONFIGURE_DECODER_TIMER.reset();
-            READ_FROM_NEW_FILE_TIMER.reset();
         }
+
+        GLOBAL_TIMER.reset();
+        RECONFIGURE_DECODER_TIMER.reset();
+        READ_FROM_NEW_FILE_TIMER.reset();
+        sleep(3);
+    }
+}
+
+
+TEST_F(VisitorTestFixture, testTilingOnDecode60) {
+    std::default_random_engine generator(1);
+    unsigned int timeRange = 2;
+    auto numberOfFramesInTimeRange = timeRange * 60 * 30;
+    auto totalNumberOfFrames = 27000;
+
+    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
+    auto numberOfRounds = 1u;
+    auto method = "single-tiled";
+    auto layoutDuration = "inf";
+    auto catalogEntry = "traffic-4k-002-single-tile"; //"traffic-4k-002-cracked-layoutduration60-car"; //"traffic-2k-001-cracked-layoutduration60-car";
+    for (auto i = 0u; i < numberOfRounds; ++i) {
+        unsigned int start = distribution(generator) / 30 * 30;
+
+        auto object = "car";
+        PixelMetadataSpecification selection("labels", "label", object, start, start + numberOfFramesInTimeRange);
+        {
+            std::cout << std::endl << "\n\nStep: entry: " << catalogEntry << ", object: " << object
+                      << ", time-range: " << timeRange << ", strategy: " << method
+                      << ", tile-layout-duration: " << layoutDuration
+                      << ", first-frame: " << start
+                      << ", last-frame: " << start + numberOfFramesInTimeRange << std::endl;
+
+            auto input = ScanMultiTiled(catalogEntry);
+            Coordinator().execute(input.Select(selection));
+        }
+
+        GLOBAL_TIMER.reset();
+        RECONFIGURE_DECODER_TIMER.reset();
+        READ_FROM_NEW_FILE_TIMER.reset();
+        sleep(3);
     }
 }
 

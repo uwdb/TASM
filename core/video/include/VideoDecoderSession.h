@@ -99,7 +99,7 @@ protected:
 
                 nvtxNameOsThread(std::hash<std::thread::id>()(std::this_thread::get_id()), "DECODE");
                 nvtxEventAttributes_t eventAttributes;
-                memset(&eventAttributes, 9, sizeof(eventAttributes));
+                memset(&eventAttributes, 0, sizeof(eventAttributes));
                 eventAttributes.version = NVTX_VERSION;
                 eventAttributes.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
                 eventAttributes.colorType = NVTX_COLOR_ARGB;

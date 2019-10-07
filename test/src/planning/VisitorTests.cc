@@ -292,9 +292,9 @@ TEST_F(VisitorTestFixture, testTilingOnDecode30) {
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
     auto numberOfRounds = 1u;
-    auto method = "ideal-tiled";
+    auto method = "group-extent";
     auto layoutDuration = 30;
-    auto catalogEntry = "traffic-4k-002-cracked-layoutduration30-car"; // "traffic-2k-001-cracked-layoutduration30-car";
+    auto catalogEntry = "traffic-4k-002-cracked-groupingextent-layoutduration30-car"; // "traffic-2k-001-cracked-layoutduration30-car";
     for (auto i = 0u; i < numberOfRounds; ++i) {
         unsigned int start = distribution(generator) / 30 * 30;
 

@@ -15,6 +15,7 @@
 #include "timer.h"
 
 #include "nvToolsExtCuda.h"
+#include <sstream>
 
 #define START_TIMER auto start = std::chrono::high_resolution_clock::now();
 #define STOP_TIMER(print_message) std::cout << std::endl << print_message << \
@@ -101,6 +102,12 @@ public:
 
       ++numberOfReconfigures_;
 
+      auto oldCodedWidth = currentFormat_.coded_width;
+      auto oldDisplayWidth = currentFormat_.display_area.right - currentFormat_.display_area.left;
+      auto oldCodedHeight = currentFormat_.coded_height;
+      auto oldDisplayHeight = currentFormat_.display_area.bottom - currentFormat_.display_area.top;
+
+
       memcpy(&currentFormat_, newFormat, sizeof(currentFormat_));
 
       CUVIDRECONFIGUREDECODERINFO reconfigParams;
@@ -121,7 +128,14 @@ public:
 //      START_TIMER
       lightdb::RECONFIGURE_DECODER_TIMER.startSection("reconfigureDecoder");
       nvtxNameOsThread(std::hash<std::thread::id>()(std::this_thread::get_id()), "DECODE");
-      nvtxMark("ReconfigureDecoder");
+
+      // Include old width/new width old, height/new height in message.
+      auto newDisplayWidth = newFormat->display_area.right - newFormat->display_area.left;
+      auto newDisplayHeight = newFormat->display_area.bottom - newFormat->display_area.top;
+      std::stringstream markMessage;
+      markMessage << "ReconfigureDecoder width: " << oldDisplayWidth << "->" << newDisplayWidth << ", equals-coded: " << (newDisplayWidth == newFormat->coded_width)
+                    << ", height: " << oldDisplayHeight << "->" << newDisplayHeight << ", equals-coded: " << (newDisplayHeight == newFormat->coded_height);
+      nvtxMark(markMessage.str().c_str());
 
       lock().lock();
       CUresult result;

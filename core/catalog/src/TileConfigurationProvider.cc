@@ -425,15 +425,29 @@ std::vector<unsigned int> GroupingTileConfigurationProvider::tileDimensions(cons
         }
     };
 
+    auto getAlignedOffset = [](int offset, bool shouldMoveBackwards) {
+        unsigned int alignment = 32;
+        if (!(offset % alignment))
+            return offset;
+
+        int base = offset / alignment * alignment;
+        if (!shouldMoveBackwards)
+            base += alignment;
+
+        return base;
+    };
+
     for (auto index = 0u; index < sortedIntervals.size(); ++index) {
         auto &interval = sortedIntervals[index];
         bool isLastInterval = index == sortedIntervals.size() - 1;
-        if (interval.start() - lastOffset >= minDistance && !doesOffsetStrictlyIntersect(interval.start(), index))
-            tryAppend(interval.start(), true, index);
+        auto offset = getAlignedOffset(interval.start(), true);
+        if (offset - lastOffset >= minDistance && !doesOffsetStrictlyIntersect(offset, index))
+            tryAppend(offset, true, index);
 
-        if (interval.end() - lastOffset >= minDistance and totalDimension - interval.end() >= minDistance) {
-            if (!doesOffsetStrictlyIntersect(interval.end(), index)) {
-                tryAppend(interval.end());
+        offset = getAlignedOffset(interval.end(), false);
+        if (offset - lastOffset >= minDistance and totalDimension - offset >= minDistance) {
+            if (!doesOffsetStrictlyIntersect(offset, index)) {
+                tryAppend(offset);
             }
         } else if (!isLastInterval
                     && lastOffset + minDistance >= interval.end()
@@ -445,7 +459,7 @@ std::vector<unsigned int> GroupingTileConfigurationProvider::tileDimensions(cons
                     && lastOffset + minDistance >= interval.end()) {
             tryAppend(lastOffset + minDistance);
         }
-        intervalEnds.push_back(interval.end());
+        intervalEnds.push_back(getAlignedOffset(interval.end(), false));
     }
 
     // Now transform offsets into widths/heights.

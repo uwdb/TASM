@@ -117,6 +117,8 @@ namespace lightdb::associations {
                     {"traffic-4k-002-cracked-layoutduration60-pedestrian", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     {"traffic-4k-002-cracked-groupingextent-layoutduration60-pedestrian", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     {"traffic-4k-002-single-tile", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
+                    {"traffic-4k-002-cracked-alignedTo32-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
+                    {"traffic-4k-002-cracked-alignedTo32-layoutduration30-car", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     // 4k-000
                     {"traffic-4k-000", "/home/maureen/visualroad/4k-short/traffic-4k-000.db"},
                     {"traffic-4k-000-cracked-groupingextent-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-000.db"},

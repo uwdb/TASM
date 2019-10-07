@@ -106,8 +106,12 @@ namespace lightdb::associations {
                     {"traffic-2k-001-cracked-grouped_around_all_objects-layoutduration60", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     {"traffic-2k-cracked-smalltiles-minwidth512-layoutduration30-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     {"traffic-2k-cracked-smalltiles-minwidth512-layoutduration60-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-alignedTo32-layoutduration120-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     {"traffic-2k-001-cracked-alignedTo32-layoutduration60-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     {"traffic-2k-001-cracked-alignedTo32-layoutduration30-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-groupingextent-alignedTo32-layoutduration120-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-groupingextent-alignedTo32-layoutduration60-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-groupingextent-alignedTo32-layoutduration30-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     // 4k-002
                     {"traffic-4k-002", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     {"traffic-4k-002-cracked-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},

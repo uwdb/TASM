@@ -357,7 +357,19 @@ std::vector<unsigned int> GroupingExtentsTileConfigurationProvider::tileDimensio
     std::vector<int> offsets;
     int lastOffset = 0;
 
-    auto start = interval.start();
+    auto getAlignedOffset = [](int offset, bool shouldMoveBackwards) {
+        unsigned int alignment = 32;
+        if (!(offset % alignment))
+            return offset;
+
+        int base = offset / alignment * alignment;
+        if (!shouldMoveBackwards)
+            base += alignment;
+
+        return base;
+    };
+
+    auto start = getAlignedOffset(interval.start(), true);
     if (start >= minDistance) {
         if (totalDimension - start >= minDistance) {
             offsets.push_back(start);
@@ -368,7 +380,7 @@ std::vector<unsigned int> GroupingExtentsTileConfigurationProvider::tileDimensio
         }
     }
 
-    auto end = interval.end();
+    auto end = getAlignedOffset(interval.end(), false);
     if (end - lastOffset >= minDistance) {
         if (totalDimension - end >= minDistance)
             offsets.push_back(end);

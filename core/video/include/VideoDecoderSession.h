@@ -8,17 +8,25 @@
 
 #include "cudaProfiler.h"
 #include "timer.h"
-
+#include "ThreadPool.h"
 #include "nvToolsExtCuda.h"
+#include <mutex>
 
 template<typename Input=DecodeReader::iterator>
 class VideoDecoderSession {
 public:
     VideoDecoderSession(CudaDecoder& decoder, Input reader, const Input end)
             : decoder_(RestartDecoder(decoder)),
-              worker_{std::make_unique<std::thread>(&VideoDecoderSession::DecodeAll, std::ref(decoder), reader, end)},
-              numberOfWaits_(0)
-    { }
+//              worker_{std::make_unique<std::thread>(&VideoDecoderSession::DecodeAll, std::ref(decoder), reader, end)},
+              numberOfWaits_(0),
+              nextDataQueue_(100),
+              flagsQueue_(100),
+              threadPool_(1),
+              isDoneReading_(false)
+    {
+        threadPool_.push(std::bind(&VideoDecoderSession::ReadNext, std::ref(decoder), reader, end, std::ref(nextDataQueue_), std::ref(flagsQueue_), std::ref(queuesMutex_), &isDoneReading_));
+        worker_ = std::make_unique<std::thread>(&VideoDecoderSession::DecodeAll, std::ref(decoder), reader, end, std::ref(nextDataQueue_), std::ref(flagsQueue_), std::ref(queuesMutex_), &isDoneReading_);
+    }
 
     VideoDecoderSession(VideoDecoderSession&& other) noexcept
             : decoder_(other.decoder_),
@@ -30,6 +38,13 @@ public:
         if(!moved_) {
             decoder_.frame_queue().endDecode();
             worker_->join();
+
+            threadPool_.waitAll();
+
+            std::scoped_lock lock(queuesMutex_);
+            assert(nextDataQueue_.empty());
+            assert(flagsQueue_.empty());
+            assert(isDoneReading_);
         }
 
 //        std::cout << "ANALYSIS: number-of-decoder-waits " << numberOfWaits_ << std::endl;
@@ -69,7 +84,48 @@ protected:
     bool moved_ = false;
     unsigned int numberOfWaits_;
 
-    static void DecodeAll(CudaDecoder &decoder, Input reader, const Input end) {
+    std::mutex queuesMutex_;
+    lightdb::spsc_queue<std::shared_ptr<std::vector<unsigned char>>> nextDataQueue_;
+    lightdb::spsc_queue<unsigned long> flagsQueue_;
+
+    static void ReadNext(CudaDecoder &decoder, Input reader, Input end, lightdb::spsc_queue<std::shared_ptr<std::vector<unsigned char>>> &nextDataQueue, lightdb::spsc_queue<unsigned long> &flagsQueue, std::mutex &queuesMutex, std::atomic_bool *isDoneReading) {
+        do {
+            std::shared_ptr<std::vector<unsigned char>> combinedData(new std::vector<unsigned char>());
+            unsigned long flags = 0;
+            if (reader != end) {
+                for (auto i = 0u; i < 80; ++i) {
+                    if (reader != end) {
+                        int firstFrameIndex = -1;
+                        int numberOfFrames = -1;
+                        int tileNumber = -1;
+                        bool gotFirstFrameIndex = (*reader).getFirstFrameIndexIfSet(firstFrameIndex);
+                        bool gotNumberOfFrames = (*reader).getNumberOfFramesIfSet(numberOfFrames);
+                        bool gotTileNumber = (*reader).getTileNumberIfSet(tileNumber);
+                        if (gotFirstFrameIndex && gotNumberOfFrames) {
+                            for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
+                                decoder.frameNumberQueue().push(i);
+
+                                if (gotTileNumber)
+                                    decoder.tileNumberQueue().push(tileNumber);
+                            }
+                        }
+
+                        auto packet = static_cast<DecodeReaderPacket>(reader++);
+                        combinedData->insert(combinedData->end(), packet.payload, packet.payload + packet.payload_size);
+                        flags |= packet.flags;
+                    }
+                }
+                {
+                    std::scoped_lock lock(queuesMutex);
+                    nextDataQueue.push(combinedData);
+                    flagsQueue.push(flags); // It's possible that there will be data but not flags.
+                }
+            }
+        } while (reader != end);
+        *isDoneReading = true;
+    }
+
+    static void DecodeAll(CudaDecoder &decoder, Input reader, const Input end, lightdb::spsc_queue<std::shared_ptr<std::vector<unsigned char>>> &nextDataQueue, lightdb::spsc_queue<unsigned long> &flagsQueue, std::mutex &queuesMutex, std::atomic_bool *isDoneReading) {
         cuProfilerStart();
         lightdb::Timer timer;
         timer.startSection("DecodeAll");
@@ -79,23 +135,49 @@ protected:
         auto parser = CreateParser(decoder);
 
         do {
-            if (reader != end) {
-                int firstFrameIndex = -1;
-                int numberOfFrames = -1;
-                int tileNumber = -1;
-                bool gotFirstFrameIndex = (*reader).getFirstFrameIndexIfSet(firstFrameIndex);
-                bool gotNumberOfFrames = (*reader).getNumberOfFramesIfSet(numberOfFrames);
-                bool gotTileNumber = (*reader).getTileNumberIfSet(tileNumber);
-                if (gotFirstFrameIndex && gotNumberOfFrames) {
-                    for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
-                        decoder.frameNumberQueue().push(i);
+//            std::vector<unsigned char> combinedData;
+//            unsigned long flags = 0;
+//            if (reader != end) {
+//                for (auto i = 0u; i < 80; ++i) {
+//                    if (reader != end) {
+//                        int firstFrameIndex = -1;
+//                        int numberOfFrames = -1;
+//                        int tileNumber = -1;
+//                        bool gotFirstFrameIndex = (*reader).getFirstFrameIndexIfSet(firstFrameIndex);
+//                        bool gotNumberOfFrames = (*reader).getNumberOfFramesIfSet(numberOfFrames);
+//                        bool gotTileNumber = (*reader).getTileNumberIfSet(tileNumber);
+//                        if (gotFirstFrameIndex && gotNumberOfFrames) {
+//                            for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
+//                                decoder.frameNumberQueue().push(i);
+//
+//                                if (gotTileNumber)
+//                                    decoder.tileNumberQueue().push(tileNumber);
+//                            }
+//                        }
+//
+//                        auto packet = static_cast<DecodeReaderPacket>(reader++);
+//                        combinedData.insert(combinedData.end(), packet.payload, packet.payload + packet.payload_size);
+//                        flags |= packet.flags;
+//                    }
+//                }
 
-                        if (gotTileNumber)
-                            decoder.tileNumberQueue().push(tileNumber);
+                while (true) {
+                    bool readAvailable = false;
+                    {
+                        std::scoped_lock lock(queuesMutex);
+                        readAvailable = flagsQueue.read_available() && nextDataQueue.read_available();
                     }
+                    if (readAvailable)
+                        break;
+                    else
+                        std::this_thread::yield();
                 }
 
-                auto packet = static_cast<DecodeReaderPacket>(reader++);
+                auto flags = flagsQueue.front();
+                flagsQueue.pop();
+
+                auto combinedData = nextDataQueue.front();
+                nextDataQueue.pop();
 
                 nvtxNameOsThread(std::hash<std::thread::id>()(std::this_thread::get_id()), "DECODE");
                 nvtxEventAttributes_t eventAttributes;
@@ -108,14 +190,19 @@ protected:
                 eventAttributes.message.ascii = "parse packet";
                 nvtxRangePushEx(&eventAttributes);
 
+                CUVIDSOURCEDATAPACKET packet;
+                memset(&packet, 0, sizeof(packet));
+                packet.flags = flags;
+                packet.payload_size = combinedData->size();
+                packet.payload = combinedData->data();
+//            auto packet = static_cast<DecodeReaderPacket>(reader++);
                 if ((status = cuvidParseVideoData(parser, &packet)) != CUDA_SUCCESS) {
                     cuvidDestroyVideoParser(parser);
                     throw GpuCudaRuntimeError("Call to cuvidParseVideoData failed", status);
                 }
                 nvtxRangePop();
 
-            }
-        } while (!decoder.frame_queue().isEndOfDecode() && reader != end);
+            }  while (!decoder.frame_queue().isEndOfDecode() && (!(*isDoneReading) || nextDataQueue.read_available()));
 
         cuProfilerStop();
         cuvidDestroyVideoParser(parser);
@@ -126,6 +213,9 @@ protected:
     }
 
 private:
+    ThreadPool threadPool_;
+    std::atomic_bool isDoneReading_;
+
     static CudaDecoder& RestartDecoder(CudaDecoder& decoder) {
         decoder.frame_queue().reset();
         return decoder;

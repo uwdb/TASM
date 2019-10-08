@@ -132,7 +132,7 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata2) {
     auto input = Scan("traffic-2k-001");
     MetadataSpecification metadataSelection("labels", "label", "car");
-    Coordinator().execute(input.StoreCracked("traffic-2k-001-cracked-groupingextent-alignedTo32-layoutduration120-car", "traffic-2k-001", &metadataSelection));
+    Coordinator().execute(input.StoreCracked("traffic-2k-001-cracked-groupingextent-dimsAlignedTo32-layoutduration30-car", "traffic-2k-001", &metadataSelection));
 }
 
 TEST_F(VisitorTestFixture, testExecuteCracking) {
@@ -291,10 +291,10 @@ TEST_F(VisitorTestFixture, testTilingOnDecode30) {
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 1u;
-    auto method = "ideal-tiled-alignedTo32";
+    auto numberOfRounds = 15u;
+    auto method = "ideal-tiled-dimsAlignedTo32";
     auto layoutDuration = 30;
-    auto catalogEntry = "traffic-2k-001-cracked-alignedTo32-layoutduration30-car";
+    auto catalogEntry = "traffic-2k-001-cracked-dimsAlignedTo32-layoutduration30-car";
 
     // Get to the questionable iteration.
     for (auto i = 0u; i < 2; ++i)

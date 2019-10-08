@@ -284,6 +284,30 @@ TEST_F(VisitorTestFixture, testLayoutImpactOnSelection) {
     }
 }
 
+TEST_F(VisitorTestFixture, debugTilingByCracking) {
+    std::default_random_engine generator(1);
+    unsigned int timeRange = 2;
+    auto numberOfFramesInTimeRange = timeRange * 60 * 30;
+    auto totalNumberOfFrames = 27000;
+
+    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
+    auto numberOfRounds = 1u;
+    auto method = "ideal-tiled-dimsAlignedTo32-sortByHeight";
+    auto layoutDuration = 30;
+    auto catalogEntry = "traffic-2k-001-single-tile";
+
+    // Get to the questionable iteration.
+    for (auto i = 0u; i < 2; ++i)
+        distribution(generator);
+
+    auto object = "car";
+    unsigned int start = distribution(generator) / 30 * 30;
+    PixelMetadataSpecification selection("labels", "label", object, start, start + numberOfFramesInTimeRange);
+
+    auto input = ScanMultiTiled(catalogEntry);
+    Coordinator().execute(input.Select(selection, true));
+}
+
 TEST_F(VisitorTestFixture, testTilingOnDecode30) {
     std::default_random_engine generator(1);
     unsigned int timeRange = 2;
@@ -291,8 +315,8 @@ TEST_F(VisitorTestFixture, testTilingOnDecode30) {
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 15u;
-    auto method = "ideal-tiled-dimsAlignedTo32";
+    auto numberOfRounds = 1u;
+    auto method = "ideal-tiled-dimsAlignedTo32-sortByHeight";
     auto layoutDuration = 30;
     auto catalogEntry = "traffic-2k-001-cracked-dimsAlignedTo32-layoutduration30-car";
 

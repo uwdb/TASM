@@ -61,14 +61,15 @@ private:
             unsigned int height;
             std::vector<int> framesToRead;
             unsigned int frameOffsetInFile;
+            Rectangle tileRect;
 
             // Considers only dimensions for the purposes of ordering reads.
             bool operator<(const TileInformation &other) {
-                if (width < other.width)
+                if (height < other.height)
                     return true;
-                else if (width > other.width)
+                else if (height > other.height)
                     return false;
-                else if (height < other.height)
+                else if (width < other.width)
                     return true;
                 else
                     return false;
@@ -160,7 +161,15 @@ private:
                 tilePathToConfiguration_[*currentTilePath_] = configuration;
             }
 
-//            std::cout << "Num-frames: " << gopPacket->numberOfFrames() << ", area: " << currentTileArea_ << std::endl;
+//            auto tileInfo = std::prev(orderedTileInformationIt_);
+//            std::cout << "First-frame: " << gopPacket->firstFrameIndex()
+//                            << ", num-frames: " << gopPacket->numberOfFrames()
+//                            << ", width: " << tileInfo->width
+//                            << ", height: " << tileInfo->height
+//                            << ", x: " << tileInfo->tileRect.x
+//                            << ", y: " << tileInfo->tileRect.y
+//                            << std::endl;
+
             totalNumberOfPixels_ += gopPacket->numberOfFrames() * currentTileArea_; //currentTileLayout_->rectangleForTile(*tileNumberIt_).area();
             ++totalNumberOfIFrames_;
             totalNumberOfFrames_ += gopPacket->numberOfFrames();

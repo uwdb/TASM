@@ -29,7 +29,8 @@ void ScanMultiTileOperator::Runtime::preprocess() {
                     rectangleForTile.width,
                     rectangleForTile.height,
                     possibleFramesToRead,
-                    tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_)});
+                    tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_),
+                    rectangleForTile});
         }
     }
 

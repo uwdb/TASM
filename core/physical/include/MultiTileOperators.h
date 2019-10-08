@@ -160,7 +160,8 @@ private:
                 tilePathToConfiguration_[*currentTilePath_] = configuration;
             }
 
-            totalNumberOfPixels_ += gopPacket->numberOfFrames() * currentTileLayout_->rectangleForTile(*tileNumberIt_).area();
+//            std::cout << "Num-frames: " << gopPacket->numberOfFrames() << ", area: " << currentTileArea_ << std::endl;
+            totalNumberOfPixels_ += gopPacket->numberOfFrames() * currentTileArea_; //currentTileLayout_->rectangleForTile(*tileNumberIt_).area();
             ++totalNumberOfIFrames_;
             totalNumberOfFrames_ += gopPacket->numberOfFrames();
             totalNumberOfBytes_ += gopPacket->data()->size();
@@ -197,6 +198,8 @@ private:
                         orderedTileInformationIt_->framesToRead,
                         orderedTileInformationIt_->frameOffsetInFile,
                         shouldReadEntireGOPs_);
+
+                currentTileArea_ = orderedTileInformationIt_->width * orderedTileInformationIt_->height;
 
                 ++orderedTileInformationIt_;
                 READ_FROM_NEW_FILE_TIMER.endSection("setUpNewReader");
@@ -323,6 +326,7 @@ private:
 
         std::vector<TileInformation> orderedTileInformation_;
         std::vector<TileInformation>::const_iterator orderedTileInformationIt_;
+        unsigned int currentTileArea_;
 
         std::unique_ptr<EncodedFrameReader> currentEncodedFrameReader_;
         std::unique_ptr<tiles::TileLayout> currentTileLayout_;

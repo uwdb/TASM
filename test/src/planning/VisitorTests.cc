@@ -291,10 +291,15 @@ TEST_F(VisitorTestFixture, testTilingOnDecode30) {
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 5u;
+    auto numberOfRounds = 1u;
     auto method = "ideal-tiled-alignedTo32";
     auto layoutDuration = 30;
-    auto catalogEntry = "traffic-4k-002-cracked-alignedTo32-layoutduration30-car";
+    auto catalogEntry = "traffic-2k-001-cracked-alignedTo32-layoutduration30-car";
+
+    // Get to the questionable iteration.
+    for (auto i = 0u; i < 2; ++i)
+        distribution(generator);
+
     for (auto i = 0u; i < numberOfRounds; ++i) {
         unsigned int start = distribution(generator) / 30 * 30;
 
@@ -326,10 +331,44 @@ TEST_F(VisitorTestFixture, testTilingOnDecode60) {
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 5u;
-    auto method = "ideal-tiled-alignedTo32";
+    auto numberOfRounds = 15u;
+    auto method = "groupextent-alignedTo32";
     auto layoutDuration = 60;
-    auto catalogEntry = "traffic-4k-002-cracked-alignedTo32-layoutduration60-car"; //"traffic-2k-001-cracked-layoutduration60-car";
+    auto catalogEntry = "traffic-2k-001-cracked-groupingextent-alignedTo32-layoutduration60-car"; //"traffic-2k-001-cracked-layoutduration60-car";
+    for (auto i = 0u; i < numberOfRounds; ++i) {
+        unsigned int start = distribution(generator) / 30 * 30;
+
+        auto object = "car";
+        PixelMetadataSpecification selection("labels", "label", object, start, start + numberOfFramesInTimeRange);
+        {
+            std::cout << std::endl << "\n\nStep: entry: " << catalogEntry << ", object: " << object
+                      << ", time-range: " << timeRange << ", strategy: " << method
+                      << ", tile-layout-duration: " << layoutDuration
+                      << ", first-frame: " << start
+                      << ", last-frame: " << start + numberOfFramesInTimeRange << std::endl;
+
+            auto input = ScanMultiTiled(catalogEntry);
+            Coordinator().execute(input.Select(selection));
+        }
+
+        GLOBAL_TIMER.reset();
+        RECONFIGURE_DECODER_TIMER.reset();
+        READ_FROM_NEW_FILE_TIMER.reset();
+        sleep(3);
+    }
+}
+
+TEST_F(VisitorTestFixture, testTilingOnDecode120) {
+    std::default_random_engine generator(1);
+    unsigned int timeRange = 2;
+    auto numberOfFramesInTimeRange = timeRange * 60 * 30;
+    auto totalNumberOfFrames = 27000;
+
+    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
+    auto numberOfRounds = 15u;
+    auto method = "groupextent-alignedTo32";
+    auto layoutDuration = 120;
+    auto catalogEntry = "traffic-2k-001-cracked-groupingextent-alignedTo32-layoutduration120-car"; //"traffic-2k-001-cracked-layoutduration60-car";
     for (auto i = 0u; i < numberOfRounds; ++i) {
         unsigned int start = distribution(generator) / 30 * 30;
 

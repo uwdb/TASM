@@ -310,18 +310,18 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
 
 TEST_F(VisitorTestFixture, testTilingOnDecode30) {
     std::default_random_engine generator(1);
-    unsigned int timeRange = 2;
+    unsigned int timeRange = 3;
     auto numberOfFramesInTimeRange = timeRange * 60 * 30;
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
     auto numberOfRounds = 5u;
-    auto method = "ideal-dimsAlignedTo60-sortByHeight";
+    auto method = "largeTile-dimsAlignedTo64-20atOnce-scanOnThread";
     auto layoutDuration = 30;
-    auto catalogEntry = "traffic-2k-001-cracked-dimsAlignedTo60-layoutduration30-car";
+    auto catalogEntry = "traffic-2k-001-cracked-groupingextent-dimsAlignedTo64-layoutduration30-car";
 
-    // Get to the questionable iteration.
-//    for (auto i = 0u; i < 2; ++i)
+    // Get to the questionable iteration for visual profiler.
+//    for (auto i = 0u; i < 5; ++i)
 //        distribution(generator);
 
     for (auto i = 0u; i < numberOfRounds; ++i) {

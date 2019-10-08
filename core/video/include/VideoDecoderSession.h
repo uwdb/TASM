@@ -93,7 +93,7 @@ protected:
             std::shared_ptr<std::vector<unsigned char>> combinedData(new std::vector<unsigned char>());
             unsigned long flags = 0;
             if (reader != end) {
-                for (auto i = 0u; i < 80; ++i) {
+                for (auto i = 0u; i < 20; ++i) {
                     if (reader != end) {
                         int firstFrameIndex = -1;
                         int numberOfFrames = -1;

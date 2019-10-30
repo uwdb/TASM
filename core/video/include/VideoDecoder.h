@@ -48,6 +48,8 @@ public:
             lock_(lock),
             frameNumberQueue_(frameNumberQueue),
             tileNumberQueue_(tileNumberQueue),
+            decodedPictureQueue_(4000),
+            picId_(0),
             currentBitrate_(0),
             numberOfReconfigures_(0)
   {
@@ -67,12 +69,18 @@ public:
             lock_(other.lock_),
             frameNumberQueue_(other.frameNumberQueue_),
             tileNumberQueue_(other.tileNumberQueue_),
-            numberOfReconfigures_(other.numberOfReconfigures_) {
+            decodedPictureQueue_(4000),
+            picId_(other.picId_),
+            numberOfReconfigures_(other.numberOfReconfigures_){
       other.handle_ = nullptr;
   }
 
   virtual ~CudaDecoder() {
       std::cout << "ANALYSIS number-of-reconfigures " << numberOfReconfigures_ << std::endl;
+
+      // Try emptying the decoded picture queue before the picIndexToMappedFrameInfo_ gets cleared, or the decoder
+      // gets destroyed.
+      decodedPictureQueue_.reset();
 
       // I tried calling the destructor at the last call, but it segfaulted.
       // I think it has to be called the first time.
@@ -152,6 +160,7 @@ public:
   VideoLock &lock() const {return lock_; }
   lightdb::spsc_queue<int> &frameNumberQueue() const { return frameNumberQueue_; }
   lightdb::spsc_queue<int> &tileNumberQueue() const { return tileNumberQueue_; }
+  lightdb::spsc_queue<std::shared_ptr<CUVIDPARSERDISPINFO>> &decodedPictureQueue() { return decodedPictureQueue_; }
 
   CUVIDEOFORMAT currentFormat() const { return currentFormat_; }
   void mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format);
@@ -171,7 +180,9 @@ protected:
   VideoLock &lock_;
   lightdb::spsc_queue<int> &frameNumberQueue_;
   lightdb::spsc_queue<int> &tileNumberQueue_;
+  lightdb::spsc_queue<std::shared_ptr<CUVIDPARSERDISPINFO>> decodedPictureQueue_;
   CUVIDDECODECREATEINFO creationInfo_;
+  int picId_;
 
   CUVIDEOFORMAT currentFormat_;
   unsigned int currentBitrate_;

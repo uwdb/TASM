@@ -47,11 +47,6 @@ public:
 
     std::chrono::microseconds poll_duration() const { return poll_duration_; }
 
-//    const std::vector<int> &framesThatWillBeDecoded() const { return framesThatWillBeDecoded_; }
-//    void setFramesThatWillBeDecoded(std::vector<int> framesThatWillBeDecoded) {
-//        framesThatWillBeDecoded_ = framesThatWillBeDecoded;
-//    }
-
 private:
     class Runtime: public runtime::GPUUnaryRuntime<GPUDecodeFromCPU, CPUEncodedFrameData> {
     public:
@@ -110,87 +105,88 @@ private:
 //    std::vector<int> framesThatWillBeDecoded_;
 };
 
-class GPUDecodeOptionalFromCPU : public PhysicalOperator, public GPUOperator {
-public:
-    explicit GPUDecodeOptionalFromCPU(const LightFieldReference &logical,
-                                        PhysicalOperatorReference parent,
-                                        const execution::GPU &gpu)
-            : GPUDecodeOptionalFromCPU(logical, parent, gpu, std::chrono::milliseconds(1u))
-    { }
 
-    template<typename Rep, typename Period>
-    explicit GPUDecodeOptionalFromCPU(const LightFieldReference &logical,
-                                        PhysicalOperatorReference &parent,
-                                        const execution::GPU &gpu,
-                                        std::chrono::duration<Rep, Period> poll_duration)
-            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUDecodeOptionalFromCPU-init")),
-            GPUOperator(gpu),
-            poll_duration_(poll_duration) {
-        CHECK_EQ(parent->device(), DeviceType::CPU);
-    }
-
-    GPUDecodeOptionalFromCPU(const GPUDecodeOptionalFromCPU&) = delete;
-    GPUDecodeOptionalFromCPU(GPUDecodeOptionalFromCPU&&) = default;
-
-    std::chrono::microseconds poll_duration() const { return poll_duration_; }
-
-private:
-    class Runtime: public runtime::GPUUnaryRuntime<GPUDecodeOptionalFromCPU, CPUEncodedFrameData> {
-    public:
-        explicit Runtime(GPUDecodeOptionalFromCPU &physical)
-            : runtime::GPUUnaryRuntime<GPUDecodeOptionalFromCPU, CPUEncodedFrameData>(physical),
-                    currentConfiguration_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<Configuration>(configuration())},
-                    currentDecodeConfiguration_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<DecodeConfiguration>(configuration(), codec())},
-                    geometry_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<GeometryReference>(geometry())},
-                    queue_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<CUVIDFrameQueue>(lock())},
-                    frameNumberQueue_(iterator() == iterator().eos() ? 0 : 4000),
-                    // Decoder needs to be initialized with some default configuration always, and then in its DecodeAll it can get updated as necessary.
-                    decoder_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<CudaDecoder>(*currentDecodeConfiguration_, *queue_, lock(), frameNumberQueue_, frameNumberQueue_)},
-                    session_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<VideoDecoderSession<Runtime::downcast_iterator<CPUEncodedFrameData>>>(*decoder_, iterator(), iterator().eos())}
-
-        { }
-
-        std::optional<MaterializedLightFieldReference> read() override {
-            if (!currentConfiguration_)
-                return {};
-
-            std::vector<GPUFrameReference> frames;
-
-            LOG_IF(WARNING, currentDecodeConfiguration_->output_surfaces < 8)
-            << "Decode configuration output surfaces is low, limiting throughput";
-
-            if(!decoder_->frame_queue().isComplete()) {
-                do {
-                    auto frame = session_->decode(physical().poll_duration());
-                    if (frame.has_value())
-                        frames.emplace_back(frame.value());
-                } while (!decoder_->frame_queue().isEmpty() &&
-                         !decoder_->frame_queue().isEndOfDecode() &&
-                         frames.size() <= currentDecodeConfiguration_->output_surfaces / 4);
-            }
-
-            if(!frames.empty() || !decoder_->frame_queue().isComplete()) {
-                auto returnValue = std::optional<physical::MaterializedLightFieldReference>{
-                        GPUDecodedFrameData(*currentDecodeConfiguration_, *geometry_, frames)};
-                return returnValue;
-            }
-            else {
-                return std::nullopt;
-            }
-        }
-
-    private:
-        std::optional<const Configuration> currentConfiguration_;
-        std::optional<const DecodeConfiguration> currentDecodeConfiguration_;
-        std::optional<const GeometryReference> geometry_;
-        std::optional<CUVIDFrameQueue> queue_;
-        spsc_queue<int> frameNumberQueue_;
-        std::optional<CudaDecoder> decoder_;
-        std::optional<VideoDecoderSession<Runtime::downcast_iterator<CPUEncodedFrameData>>> session_;
-    };
-
-    const std::chrono::microseconds poll_duration_;
-};
+//class GPUDecodeOptionalFromCPU : public PhysicalOperator, public GPUOperator {
+//public:
+//    explicit GPUDecodeOptionalFromCPU(const LightFieldReference &logical,
+//                                        PhysicalOperatorReference parent,
+//                                        const execution::GPU &gpu)
+//            : GPUDecodeOptionalFromCPU(logical, parent, gpu, std::chrono::milliseconds(1u))
+//    { }
+//
+//    template<typename Rep, typename Period>
+//    explicit GPUDecodeOptionalFromCPU(const LightFieldReference &logical,
+//                                        PhysicalOperatorReference &parent,
+//                                        const execution::GPU &gpu,
+//                                        std::chrono::duration<Rep, Period> poll_duration)
+//            : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUDecodeOptionalFromCPU-init")),
+//            GPUOperator(gpu),
+//            poll_duration_(poll_duration) {
+//        CHECK_EQ(parent->device(), DeviceType::CPU);
+//    }
+//
+//    GPUDecodeOptionalFromCPU(const GPUDecodeOptionalFromCPU&) = delete;
+//    GPUDecodeOptionalFromCPU(GPUDecodeOptionalFromCPU&&) = default;
+//
+//    std::chrono::microseconds poll_duration() const { return poll_duration_; }
+//
+//private:
+//    class Runtime: public runtime::GPUUnaryRuntime<GPUDecodeOptionalFromCPU, CPUEncodedFrameData> {
+//    public:
+//        explicit Runtime(GPUDecodeOptionalFromCPU &physical)
+//            : runtime::GPUUnaryRuntime<GPUDecodeOptionalFromCPU, CPUEncodedFrameData>(physical),
+//                    currentConfiguration_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<Configuration>(configuration())},
+//                    currentDecodeConfiguration_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<DecodeConfiguration>(configuration(), codec())},
+//                    geometry_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<GeometryReference>(geometry())},
+//                    queue_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<CUVIDFrameQueue>(lock())},
+//                    frameNumberQueue_(iterator() == iterator().eos() ? 0 : 4000),
+//                    // Decoder needs to be initialized with some default configuration always, and then in its DecodeAll it can get updated as necessary.
+//                    decoder_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<CudaDecoder>(*currentDecodeConfiguration_, *queue_, lock(), frameNumberQueue_, frameNumberQueue_)},
+//                    session_{iterator() == iterator().eos() ? std::nullopt : std::make_optional<VideoDecoderSession<Runtime::downcast_iterator<CPUEncodedFrameData>>>(*decoder_, iterator(), iterator().eos())}
+//
+//        { }
+//
+//        std::optional<MaterializedLightFieldReference> read() override {
+//            if (!currentConfiguration_)
+//                return {};
+//
+//            std::vector<GPUFrameReference> frames;
+//
+//            LOG_IF(WARNING, currentDecodeConfiguration_->output_surfaces < 8)
+//            << "Decode configuration output surfaces is low, limiting throughput";
+//
+//            if(!decoder_->frame_queue().isComplete()) {
+//                do {
+//                    auto frame = session_->decode(physical().poll_duration());
+//                    if (frame.has_value())
+//                        frames.emplace_back(frame.value());
+//                } while (!decoder_->frame_queue().isEmpty() &&
+//                         !decoder_->frame_queue().isEndOfDecode() &&
+//                         frames.size() <= currentDecodeConfiguration_->output_surfaces / 4);
+//            }
+//
+//            if(!frames.empty() || !decoder_->frame_queue().isComplete()) {
+//                auto returnValue = std::optional<physical::MaterializedLightFieldReference>{
+//                        GPUDecodedFrameData(*currentDecodeConfiguration_, *geometry_, frames)};
+//                return returnValue;
+//            }
+//            else {
+//                return std::nullopt;
+//            }
+//        }
+//
+//    private:
+//        std::optional<const Configuration> currentConfiguration_;
+//        std::optional<const DecodeConfiguration> currentDecodeConfiguration_;
+//        std::optional<const GeometryReference> geometry_;
+//        std::optional<CUVIDFrameQueue> queue_;
+//        spsc_queue<int> frameNumberQueue_;
+//        std::optional<CudaDecoder> decoder_;
+//        std::optional<VideoDecoderSession<Runtime::downcast_iterator<CPUEncodedFrameData>>> session_;
+//    };
+//
+//    const std::chrono::microseconds poll_duration_;
+//};
 
 class CPUDecode : public PhysicalOperator {
 public:

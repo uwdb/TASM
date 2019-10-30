@@ -277,7 +277,7 @@ public:
               frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
               tileNumber_(tileNumber)
     {
-        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
+//        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
         // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
         // with that.
     }
@@ -287,7 +287,7 @@ public:
             frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
             tileNumber_(-1)
     {
-        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
+//        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
         // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
         // with that.
     }
@@ -297,7 +297,7 @@ public:
           frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
           tileNumber_(-1)
     {
-        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
+//        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
     }
 
     DecodedFrame(const DecodedFrame&) = default;

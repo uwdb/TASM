@@ -61,7 +61,10 @@ public:
         for(auto begin = std::chrono::system_clock::now();
             std::chrono::system_clock::now() - begin < duration;
             std::this_thread::sleep_for(duration / interval)) {
-                if((packet = decoder_.frame_queue().try_dequeue<CUVIDPARSERDISPINFO>()) != nullptr) {
+//                if((packet = decoder_.frame_queue().try_dequeue<CUVIDPARSERDISPINFO>()) != nullptr) {
+                if (decoder_.decodedPictureQueue().read_available()) {
+                    packet = decoder_.decodedPictureQueue().front();
+                    decoder_.decodedPictureQueue().pop();
                     auto frameNumber = -1;
                     auto tileNumber = -1;
                     if (decoder_.frameNumberQueue().pop(frameNumber)) {
@@ -275,7 +278,7 @@ private:
         if(decoder == nullptr)
             LOG(ERROR) << "Unexpected null decoder during video decode (HandlePictureDecode)";
         else {
-            decoder->frame_queue().waitUntilFrameAvailable(parameters->CurrPicIdx);
+//            decoder->frame_queue().waitUntilFrameAvailable(parameters->CurrPicIdx);
             if((status = cuvidDecodePicture(decoder->handle(), parameters)) != CUDA_SUCCESS)
                 LOG(ERROR) << "cuvidDecodePicture failed (" << status << ")";
         }
@@ -291,7 +294,7 @@ private:
         else {
             // TODO: This should happen on a separate thread than cuvidDecodePicture() for performance.
             decoder->mapFrame(frame, decoder->currentFormat());
-            decoder->frame_queue().enqueue(frame);
+//            decoder->frame_queue().enqueue(frame);
         }
 
         return 1;

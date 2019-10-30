@@ -328,7 +328,7 @@ public:
     SelectPixels() : functor::unaryfunctor("SelectPixels", GPU()) { }
 };
 
-static SelectPixels SelectPixels{};
+//static SelectPixels SelectPixels{};
 } // namespace lightdb
 
 #endif //LIGHTDB_SELECTPIXELS_H

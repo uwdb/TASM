@@ -40,20 +40,20 @@ TEST_F(VisitorTestFixture, testBaz) {
     Coordinator().execute(encoded);
 }
 
-TEST_F(VisitorTestFixture, testDropFrames) {
-    // "/home/maureen/dog_videos/dog.hevc"
-    // "/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc"
-    auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto shortened = input.Map(DropFrames).Save("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011_car_frames.hevc");
-    Coordinator().execute(shortened);
-}
+//TEST_F(VisitorTestFixture, testDropFrames) {
+//    // "/home/maureen/dog_videos/dog.hevc"
+//    // "/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc"
+//    auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+//    auto shortened = input.Map(DropFrames).Save("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011_car_frames.hevc");
+//    Coordinator().execute(shortened);
+//}
 
-TEST_F(VisitorTestFixture, testSelectPixels) {
-    // "/home/maureen/dog_videos/dog_pixels_gpu.hevc"
-    auto input = Load("/home/maureen/dog_videos/runningDog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto selected = input.Map(SelectPixels).Save("/home/maureen/dog_videos/runningDogPixels.hevc");
-    Coordinator().execute(selected);
-}
+//TEST_F(VisitorTestFixture, testSelectPixels) {
+//    // "/home/maureen/dog_videos/dog_pixels_gpu.hevc"
+//    auto input = Load("/home/maureen/dog_videos/runningDog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+//    auto selected = input.Map(SelectPixels).Save("/home/maureen/dog_videos/runningDogPixels.hevc");
+//    Coordinator().execute(selected);
+//}
 
 TEST_F(VisitorTestFixture, testMakeBoxes) {
     auto yolo = lightdb::extensibility::Load("yolo");
@@ -69,30 +69,30 @@ TEST_F(VisitorTestFixture, testDrawBoxes) {
 
 }
 
-TEST_F(VisitorTestFixture, testMapAndBoxThings) {
-/*    auto left = Scan("red10");
-    auto right = Scan("red10");
-    auto unioned = left.Union(right);
-    auto encoded = unioned.Encode();
-    */
-    //auto foo = dlopen("/home/bhaynes/projects/yolo/cmake-build-debug/libyolo.so", RTLD_LAZY | RTLD_GLOBAL);
-    //printf( "Could not open file : %s\n", dlerror() );
-    auto yolo = lightdb::extensibility::Load("yolo"); //, "/home/bhaynes/projects/yolo/cmake-build-debug");
-
-    auto input = Load("/home/maureen/dog_videos/dog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Map(DropFrames).Save("/home/maureen/dog_videos/dog_dog.hevc"));
-//    auto boxes = Load("/home/maureen/dog_videos/short_dog_labels/dog_short_dog_labels.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-//    Coordinator().execute(boxes.Union(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
-
-//    auto input = Load("/home/maureen/dog_videos/dogBoxes.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-//    Coordinator().execute(input);
-
-//    auto boxesOnInput = input.Map(yolo).Union(input).Save("/home/maureen/boxes_on_dog.hevc");
-//    auto boxes = input.Map(yolo);
-//    Coordinator().execute(boxes.Save("/home/maureen/lightdb/dogBoxes.boxes"));
-
-//    Coordinator().execute(boxes.Uniocdn(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
-}
+//TEST_F(VisitorTestFixture, testMapAndBoxThings) {
+///*    auto left = Scan("red10");
+//    auto right = Scan("red10");
+//    auto unioned = left.Union(right);
+//    auto encoded = unioned.Encode();
+//    */
+//    //auto foo = dlopen("/home/bhaynes/projects/yolo/cmake-build-debug/libyolo.so", RTLD_LAZY | RTLD_GLOBAL);
+//    //printf( "Could not open file : %s\n", dlerror() );
+//    auto yolo = lightdb::extensibility::Load("yolo"); //, "/home/bhaynes/projects/yolo/cmake-build-debug");
+//
+//    auto input = Load("/home/maureen/dog_videos/dog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+//    Coordinator().execute(input.Map(DropFrames).Save("/home/maureen/dog_videos/dog_dog.hevc"));
+////    auto boxes = Load("/home/maureen/dog_videos/short_dog_labels/dog_short_dog_labels.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+////    Coordinator().execute(boxes.Union(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
+//
+////    auto input = Load("/home/maureen/dog_videos/dogBoxes.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+////    Coordinator().execute(input);
+//
+////    auto boxesOnInput = input.Map(yolo).Union(input).Save("/home/maureen/boxes_on_dog.hevc");
+////    auto boxes = input.Map(yolo);
+////    Coordinator().execute(boxes.Save("/home/maureen/lightdb/dogBoxes.boxes"));
+//
+////    Coordinator().execute(boxes.Uniocdn(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
+//}
 
 TEST_F(VisitorTestFixture, testLoadAndSelectFrames) {
 //    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
@@ -308,21 +308,30 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
     Coordinator().execute(input.Select(selection, true));
 }
 
+TEST_F(VisitorTestFixture, testBasicSelection) {
+    auto catalogEntry = "traffic-2k-001-cracked-layoutduration60-car";
+    auto object = "car";
+
+    PixelMetadataSpecification selection("labels", "label", object, 0, 900);
+    auto input = ScanMultiTiled(catalogEntry);
+    Coordinator().execute(input.Select(selection));
+}
+
 TEST_F(VisitorTestFixture, testTilingOnDecode30) {
     std::default_random_engine generator(1);
-    unsigned int timeRange = 3;
+    unsigned int timeRange = 2;
     auto numberOfFramesInTimeRange = timeRange * 60 * 30;
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 5u;
-    auto method = "largeTile-dimsAlignedTo64-20atOnce-scanOnThread";
+    auto numberOfRounds = 1u;
+    auto method = "ideal-dimsAlignedTo64-20atOnce-noWaitForFrame";
     auto layoutDuration = 30;
-    auto catalogEntry = "traffic-2k-001-cracked-groupingextent-dimsAlignedTo64-layoutduration30-car";
+    auto catalogEntry = "traffic-2k-001-cracked-dimsAlignedTo64-layoutduration30-car";
 
     // Get to the questionable iteration for visual profiler.
-//    for (auto i = 0u; i < 5; ++i)
-//        distribution(generator);
+    for (auto i = 0u; i < 3; ++i)
+        distribution(generator);
 
     for (auto i = 0u; i < numberOfRounds; ++i) {
         unsigned int start = distribution(generator) / 30 * 30;
@@ -452,21 +461,6 @@ TEST_F(VisitorTestFixture, testTileLayoutDurationOnSelectPixels) {
                 GLOBAL_TIMER.reset();
             }
         }
-    }
-}
-
-TEST_F(VisitorTestFixture, testrand) {
-    std::default_random_engine generator(1);
-
-    auto timeRangeInMinutes = 3;
-    auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
-    auto totalNumberOfFrames = 27000;
-
-    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-
-    for (auto i = 0u; i < 30u; ++i) {
-        unsigned int start = distribution(generator);
-        std::cout << "start: " << start << std::endl;
     }
 }
 

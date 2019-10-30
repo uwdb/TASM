@@ -65,6 +65,13 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
         if ((result = cuvidUnmapVideoFrame(handle(), mappedHandle)) != CUDA_SUCCESS)
             throw GpuCudaRuntimeError("Call to unmap failed", result);
 
+        frame->picture_index = picId_++;
+
+        std::shared_ptr<CUVIDPARSERDISPINFO> data(new CUVIDPARSERDISPINFO, [this](CUVIDPARSERDISPINFO *data) { this->unmapFrame(data->picture_index); delete data; });
+        *data = *frame;
+
+        decodedPictureQueue_.push(data);
+
         assert(!picIndexToMappedFrameInfo_.count(frame->picture_index));
         picIndexToMappedFrameInfo_.emplace(std::pair<unsigned int, DecodedFrameInformation>(
                 std::piecewise_construct,

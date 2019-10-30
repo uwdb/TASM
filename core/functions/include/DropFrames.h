@@ -207,7 +207,7 @@ public:
     DropFrames() : functor::unaryfunctor("DropFrames", GPU()) { }
 };
 
-static DropFrames DropFrames{};
+//static DropFrames DropFrames{};
 }
 
 

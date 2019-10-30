@@ -23,6 +23,12 @@ void TileLayoutsManager::loadAllTileConfigurations() {
         // Find the tile-metadata file in this directory, and load the tile layout from it.
         TileLayout tileLayout = video::gpac::load_tile_configuration(catalog::TileFiles::tileMetadataFilename(tileDirectoryPath));
 
+        // All of the layouts should have the same total width and total height.
+        if (!totalWidth_) {
+            totalWidth_ = tileLayout.totalWidth();
+            totalHeight_ = tileLayout.totalHeight();
+        }
+
         intervalToAvailableTileLayouts_[firstAndLastFrame].push_back(tileLayout);
         numberOfTilesToFrameIntervals_[tileLayout.numberOfTiles()].addInterval(firstAndLastFrame);
         intervalToTileDirectory_[firstAndLastFrame] = tileDirectoryPath;
@@ -322,35 +328,35 @@ const TileLayout &GroupingExtentsTileConfigurationProvider::tileLayoutForFrame(u
 }
 
 const TileLayout &GroupingTileConfigurationProvider::tileLayoutForFrame(unsigned int frame) {
-    unsigned int gopForFrame = frame / gop_;
-    if (gopToTileLayout_.count(gopForFrame))
-        return gopToTileLayout_.at(gopForFrame);
+    unsigned int tileGroupForFrame = frame / tileGroupDuration_;
+    if (tileGroupToTileLayout_.count(tileGroupForFrame))
+        return tileGroupToTileLayout_.at(tileGroupForFrame);
 
     // Get rectangles that are in the gop.
-    std::unique_ptr<std::list<Rectangle>> rectanglesForGOPPtr = metadataManager_->rectanglesForFrames(gopForFrame * gop_, (gopForFrame + 1) * gop_);
-    auto &rectanglesForGOP = *rectanglesForGOPPtr;
+    std::unique_ptr<std::list<Rectangle>> rectanglesForGroupPtr = metadataManager_->rectanglesForFrames(tileGroupForFrame * tileGroupDuration_, (tileGroupForFrame + 1) * tileGroupDuration_);
+    auto &rectanglesForGroup = *rectanglesForGroupPtr;
 
     // Compute horizontal and vertical intervals for all of the rectangles.
-    std::vector<Interval<int>> horizontalIntervals(rectanglesForGOP.size());
-    std::transform(rectanglesForGOP.begin(), rectanglesForGOP.end(), horizontalIntervals.begin(), [](Rectangle &rect) {
+    std::vector<Interval<int>> horizontalIntervals(rectanglesForGroup.size());
+    std::transform(rectanglesForGroup.begin(), rectanglesForGroup.end(), horizontalIntervals.begin(), [](Rectangle &rect) {
         return Interval<int>(rect.x, rect.x + rect.width);
     });
     std::sort(horizontalIntervals.begin(), horizontalIntervals.end());
     auto tileWidths = horizontalIntervals.size() ? tileDimensions(horizontalIntervals, 256, frameWidth_) : std::vector<unsigned int>({ frameWidth_ });
 
-    std::vector<Interval<int>> verticalIntervals(rectanglesForGOP.size());
-    std::transform(rectanglesForGOP.begin(), rectanglesForGOP.end(), verticalIntervals.begin(), [](Rectangle &rect) {
+    std::vector<Interval<int>> verticalIntervals(rectanglesForGroup.size());
+    std::transform(rectanglesForGroup.begin(), rectanglesForGroup.end(), verticalIntervals.begin(), [](Rectangle &rect) {
         return Interval<int>(rect.y, rect.y + rect.height);
     });
     std::sort(verticalIntervals.begin(), verticalIntervals.end());
     auto tileHeights = verticalIntervals.size() ? tileDimensions(verticalIntervals, 136, frameHeight_) : std::vector<unsigned int>({ frameHeight_ });
 
-    gopToTileLayout_.emplace(std::pair<unsigned int, TileLayout>(
+    tileGroupToTileLayout_.emplace(std::pair<unsigned int, TileLayout>(
             std::piecewise_construct,
-            std::forward_as_tuple(gopForFrame),
+            std::forward_as_tuple(tileGroupForFrame),
             std::forward_as_tuple(tileWidths.size(), tileHeights.size(), tileWidths, tileHeights)));
 
-    return gopToTileLayout_.at(gopForFrame);
+    return tileGroupToTileLayout_.at(tileGroupForFrame);
 }
 
 std::vector<unsigned int> GroupingExtentsTileConfigurationProvider::tileDimensions(Interval<int> interval, int minDistance, int totalDimension) {
@@ -495,33 +501,33 @@ std::vector<unsigned int> GroupingTileConfigurationProvider::tileDimensions(cons
     return dimensions;
 }
 
-void MultiTileLocationProvider::insertTileLayoutForGOP(TileLayout &layout, unsigned int gop) const {
+void MultiTileLocationProvider::insertTileLayoutForTileGroup(TileLayout &layout, unsigned int frame) const {
     std::scoped_lock lock(mutex_);
 
     if (!tileLayoutReferences_.count(layout))
         tileLayoutReferences_[layout] = std::make_shared<const TileLayout>(layout);
 
-    gopToTileLayout_[gop] = tileLayoutReferences_.at(layout);
+    tileGroupToTileLayout_[frame] = tileLayoutReferences_.at(layout);
 }
 
 const TileLayout &MultiTileLocationProvider::tileLayoutForFrame(unsigned int frame) const {
     std::scoped_lock lock(mutex_);
 
-    auto gop = gopForFrame(frame);
-    if (gopToTileLayout_.count(gop))
-        return *gopToTileLayout_.at(gop);
+    auto got = tileGroupForFrame(frame);
+    if (tileGroupToTileLayout_.count(got))
+        return *tileGroupToTileLayout_.at(got);
 
     auto layouts = tileLayoutsManager_->tileLayoutsForFrame(frame);
 
     if (layouts.size() == 1) {
-        insertTileLayoutForGOP(layouts.front(), gop);
-        return *gopToTileLayout_.at(gop);
+        insertTileLayoutForTileGroup(layouts.front(), got);
+        return *tileGroupToTileLayout_.at(got);
     }
 
     // Else we have to pick between the layouts.
-    // Get the boxes that are in this GOP from the metadata manager.
+    // Get the boxes that are in this GOT from the metadata manager.
     // Find the overlapping rectangles so we can compare those vs. the tile layouts.
-    RectangleMerger rectangleMerger(metadataManager_->rectanglesForFrames(gop * gopSize_, (gop + 1) * gopSize_));
+    RectangleMerger rectangleMerger(metadataManager_->rectanglesForFrames(got * tileGroupSize_, (got + 1) * tileGroupSize_));
 
     // For each layout:
         // For each merged rectangle, compute which tiles intersect it.
@@ -552,8 +558,8 @@ const TileLayout &MultiTileLocationProvider::tileLayoutForFrame(unsigned int fra
     }
 
     // Pick the layout with the lowest cost.
-    insertTileLayoutForGOP(*bestLayoutIt, gop);
-    return *gopToTileLayout_.at(gop);
+    insertTileLayoutForTileGroup(*bestLayoutIt, got);
+    return *tileGroupToTileLayout_.at(got);
 }
 
 } // namespace lightdb::tiles

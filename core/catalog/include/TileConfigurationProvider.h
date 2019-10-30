@@ -404,14 +404,14 @@ private:
 
 class GroupingTileConfigurationProvider : public TileConfigurationProvider {
 public:
-    GroupingTileConfigurationProvider(unsigned int gop,
+    GroupingTileConfigurationProvider(unsigned int tileGroupDuration,
                                         std::shared_ptr<const metadata::MetadataManager> metadataManager,
                                         unsigned int frameWidth,
                                         unsigned int frameHeight)
-        : gop_(gop),
-        metadataManager_(metadataManager),
-        frameWidth_(frameWidth),
-        frameHeight_(frameHeight)
+        : tileGroupDuration_(tileGroupDuration),
+          metadataManager_(metadataManager),
+          frameWidth_(frameWidth),
+          frameHeight_(frameHeight)
     { }
 
     unsigned int maximumNumberOfTiles() override {
@@ -423,11 +423,11 @@ public:
 private:
     std::vector<unsigned int> tileDimensions(const std::vector<Interval<int>> &sortedIntervals, int minDistance, int totalDimension);
 
-    unsigned int gop_;
+    unsigned int tileGroupDuration_;
     std::shared_ptr<const metadata::MetadataManager> metadataManager_;
     unsigned int frameWidth_;
     unsigned int frameHeight_;
-    std::unordered_map<unsigned int, TileLayout> gopToTileLayout_;
+    std::unordered_map<unsigned int, TileLayout> tileGroupToTileLayout_;
 };
 
 // TODO: Should this have a TileConfigurationProvider that uses the available possible tile layouts
@@ -435,7 +435,9 @@ private:
 class TileLayoutsManager {
 public:
     TileLayoutsManager(catalog::MultiTileEntry entry)
-        : entry_(std::move(entry))
+        : entry_(std::move(entry)),
+        totalWidth_(0),
+        totalHeight_(0)
     {
         loadAllTileConfigurations();
     }
@@ -445,6 +447,9 @@ public:
     std::list<TileLayout> tileLayoutsForFrame(unsigned int frameNumber) const;
     unsigned int maximumNumberOfTilesForFrames(const std::vector<int> &frames) const;
     std::filesystem::path locationOfTileForFrameAndConfiguration(unsigned int tileNumber, unsigned int frame, const tiles::TileLayout &tileLayout) const;
+
+    unsigned int totalWidth() const { return totalWidth_; }
+    unsigned int totalHeight() const { return totalHeight_; }
 
 private:
     void loadAllTileConfigurations();
@@ -456,6 +461,9 @@ private:
     std::map<lightdb::Interval<unsigned int>, std::filesystem::path> intervalToTileDirectory_;
     std::unordered_map<std::string, TileLayout> tileDirectoryToLayout_;
     mutable std::mutex mutex_;
+
+    unsigned int totalWidth_;
+    unsigned int totalHeight_;
 };
 
 class TileLocationProvider {
@@ -473,10 +481,10 @@ class MultiTileLocationProvider : public TileLocationProvider {
 public:
     MultiTileLocationProvider(std::shared_ptr<const TileLayoutsManager> tileLayoutsManager,
             std::shared_ptr<const metadata::MetadataManager> metadataManager,
-            unsigned int gopSize = 30)
+            unsigned int tileGroupSize = 30)
         : tileLayoutsManager_(tileLayoutsManager),
-        metadataManager_(metadataManager),
-        gopSize_(gopSize)
+          metadataManager_(metadataManager),
+          tileGroupSize_(tileGroupSize)
     { }
 
     std::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const override {
@@ -487,17 +495,17 @@ public:
 
 
 private:
-    void insertTileLayoutForGOP(TileLayout &layout, unsigned int frame) const;
-    unsigned int gopForFrame(unsigned int frame) const {
-        return frame / gopSize_;
+    void insertTileLayoutForTileGroup(TileLayout &layout, unsigned int frame) const;
+    unsigned int tileGroupForFrame(unsigned int frame) const {
+        return frame / tileGroupSize_;
     }
 
     std::shared_ptr<const TileLayoutsManager> tileLayoutsManager_;
     std::shared_ptr<const metadata::MetadataManager> metadataManager_;
-    unsigned int gopSize_;
+    unsigned int tileGroupSize_;
 
     mutable std::unordered_map<TileLayout, std::shared_ptr<const TileLayout>> tileLayoutReferences_;
-    mutable std::unordered_map<unsigned int, std::shared_ptr<const TileLayout>> gopToTileLayout_;
+    mutable std::unordered_map<unsigned int, std::shared_ptr<const TileLayout>> tileGroupToTileLayout_;
     mutable std::recursive_mutex mutex_;
 };
 

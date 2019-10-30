@@ -461,19 +461,20 @@ namespace lightdb::optimization {
                         metadataManager,
                         tileLocationProvider,
                         node.shouldReadEntireGOPs());
-                auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
+                auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, true);
 
                 // TODO: Should we place the cracking operator in between decode and merge?
                 // And then the cracking operator could keep a reference to the frames, but pass them on immediately.
                 // Make sure the encoding is happening on different threads.
                 // TODO:  Need to get output entry name from multi-tiledlight field.
-                std::shared_ptr<tiles::TileConfigurationProvider> tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
-                            30,
-                            node.metadataManager(),
-                            1920, //3840,
-                            1080); //1980,; // TODO: Get width/height from actual source.
 
                 if (node.shouldCrack()) {
+                    std::shared_ptr<tiles::TileConfigurationProvider> tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                            30, // TODO: Don't hardcode tile layout duration.
+                            node.metadataManager(),
+                            tileLayoutsManager->totalWidth(),
+                            tileLayoutsManager->totalHeight());
+
                     auto crack = plan().emplace<physical::CrackVideo>(logical, decode, std::unordered_set<int>(),
                                                                       tileConfig, tileLayoutsManager->entry().name());
                     auto merge = plan().emplace<physical::MergeTilePixels>(logical, crack, tileLocationProvider);

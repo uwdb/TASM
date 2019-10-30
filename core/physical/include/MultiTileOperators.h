@@ -157,19 +157,6 @@ private:
             // Read frames from reader.
             auto gopPacket = currentEncodedFrameReader_->read();
             assert(gopPacket.has_value());
-//            assert(gopPacket->firstFrameIndex() >= tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_));
-
-            // Multiply the packet's data by 10.
-//            auto sizeOfData = gopPacket->data()->size();
-//            std::unique_ptr<lightdb::bytestring> gopDataMultipliedBy10(new lightdb::bytestring());
-//            gopDataMultipliedBy10->reserve(sizeOfData * 10);
-//            auto current = gopDataMultipliedBy10->begin();
-//            for (auto i = 0u; i < 10; ++i) {
-//                gopDataMultipliedBy10->insert(current, gopPacket->data()->begin(), gopPacket->data()->end());
-//                std::advance(current, sizeOfData);
-//            }
-//            gopPacket->data_.swap(gopDataMultipliedBy10);
-//            gopPacket->numberOfFrames_ = gopPacket->numberOfFrames_ * 10;
 
             unsigned long flags = 0; //CUVID_PKT_DISCONTINUITY | CUVID_PKT_ENDOFSTREAM;
 //            if (currentEncodedFrameReader_->isEos())
@@ -184,15 +171,6 @@ private:
                 configuration = video::gpac::load_configuration(*currentTilePath_);
                 tilePathToConfiguration_[*currentTilePath_] = configuration;
             }
-
-//            auto tileInfo = std::prev(orderedTileInformationIt_);
-//            std::cout << "First-frame: " << gopPacket->firstFrameIndex()
-//                            << ", num-frames: " << gopPacket->numberOfFrames()
-//                            << ", width: " << tileInfo->width
-//                            << ", height: " << tileInfo->height
-//                            << ", x: " << tileInfo->tileRect.x
-//                            << ", y: " << tileInfo->tileRect.y
-//                            << std::endl;
 
             totalNumberOfPixels_ += gopPacket->numberOfFrames() * currentTileArea_; //currentTileLayout_->rectangleForTile(*tileNumberIt_).area();
             ++totalNumberOfIFrames_;

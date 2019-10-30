@@ -43,13 +43,14 @@ private:
 
 class CudaDecoder: public VideoDecoder {
 public:
-  CudaDecoder(const DecodeConfiguration &configuration, FrameQueue& frame_queue, VideoLock& lock, lightdb::spsc_queue<int>& frameNumberQueue, lightdb::spsc_queue<int>& tileNumberQueue)
+  CudaDecoder(const DecodeConfiguration &configuration, FrameQueue& frame_queue, VideoLock& lock, lightdb::spsc_queue<int>& frameNumberQueue, lightdb::spsc_queue<int>& tileNumberQueue, bool isDecodingDifferentSizes)
           : VideoDecoder(configuration, frame_queue), handle_(nullptr),
             lock_(lock),
             frameNumberQueue_(frameNumberQueue),
             tileNumberQueue_(tileNumberQueue),
             decodedPictureQueue_(4000),
             picId_(0),
+            isDecodingDifferentSizes_(isDecodingDifferentSizes),
             currentBitrate_(0),
             numberOfReconfigures_(0)
   {
@@ -71,6 +72,7 @@ public:
             tileNumberQueue_(other.tileNumberQueue_),
             decodedPictureQueue_(4000),
             picId_(other.picId_),
+            isDecodingDifferentSizes_(other.isDecodingDifferentSizes_),
             numberOfReconfigures_(other.numberOfReconfigures_){
       other.handle_ = nullptr;
   }
@@ -89,6 +91,8 @@ public:
           CudaDecoder::DECODER_DESTROYED = true;
       }
   }
+
+  bool isDecodingDifferentSizes() const { return isDecodingDifferentSizes_; }
 
   bool reconfigureDecoderIfNecessary(CUVIDEOFORMAT *newFormat) {
       assert(newFormat->coded_width <= creationInfo_.ulMaxWidth);
@@ -183,6 +187,7 @@ protected:
   lightdb::spsc_queue<std::shared_ptr<CUVIDPARSERDISPINFO>> decodedPictureQueue_;
   CUVIDDECODECREATEINFO creationInfo_;
   int picId_;
+  bool isDecodingDifferentSizes_;
 
   CUVIDEOFORMAT currentFormat_;
   unsigned int currentBitrate_;

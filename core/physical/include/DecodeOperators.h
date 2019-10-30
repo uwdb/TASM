@@ -24,21 +24,25 @@ class GPUDecodeFromCPU : public PhysicalOperator, public GPUOperator {
 public:
     explicit GPUDecodeFromCPU(const LightFieldReference &logical,
                               PhysicalOperatorReference source,
-                              const execution::GPU &gpu)
+                              const execution::GPU &gpu,
+                              bool isDecodingDifferentSizes = false)
             : GPUDecodeFromCPU(logical,
                                source,
                                gpu,
-                               std::chrono::milliseconds(1u))
+                               std::chrono::milliseconds(1u),
+                               isDecodingDifferentSizes)
     { }
 
     template<typename Rep, typename Period>
     explicit GPUDecodeFromCPU(const LightFieldReference &logical,
                               PhysicalOperatorReference &source,
                               const execution::GPU &gpu,
-                              std::chrono::duration<Rep, Period> poll_duration)
+                              std::chrono::duration<Rep, Period> poll_duration,
+                              bool isDecodingDifferentSizes = false)
             : PhysicalOperator(logical, {source}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUDecodeFromCPU-init")),
               GPUOperator(gpu),
-              poll_duration_(poll_duration) {
+              poll_duration_(poll_duration),
+              isDecodingDifferentSizes_(isDecodingDifferentSizes) {
         CHECK_EQ(source->device(), DeviceType::CPU);
     }
 
@@ -46,6 +50,7 @@ public:
     GPUDecodeFromCPU(GPUDecodeFromCPU&&) = default;
 
     std::chrono::microseconds poll_duration() const { return poll_duration_; }
+    bool isDecodingDifferentSizes() const { return isDecodingDifferentSizes_; }
 
 private:
     class Runtime: public runtime::GPUUnaryRuntime<GPUDecodeFromCPU, CPUEncodedFrameData> {
@@ -57,7 +62,7 @@ private:
               queue_{lock()},
               frameNumberQueue_(4000),
               tileNumberQueue_(4000), // Not sure what size makes sense here.
-              decoder_{configuration_, queue_, lock(), frameNumberQueue_, tileNumberQueue_},
+              decoder_{configuration_, queue_, lock(), frameNumberQueue_, tileNumberQueue_, physical.isDecodingDifferentSizes()},
               session_{decoder_, iterator(), iterator().eos()}
         { }
 
@@ -101,6 +106,7 @@ private:
     };
 
     const std::chrono::microseconds poll_duration_;
+    bool isDecodingDifferentSizes_;
 };
 
 

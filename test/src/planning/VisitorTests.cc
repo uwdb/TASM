@@ -132,7 +132,7 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata2) {
     auto input = Scan("traffic-2k-001");
     MetadataSpecification metadataSelection("labels", "label", "car");
-    Coordinator().execute(input.StoreCracked("traffic-2k-001-cracked-groupingextent-dimsAlignedTo64-minHeight160-layoutduration30-car", "traffic-2k-001", &metadataSelection));
+    Coordinator().execute(input.StoreCracked("TEST-traffic-2k-001-cracked", "traffic-2k-001", &metadataSelection));
 }
 
 TEST_F(VisitorTestFixture, testExecuteCracking) {

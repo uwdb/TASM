@@ -105,10 +105,17 @@ std::pair<CUdeviceptr, unsigned int> CudaDecoder::frameInfoForPicIndex(unsigned 
 
 CudaDecoder::DecodedDimensions CudaDecoder::decodedDimensionsForPicIndex(unsigned int picIndex) const {
     std::scoped_lock lock(picIndexMutex_);
-    auto &format = picIndexToMappedFrameInfo_.at(picIndex).format;
+    if (isDecodingDifferentSizes_) {
+        auto &format = picIndexToMappedFrameInfo_.at(picIndex).format;
 
-    return {static_cast<unsigned int>(format.display_area.right - format.display_area.left),
-            static_cast<unsigned int>(format.display_area.bottom - format.display_area.top),
-            format.coded_width,
-            format.coded_height};
+        return {static_cast<unsigned int>(format.display_area.right - format.display_area.left),
+                static_cast<unsigned int>(format.display_area.bottom - format.display_area.top),
+                format.coded_width,
+                format.coded_height};
+    } else {
+        return { static_cast<unsigned int>(currentFormat_.display_area.right - currentFormat_.display_area.left),
+                 static_cast<unsigned int>(currentFormat_.display_area.bottom - currentFormat_.display_area.top),
+                 currentFormat_.coded_width,
+                 currentFormat_.coded_height };
+    }
 }

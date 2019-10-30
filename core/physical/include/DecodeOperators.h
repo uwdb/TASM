@@ -59,7 +59,6 @@ private:
               tileNumberQueue_(4000), // Not sure what size makes sense here.
               decoder_{configuration_, queue_, lock(), frameNumberQueue_, tileNumberQueue_},
               session_{decoder_, iterator(), iterator().eos()}
-//              nextFrameToBeDecoded_(physical.framesThatWillBeDecoded().begin())
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -102,7 +101,6 @@ private:
     };
 
     const std::chrono::microseconds poll_duration_;
-//    std::vector<int> framesThatWillBeDecoded_;
 };
 
 

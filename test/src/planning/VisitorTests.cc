@@ -740,7 +740,7 @@ TEST_F(VisitorTestFixture, testScanTiled2) {
 }
 
 TEST_F(VisitorTestFixture, testScanSink) {
-    auto input = Scan("MVI_63563_gop30");
+    auto input = Scan("traffic-2k-001");
     Coordinator().execute(input.Sink());
 }
 

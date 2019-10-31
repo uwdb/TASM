@@ -19,11 +19,10 @@ public:
             : decoder_(RestartDecoder(decoder)),
               numberOfWaits_(0),
               nextDataQueue_(1000), // I just picked a number.
-              threadPool_(1),
               isDoneReading_(false)
     {
         // Start the reading before the worker so that some data is ready to start decoding.
-        threadPool_.push(std::bind(&VideoDecoderSession::ReadNext, std::ref(decoder), reader, end, std::ref(nextDataQueue_), &isDoneReading_));
+        reader_ = std::make_unique<std::thread>(&VideoDecoderSession::ReadNext, std::ref(decoder), reader, end, std::ref(nextDataQueue_), &isDoneReading_);
         worker_ = std::make_unique<std::thread>(&VideoDecoderSession::DecodeAll, std::ref(decoder), reader, end, std::ref(nextDataQueue_), &isDoneReading_);
     }
 
@@ -37,8 +36,7 @@ public:
         if(!moved_) {
             decoder_.frame_queue().endDecode();
             worker_->join();
-
-            threadPool_.waitAll();
+            reader_->join();
 
             assert(nextDataQueue_.empty());
             assert(isDoneReading_);
@@ -88,6 +86,7 @@ public:
 
 protected:
     CudaDecoder &decoder_;
+    std::unique_ptr<std::thread> reader_;
     std::unique_ptr<std::thread> worker_;
     bool moved_ = false;
     unsigned int numberOfWaits_;
@@ -184,7 +183,7 @@ protected:
     }
 
 private:
-    ThreadPool threadPool_;
+//    ThreadPool threadPool_;
     std::atomic_bool isDoneReading_;
 
     static CudaDecoder& RestartDecoder(CudaDecoder& decoder) {

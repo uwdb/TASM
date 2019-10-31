@@ -16,8 +16,8 @@ CUVIDDECODECREATEINFO DecodeConfiguration::AsCuvidCreateInfo(CUvideoctxlock lock
     else {
         CUVIDDECODECREATEINFO info;
         memset(&info, 0, sizeof(info));
-        info.ulWidth = width; // TODO: This should use coded width/height from configuration.
-        info.ulHeight = height;
+        info.ulWidth = max_width; // TODO: This should use coded width/height from configuration.
+        info.ulHeight = max_height;
         info.ulNumDecodeSurfaces = decode_surfaces;
         info.CodecType = codec.cudaId().value();
         info.ChromaFormat = chroma_format;

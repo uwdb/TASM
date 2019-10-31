@@ -140,40 +140,40 @@ protected:
 
         do {
             while (true) {
-                if (nextDataQueue.read_available())
-                        break;
-                    else
-                        std::this_thread::yield();
-                }
+            if (nextDataQueue.read_available())
+                    break;
+                else
+                    std::this_thread::yield();
+            }
 
-                auto combinedData = nextDataQueue.front().first;
-                auto flags = nextDataQueue.front().second;
-                nextDataQueue.pop();
+            auto combinedData = nextDataQueue.front().first;
+            auto flags = nextDataQueue.front().second;
+            nextDataQueue.pop();
 
-                nvtxNameOsThread(std::hash<std::thread::id>()(std::this_thread::get_id()), "DECODE");
-                nvtxEventAttributes_t eventAttributes;
-                memset(&eventAttributes, 0, sizeof(eventAttributes));
-                eventAttributes.version = NVTX_VERSION;
-                eventAttributes.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
-                eventAttributes.colorType = NVTX_COLOR_ARGB;
-                eventAttributes.color = 0xFF0000FF;
-                eventAttributes.messageType = NVTX_MESSAGE_TYPE_ASCII;
-                eventAttributes.message.ascii = "parse packet";
-                nvtxRangePushEx(&eventAttributes);
+            nvtxNameOsThread(std::hash<std::thread::id>()(std::this_thread::get_id()), "DECODE");
+            nvtxEventAttributes_t eventAttributes;
+            memset(&eventAttributes, 0, sizeof(eventAttributes));
+            eventAttributes.version = NVTX_VERSION;
+            eventAttributes.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
+            eventAttributes.colorType = NVTX_COLOR_ARGB;
+            eventAttributes.color = 0xFF0000FF;
+            eventAttributes.messageType = NVTX_MESSAGE_TYPE_ASCII;
+            eventAttributes.message.ascii = "parse packet";
+            nvtxRangePushEx(&eventAttributes);
 
-                CUVIDSOURCEDATAPACKET packet;
-                memset(&packet, 0, sizeof(packet));
-                packet.flags = flags;
-                packet.payload_size = combinedData->size();
-                packet.payload = combinedData->data();
+            CUVIDSOURCEDATAPACKET packet;
+            memset(&packet, 0, sizeof(packet));
+            packet.flags = flags;
+            packet.payload_size = combinedData->size();
+            packet.payload = combinedData->data();
 //                auto packet = static_cast<DecodeReaderPacket>(reader++);
-                if ((status = cuvidParseVideoData(parser, &packet)) != CUDA_SUCCESS) {
-                    cuvidDestroyVideoParser(parser);
-                    throw GpuCudaRuntimeError("Call to cuvidParseVideoData failed", status);
-                }
-                nvtxRangePop();
+            if ((status = cuvidParseVideoData(parser, &packet)) != CUDA_SUCCESS) {
+                cuvidDestroyVideoParser(parser);
+                throw GpuCudaRuntimeError("Call to cuvidParseVideoData failed", status);
+            }
+            nvtxRangePop();
 
-            }  while (!decoder.frame_queue().isEndOfDecode() && (!(*isDoneReading) || nextDataQueue.read_available()));
+        }  while (!decoder.frame_queue().isEndOfDecode() && (!(*isDoneReading) || nextDataQueue.read_available()));
 
         cuProfilerStop();
         cuvidDestroyVideoParser(parser);

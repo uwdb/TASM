@@ -255,15 +255,20 @@ namespace lightdb::logical {
     class ScannedLightField : public LightField, public StreamBackedLightField {
     public:
         explicit ScannedLightField(catalog::Entry entry)
-                : LightField({}, entry.volume(), entry.colorSpace()), entry_(std::move(entry)) { }
+                : LightField({}, entry.volume(), entry.colorSpace()), entry_(std::move(entry)),
+                willReadEntireEntry_(true) { }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<ScannedLightField>(visitor); }
 
         const catalog::Entry& entry() const noexcept { return entry_; }
         const std::vector<catalog::Source> sources() const override { return entry().sources(); }
 
+        void setWillReadEntireEntry(bool willRead) { willReadEntireEntry_ = willRead; }
+        bool willReadEntireEntry() const { return willReadEntireEntry_; }
+
     private:
         const catalog::Entry entry_;
+        bool willReadEntireEntry_;
     };
 
     class ScannedByGOPLightField : public ScannedLightField {

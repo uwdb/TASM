@@ -99,6 +99,9 @@ namespace lightdb::associations {
                     {"traffic-4k-002-downsampled2k-cracked-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-002-downsampled-to-2k.db"},
                     {"traffic-4k-002-downsampled2k-cracked-groupingextent-layoutduration30-car", "/home/maureen/visualroad/4k-short/traffic-4k-002-downsampled-to-2k.db"},
                     {"traffic-4k-002-downsampled2k-cracked-groupingextent-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-002-downsampled-to-2k.db"},
+                    // short-1k-2
+                    {"traffic-1k-002", "/home/maureen/visualroad/1k-short-2/traffic-1k-002.db"},
+                    {"traffic-1k-002-cracked-grouping-extent-entire-video", "/home/maureen/visualroad/1k-short-2/traffic-1k-002.db"},
             } );
 } // namespace lightdb::associations
 

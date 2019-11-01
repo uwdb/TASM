@@ -48,7 +48,7 @@ public:
             lock_(lock),
             frameNumberQueue_(frameNumberQueue),
             tileNumberQueue_(tileNumberQueue),
-            decodedPictureQueue_(4000),
+            decodedPictureQueue_(100),
             picId_(0),
             isDecodingDifferentSizes_(isDecodingDifferentSizes),
             currentBitrate_(0),
@@ -70,7 +70,7 @@ public:
             lock_(other.lock_),
             frameNumberQueue_(other.frameNumberQueue_),
             tileNumberQueue_(other.tileNumberQueue_),
-            decodedPictureQueue_(4000),
+            decodedPictureQueue_(100),
             picId_(other.picId_),
             isDecodingDifferentSizes_(other.isDecodingDifferentSizes_),
             numberOfReconfigures_(other.numberOfReconfigures_){

@@ -93,15 +93,14 @@ namespace lightdb::catalog {
         return LightFieldReference::make<logical::ScannedTiledLightField>(std::move(tileEntry(name)));
     }
 
-    LightFieldReference Catalog::getMultiTiled(const std::string &name) const {
+    LightFieldReference Catalog::getMultiTiled(const std::string &name, bool usesOnlyOneTile) const {
         assert(exists(name));
         auto multiTile = multiTileEntry(name);
 
         auto layoutsManager = std::make_shared<tiles::TileLayoutsManager>(multiTile);
 
         // Make compiler happy.
-//        assert(false);
-        return LightFieldReference::make<logical::ScannedMultiTiledLightField>(layoutsManager);
+        return LightFieldReference::make<logical::ScannedMultiTiledLightField>(layoutsManager, usesOnlyOneTile);
     }
 
     LightFieldReference Catalog::getByGOP(const std::string &name) const {

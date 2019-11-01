@@ -63,7 +63,8 @@ private:
               frameNumberQueue_(4000),
               tileNumberQueue_(4000), // Not sure what size makes sense here.
               decoder_{configuration_, queue_, lock(), frameNumberQueue_, tileNumberQueue_, physical.isDecodingDifferentSizes()},
-              session_{decoder_, iterator(), iterator().eos()}
+              session_{decoder_, iterator(), iterator().eos()},
+              numberOfFramesDecoded_(0)
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -87,6 +88,7 @@ private:
                 auto returnValue = std::optional<physical::MaterializedLightFieldReference>{
                         GPUDecodedFrameData(configuration_, geometry_, frames)};
                 GLOBAL_TIMER.endSection("GPUDecodeFromCPU");
+                numberOfFramesDecoded_ += frames.size();
                 return returnValue;
             }
             else {
@@ -103,6 +105,7 @@ private:
         spsc_queue<int> tileNumberQueue_;
         CudaDecoder decoder_;
         VideoDecoderSession<Runtime::downcast_iterator<CPUEncodedFrameData>> session_;
+        int numberOfFramesDecoded_;
     };
 
     const std::chrono::microseconds poll_duration_;

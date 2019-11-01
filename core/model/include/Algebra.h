@@ -18,7 +18,7 @@ namespace lightdb {
 
     namespace logical {
         LightFieldReference ScanTiled(const std::string &name);
-        LightFieldReference ScanMultiTiled(const std::string &name);
+        LightFieldReference ScanMultiTiled(const std::string &name, bool usesOnlyOneTile = false);
 
         LightFieldReference ScanByGOP(const std::string &name);
         LightFieldReference Scan(const std::string &name);

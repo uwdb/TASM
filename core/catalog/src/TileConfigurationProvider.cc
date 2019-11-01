@@ -12,13 +12,21 @@ void TileLayoutsManager::loadAllTileConfigurations() {
     auto &catalogEntryPath = entry_.path();
 
     // Read all directory names.
+    int globalDirId = 0;
+    std::vector<IntervalEntry<unsigned int>> directoryIntervals;
+    unsigned int lowerBound = INT32_MAX;
+    unsigned int upperBound = 0;
     for (auto &dir : std::filesystem::directory_iterator(catalogEntryPath)) {
         if (!dir.is_directory())
             continue;
 
+        auto dirId = globalDirId++;
         auto tileDirectoryPath = dir.path();
         // Parse frame range from path.
-        Interval firstAndLastFrame = catalog::TileFiles::firstAndLastFramesFromPath(tileDirectoryPath);
+        auto firstAndLastFrame = catalog::TileFiles::firstAndLastFramesFromPath(tileDirectoryPath);
+        directoryIntervals.emplace_back(firstAndLastFrame.first, firstAndLastFrame.second, dirId);
+        lowerBound = std::min(lowerBound, firstAndLastFrame.first);
+        upperBound = std::max(upperBound, firstAndLastFrame.second);
 
         // Find the tile-metadata file in this directory, and load the tile layout from it.
         TileLayout tileLayout = video::gpac::load_tile_configuration(catalog::TileFiles::tileMetadataFilename(tileDirectoryPath));
@@ -29,87 +37,85 @@ void TileLayoutsManager::loadAllTileConfigurations() {
             totalHeight_ = tileLayout.totalHeight();
         }
 
-        intervalToAvailableTileLayouts_[firstAndLastFrame].push_back(tileLayout);
-        numberOfTilesToFrameIntervals_[tileLayout.numberOfTiles()].addInterval(firstAndLastFrame);
-        intervalToTileDirectory_[firstAndLastFrame] = tileDirectoryPath;
-        tileDirectoryToLayout_[tileDirectoryPath] = tileLayout;
+        if (!tileLayoutReferences_.count(tileLayout))
+            tileLayoutReferences_[tileLayout] = std::make_shared<const TileLayout>(tileLayout);
+
+        directoryIdToTileLayout_[dirId] = tileLayoutReferences_.at(tileLayout);
+        directoryIdToTileDirectory_[dirId] = tileDirectoryPath;
     }
+
+    intervalTree_ = IntervalTree<unsigned int>(lowerBound, upperBound, directoryIntervals);
 }
 
-std::list<TileLayout> TileLayoutsManager::tileLayoutsForFrame(unsigned int frameNumber) const {
+std::vector<int> TileLayoutsManager::tileLayoutIdsForFrame(unsigned int frameNumber) const {
     std::scoped_lock lock(mutex_);
 
     // Find the intervals that contain the frame number, and splice their lists together.
-    std::list<TileLayout> layouts;
+    std::vector<IntervalEntry<unsigned int>> overlappingIntervals;
+    intervalTree_.query(frameNumber, overlappingIntervals);
 
-    // Returns the first interval whose start is > frameNumber. Pass UINT32_MAX as the end to guarantee that the start of the returned
-    // interval is greater than the frame number we are looking for.
-    auto it = intervalToAvailableTileLayouts_.upper_bound(Interval(frameNumber, UINT32_MAX));
-    if (it == intervalToAvailableTileLayouts_.end())
-        std::advance(it, -1);
+    std::vector<int> layoutIds(overlappingIntervals.size());
+    std::transform(overlappingIntervals.begin(), overlappingIntervals.end(), layoutIds.begin(), [](const auto &intervalEntry) {
+        return intervalEntry.id();
+    });
 
-    // Once the interval's end is less than the frame number, the frame cannot be in that interval.
-    // This breaks for the case where we have one large interval that covers e.g. 0->max, but then shorter intervals between.
-    for (; ; --it) {
-        if (it->first.contains(frameNumber))
-            layouts.insert(layouts.end(), it->second.begin(), it->second.end());
-
-        if (it == intervalToAvailableTileLayouts_.begin())
-            break;
-    }
-
-    assert(!layouts.empty());
-    return layouts;
+    assert(!layoutIds.empty());
+    return layoutIds;
 }
 
-unsigned int TileLayoutsManager::maximumNumberOfTilesForFrames(const std::vector<int> &orderedFrames) const {
+//unsigned int TileLayoutsManager::maximumNumberOfTilesForFrames(const std::vector<int> &orderedFrames) const {
+//    std::scoped_lock lock(mutex_);
+//
+//    assert(orderedFrames.size());
+//
+//    for (auto it = numberOfTilesToFrameIntervals_.begin(); it != numberOfTilesToFrameIntervals_.end(); ++it) {
+//        // Only consider frames that fall within the min/max of the intervals.
+//        // Find iterator in orderedFrames to first frame that falls within range of the interval.
+//        // Find iterator in orderedFrames to last frame that falls within the range of the interval.
+//        // Only check if any interval contains those frames.
+//        auto framesExtent = it->second.extents();
+//        auto firstFrameToConsider = std::lower_bound(orderedFrames.begin(), orderedFrames.end(), framesExtent.start());
+//        auto lastFrameToConsider = std::upper_bound(orderedFrames.begin(), orderedFrames.end(), framesExtent.end());
+//        for (auto frameIt = firstFrameToConsider; frameIt != lastFrameToConsider; ++frameIt) {
+//            if (it->second.contains(*frameIt))
+//                return it->first;
+//        }
+//    }
+//
+//    // Each frame should be covered by at least one tile layout.
+//    assert(false);
+//    return 0;
+//}
+
+//std::filesystem::path TileLayoutsManager::locationOfTileForFrameAndConfiguration(unsigned int tileNumber,
+//                                                                                 unsigned int frame,
+//                                                                                 const lightdb::tiles::TileLayout &tileLayout) const {
+//    std::scoped_lock lock(mutex_);
+//
+//    // TODO: Figure out how to go from layout -> intervals -> directory.
+//    // For now, assume that each frame is covered by a single tile configuration.
+//    // TODO: Make finding correct interval faster.
+//    auto it = intervalToTileDirectory_.upper_bound(Interval(frame, UINT32_MAX));
+//    if (it == intervalToTileDirectory_.end())
+//        std::advance(it, -1);
+//
+//    // This needs to double check that the tile layout is the same.
+//    for (; ; --it) {
+//        if (it->first.contains(frame) && tileDirectoryToLayout_.at(it->second) == tileLayout) {
+//            return catalog::TileFiles::tileFilename(it->second, tileNumber);
+//        }
+//
+//        if (it == intervalToTileDirectory_.begin())
+//            break;
+//    }
+//    // We should always find it.
+//    assert(false);
+//    return {};
+//}
+
+std::filesystem::path TileLayoutsManager::locationOfTileForId(unsigned int tileNumber, int id) const {
     std::scoped_lock lock(mutex_);
-
-    assert(orderedFrames.size());
-
-    for (auto it = numberOfTilesToFrameIntervals_.begin(); it != numberOfTilesToFrameIntervals_.end(); ++it) {
-        // Only consider frames that fall within the min/max of the intervals.
-        // Find iterator in orderedFrames to first frame that falls within range of the interval.
-        // Find iterator in orderedFrames to last frame that falls within the range of the interval.
-        // Only check if any interval contains those frames.
-        auto framesExtent = it->second.extents();
-        auto firstFrameToConsider = std::lower_bound(orderedFrames.begin(), orderedFrames.end(), framesExtent.start());
-        auto lastFrameToConsider = std::upper_bound(orderedFrames.begin(), orderedFrames.end(), framesExtent.end());
-        for (auto frameIt = firstFrameToConsider; frameIt != lastFrameToConsider; ++frameIt) {
-            if (it->second.contains(*frameIt))
-                return it->first;
-        }
-    }
-
-    // Each frame should be covered by at least one tile layout.
-    assert(false);
-    return 0;
-}
-
-std::filesystem::path TileLayoutsManager::locationOfTileForFrameAndConfiguration(unsigned int tileNumber,
-                                                                                 unsigned int frame,
-                                                                                 const lightdb::tiles::TileLayout &tileLayout) const {
-    std::scoped_lock lock(mutex_);
-
-    // TODO: Figure out how to go from layout -> intervals -> directory.
-    // For now, assume that each frame is covered by a single tile configuration.
-    // TODO: Make finding correct interval faster.
-    auto it = intervalToTileDirectory_.upper_bound(Interval(frame, UINT32_MAX));
-    if (it == intervalToTileDirectory_.end())
-        std::advance(it, -1);
-
-    // This needs to double check that the tile layout is the same.
-    for (; ; --it) {
-        if (it->first.contains(frame) && tileDirectoryToLayout_.at(it->second) == tileLayout) {
-            return catalog::TileFiles::tileFilename(it->second, tileNumber);
-        }
-
-        if (it == intervalToTileDirectory_.begin())
-            break;
-    }
-    // We should always find it.
-    assert(false);
-    return {};
+    return catalog::TileFiles::tileFilename(directoryIdToTileDirectory_.at(id), tileNumber);
 }
 
 void MetadataTileConfigurationProvider::computeTileConfigurations() {
@@ -501,65 +507,66 @@ std::vector<unsigned int> GroupingTileConfigurationProvider::tileDimensions(cons
     return dimensions;
 }
 
-void MultiTileLocationProvider::insertTileLayoutForTileGroup(TileLayout &layout, unsigned int frame) const {
-    std::scoped_lock lock(mutex_);
+//void MultiTileLocationProvider::insertTileLayoutForTileGroup(TileLayout &layout, unsigned int frame) const {
+//    std::scoped_lock lock(mutex_);
+//
+//    if (!tileLayoutReferences_.count(layout))
+//        tileLayoutReferences_[layout] = std::make_shared<const TileLayout>(layout);
+//
+//    tileGroupToTileLayout_[frame] = tileLayoutReferences_.at(layout);
+//}
 
-    if (!tileLayoutReferences_.count(layout))
-        tileLayoutReferences_[layout] = std::make_shared<const TileLayout>(layout);
-
-    tileGroupToTileLayout_[frame] = tileLayoutReferences_.at(layout);
-}
-
-const TileLayout &MultiTileLocationProvider::tileLayoutForFrame(unsigned int frame) const {
-    std::scoped_lock lock(mutex_);
-
-    auto got = tileGroupForFrame(frame);
-    if (tileGroupToTileLayout_.count(got))
-        return *tileGroupToTileLayout_.at(got);
-
-    auto layouts = tileLayoutsManager_->tileLayoutsForFrame(frame);
-
-    if (layouts.size() == 1) {
-        insertTileLayoutForTileGroup(layouts.front(), got);
-        return *tileGroupToTileLayout_.at(got);
-    }
-
-    // Else we have to pick between the layouts.
-    // Get the boxes that are in this GOT from the metadata manager.
-    // Find the overlapping rectangles so we can compare those vs. the tile layouts.
-    RectangleMerger rectangleMerger(metadataManager_->rectanglesForFrames(got * tileGroupSize_, (got + 1) * tileGroupSize_));
-
-    // For each layout:
-        // For each merged rectangle, compute which tiles intersect it.
-        // Compute the difference in area between the intersecting tiles and the rectangle.
-        // The cost for the layout is the sum of these costs over all rectangles.
-    unsigned int minCost = UINT32_MAX;
-    auto bestLayoutIt = layouts.end();
-    for (auto layoutIt = layouts.begin(); layoutIt != layouts.end(); ++layoutIt) {
-        unsigned int layoutCost = 0;
-        for (auto &rectangle : rectangleMerger.rectangles()) {
-            auto intersectingTiles = layoutIt->tilesForRectangle(rectangle);
-            auto areaOfIntersectingTiles = 0u;
-            for (auto &intersectingTile : intersectingTiles)
-                areaOfIntersectingTiles += layoutIt->rectangleForTile(intersectingTile).area();
-
-            layoutCost += areaOfIntersectingTiles;
-            layoutCost -= rectangle.area();
-
-            // Cost will only go up.
-            if (layoutCost > minCost)
-                break;
-        }
-
-        if (layoutCost < minCost) {
-            minCost = layoutCost;
-            bestLayoutIt = layoutIt;
-        }
-    }
-
-    // Pick the layout with the lowest cost.
-    insertTileLayoutForTileGroup(*bestLayoutIt, got);
-    return *tileGroupToTileLayout_.at(got);
-}
+//const TileLayout &MultiTileLocationProvider::tileLayoutForFrame(unsigned int frame) const {
+//    std::scoped_lock lock(mutex_);
+//
+//    auto got = tileGroupForFrame(frame);
+//    if (tileGroupToTileLayout_.count(got))
+//        return *tileGroupToTileLayout_.at(got);
+//
+//    auto layouts = tileLayoutsManager_->tileLayoutsForFrame(frame);
+//
+//    if (layouts.size() == 1) {
+//        insertTileLayoutForTileGroup(layouts.front(), got);
+//        return *tileGroupToTileLayout_.at(got);
+//    }
+//
+//    // Else we have to pick between the layouts.
+//    // Get the boxes that are in this GOT from the metadata manager.
+//    // Find the overlapping rectangles so we can compare those vs. the tile layouts.
+//    // TODO: This should be considering the rectangles within each layout interval, which may not be the same.
+//    RectangleMerger rectangleMerger(metadataManager_->rectanglesForFrames(got * tileGroupSize_, (got + 1) * tileGroupSize_));
+//
+//    // For each layout:
+//        // For each merged rectangle, compute which tiles intersect it.
+//        // Compute the difference in area between the intersecting tiles and the rectangle.
+//        // The cost for the layout is the sum of these costs over all rectangles.
+//    unsigned int minCost = UINT32_MAX;
+//    auto bestLayoutIt = layouts.end();
+//    for (auto layoutIt = layouts.begin(); layoutIt != layouts.end(); ++layoutIt) {
+//        unsigned int layoutCost = 0;
+//        for (auto &rectangle : rectangleMerger.rectangles()) {
+//            auto intersectingTiles = layoutIt->tilesForRectangle(rectangle);
+//            auto areaOfIntersectingTiles = 0u;
+//            for (auto &intersectingTile : intersectingTiles)
+//                areaOfIntersectingTiles += layoutIt->rectangleForTile(intersectingTile).area();
+//
+//            layoutCost += areaOfIntersectingTiles;
+//            layoutCost -= rectangle.area();
+//
+//            // Cost will only go up.
+//            if (layoutCost > minCost)
+//                break;
+//        }
+//
+//        if (layoutCost < minCost) {
+//            minCost = layoutCost;
+//            bestLayoutIt = layoutIt;
+//        }
+//    }
+//
+//    // Pick the layout with the lowest cost.
+//    insertTileLayoutForTileGroup(*bestLayoutIt, got);
+//    return *tileGroupToTileLayout_.at(got);
+//}
 
 } // namespace lightdb::tiles

@@ -223,17 +223,20 @@ namespace lightdb::logical {
 
     class ScannedMultiTiledLightField : public LightField {
     public:
-        explicit ScannedMultiTiledLightField(std::shared_ptr<const tiles::TileLayoutsManager> tileLayoutsManager)
+        explicit ScannedMultiTiledLightField(std::shared_ptr<const tiles::TileLayoutsManager> tileLayoutsManager, bool usesOnlyOneTile = false)
             : LightField({}, Volume::limits(), YUVColorSpace::instance()),
-            tileLayoutsManager_(tileLayoutsManager)
+            tileLayoutsManager_(tileLayoutsManager),
+            usesOnlyOneTile_(usesOnlyOneTile)
         { }
 
         const std::shared_ptr<const tiles::TileLayoutsManager> &tileLayoutsManager() const { return tileLayoutsManager_; }
+        bool usesOnlyOneTile() const { return usesOnlyOneTile_; }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<ScannedMultiTiledLightField>(visitor); }
 
     private:
         const std::shared_ptr<const tiles::TileLayoutsManager> tileLayoutsManager_;
+        bool usesOnlyOneTile_;
     };
 
     class ScannedTiledLightField : public LightField, public StreamBackedLightField {

@@ -11,8 +11,8 @@ namespace lightdb::logical {
         return Catalog::instance().getTiled(name);
     }
 
-    LightFieldReference ScanMultiTiled(const std::string &name) {
-        return Catalog::instance().getMultiTiled(name);
+    LightFieldReference ScanMultiTiled(const std::string &name, bool usesOnlyOneTile) {
+        return Catalog::instance().getMultiTiled(name, usesOnlyOneTile);
     }
 
     LightFieldReference Scan(const std::string &name) {

@@ -463,7 +463,8 @@ namespace lightdb::optimization {
                         metadataManager,
                         tileLocationProvider,
                         node.shouldReadEntireGOPs());
-                auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, true);
+                bool isDecodingDifferentSizes = !multiTiledLightField.usesOnlyOneTile();
+                auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, isDecodingDifferentSizes);
 
                 // TODO: Should we place the cracking operator in between decode and merge?
                 // And then the cracking operator could keep a reference to the frames, but pass them on immediately.

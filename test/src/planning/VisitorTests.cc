@@ -119,8 +119,8 @@ TEST_F(VisitorTestFixture, testScanMultiTiled) {
 }
 
 TEST_F(VisitorTestFixture, testScanAndSave) {
-    auto input = Load("/home/maureen/traffic-4k-002.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Store("traffic-4k-002"));
+    auto input = Load("/home/bhaynes/projects/visualroad/1k-short-2/traffic-002.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Store("traffic-1k-002"));
 }
 
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
@@ -130,9 +130,9 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
 }
 
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata2) {
-    auto input = Scan("traffic-2k-001");
+    auto input = Scan("traffic-1k-002");
     MetadataSpecification metadataSelection("labels", "label", "car");
-    Coordinator().execute(input.StoreCracked("traffic-2k-001-cracked-grouping-extent-entire-video", "traffic-2k-001", &metadataSelection));
+    Coordinator().execute(input.StoreCracked("traffic-1k-002-cracked-grouping-extent-entire-video", "traffic-1k-002", &metadataSelection));
 }
 
 TEST_F(VisitorTestFixture, testExecuteCracking) {
@@ -309,11 +309,12 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
 }
 
 TEST_F(VisitorTestFixture, testBasicSelection) {
-    auto catalogEntry = "traffic-2k-001-cracked-grouping-extent-entire-video";
+    auto catalogEntry = "traffic-4k-002-cracked-grouping-extent-entire-video";
     auto object = "car";
 
     PixelMetadataSpecification selection("labels", "label", object);
-    auto input = ScanMultiTiled(catalogEntry);
+    bool usesOnlyOneTile = true;
+    auto input = ScanMultiTiled(catalogEntry, usesOnlyOneTile);
 //    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
     Coordinator().execute(input.Select(selection));
 }

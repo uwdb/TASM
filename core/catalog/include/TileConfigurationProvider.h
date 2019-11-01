@@ -3,6 +3,7 @@
 
 #include "Catalog.h"
 #include "Files.h"
+#include "IntervalTree.h"
 #include "Metadata.h"
 #include "TileLayout.h"
 #include <boost/functional/hash.hpp>
@@ -444,9 +445,11 @@ public:
 
     const catalog::MultiTileEntry &entry() const { return entry_; }
 
-    std::list<TileLayout> tileLayoutsForFrame(unsigned int frameNumber) const;
-    unsigned int maximumNumberOfTilesForFrames(const std::vector<int> &frames) const;
-    std::filesystem::path locationOfTileForFrameAndConfiguration(unsigned int tileNumber, unsigned int frame, const tiles::TileLayout &tileLayout) const;
+    std::vector<int> tileLayoutIdsForFrame(unsigned int frameNumber) const;
+    const TileLayout &tileLayoutForId(int id) const { return *directoryIdToTileLayout_.at(id); }
+    std::filesystem::path locationOfTileForId(unsigned int tileNumber, int id) const;
+//    unsigned int maximumNumberOfTilesForFrames(const std::vector<int> &frames) const;
+//    std::filesystem::path locationOfTileForFrameAndConfiguration(unsigned int tileNumber, unsigned int frame, const tiles::TileLayout &tileLayout) const;
 
     unsigned int totalWidth() const { return totalWidth_; }
     unsigned int totalHeight() const { return totalHeight_; }
@@ -456,10 +459,15 @@ private:
 
     const catalog::MultiTileEntry entry_;
 
-    std::map<lightdb::Interval<unsigned int>, std::list<TileLayout>> intervalToAvailableTileLayouts_;
-    std::map<unsigned int, lightdb::CoalescedIntervals<unsigned int>, std::greater<unsigned int>> numberOfTilesToFrameIntervals_;
-    std::map<lightdb::Interval<unsigned int>, std::filesystem::path> intervalToTileDirectory_;
-    std::unordered_map<std::string, TileLayout> tileDirectoryToLayout_;
+    IntervalTree<unsigned int> intervalTree_;
+    std::unordered_map<int, std::filesystem::path> directoryIdToTileDirectory_;
+    std::unordered_map<int, std::shared_ptr<const TileLayout>> directoryIdToTileLayout_;
+    std::unordered_map<TileLayout, std::shared_ptr<const TileLayout>> tileLayoutReferences_;
+
+//    std::map<lightdb::Interval<unsigned int>, std::list<TileLayout>> intervalToAvailableTileLayouts_;
+//    std::map<unsigned int, lightdb::CoalescedIntervals<unsigned int>, std::greater<unsigned int>> numberOfTilesToFrameIntervals_;
+//    std::map<lightdb::Interval<unsigned int>, std::filesystem::path> intervalToTileDirectory_;
+//    std::unordered_map<std::string, TileLayout> tileDirectoryToLayout_;
     mutable std::mutex mutex_;
 
     unsigned int totalWidth_;
@@ -477,37 +485,37 @@ public:
     virtual ~TileLocationProvider() { }
 };
 
-class MultiTileLocationProvider : public TileLocationProvider {
-public:
-    MultiTileLocationProvider(std::shared_ptr<const TileLayoutsManager> tileLayoutsManager,
-            std::shared_ptr<const metadata::MetadataManager> metadataManager,
-            unsigned int tileGroupSize = 30)
-        : tileLayoutsManager_(tileLayoutsManager),
-          metadataManager_(metadataManager),
-          tileGroupSize_(tileGroupSize)
-    { }
-
-    std::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const override {
-        return tileLayoutsManager_->locationOfTileForFrameAndConfiguration(tileNumber, frame, tileLayoutForFrame(frame));
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) const override;
-
-
-private:
-    void insertTileLayoutForTileGroup(TileLayout &layout, unsigned int frame) const;
-    unsigned int tileGroupForFrame(unsigned int frame) const {
-        return frame / tileGroupSize_;
-    }
-
-    std::shared_ptr<const TileLayoutsManager> tileLayoutsManager_;
-    std::shared_ptr<const metadata::MetadataManager> metadataManager_;
-    unsigned int tileGroupSize_;
-
-    mutable std::unordered_map<TileLayout, std::shared_ptr<const TileLayout>> tileLayoutReferences_;
-    mutable std::unordered_map<unsigned int, std::shared_ptr<const TileLayout>> tileGroupToTileLayout_;
-    mutable std::recursive_mutex mutex_;
-};
+//class MultiTileLocationProvider : public TileLocationProvider {
+//public:
+//    MultiTileLocationProvider(std::shared_ptr<const TileLayoutsManager> tileLayoutsManager,
+//            std::shared_ptr<const metadata::MetadataManager> metadataManager,
+//            unsigned int tileGroupSize = 30)
+//        : tileLayoutsManager_(tileLayoutsManager),
+//          metadataManager_(metadataManager),
+//          tileGroupSize_(tileGroupSize)
+//    { }
+//
+//    std::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const override {
+//        return tileLayoutsManager_->locationOfTileForFrameAndConfiguration(tileNumber, frame, tileLayoutForFrame(frame));
+//    }
+//
+//    const TileLayout &tileLayoutForFrame(unsigned int frame) const override;
+//
+//
+//private:
+//    void insertTileLayoutForTileGroup(TileLayout &layout, unsigned int frame) const;
+//    unsigned int tileGroupForFrame(unsigned int frame) const {
+//        return frame / tileGroupSize_;
+//    }
+//
+//    std::shared_ptr<const TileLayoutsManager> tileLayoutsManager_;
+//    std::shared_ptr<const metadata::MetadataManager> metadataManager_;
+//    unsigned int tileGroupSize_;
+//
+//    mutable std::unordered_map<TileLayout, std::shared_ptr<const TileLayout>> tileLayoutReferences_;
+//    mutable std::unordered_map<unsigned int, std::shared_ptr<const TileLayout>> tileGroupToTileLayout_;
+//    mutable std::recursive_mutex mutex_;
+//};
 
 class SingleTileLocationProvider : public TileLocationProvider {
 public:
@@ -516,31 +524,31 @@ public:
     { }
 
     std::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const override {
-        return tileLayoutsManager_->locationOfTileForFrameAndConfiguration(tileNumber, frame, tileLayoutForFrame(frame));
+        return tileLayoutsManager_->locationOfTileForId(tileNumber, layoutIdForFrame(frame));
     }
 
     const TileLayout &tileLayoutForFrame(unsigned int frame) const override {
         std::scoped_lock lock(mutex_);
-
-        if (frameToTileLayout_.count(frame))
-            return *frameToTileLayout_.at(frame);
-
-        auto layouts = tileLayoutsManager_->tileLayoutsForFrame(frame);
-        assert(layouts.size() == 1);
-        auto &layout = layouts.front();
-        if (!tileLayoutReferences_.count(layout))
-            tileLayoutReferences_[layout] = std::make_shared<const TileLayout>(layout);
-
-        frameToTileLayout_[frame] = tileLayoutReferences_.at(layout);
-        return *frameToTileLayout_.at(frame);
+        return tileLayoutsManager_->tileLayoutForId(layoutIdForFrame(frame));
     }
 
 private:
+    int layoutIdForFrame(unsigned int frame) const {
+        std::scoped_lock lock(mutex_);
+
+        if (frameToLayoutId_.count(frame))
+            return frameToLayoutId_.at(frame);
+
+        auto layoutIds = tileLayoutsManager_->tileLayoutIdsForFrame(frame);
+        assert(layoutIds.size() == 1);
+
+        frameToLayoutId_[frame] = layoutIds.front();
+        return layoutIds.front();
+    }
+
     std::shared_ptr<const TileLayoutsManager> tileLayoutsManager_;
-    mutable std::unordered_map<TileLayout, std::shared_ptr<const TileLayout>> tileLayoutReferences_;
-    // This should probably be a LRU cache to avoid it growing extremely large for a long video.
-    mutable std::unordered_map<unsigned int, std::shared_ptr<const TileLayout>> frameToTileLayout_;
-    mutable std::mutex mutex_;
+    mutable std::unordered_map<unsigned int, int> frameToLayoutId_;
+    mutable std::recursive_mutex mutex_;
 };
 
 } // namespace lightdb::tiles

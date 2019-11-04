@@ -110,7 +110,7 @@ TEST_F(VisitorTestFixture, testScanAndSink) {
 
 TEST_F(VisitorTestFixture, testCrackIntoTiles) {
     auto input = ScanByGOP("traffic-4k-002");
-    Coordinator().execute(input.StoreCracked("traffic-4k-002-alternating"));
+    Coordinator().execute(input.StoreCracked("traffic-4k-002-3x3"));
 }
 
 TEST_F(VisitorTestFixture, testScanMultiTiled) {
@@ -309,13 +309,13 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
 }
 
 TEST_F(VisitorTestFixture, testBasicSelection) {
-    auto catalogEntry = "traffic-4k-002-cracked-grouping-extent-entire-video";
+    auto catalogEntry = "traffic-1k-002";
     auto object = "car";
 
     PixelMetadataSpecification selection("labels", "label", object);
-    bool usesOnlyOneTile = true;
-    auto input = ScanMultiTiled(catalogEntry, usesOnlyOneTile);
-//    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
+//    bool usesOnlyOneTile = false;
+    auto input = Scan(catalogEntry);
+    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
     Coordinator().execute(input.Select(selection));
 }
 

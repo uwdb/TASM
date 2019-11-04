@@ -6,8 +6,6 @@
 
 namespace lightdb::physical {
 
-
-
 void ScanMultiTileOperator::Runtime::preprocess() {
     // Get all tiles, frames that have to be read.
     // Keep track of dimensions for each tile.
@@ -15,25 +13,28 @@ void ScanMultiTileOperator::Runtime::preprocess() {
     // Use the same logic as in setUpNextEncodedFrameReader, just don't create the actual reader.
     while (framesIterator_ != endOfFramesIterator_) {
         auto possibleFramesToRead = nextGroupOfFramesWithTheSameLayoutAndFromTheSameFile();
-        auto lastIntersectingFrameIt = removeFramesThatDoNotContainObject(possibleFramesToRead);
-        possibleFramesToRead.resize(std::distance(possibleFramesToRead.begin(), lastIntersectingFrameIt));
+        removeFramesThatDoNotContainObject(possibleFramesToRead);
+//        possibleFramesToRead.resize(std::distance(possibleFramesToRead.begin(), lastIntersectingFrameIt));
+//
+//        if (possibleFramesToRead.empty())
+//            continue;
 
-        if (possibleFramesToRead.empty())
-            continue;
-
-        for (auto tileNumberIt = tileNumbersForCurrentLayout_.begin(); tileNumberIt != tileNumbersForCurrentLayout_.end(); ++tileNumberIt) {
-            auto rectangleForTile = currentTileLayout_->rectangleForTile(*tileNumberIt);
+        for (auto tileNumberIt = tileNumberForCurrentLayoutToFrames_.begin(); tileNumberIt != tileNumberForCurrentLayoutToFrames_.end(); ++tileNumberIt) {
+            if (tileNumberIt->second.empty())
+                continue;
+            auto rectangleForTile = currentTileLayout_->rectangleForTile(tileNumberIt->first);
             orderedTileInformation_.emplace_back<TileInformation>(
-                    {catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), *tileNumberIt),
-                    *tileNumberIt,
+                    {catalog::TileFiles::tileFilename(currentTilePath_->parent_path(), tileNumberIt->first),
+                    static_cast<int>(tileNumberIt->first),
                     rectangleForTile.width,
                     rectangleForTile.height,
-                    possibleFramesToRead,
+                    tileNumberIt->second,
                     tileLocationProvider_->frameOffsetInTileFile(*currentTilePath_),
                     rectangleForTile});
         }
     }
 
+    // Sort so that similar-sized tiles are nearby in processing order.
     std::sort(orderedTileInformation_.begin(), orderedTileInformation_.end());
 //    std::reverse(orderedTileInformation_.begin(), orderedTileInformation_.end()); // Sort by descending dimensions.
 

@@ -91,7 +91,8 @@ private:
                     totalNumberOfFrames_(0),
                     totalNumberOfBytes_(0),
                     numberOfTilesRead_(0),
-                    didSignalEOS_(false)
+                    didSignalEOS_(false),
+                    currentTileNumber_(0)
         {
             preprocess();
         }
@@ -105,17 +106,17 @@ private:
 
             // We're done once we've read all of the frames, and the frames are actually done decoding.
             // TODO: and this is the frame reader for the last tile.
-            if (framesIterator_ == endOfFramesIterator_
-                    && currentEncodedFrameReader_
-                    && currentEncodedFrameReader_->isEos()
-                    && tileNumberIt_ == tileNumbersForCurrentLayout_.end()) {
-                std::cout << "ANALYSIS: Total number of pixels decoded " << totalNumberOfPixels_ << std::endl;
-                std::cout << "ANALYSIS: Total number of keyframes decoded " << totalNumberOfIFrames_ << std::endl;
-                std::cout << "ANALYSIS: num-frames-decoded " << totalNumberOfFrames_ << std::endl;
-                std::cout << "ANALYSIS: num-bytes-decoded " << totalNumberOfBytes_ << std::endl;
-                std::cout << "ANALYSIS: num-tiles-read " << numberOfTilesRead_ << std::endl;
-                return {};
-            }
+//            if (framesIterator_ == endOfFramesIterator_
+//                    && currentEncodedFrameReader_
+//                    && currentEncodedFrameReader_->isEos()
+//                    && tileNumberIt_ == tileNumbersForCurrentLayout_.end()) {
+//                std::cout << "ANALYSIS: Total number of pixels decoded " << totalNumberOfPixels_ << std::endl;
+//                std::cout << "ANALYSIS: Total number of keyframes decoded " << totalNumberOfIFrames_ << std::endl;
+//                std::cout << "ANALYSIS: num-frames-decoded " << totalNumberOfFrames_ << std::endl;
+//                std::cout << "ANALYSIS: num-bytes-decoded " << totalNumberOfBytes_ << std::endl;
+//                std::cout << "ANALYSIS: num-tiles-read " << numberOfTilesRead_ << std::endl;
+//                return {};
+//            }
 
             if (didSignalEOS_) {
                 std::cout << "ANALYSIS: num-pixels-decoded " << totalNumberOfPixels_ << std::endl;
@@ -189,7 +190,7 @@ private:
                     geometry,
                     DecodeReaderPacket(*gopPacket->data(), flags));
             cpuData.downcast<CPUEncodedFrameData>().setFirstFrameIndexAndNumberOfFrames(gopPacket->firstFrameIndex(), gopPacket->numberOfFrames());
-            cpuData.downcast<CPUEncodedFrameData>().setTileNumber(*tileNumberIt_);
+            cpuData.downcast<CPUEncodedFrameData>().setTileNumber(currentTileNumber_);
 
             return {cpuData};
         }
@@ -211,6 +212,8 @@ private:
                         shouldReadEntireGOPs_);
 
                 currentTileArea_ = orderedTileInformationIt_->width * orderedTileInformationIt_->height;
+                currentTilePath_ = std::make_unique<std::filesystem::path>(orderedTileInformationIt_->filename);
+                currentTileNumber_ = orderedTileInformationIt_->tileNumber;
 
                 ++orderedTileInformationIt_;
                 READ_FROM_NEW_FILE_TIMER.endSection("setUpNewReader");
@@ -287,36 +290,24 @@ private:
         // Returns an iterator past the last frame that should be read.
         // Also set up which tiles contain the object.
         std::vector<int>::iterator removeFramesThatDoNotContainObject(std::vector<int> &possibleFrames) {
-//            // Get rectangle for tile in current tile layout.
-//            if (tileNumber_ >= currentTileLayout_->numberOfTiles())
-//                return possibleFrames.begin();
-
-            tileNumbersForCurrentLayout_.clear();
+            tileNumberForCurrentLayoutToFrames_.clear();
             // For each tile, find the maximum frame where any object intersects.
             // This could be more efficient by passing that maximum frame to the encoded file reader.
             int maximumFrame = 0;
             for (auto i = 0u; i < currentTileLayout_->numberOfTiles(); ++i) {
                 auto tileRect = currentTileLayout_->rectangleForTile(i);
-
-                for (auto frame = possibleFrames.rbegin(); frame != possibleFrames.rend(); ++frame) {
+                tileNumberForCurrentLayoutToFrames_[i].reserve(possibleFrames.size());
+                for (auto frame = possibleFrames.begin(); frame != possibleFrames.end(); ++frame) {
                     auto &rectanglesForFrame = physical().metadataManager()->rectanglesForFrame(*frame);
                     bool anyIntersect = std::any_of(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](auto &rectangle) {
                         return tileRect.intersects(rectangle);
                     });
                     if (anyIntersect) {
-                        if (*frame > maximumFrame) {
-                            maximumFrame = *frame;
-                        }
-
-                        tileNumbersForCurrentLayout_.push_back(i);
-                        break;
+                        tileNumberForCurrentLayoutToFrames_[i].push_back(*frame);
                     }
                 }
             }
-
-            tileNumberIt_ = tileNumbersForCurrentLayout_.begin();
-
-            return std::find(possibleFrames.begin(), possibleFrames.end(), maximumFrame) + 1;
+            return possibleFrames.begin();
         }
 
         unsigned int tileNumberForCurrentLayout_;
@@ -342,7 +333,11 @@ private:
         std::unique_ptr<EncodedFrameReader> currentEncodedFrameReader_;
         std::unique_ptr<tiles::TileLayout> currentTileLayout_;
         std::unique_ptr<std::filesystem::path> currentTilePath_;
+        unsigned int currentTileNumber_;
         std::unordered_map<std::string, Configuration> tilePathToConfiguration_;
+
+        std::unordered_map<unsigned int, std::vector<int>> tileNumberForCurrentLayoutToFrames_;
+        std::unordered_map<unsigned int, std::vector<int>>::const_iterator tileNumberToFramesIt_;
 
         std::vector<int> tileNumbersForCurrentLayout_;
         std::vector<int>::const_iterator tileNumberIt_;

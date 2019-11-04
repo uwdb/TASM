@@ -79,8 +79,8 @@ private:
                     auto frame = session_.decode(physical().poll_duration());
                     if (frame.has_value())
                         frames.emplace_back(frame.value());
-                } while (!decoder_.frame_queue().isEmpty() &&
-                         !decoder_.frame_queue().isEndOfDecode() &&
+                } while ((!decoder_.frame_queue().isEmpty() || decoder_.decodedPictureQueue().read_available()) &&
+//                         !decoder_.frame_queue().isEndOfDecode() &&
                          frames.size() <= configuration_.output_surfaces / 4);
             }
 

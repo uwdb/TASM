@@ -280,6 +280,42 @@ public:
     }
 };
 
+class Threex3TileFor1kConfigurationProvider: public TileConfigurationProvider {
+public:
+    unsigned int maximumNumberOfTiles() override {
+        return 9;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        static TileLayout threex3Layout = TileLayout(3, 3, {320, 320, 320}, {180, 180, 180});
+        return threex3Layout;
+    }
+};
+
+class Threex3TileFor2kConfigurationProvider: public TileConfigurationProvider {
+public:
+    unsigned int maximumNumberOfTiles() override {
+        return 9;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        static TileLayout threex3Layout = TileLayout(3, 3, {640, 640, 640}, {360, 360, 360});
+        return threex3Layout;
+    }
+};
+
+class Threex3TileFor4kConfigurationProvider: public TileConfigurationProvider {
+public:
+    unsigned int maximumNumberOfTiles() override {
+        return 9;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        static TileLayout threex3Layout = TileLayout(3, 3, {1280, 1280, 1280}, {660, 660, 660});
+        return threex3Layout;
+    }
+};
+
 
 class SingleTileFor4kConfigurationProvider: public TileConfigurationProvider {
 public:

@@ -1047,7 +1047,7 @@ namespace lightdb::optimization {
                                                             width,
                                                             height);
                 } else {
-                    tileConfig = std::make_shared<tiles::AlternatingTileFor4kConfigurationProvider>();
+                    tileConfig = std::make_shared<tiles::Threex3TileFor4kConfigurationProvider>();
                 }
 
                 auto crack = plan().emplace<physical::CrackVideo>(

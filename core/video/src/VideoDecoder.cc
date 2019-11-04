@@ -36,8 +36,6 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
     mapParameters.unpaired_field = frame->progressive_frame == 1 || frame->repeat_first_field <= 1;
     {
         std::scoped_lock lock(lock_);
-        std::scoped_lock lock2(picIndexMutex_);
-
         if ((result = cuvidMapVideoFrame(handle(), frame->picture_index,
                                          &mappedHandle, &pitch, &mapParameters)) != CUDA_SUCCESS)
             throw GpuCudaRuntimeError("Call to cuvidMapVideoFrame failed", result);
@@ -68,32 +66,43 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
         if (isDecodingDifferentSizes_)
             frame->picture_index = picId_++;
 
-        std::shared_ptr<CUVIDPARSERDISPINFO> data(new CUVIDPARSERDISPINFO, [this](CUVIDPARSERDISPINFO *data) { this->unmapFrame(data->picture_index); delete data; });
+        std::shared_ptr<CUVIDPARSERDISPINFO> data(new CUVIDPARSERDISPINFO, [this](CUVIDPARSERDISPINFO *data) {
+            this->unmapFrame(data->picture_index);
+            delete data;
+        });
         *data = *frame;
 
-        decodedPictureQueue_.push(data);
+        {
+            std::scoped_lock lock(picIndexMutex_);
 
-        assert(!picIndexToMappedFrameInfo_.count(frame->picture_index));
-        picIndexToMappedFrameInfo_.emplace(std::pair<unsigned int, DecodedFrameInformation>(
-                std::piecewise_construct,
-                std::forward_as_tuple(frame->picture_index),
-                std::forward_as_tuple(newHandle, newPitch, format)));
+            assert(!picIndexToMappedFrameInfo_.count(frame->picture_index));
+            picIndexToMappedFrameInfo_.emplace(std::pair<unsigned int, DecodedFrameInformation>(
+                    std::piecewise_construct,
+                    std::forward_as_tuple(frame->picture_index),
+                    std::forward_as_tuple(newHandle, newPitch, format)));
+
+            decodedPictureQueue_.push(data);
+        }
     }
 }
 
 void CudaDecoder::unmapFrame(unsigned int picIndex) const {
     CUdeviceptr frameHandle;
     {
-        std::scoped_lock lock1(lock_);
-        std::scoped_lock lock(picIndexMutex_);
-        assert(picIndexToMappedFrameInfo_.count(picIndex));
-        frameHandle = picIndexToMappedFrameInfo_.at(picIndex).handle;
+        {
+            std::scoped_lock lock(picIndexMutex_);
+            assert(picIndexToMappedFrameInfo_.count(picIndex));
+            frameHandle = picIndexToMappedFrameInfo_.at(picIndex).handle;
 
-        // This is an unideal ordering to erase before unmapping, but I think it will be fine.
-        picIndexToMappedFrameInfo_.erase(picIndex);
+            // This is an unideal ordering to erase before unmapping, but I think it will be fine.
+            picIndexToMappedFrameInfo_.erase(picIndex);
+        }
 
-        CUresult result = cuMemFree(frameHandle);
-        assert(result == CUDA_SUCCESS);
+        {
+            std::scoped_lock lock(lock_); // Is it ok to not be holding this?
+            CUresult result = cuMemFree(frameHandle);
+            assert(result == CUDA_SUCCESS);
+        }
     }
 }
 
@@ -104,8 +113,8 @@ std::pair<CUdeviceptr, unsigned int> CudaDecoder::frameInfoForPicIndex(unsigned 
 }
 
 CudaDecoder::DecodedDimensions CudaDecoder::decodedDimensionsForPicIndex(unsigned int picIndex) const {
-    std::scoped_lock lock(picIndexMutex_);
     if (isDecodingDifferentSizes_) {
+        std::scoped_lock lock(picIndexMutex_);
         auto &format = picIndexToMappedFrameInfo_.at(picIndex).format;
 
         return {static_cast<unsigned int>(format.display_area.right - format.display_area.left),

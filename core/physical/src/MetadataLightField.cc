@@ -75,6 +75,7 @@ namespace lightdb::associations {
                     {"traffic-2k-001-cracked-dimsAlignedTo64-layoutduration30-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     {"traffic-2k-001-cracked-dimsAlignedTo60-layoutduration30-car", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     {"traffic-2k-001-cracked-grouping-extent-entire-video", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-3x3", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     // 4k-002
                     {"traffic-4k-002", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     {"traffic-4k-002-cracked-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
@@ -87,6 +88,7 @@ namespace lightdb::associations {
                     {"traffic-4k-002-cracked-alignedTo32-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     {"traffic-4k-002-cracked-alignedTo32-layoutduration30-car", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     {"traffic-4k-002-cracked-grouping-extent-entire-video", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
+                    {"traffic-4k-002-3x3", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     // 4k-000
                     {"traffic-4k-000", "/home/maureen/visualroad/4k-short/traffic-4k-000.db"},
                     {"traffic-4k-000-cracked-groupingextent-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-000.db"},
@@ -102,6 +104,7 @@ namespace lightdb::associations {
                     // short-1k-2
                     {"traffic-1k-002", "/home/maureen/visualroad/1k-short-2/traffic-1k-002.db"},
                     {"traffic-1k-002-cracked-grouping-extent-entire-video", "/home/maureen/visualroad/1k-short-2/traffic-1k-002.db"},
+                    {"traffic-1k-002-3x3", "/home/maureen/visualroad/1k-short-2/traffic-1k-002.db"},
             } );
 } // namespace lightdb::associations
 

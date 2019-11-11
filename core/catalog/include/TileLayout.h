@@ -10,15 +10,6 @@ namespace lightdb::tiles {
 
 class TileLayout {
 public:
-    TileLayout(const std::string &catalogEntryName,
-            unsigned int numberOfColumns,
-            unsigned int numberOfRows,
-            const Configuration &configuration)
-        : numberOfColumns_(numberOfColumns),
-        numberOfRows_(numberOfRows),
-        widthsOfColumns_(numberOfColumns_, configuration.width / numberOfColumns_),
-        heightsOfRows_(numberOfRows_, configuration.height / numberOfRows_)
-    { }
 
     TileLayout(unsigned int numberOfColumns,
             unsigned int numberOfRows,
@@ -27,7 +18,9 @@ public:
         : numberOfColumns_(numberOfColumns),
         numberOfRows_(numberOfRows),
         widthsOfColumns_(widthsOfColumns),
-        heightsOfRows_(heightsOfRows)
+        heightsOfRows_(heightsOfRows),
+        largestWidth_(0),
+        largestHeight_(0)
     { }
 
     TileLayout(const TileLayout &other) = default;
@@ -77,6 +70,22 @@ public:
         return std::accumulate(widthsOfColumns_.begin(), widthsOfColumns_.end(), 0);
     }
 
+    unsigned int largestWidth() const {
+        if (largestWidth_)
+            return largestWidth_;
+
+        largestWidth_ = *std::max_element(widthsOfColumns_.begin(), widthsOfColumns_.end());
+        return largestWidth_;
+    }
+
+    unsigned int largestHeight() const {
+        if (largestHeight_)
+            return largestHeight_;
+
+        largestHeight_ = *std::max_element(heightsOfRows_.begin(), heightsOfRows_.end());
+        return largestHeight_;
+    }
+
     Rectangle rectangleForTile(unsigned int tile) const {
         // Figure out what row/column the tile is in.
         unsigned int column = tile % numberOfColumns_;
@@ -114,6 +123,9 @@ private:
     unsigned int numberOfRows_;
     std::vector<unsigned int> widthsOfColumns_;
     std::vector<unsigned int> heightsOfRows_;
+
+    mutable unsigned int largestWidth_;
+    mutable unsigned int largestHeight_;
 //    std::unordered_map<unsigned int, std::filesystem::path> tileToFilePath_;
 };
 

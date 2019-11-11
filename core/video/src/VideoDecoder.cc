@@ -40,12 +40,18 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
                                          &mappedHandle, &pitch, &mapParameters)) != CUDA_SUCCESS)
             throw GpuCudaRuntimeError("Call to cuvidMapVideoFrame failed", result);
 
-        CUdeviceptr newHandle;
-        size_t newPitch;
+//        CUdeviceptr newHandle;
+//        size_t newPitch;
         auto width = format.coded_width; //  format.display_area.right - format.display_area.left;
         auto height = format.coded_height; // format.display_area.bottom - format.display_area.top;
-        result = cuMemAllocPitch(&newHandle, &newPitch, width, height * 3 / 2, 16);
-        assert(result == CUDA_SUCCESS);
+//        result = cuMemAllocPitch(&newHandle, &newPitch, width, height * 3 / 2, 16);
+//        assert(result == CUDA_SUCCESS);
+
+        while (!availableFrameArrays_.read_available())
+            std::this_thread::yield();
+
+        CUdeviceptr newHandle = availableFrameArrays_.front();
+        availableFrameArrays_.pop();
 
         CUDA_MEMCPY2D m;
         memset(&m, 0, sizeof(m));
@@ -54,7 +60,7 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
         m.srcPitch = pitch;
         m.dstMemoryType = CU_MEMORYTYPE_DEVICE;
         m.dstDevice = newHandle;
-        m.dstPitch = newPitch;
+        m.dstPitch = pitchOfPreallocatedFrameArrays_;
         m.WidthInBytes = width;
         m.Height = height * 3 / 2;
         result = cuMemcpy2D(&m);
@@ -79,20 +85,28 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
             picIndexToMappedFrameInfo_.emplace(std::pair<unsigned int, DecodedFrameInformation>(
                     std::piecewise_construct,
                     std::forward_as_tuple(frame->picture_index),
-                    std::forward_as_tuple(newHandle, newPitch, format)));
+                    std::forward_as_tuple(newHandle, pitchOfPreallocatedFrameArrays_, format)));
 
             decodedPictureQueue_.push(data);
         }
     }
 }
 
+// Why is this const?
 void CudaDecoder::unmapFrame(unsigned int picIndex) const {
     CUdeviceptr frameHandle;
+    auto width = 0;
+    auto height = 0;
     {
         {
             std::scoped_lock lock(picIndexMutex_);
             assert(picIndexToMappedFrameInfo_.count(picIndex));
-            frameHandle = picIndexToMappedFrameInfo_.at(picIndex).handle;
+            auto frameInfo = picIndexToMappedFrameInfo_.at(picIndex);
+            frameHandle = frameInfo.handle;
+            width = frameInfo.format.coded_width;
+            height = frameInfo.format.coded_height * 3 / 2;
+
+            maxNumberOfAllocatedFrames_ = std::max(maxNumberOfAllocatedFrames_, picIndexToMappedFrameInfo_.size());
 
             // This is an unideal ordering to erase before unmapping, but I think it will be fine.
             picIndexToMappedFrameInfo_.erase(picIndex);
@@ -100,8 +114,12 @@ void CudaDecoder::unmapFrame(unsigned int picIndex) const {
 
         {
             std::scoped_lock lock(lock_); // Is it ok to not be holding this?
-            CUresult result = cuMemFree(frameHandle);
-            assert(result == CUDA_SUCCESS);
+//             Should we memset the handle? Adds a lot of time, and shouldn't be necessary if we only look at the copied width/height.
+//            CUresult result = cuMemsetD2D8(frameHandle, pitchOfPreallocatedFrameArrays_, 0, width, height);
+//            assert(result == CUDA_SUCCESS);
+            availableFrameArrays_.push(frameHandle);
+//            CUresult result = cuMemFree(frameHandle);
+//            assert(result == CUDA_SUCCESS);
         }
     }
 }

@@ -109,8 +109,8 @@ TEST_F(VisitorTestFixture, testScanAndSink) {
 }
 
 TEST_F(VisitorTestFixture, testCrackIntoTiles) {
-    auto input = ScanByGOP("traffic-4k-002");
-    Coordinator().execute(input.StoreCracked("traffic-4k-002-3x3"));
+    auto input = ScanByGOP("car-pov-2k-001");
+    Coordinator().execute(input.StoreCracked("car-pov-2k-001-3x3"));
 }
 
 TEST_F(VisitorTestFixture, testScanMultiTiled) {
@@ -119,20 +119,23 @@ TEST_F(VisitorTestFixture, testScanMultiTiled) {
 }
 
 TEST_F(VisitorTestFixture, testScanAndSave) {
-    auto input = Load("/home/bhaynes/projects/visualroad/1k-short-2/traffic-002.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Store("traffic-1k-002"));
+    auto input = Load("/home/bhaynes/projects/visualroad/maureen/2k-car-pov/traffic-001.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Store("car-pov-2k-001"));
 }
 
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
-    auto input = Scan("traffic-4k-002");
+    auto name = "car-pov-2k-001";
+    auto input = Scan(name);
     MetadataSpecification metadataSelection("labels", "label", "car");
-    Coordinator().execute(input.StoreCracked("traffic-4k-002-cracked-grouping-extent-entire-video", "traffic-4k-002", &metadataSelection));
+    auto duration = 27000000;
+    std::string savedName = "car-pov-2k-001-cracked-grouping-extent-entire-video"; // + std::to_string(duration);
+    Coordinator().execute(input.StoreCracked(savedName, name, &metadataSelection, duration));
 }
 
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata2) {
     auto input = Scan("traffic-1k-002");
     MetadataSpecification metadataSelection("labels", "label", "car");
-    Coordinator().execute(input.StoreCracked("traffic-1k-002-cracked-grouping-extent-entire-video", "traffic-1k-002", &metadataSelection));
+    Coordinator().execute(input.StoreCracked("traffic-1k-002-cracked-grouping-extent-duration60", "traffic-1k-002", &metadataSelection));
 }
 
 TEST_F(VisitorTestFixture, testExecuteCracking) {
@@ -309,13 +312,13 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
 }
 
 TEST_F(VisitorTestFixture, testBasicSelection) {
-    auto catalogEntry = "traffic-1k-002";
+    auto catalogEntry = "car-pov-2k-001-cracked-smalltiles-duration120";
     auto object = "car";
 
     PixelMetadataSpecification selection("labels", "label", object);
-//    bool usesOnlyOneTile = false;
-    auto input = Scan(catalogEntry);
-    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
+    bool usesOnlyOneTile = false;
+    auto input = ScanMultiTiled(catalogEntry, usesOnlyOneTile);
+//    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
     Coordinator().execute(input.Select(selection));
 }
 

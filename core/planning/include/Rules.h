@@ -464,7 +464,7 @@ namespace lightdb::optimization {
                         tileLocationProvider,
                         node.shouldReadEntireGOPs());
                 bool isDecodingDifferentSizes = !multiTiledLightField.usesOnlyOneTile();
-                auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, isDecodingDifferentSizes);
+                auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, isDecodingDifferentSizes, tileLayoutsManager->largestWidth(), tileLayoutsManager->largestHeight());
 
                 // TODO: Should we place the cracking operator in between decode and merge?
                 // And then the cracking operator could keep a reference to the frames, but pass them on immediately.
@@ -1040,14 +1040,15 @@ namespace lightdb::optimization {
 
                 std::shared_ptr<tiles::TileConfigurationProvider> tileConfig;
                 if (node.metadataManager()) {
-                    auto tileLayoutDuration = 27002;
+//                    auto tileLayoutDuration = 60; // TODO: Make layout duration argument to CrackedLightField.
+                    assert(node.layoutDuration());
                     tileConfig = std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
-                                                            tileLayoutDuration,
+                                                            node.layoutDuration(),
                                                             node.metadataManager(),
                                                             width,
                                                             height);
                 } else {
-                    tileConfig = std::make_shared<tiles::Threex3TileFor4kConfigurationProvider>();
+                    tileConfig = std::make_shared<tiles::Threex3TileConfigurationProvider>(width, height);
                 }
 
                 auto crack = plan().emplace<physical::CrackVideo>(

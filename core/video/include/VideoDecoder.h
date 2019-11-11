@@ -23,6 +23,8 @@
     std::chrono::high_resolution_clock::now() - start).count() \
     << " ms " << std::endl;
 
+static const unsigned int NUMBER_OF_PREALLOCATED_FRAMES = 150;
+
 class VideoDecoder {
 public:
     const DecodeConfiguration& configuration() const { return configuration_; }
@@ -52,7 +54,11 @@ public:
             picId_(0),
             isDecodingDifferentSizes_(isDecodingDifferentSizes),
             currentBitrate_(0),
-            numberOfReconfigures_(0)
+            numberOfReconfigures_(0),
+            maxNumberOfAllocatedFrames_(0),
+            availableFrameArrays_(NUMBER_OF_PREALLOCATED_FRAMES),
+            pitchOfPreallocatedFrameArrays_(0),
+            heightOfPreallocatedFrameArrays_(0)
   {
       CUresult result;
       creationInfo_ = this->configuration().AsCuvidCreateInfo(lock);
@@ -73,16 +79,25 @@ public:
             decodedPictureQueue_(100),
             picId_(other.picId_),
             isDecodingDifferentSizes_(other.isDecodingDifferentSizes_),
-            numberOfReconfigures_(other.numberOfReconfigures_){
+            numberOfReconfigures_(other.numberOfReconfigures_),
+            preallocatedFrameArrays_(other.preallocatedFrameArrays_),
+            availableFrameArrays_(NUMBER_OF_PREALLOCATED_FRAMES) {
       other.handle_ = nullptr;
   }
 
   virtual ~CudaDecoder() {
       std::cout << "ANALYSIS number-of-reconfigures " << numberOfReconfigures_ << std::endl;
+      std::cout << "ANALYSIS maxNumberOfAllocatedFrames " << maxNumberOfAllocatedFrames_ << std::endl;
 
       // Try emptying the decoded picture queue before the picIndexToMappedFrameInfo_ gets cleared, or the decoder
       // gets destroyed.
       decodedPictureQueue_.reset();
+
+      // Deallocate all preallocated frames.
+      for (const auto &handle : preallocatedFrameArrays_) {
+          CUresult result = cuMemFree(handle);
+          assert(result == CUDA_SUCCESS);
+      }
 
       // I tried calling the destructor at the last call, but it segfaulted.
       // I think it has to be called the first time.
@@ -90,6 +105,36 @@ public:
           cuvidDestroyDecoder(handle());
           CudaDecoder::DECODER_DESTROYED = true;
       }
+  }
+
+  void preallocateArraysForDecodedFrames(unsigned int largestWidth, unsigned int largestHeight) {
+      // TODO: should translate into coded width/height.
+      // Bump up width/height to be a multiple of 32, which is what I think is required for coded width/height.
+      auto codedDim = 32;
+      if (largestWidth % codedDim) {
+          largestWidth = (largestWidth / codedDim + 1) * codedDim;
+      }
+      if (largestHeight % codedDim) {
+          largestHeight = (largestHeight / codedDim + 1) * codedDim;
+      }
+
+      // Should be part of init, but oh well.
+      preallocatedFrameArrays_.resize(NUMBER_OF_PREALLOCATED_FRAMES);
+      heightOfPreallocatedFrameArrays_ = largestHeight * 3 / 2;
+
+      for (int i = 0; i < NUMBER_OF_PREALLOCATED_FRAMES; ++i) {
+          CUdeviceptr handle;
+          size_t pitch;
+          CUresult result = cuMemAllocPitch(&handle, &pitch, largestWidth, heightOfPreallocatedFrameArrays_, 16);
+          if (pitchOfPreallocatedFrameArrays_)
+              assert(pitch == pitchOfPreallocatedFrameArrays_);
+          else
+              pitchOfPreallocatedFrameArrays_ = pitch;
+
+          preallocatedFrameArrays_[i] = handle;
+          availableFrameArrays_.push(handle);
+      }
+
   }
 
   bool isDecodingDifferentSizes() const { return isDecodingDifferentSizes_; }
@@ -184,10 +229,16 @@ protected:
   VideoLock &lock_;
   lightdb::spsc_queue<int> &frameNumberQueue_;
   lightdb::spsc_queue<int> &tileNumberQueue_;
-  lightdb::spsc_queue<std::shared_ptr<CUVIDPARSERDISPINFO>> decodedPictureQueue_;
+  lightdb::spsc_queue<std::shared_ptr<CUVIDPARSERDISPINFO>> decodedPictureQueue_; // FIXME: should be prt for copy constructor.
   CUVIDDECODECREATEINFO creationInfo_;
   int picId_;
   bool isDecodingDifferentSizes_;
+  mutable unsigned long maxNumberOfAllocatedFrames_;
+
+  std::vector<CUdeviceptr> preallocatedFrameArrays_;
+  mutable lightdb::spsc_queue<CUdeviceptr> availableFrameArrays_; // FIXME: should be ptr for copy constructor.
+  size_t pitchOfPreallocatedFrameArrays_;
+  size_t heightOfPreallocatedFrameArrays_;
 
   CUVIDEOFORMAT currentFormat_;
   unsigned int currentBitrate_;

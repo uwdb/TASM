@@ -37,6 +37,9 @@ void TileLayoutsManager::loadAllTileConfigurations() {
             totalHeight_ = tileLayout.totalHeight();
         }
 
+        largestWidth_ = std::max(largestWidth_, tileLayout.largestWidth());
+        largestHeight_ = std::max(largestHeight_, tileLayout.largestHeight());
+
         if (!tileLayoutReferences_.count(tileLayout))
             tileLayoutReferences_[tileLayout] = std::make_shared<const TileLayout>(tileLayout);
 

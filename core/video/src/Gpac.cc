@@ -171,8 +171,8 @@ namespace lightdb::video::gpac {
                         std::filesystem::absolute(url != nullptr ? url : filename),
                         get_codec(file, track_index, stream),
                         Configuration{
-                                width,
-                                height,
+                                streamConfig.decode.width, // For some reason width was getting set to a bad value in the gf call.
+                                streamConfig.decode.height,
                                 streamConfig.decode.max_width,
                                 streamConfig.decode.max_height,
                                 bitrate,

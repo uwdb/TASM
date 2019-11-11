@@ -66,7 +66,8 @@ namespace lightdb {
 
             LightFieldReference StoreCracked(const std::string &name,
                                                 const std::string &metadataIdentifier="",
-                                                const MetadataSpecification * const metadataSpecification=nullptr);
+                                                const MetadataSpecification * const metadataSpecification=nullptr,
+                                                unsigned int layoutDuration=0);
 
             LightFieldReference Save(const std::filesystem::path&);
             LightFieldReference Sink();

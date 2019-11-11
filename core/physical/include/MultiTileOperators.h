@@ -294,6 +294,7 @@ private:
             // For each tile, find the maximum frame where any object intersects.
             // This could be more efficient by passing that maximum frame to the encoded file reader.
             int maximumFrame = 0;
+
             for (auto i = 0u; i < currentTileLayout_->numberOfTiles(); ++i) {
                 auto tileRect = currentTileLayout_->rectangleForTile(i);
                 tileNumberForCurrentLayoutToFrames_[i].reserve(possibleFrames.size());

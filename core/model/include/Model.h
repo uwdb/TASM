@@ -405,17 +405,21 @@ namespace lightdb::logical {
                           const catalog::Catalog &catalog,
                           std::optional<GeometryReference> geometry={},
                           Codec codec=Codec::hevc(),
-                          std::shared_ptr<metadata::MetadataManager> metadataManager=nullptr)
+                          std::shared_ptr<metadata::MetadataManager> metadataManager=nullptr,
+                          unsigned int layoutDuration=0)
             : StoredLightField(source, name, catalog, geometry, codec),
-            metadataManager_(metadataManager)
+            metadataManager_(metadataManager),
+            layoutDuration_(layoutDuration)
         { }
 
         std::shared_ptr<metadata::MetadataManager> metadataManager() const { return metadataManager_; }
+        unsigned int layoutDuration() const { return layoutDuration_; }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<CrackedLightField>(visitor); }
 
     private:
         std::shared_ptr<metadata::MetadataManager> metadataManager_;
+        unsigned int layoutDuration_;
     };
 
     class SavedLightField : public LightField {

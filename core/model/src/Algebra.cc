@@ -114,14 +114,15 @@ namespace lightdb::logical {
 
     LightFieldReference Algebra::StoreCracked(const std::string &name,
                                               const std::string &metadataIdentifier,
-                                              const MetadataSpecification * const metadataSpecification) {
+                                              const MetadataSpecification * const metadataSpecification,
+                                              unsigned int layoutDuration) {
         std::shared_ptr<metadata::MetadataManager> metadataManager_;
         if (metadataIdentifier.length()) {
             assert(metadataSpecification);
             metadataManager_ = std::make_shared<metadata::MetadataManager>(metadataIdentifier, *metadataSpecification);
         }
 
-        return LightFieldReference::make<CrackedLightField>(this_, name, catalog::Catalog::instance(), std::nullopt, Codec::hevc(), metadataManager_);
+        return LightFieldReference::make<CrackedLightField>(this_, name, catalog::Catalog::instance(), std::nullopt, Codec::hevc(), metadataManager_, layoutDuration);
     }
 
     LightFieldReference Algebra::Sink() {

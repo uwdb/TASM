@@ -25,12 +25,16 @@ public:
     explicit GPUDecodeFromCPU(const LightFieldReference &logical,
                               PhysicalOperatorReference source,
                               const execution::GPU &gpu,
-                              bool isDecodingDifferentSizes = false)
+                              bool isDecodingDifferentSizes = false,
+                              unsigned int largestWidth = 0,
+                              unsigned int largestHeight = 0)
             : GPUDecodeFromCPU(logical,
                                source,
                                gpu,
                                std::chrono::milliseconds(1u),
-                               isDecodingDifferentSizes)
+                               isDecodingDifferentSizes,
+                               largestWidth,
+                               largestHeight)
     { }
 
     template<typename Rep, typename Period>
@@ -38,11 +42,15 @@ public:
                               PhysicalOperatorReference &source,
                               const execution::GPU &gpu,
                               std::chrono::duration<Rep, Period> poll_duration,
-                              bool isDecodingDifferentSizes = false)
+                              bool isDecodingDifferentSizes = false,
+                              unsigned int largestWidth = 0,
+                              unsigned int largestHeight = 0)
             : PhysicalOperator(logical, {source}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUDecodeFromCPU-init")),
               GPUOperator(gpu),
               poll_duration_(poll_duration),
-              isDecodingDifferentSizes_(isDecodingDifferentSizes) {
+              isDecodingDifferentSizes_(isDecodingDifferentSizes),
+              largestWidth_(largestWidth),
+              largestHeight_(largestHeight) {
         CHECK_EQ(source->device(), DeviceType::CPU);
     }
 
@@ -51,6 +59,8 @@ public:
 
     std::chrono::microseconds poll_duration() const { return poll_duration_; }
     bool isDecodingDifferentSizes() const { return isDecodingDifferentSizes_; }
+    unsigned int largestWidth() const { return largestWidth_; }
+    unsigned int largestHeight() const { return largestHeight_; }
 
 private:
     class Runtime: public runtime::GPUUnaryRuntime<GPUDecodeFromCPU, CPUEncodedFrameData> {
@@ -65,7 +75,13 @@ private:
               decoder_{configuration_, queue_, lock(), frameNumberQueue_, tileNumberQueue_, physical.isDecodingDifferentSizes()},
               session_{decoder_, iterator(), iterator().eos()},
               numberOfFramesDecoded_(0)
-        { }
+        {
+            if (physical.isDecodingDifferentSizes()) {
+                assert(physical.largestWidth());
+                assert(physical.largestHeight());
+                decoder_.preallocateArraysForDecodedFrames(physical.largestWidth(), physical.largestHeight());
+            }
+        }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             GLOBAL_TIMER.startSection("GPUDecodeFromCPU");
@@ -110,6 +126,8 @@ private:
 
     const std::chrono::microseconds poll_duration_;
     bool isDecodingDifferentSizes_;
+    unsigned int largestWidth_;
+    unsigned int largestHeight_;
 };
 
 

@@ -280,6 +280,31 @@ public:
     }
 };
 
+class Threex3TileConfigurationProvider: public TileConfigurationProvider {
+public:
+    Threex3TileConfigurationProvider(unsigned int totalWidth, unsigned int totalHeight)
+        : widthPerColumn_(totalWidth / 3),
+        heightPerColumn_(totalHeight / 3)
+    {}
+
+    unsigned int maximumNumberOfTiles() override {
+        return 9;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        if (layoutPtr)
+            return *layoutPtr;
+
+        layoutPtr = std::make_unique<TileLayout>(3, 3, std::vector<unsigned int>(3, widthPerColumn_), std::vector<unsigned int>(3, heightPerColumn_));
+        return *layoutPtr;
+    }
+
+private:
+    unsigned int widthPerColumn_;
+    unsigned int heightPerColumn_;
+    std::unique_ptr<TileLayout> layoutPtr;
+};
+
 class Threex3TileFor1kConfigurationProvider: public TileConfigurationProvider {
 public:
     unsigned int maximumNumberOfTiles() override {
@@ -474,7 +499,9 @@ public:
     TileLayoutsManager(catalog::MultiTileEntry entry)
         : entry_(std::move(entry)),
         totalWidth_(0),
-        totalHeight_(0)
+        totalHeight_(0),
+        largestWidth_(0),
+        largestHeight_(0)
     {
         loadAllTileConfigurations();
     }
@@ -489,6 +516,9 @@ public:
 
     unsigned int totalWidth() const { return totalWidth_; }
     unsigned int totalHeight() const { return totalHeight_; }
+
+    unsigned int largestWidth() const { return largestWidth_; }
+    unsigned int largestHeight() const { return largestHeight_; }
 
 private:
     void loadAllTileConfigurations();
@@ -508,6 +538,8 @@ private:
 
     unsigned int totalWidth_;
     unsigned int totalHeight_;
+    unsigned int largestWidth_;
+    unsigned int largestHeight_;
 };
 
 class TileLocationProvider {

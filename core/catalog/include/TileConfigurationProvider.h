@@ -526,9 +526,13 @@ private:
     const catalog::MultiTileEntry entry_;
 
     IntervalTree<unsigned int> intervalTree_;
+
+public: // For sake of measuring.
     std::unordered_map<int, std::filesystem::path> directoryIdToTileDirectory_;
     std::unordered_map<int, std::shared_ptr<const TileLayout>> directoryIdToTileLayout_;
     std::unordered_map<TileLayout, std::shared_ptr<const TileLayout>> tileLayoutReferences_;
+
+private:
 
 //    std::map<lightdb::Interval<unsigned int>, std::list<TileLayout>> intervalToAvailableTileLayouts_;
 //    std::map<unsigned int, lightdb::CoalescedIntervals<unsigned int>, std::greater<unsigned int>> numberOfTilesToFrameIntervals_;

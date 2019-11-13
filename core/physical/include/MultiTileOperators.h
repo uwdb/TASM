@@ -34,6 +34,80 @@ private:
     };
 };
 
+class MeasureStorageOperator : public PhysicalOperator {
+public:
+    explicit MeasureStorageOperator(const LightFieldReference &logical,
+                std::shared_ptr<const tiles::TileLayoutsManager> tileLayoutsManager)
+            : PhysicalOperator(logical,
+                    DeviceType::CPU,
+                    runtime::make<Runtime>(*this, "MeasureStorageOperator-init", tileLayoutsManager))
+    {}
+
+private:
+    class Runtime : public runtime::Runtime<MeasureStorageOperator> {
+    public:
+        explicit Runtime(MeasureStorageOperator &physical,
+                std::shared_ptr<const tiles::TileLayoutsManager> tileLayoutsManager)
+            : runtime::Runtime<MeasureStorageOperator>(physical),
+                    tileLayoutsManager_(tileLayoutsManager),
+                    didPrintSizes_(false)
+            {}
+
+        std::optional<physical::MaterializedLightFieldReference> read() override {
+            if (didPrintSizes_)
+                return std::nullopt;
+
+            auto &directoryIdToLayout = tileLayoutsManager_->directoryIdToTileLayout_;
+            for (auto it = directoryIdToLayout.begin(); it != directoryIdToLayout.end(); ++it) {
+                auto layout = it->second;
+                auto dirPath = tileLayoutsManager_->directoryIdToTileDirectory_.at(it->first);
+                auto firstAndLastFrame = catalog::TileFiles::firstAndLastFramesFromPath(dirPath);
+
+                std::vector<int> frames;
+                for (unsigned int frame = firstAndLastFrame.first; frame <= firstAndLastFrame.second; ++frame)
+                    frames.push_back(frame);
+
+                for (auto i = 0u; i < layout->numberOfTiles(); ++i) {
+                    auto rectForTile = layout->rectangleForTile(i);
+                    EncodedFrameReader reader = EncodedFrameReader(catalog::TileFiles::tileFilename(dirPath, i),
+                            frames,
+                            firstAndLastFrame.first);
+
+                    while (!reader.isEos()) {
+                        static unsigned int GOP_SIZE = 30;
+                        auto gopPacket = reader.read();
+                        assert(gopPacket.has_value());
+                        assert(gopPacket->numberOfFrames() == GOP_SIZE
+                               || (gopPacket->numberOfFrames() == 1 && gopPacket->firstFrameIndex() == 27000)); // case of frame = 27000
+
+                        auto gop = gopPacket->firstFrameIndex() / GOP_SIZE;
+
+                        std::cout << "SIZING," << tileLayoutsManager_->entry().name() << ","
+                                << firstAndLastFrame.first << ","
+                                << firstAndLastFrame.second << ","
+                                << i << ","
+                                << rectForTile.width << ","
+                                << rectForTile.height << ","
+                                << gop << ","
+                                << gopPacket->firstFrameIndex() << ","
+                                << gopPacket->firstFrameIndex() + gopPacket->numberOfFrames() - 1 << ","
+                                << gopPacket->data()->size() << std::endl;
+                    }
+
+                }
+            }
+
+
+            didPrintSizes_ = true;
+            return EmptyData{physical().device()};
+        }
+
+    private:
+        const std::shared_ptr<const tiles::TileLayoutsManager> tileLayoutsManager_;
+        bool didPrintSizes_;
+    };
+};
+
 class ScanMultiTileOperator : public PhysicalOperator {
 public:
     explicit ScanMultiTileOperator(const LightFieldReference &logical,
@@ -293,7 +367,6 @@ private:
             tileNumberForCurrentLayoutToFrames_.clear();
             // For each tile, find the maximum frame where any object intersects.
             // This could be more efficient by passing that maximum frame to the encoded file reader.
-            int maximumFrame = 0;
 
             for (auto i = 0u; i < currentTileLayout_->numberOfTiles(); ++i) {
                 auto tileRect = currentTileLayout_->rectangleForTile(i);

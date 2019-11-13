@@ -95,32 +95,26 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
 // Why is this const?
 void CudaDecoder::unmapFrame(unsigned int picIndex) const {
     CUdeviceptr frameHandle;
-    auto width = 0;
-    auto height = 0;
     {
-        {
-            std::scoped_lock lock(picIndexMutex_);
-            assert(picIndexToMappedFrameInfo_.count(picIndex));
-            auto frameInfo = picIndexToMappedFrameInfo_.at(picIndex);
-            frameHandle = frameInfo.handle;
-            width = frameInfo.format.coded_width;
-            height = frameInfo.format.coded_height * 3 / 2;
+        std::scoped_lock lock(picIndexMutex_);
+        assert(picIndexToMappedFrameInfo_.count(picIndex));
+        auto frameInfo = picIndexToMappedFrameInfo_.at(picIndex);
+        frameHandle = frameInfo.handle;
 
-            maxNumberOfAllocatedFrames_ = std::max(maxNumberOfAllocatedFrames_, picIndexToMappedFrameInfo_.size());
+        maxNumberOfAllocatedFrames_ = std::max(maxNumberOfAllocatedFrames_, picIndexToMappedFrameInfo_.size());
 
-            // This is an unideal ordering to erase before unmapping, but I think it will be fine.
-            picIndexToMappedFrameInfo_.erase(picIndex);
-        }
+        // This is an unideal ordering to erase before unmapping, but I think it will be fine.
+        picIndexToMappedFrameInfo_.erase(picIndex);
+    }
 
-        {
-            std::scoped_lock lock(lock_); // Is it ok to not be holding this?
+    {
+        std::scoped_lock lock(lock_); // Is it ok to not be holding this?
 //             Should we memset the handle? Adds a lot of time, and shouldn't be necessary if we only look at the copied width/height.
 //            CUresult result = cuMemsetD2D8(frameHandle, pitchOfPreallocatedFrameArrays_, 0, width, height);
 //            assert(result == CUDA_SUCCESS);
-            availableFrameArrays_.push(frameHandle);
+        availableFrameArrays_.push(frameHandle);
 //            CUresult result = cuMemFree(frameHandle);
 //            assert(result == CUDA_SUCCESS);
-        }
     }
 }
 

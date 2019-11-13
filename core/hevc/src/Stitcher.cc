@@ -74,8 +74,8 @@ namespace lightdb::hevc {
                 headerUpToPicOrder = current.headerUpToPicOrderCntLsb();
                 headerAfterPicOrder = current.headerAfterPicOrderCntLsb();
             } else {
-                assert(current.getEnd() == endLocationForP);
-                assert(current.getAddrOffset() == addrLocationForP);
+                assert(current.getEnd() == (unsigned int)endLocationForP);
+                assert(current.getAddrOffset() == (unsigned int)addrLocationForP);
                 assert(current.headerUpToPicOrderCntLsb() == headerUpToPicOrder);
                 assert(current.headerAfterPicOrderCntLsb() == headerAfterPicOrder);
             }

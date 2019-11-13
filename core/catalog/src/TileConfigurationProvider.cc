@@ -472,21 +472,24 @@ std::vector<unsigned int> GroupingTileConfigurationProvider::tileDimensions(cons
             tryAppend(offset, true, index);
 
         offset = getAlignedOffset(interval.end(), lastOffset, false);
-        if (offset - lastOffset >= minDistance and totalDimension - offset >= minDistance) {
-            if (!doesOffsetStrictlyIntersect(offset, index)) {
-                tryAppend(offset);
+        if (offset != lastOffset) {
+            if (offset - lastOffset >= minDistance and totalDimension - offset >= minDistance) {
+                if (!doesOffsetStrictlyIntersect(offset, index)) {
+                    tryAppend(offset);
+                }
+            } else if (!isLastInterval
+                       //                    && lastOffset != offset
+                       && lastOffset + minDistance >= interval.end()
+                       && sortedIntervals[index + 1].start() - (lastOffset + minDistance) >= minDistance) {
+                tryAppend(lastOffset + minDistance); // Issue when offset == lastOffset, it will come in here.
+            } else if (isLastInterval
+                       && lastOffset < interval.end()
+                       && totalDimension - (lastOffset + minDistance) >= minDistance
+                       && lastOffset + minDistance >= interval.end()) {
+                tryAppend(lastOffset + minDistance);
             }
-        } else if (!isLastInterval
-                    && lastOffset + minDistance >= interval.end()
-                    && sortedIntervals[index + 1].start() - (lastOffset + minDistance) >= minDistance) {
-            tryAppend(lastOffset + minDistance);
-        } else if (isLastInterval
-                    && lastOffset < interval.end()
-                    && totalDimension - (lastOffset + minDistance) >= minDistance
-                    && lastOffset + minDistance >= interval.end()) {
-            tryAppend(lastOffset + minDistance);
         }
-        intervalEnds.push_back(getAlignedOffset(interval.end(), lastOffset, false));
+        intervalEnds.push_back(offset);
     }
 
     // Now transform offsets into widths/heights.

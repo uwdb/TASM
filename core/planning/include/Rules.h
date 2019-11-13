@@ -453,10 +453,14 @@ namespace lightdb::optimization {
                 auto metadataManager = node.metadataManager();
 
                 auto tileLayoutsManager = multiTiledLightField.tileLayoutsManager();
-//                unsigned int gop = 30;
-
                 auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
 //                auto tileLocationProvider = std::make_shared<tiles::MultiTileLocationProvider>(tileLayoutsManager, metadataManager, 30);
+
+                // To measure sizes of tiles.
+                auto measure = plan().emplace<physical::MeasureStorageOperator>(physical_parents[0]->logical(), tileLayoutsManager);
+                auto sink = plan().emplace<physical::Sink>(logical, measure);
+                plan().remove_operator(physical_parents[0]);
+                return true;
 
                 auto scan = plan().emplace<physical::ScanMultiTileOperator>(
                         physical_parents[0]->logical(),
@@ -493,7 +497,6 @@ namespace lightdb::optimization {
 //                auto merge = plan().emplace<physical::MergeTilePixels>(logical, crack, tileLocationProvider);
 //                plan().emplace<physical::SaveFramesToFiles>(logical, merge);
 
-                // TODO: Remove placeholder from plan.
                 plan().remove_operator(physical_parents[0]);
 
                 return true;
@@ -1042,7 +1045,7 @@ namespace lightdb::optimization {
                 if (node.metadataManager()) {
 //                    auto tileLayoutDuration = 60; // TODO: Make layout duration argument to CrackedLightField.
                     assert(node.layoutDuration());
-                    tileConfig = std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
+                    tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
                                                             node.layoutDuration(),
                                                             node.metadataManager(),
                                                             width,

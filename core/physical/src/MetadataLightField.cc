@@ -81,6 +81,8 @@ namespace lightdb::associations {
                     {"traffic-2k-001-cracked-smalltiles-duration30", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     {"traffic-2k-001-cracked-smalltiles-duration60", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     {"traffic-2k-001-cracked-smalltiles-duration120", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-smalltiles-fixed-duration120", "/home/maureen/visualroad/2k-short/traffic-001.db"},
+                    {"traffic-2k-001-cracked-smalltiles-fixed-duration30", "/home/maureen/visualroad/2k-short/traffic-001.db"},
                     // 4k-002
                     {"traffic-4k-002", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
                     {"traffic-4k-002-cracked-layoutduration60-car", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"},
@@ -148,6 +150,7 @@ namespace lightdb::associations {
                     {"car-pov-2k-000-cracked-smalltiles-duration60", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
                     {"car-pov-2k-000-cracked-smalltiles-duration120", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
                     {"car-pov-2k-000-3x3", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
+                    {"car-pov-2k-000-cracked-smalltiles-fixed-duration30", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
                     // car-pov-2k-001
                     {"car-pov-2k-001", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
                     {"car-pov-2k-001-3x3", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
@@ -316,7 +319,7 @@ std::unordered_set<int> MetadataManager::idealKeyframesForFrames(const std::vect
 
 const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) const {
     static std::vector<Rectangle> emptyVector;
-    if (frame < metadataSpecification_.firstFrame() || frame >= metadataSpecification_.lastFrame())
+    if (frame < (int)metadataSpecification_.firstFrame() || frame >= (int)metadataSpecification_.lastFrame())
         return emptyVector;
 
     std::scoped_lock lock(mutex_);

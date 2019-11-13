@@ -124,11 +124,11 @@ TEST_F(VisitorTestFixture, testScanAndSave) {
 }
 
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
-    auto name = "car-pov-2k-001";
+    auto name = "car-pov-2k-000";
     auto input = Scan(name);
     MetadataSpecification metadataSelection("labels", "label", "car");
-    auto duration = 27000000;
-    std::string savedName = "car-pov-2k-001-cracked-grouping-extent-entire-video"; // + std::to_string(duration);
+    auto duration = 30;
+    std::string savedName = "car-pov-2k-000-cracked-smalltiles-fixed-duration" + std::to_string(duration);
     Coordinator().execute(input.StoreCracked(savedName, name, &metadataSelection, duration));
 }
 
@@ -294,9 +294,9 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
     auto totalNumberOfFrames = 27000;
 
     std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 1u;
-    auto method = "ideal-tiled-dimsAlignedTo32-sortByHeight";
-    auto layoutDuration = 30;
+//    auto numberOfRounds = 1u;
+//    auto method = "ideal-tiled-dimsAlignedTo32-sortByHeight";
+//    auto layoutDuration = 30;
     auto catalogEntry = "traffic-2k-001-single-tile";
 
     // Get to the questionable iteration.
@@ -312,14 +312,31 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
 }
 
 TEST_F(VisitorTestFixture, testBasicSelection) {
-    auto catalogEntry = "car-pov-2k-001-cracked-smalltiles-duration120";
+    auto catalogEntry = "car-pov-2k-000";
     auto object = "car";
 
     PixelMetadataSpecification selection("labels", "label", object);
-    bool usesOnlyOneTile = false;
-    auto input = ScanMultiTiled(catalogEntry, usesOnlyOneTile);
-//    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
+//    bool usesOnlyOneTile = false;
+    auto input = Scan(catalogEntry);
+    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
     Coordinator().execute(input.Select(selection));
+}
+
+TEST_F(VisitorTestFixture, testMeasureDifferentTilingStrategies) {
+    std::vector<std::string> tileSuffixes{"-3x3",
+                                          "-cracked-grouping-extent-entire-video", "-cracked-grouping-extent-duration30", "-cracked-grouping-extent-duration60",
+                                          "-cracked-smalltiles-fixed-duration30", "-cracked-smalltiles-duration60", "-cracked-smalltiles-duration120"};
+
+    for (const auto& suffix : tileSuffixes) {
+        auto catalogEntry = "car-pov-2k-000" + suffix;
+        auto object = "car";
+
+        PixelMetadataSpecification selection("labels", "label", object);
+        bool usesOnlyOneTile = false;
+        auto input = ScanMultiTiled(catalogEntry, usesOnlyOneTile);
+//    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
+        Coordinator().execute(input.Select(selection));
+    }
 }
 
 TEST_F(VisitorTestFixture, testTilingOnDecode30) {

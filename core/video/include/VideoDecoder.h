@@ -53,12 +53,12 @@ public:
             decodedPictureQueue_(100),
             picId_(0),
             isDecodingDifferentSizes_(isDecodingDifferentSizes),
-            currentBitrate_(0),
-            numberOfReconfigures_(0),
             maxNumberOfAllocatedFrames_(0),
             availableFrameArrays_(NUMBER_OF_PREALLOCATED_FRAMES),
             pitchOfPreallocatedFrameArrays_(0),
-            heightOfPreallocatedFrameArrays_(0)
+            heightOfPreallocatedFrameArrays_(0),
+            currentBitrate_(0),
+            numberOfReconfigures_(0)
   {
       CUresult result;
       creationInfo_ = this->configuration().AsCuvidCreateInfo(lock);
@@ -79,9 +79,9 @@ public:
             decodedPictureQueue_(100),
             picId_(other.picId_),
             isDecodingDifferentSizes_(other.isDecodingDifferentSizes_),
-            numberOfReconfigures_(other.numberOfReconfigures_),
             preallocatedFrameArrays_(other.preallocatedFrameArrays_),
-            availableFrameArrays_(NUMBER_OF_PREALLOCATED_FRAMES) {
+            availableFrameArrays_(NUMBER_OF_PREALLOCATED_FRAMES),
+            numberOfReconfigures_(other.numberOfReconfigures_) {
       other.handle_ = nullptr;
   }
 
@@ -122,10 +122,11 @@ public:
       preallocatedFrameArrays_.resize(NUMBER_OF_PREALLOCATED_FRAMES);
       heightOfPreallocatedFrameArrays_ = largestHeight * 3 / 2;
 
-      for (int i = 0; i < NUMBER_OF_PREALLOCATED_FRAMES; ++i) {
+      for (unsigned int i = 0u; i < NUMBER_OF_PREALLOCATED_FRAMES; ++i) {
           CUdeviceptr handle;
           size_t pitch;
           CUresult result = cuMemAllocPitch(&handle, &pitch, largestWidth, heightOfPreallocatedFrameArrays_, 16);
+          assert(result == CUDA_SUCCESS);
           if (pitchOfPreallocatedFrameArrays_)
               assert(pitch == pitchOfPreallocatedFrameArrays_);
           else

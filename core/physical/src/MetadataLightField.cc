@@ -153,7 +153,22 @@ namespace lightdb::associations {
                     {"car-pov-2k-000-cracked-smalltiles-fixed-duration30", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
                     // car-pov-2k-000-shortened
                     {"car-pov-2k-000-shortened", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
-
+                    {"car-pov-2k-000-shortened-3x3", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
+                    {"car-pov-2k-000-shortened-cracked-grouping-extent-entire-video", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
+                    {"car-pov-2k-000-shortened-cracked-grouping-extent-duration30", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
+                    {"car-pov-2k-000-shortened-cracked-grouping-extent-duration60", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
+                    {"car-pov-2k-000-shortened-cracked-smalltiles-duration30", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
+                    {"car-pov-2k-000-shortened-cracked-smalltiles-duration60", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
+                    {"car-pov-2k-000-shortened-cracked-smalltiles-duration120", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
+                    // car-pov-2k-001-shortened
+                    {"car-pov-2k-001-shortened", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
+                    {"car-pov-2k-001-shortened-3x3", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
+                    {"car-pov-2k-001-shortened-cracked-grouping-extent-entire-video", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
+                    {"car-pov-2k-001-shortened-cracked-grouping-extent-duration30", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
+                    {"car-pov-2k-001-shortened-cracked-grouping-extent-duration60", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
+                    {"car-pov-2k-001-shortened-cracked-smalltiles-duration30", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
+                    {"car-pov-2k-001-shortened-cracked-smalltiles-duration60", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
+                    {"car-pov-2k-001-shortened-cracked-smalltiles-duration120", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
                     // car-pov-2k-001
                     {"car-pov-2k-001", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
                     {"car-pov-2k-001-3x3", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
@@ -322,7 +337,7 @@ std::unordered_set<int> MetadataManager::idealKeyframesForFrames(const std::vect
 
 const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) const {
     static std::vector<Rectangle> emptyVector;
-    if (frame < (int)metadataSpecification_.firstFrame() || frame >= (int)metadataSpecification_.lastFrame())
+    if ((unsigned int)frame < metadataSpecification_.firstFrame() || (unsigned int)frame >= metadataSpecification_.lastFrame())
         return emptyVector;
 
     std::scoped_lock lock(mutex_);

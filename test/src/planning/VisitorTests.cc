@@ -109,8 +109,14 @@ TEST_F(VisitorTestFixture, testScanAndSink) {
 }
 
 TEST_F(VisitorTestFixture, testCrackIntoTiles) {
-    auto input = ScanByGOP("car-pov-2k-001");
-    Coordinator().execute(input.StoreCracked("car-pov-2k-001-3x3"));
+//    auto input = ScanByGOP("car-pov-2k-001-shortened");
+//    Coordinator().execute(input.StoreCracked("car-pov-2k-001-shortened-3x3"));
+
+    std::vector<std::string> videos{"car-pov-2k-000-shortened", "car-pov-2k-001-shortened"};
+    for (const auto& video : videos) {
+        auto input = ScanByGOP(video);
+        Coordinator().execute(input.StoreCracked(video + "-3x3"));
+    }
 }
 
 TEST_F(VisitorTestFixture, testScanMultiTiled) {
@@ -119,17 +125,20 @@ TEST_F(VisitorTestFixture, testScanMultiTiled) {
 }
 
 TEST_F(VisitorTestFixture, testScanAndSave) {
-    auto input = Load("/home/maureen/car-pov-2k-000-shortened.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Store("car-pov-2k-000-shortened"));
+    auto input = Load("/home/maureen/car-pov-2k-001-shortened.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Store("car-pov-2k-001-shortened"));
 }
 
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
-    auto name = "car-pov-2k-000";
-    auto input = Scan(name);
-    MetadataSpecification metadataSelection("labels", "label", "car");
-    auto duration = 30;
-    std::string savedName = "car-pov-2k-000-cracked-smalltiles-fixed-duration" + std::to_string(duration);
-    Coordinator().execute(input.StoreCracked(savedName, name, &metadataSelection, duration));
+    auto name = "car-pov-2k-001-shortened";
+    std::vector<int> durations{20000}; //, //30, 60};
+//    auto duration = 30;
+    for (const auto &duration : durations) {
+        auto input = Scan(name);
+        MetadataSpecification metadataSelection("labels", "label", "car");
+        std::string savedName = "test-crack"; // + std::to_string(duration);
+        Coordinator().execute(input.StoreCracked(savedName, name, &metadataSelection, duration));
+    }
 }
 
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata2) {
@@ -312,13 +321,13 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
 }
 
 TEST_F(VisitorTestFixture, testBasicSelection) {
-    auto catalogEntry = "car-pov-2k-000-shortened";
+    auto catalogEntry = "car-pov-2k-000-shortened-3x3";
     auto object = "car";
 
     PixelMetadataSpecification selection("labels", "label", object);
-//    bool usesOnlyOneTile = false;
-    auto input = Scan(catalogEntry);
-    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
+    bool usesOnlyOneTile = true;
+    auto input = ScanMultiTiled(catalogEntry, usesOnlyOneTile);
+//    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
     Coordinator().execute(input.Select(selection));
 }
 

@@ -501,7 +501,8 @@ public:
         totalWidth_(0),
         totalHeight_(0),
         largestWidth_(0),
-        largestHeight_(0)
+        largestHeight_(0),
+        maximumFrame_(0)
     {
         loadAllTileConfigurations();
     }
@@ -519,6 +520,8 @@ public:
 
     unsigned int largestWidth() const { return largestWidth_; }
     unsigned int largestHeight() const { return largestHeight_; }
+
+    unsigned int maximumFrame() const { return maximumFrame_; }
 
 private:
     void loadAllTileConfigurations();
@@ -544,6 +547,7 @@ private:
     unsigned int totalHeight_;
     unsigned int largestWidth_;
     unsigned int largestHeight_;
+    unsigned int maximumFrame_;
 };
 
 class TileLocationProvider {
@@ -553,6 +557,7 @@ public:
     unsigned int frameOffsetInTileFile(const std::filesystem::path &tilePath) const {
         return catalog::TileFiles::firstAndLastFramesFromPath(tilePath.parent_path()).first;
     }
+    virtual unsigned int lastFrameWithLayout() const = 0;
 
     virtual ~TileLocationProvider() { }
 };
@@ -602,6 +607,10 @@ public:
     const TileLayout &tileLayoutForFrame(unsigned int frame) const override {
         std::scoped_lock lock(mutex_);
         return tileLayoutsManager_->tileLayoutForId(layoutIdForFrame(frame));
+    }
+
+    unsigned int lastFrameWithLayout() const override {
+        return tileLayoutsManager_->maximumFrame();
     }
 
 private:

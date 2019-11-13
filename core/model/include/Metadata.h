@@ -14,6 +14,12 @@ namespace lightdb {
             firstFrame_(firstFrame), lastFrame_(lastFrame)
         { }
 
+        MetadataSpecification(const MetadataSpecification &other, unsigned int numberOfFrames)
+            : MetadataSpecification(other)
+        {
+            lastFrame_ = std::min(lastFrame_, numberOfFrames);
+        }
+
         const std::string &tableName() const { return tableName_; }
         const std::string &columnName() const { return columnName_; }
         const std::string &expectedValue() const { return expectedValue_; }

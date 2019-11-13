@@ -151,7 +151,7 @@ namespace lightdb::logical {
                 const std::vector<catalog::Source> &sources,
                 std::optional<std::string> metadataIdentifier = {})
         : LightField(lightField),
-        metadataSelection_(metadataSpecification),
+        metadataSelection_(metadataSpecification, sources[0].mp4Reader().numberOfSamples()),
         subsetType_(subsetType),
         sources_(sources),
         metadataManager_(metadataIdentifier ? *metadataIdentifier : source().filename().string(), metadataSelection_)

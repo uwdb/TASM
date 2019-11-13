@@ -457,10 +457,10 @@ namespace lightdb::optimization {
 //                auto tileLocationProvider = std::make_shared<tiles::MultiTileLocationProvider>(tileLayoutsManager, metadataManager, 30);
 
                 // To measure sizes of tiles.
-                auto measure = plan().emplace<physical::MeasureStorageOperator>(physical_parents[0]->logical(), tileLayoutsManager);
-                auto sink = plan().emplace<physical::Sink>(logical, measure);
-                plan().remove_operator(physical_parents[0]);
-                return true;
+//                auto measure = plan().emplace<physical::MeasureStorageOperator>(physical_parents[0]->logical(), tileLayoutsManager);
+//                auto sink = plan().emplace<physical::Sink>(logical, measure);
+//                plan().remove_operator(physical_parents[0]);
+//                return true;
 
                 auto scan = plan().emplace<physical::ScanMultiTileOperator>(
                         physical_parents[0]->logical(),

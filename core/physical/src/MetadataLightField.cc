@@ -151,6 +151,9 @@ namespace lightdb::associations {
                     {"car-pov-2k-000-cracked-smalltiles-duration120", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
                     {"car-pov-2k-000-3x3", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
                     {"car-pov-2k-000-cracked-smalltiles-fixed-duration30", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
+                    // car-pov-2k-000-shortened
+                    {"car-pov-2k-000-shortened", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
+
                     // car-pov-2k-001
                     {"car-pov-2k-001", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},
                     {"car-pov-2k-001-3x3", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},

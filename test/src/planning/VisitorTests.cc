@@ -119,8 +119,8 @@ TEST_F(VisitorTestFixture, testScanMultiTiled) {
 }
 
 TEST_F(VisitorTestFixture, testScanAndSave) {
-    auto input = Load("/home/bhaynes/projects/visualroad/maureen/2k-car-pov/traffic-001.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Store("car-pov-2k-001"));
+    auto input = Load("/home/maureen/car-pov-2k-000-shortened.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Store("car-pov-2k-000-shortened"));
 }
 
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
@@ -312,7 +312,7 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
 }
 
 TEST_F(VisitorTestFixture, testBasicSelection) {
-    auto catalogEntry = "car-pov-2k-000";
+    auto catalogEntry = "car-pov-2k-000-shortened";
     auto object = "car";
 
     PixelMetadataSpecification selection("labels", "label", object);

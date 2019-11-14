@@ -125,8 +125,19 @@ TEST_F(VisitorTestFixture, testScanMultiTiled) {
 }
 
 TEST_F(VisitorTestFixture, testScanAndSave) {
-    auto input = Load("/home/maureen/car-pov-2k-001-shortened.mp4", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Store("car-pov-2k-001-shortened"));
+    {
+        auto input = Load(
+                "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002/4k_002_downsampled_to_1k.mp4",
+                Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+        Coordinator().execute(input.Store("traffic-4k-002-ds1k"));
+    }
+
+    {
+        auto input = Load(
+                "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/traffic-4k-002/4k_002_downsampled_to_2k.mp4",
+                Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+        Coordinator().execute(input.Store("traffic-4k-002-ds2k"));
+    }
 }
 
 TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
@@ -138,6 +149,22 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
         MetadataSpecification metadataSelection("labels", "label", "car");
         std::string savedName = "test-crack"; // + std::to_string(duration);
         Coordinator().execute(input.StoreCracked(savedName, name, &metadataSelection, duration));
+    }
+}
+
+TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
+//    std::vector<std::string> videos{"car-pov-2k-000", "car-pov-2k-001", "traffic-1k-002", "traffic-4k-000", "traffic-4k-002",
+//                                      "traffic-4k-002-ds1k", "traffic-4k-002-ds2k"};
+    std::vector<std::string> videos{"traffic-2k-001"};
+    std::vector<int> durations{60};
+    for (const auto &video : videos) {
+        for (const auto &duration : durations) {
+            std::cout << "*** Cracking " << video << ", " << duration << std::endl;
+            auto input = Scan(video);
+            MetadataSpecification metadataSpecification("labels", "label", "car");
+            std::string savedName = video + "-cracked-smalltiles-duration" + std::to_string(duration);
+            Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration));
+        }
     }
 }
 
@@ -321,30 +348,38 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
 }
 
 TEST_F(VisitorTestFixture, testBasicSelection) {
-    auto catalogEntry = "car-pov-2k-000-shortened-3x3";
+    auto catalogEntry = "car-pov-2k-001-shortened-cracked-smalltiles-duration120";
     auto object = "car";
 
     PixelMetadataSpecification selection("labels", "label", object);
-    bool usesOnlyOneTile = true;
+    bool usesOnlyOneTile = false;
     auto input = ScanMultiTiled(catalogEntry, usesOnlyOneTile);
 //    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
     Coordinator().execute(input.Select(selection));
 }
 
-TEST_F(VisitorTestFixture, testMeasureDifferentTilingStrategies) {
-    std::vector<std::string> tileSuffixes{"-3x3",
-                                          "-cracked-grouping-extent-entire-video", "-cracked-grouping-extent-duration30", "-cracked-grouping-extent-duration60",
-                                          "-cracked-smalltiles-fixed-duration30", "-cracked-smalltiles-duration60", "-cracked-smalltiles-duration120"};
+TEST_F(VisitorTestFixture, testMeasureSmallTiles) {
+    std::vector<std::string> videos{"car-pov-2k-000", "car-pov-2k-001", "traffic-1k-002", "traffic-2k-001", "traffic-4k-000",
+                                    "traffic-4k-002", "traffic-4k-002-ds1k", "traffic-4k-002-ds2k"};
 
-    for (const auto& suffix : tileSuffixes) {
-        auto catalogEntry = "car-pov-2k-000" + suffix;
-        auto object = "car";
+    std::vector<std::string> tileSuffixes{"-cracked-smalltiles-duration30", "-cracked-smalltiles-duration60", "-cracked-smalltiles-duration120"};
+//    std::unordered_set<std::string> usesOnlyOneTileStrategies{"-3x3", "-cracked-grouping-extent-entire-video"};
 
-        PixelMetadataSpecification selection("labels", "label", object);
-        bool usesOnlyOneTile = false;
-        auto input = ScanMultiTiled(catalogEntry, usesOnlyOneTile);
-//    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
-        Coordinator().execute(input.Select(selection));
+    for (const auto &video : videos) {
+        for (const auto& suffix : tileSuffixes) {
+            for (int i = 0; i < 3; ++i) {
+                std::cout << "\n***video," << video  << "\n***tile strategy," << suffix  << std::endl;
+
+                auto catalogEntry = video + suffix;
+                auto object = "car";
+
+                PixelMetadataSpecification selection("labels", "label", object);
+                bool usesOnlyOneTile = false;
+                auto input = ScanMultiTiled(catalogEntry, usesOnlyOneTile);
+    //    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
+                Coordinator().execute(input.Select(selection));
+            }
+        }
     }
 }
 

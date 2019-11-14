@@ -1045,7 +1045,7 @@ namespace lightdb::optimization {
                 if (node.metadataManager()) {
 //                    auto tileLayoutDuration = 60; // TODO: Make layout duration argument to CrackedLightField.
                     assert(node.layoutDuration());
-                    tileConfig = std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
+                    tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
                                                             node.layoutDuration(),
                                                             node.metadataManager(),
                                                             width,

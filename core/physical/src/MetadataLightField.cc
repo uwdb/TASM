@@ -211,10 +211,18 @@ namespace lightdb::metadata {
 
     void MetadataManager::selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn) const {
         char *selectFramesStatement = nullptr;
-        int size = asprintf(&selectFramesStatement, query,
+        int size = -1;
+        if (metadataSpecification_.expectedValue().length()) {
+            size = asprintf(&selectFramesStatement, query,
                             metadataSpecification_.tableName().c_str(),
                             metadataSpecification_.columnName().c_str(),
                             metadataSpecification_.expectedValue().c_str());
+        } else {
+            size = asprintf(&selectFramesStatement, query,
+                            metadataSpecification_.tableName().c_str(),
+                            metadataSpecification_.columnName().c_str(),
+                            std::to_string(metadataSpecification_.expectedIntValue()).c_str());
+        }
         assert(size != -1);
         selectFromMetadataWithoutQuerySubstitutionsAndApplyFunction(selectFramesStatement, size, resultFn, afterOpeningFn);
         free(selectFramesStatement);
@@ -245,12 +253,22 @@ void MetadataManager::selectFromMetadataAndApplyFunctionWithFrameLimits(const ch
         afterOpeningFn(db_);
 
     char *selectFramesStatement = nullptr;
-    int size = asprintf(&selectFramesStatement, query,
-                        metadataSpecification_.tableName().c_str(),
-                        metadataSpecification_.columnName().c_str(),
-                        metadataSpecification_.expectedValue().c_str(),
-                        std::to_string(metadataSpecification_.firstFrame()).c_str(),
-                        std::to_string(metadataSpecification_.lastFrame()).c_str());
+    int size = -1;
+    if (metadataSpecification_.expectedValue().length()) {
+        size = asprintf(&selectFramesStatement, query,
+                         metadataSpecification_.tableName().c_str(),
+                         metadataSpecification_.columnName().c_str(),
+                         metadataSpecification_.expectedValue().c_str(),
+                         std::to_string(metadataSpecification_.firstFrame()).c_str(),
+                         std::to_string(metadataSpecification_.lastFrame()).c_str());
+    } else {
+        size = asprintf(&selectFramesStatement, query,
+                         metadataSpecification_.tableName().c_str(),
+                         metadataSpecification_.columnName().c_str(),
+                         std::to_string(metadataSpecification_.expectedIntValue()).c_str(),
+                         std::to_string(metadataSpecification_.firstFrame()).c_str(),
+                         std::to_string(metadataSpecification_.lastFrame()).c_str());
+    }
     assert(size != -1);
 
     sqlite3_stmt *select;
@@ -273,7 +291,13 @@ const std::unordered_set<int> &MetadataManager::framesForMetadata() const {
     if (didSetFramesForMetadata_)
         return framesForMetadata_;
 
-    selectFromMetadataAndApplyFunctionWithFrameLimits("SELECT DISTINCT frame FROM %s WHERE %s = '%s' AND frame >= %s AND frame < %s;", [this](sqlite3_stmt *stmt) {
+    std::string query;
+    if (metadataSpecification_.expectedValue().length())
+        query = "SELECT DISTINCT frame FROM %s WHERE %s = '%s' AND frame >= %s AND frame < %s;";
+    else
+        query = "SELECT DISTINCT frame FROM %s WHERE %s = %s AND frame >= %s AND frame < %s;";
+
+    selectFromMetadataAndApplyFunctionWithFrameLimits(query.c_str(), [this](sqlite3_stmt *stmt) {
         framesForMetadata_.insert(sqlite3_column_int(stmt, 0));
     });
 
@@ -346,7 +370,11 @@ const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) con
     if (frameToRectangles_.count(frame))
         return frameToRectangles_[frame];
 
-    std::string query = "SELECT frame, x, y, width, height FROM %s WHERE %s = '%s' and frame = " + std::to_string(frame) + ";";
+    std::string query;
+    if (metadataSpecification_.expectedValue().length())
+        query = "SELECT frame, x, y, width, height FROM %s WHERE %s = '%s' and frame = " + std::to_string(frame) + ";";
+    else
+        query = "SELECT frame, x, y, width, height FROM %s WHERE %s = %s and frame = " + std::to_string(frame) + ";";
 
     selectFromMetadataAndApplyFunction(query.c_str(), [this, frame](sqlite3_stmt *stmt) {
         unsigned int queryFrame = sqlite3_column_int(stmt, 0);
@@ -363,7 +391,13 @@ const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) con
 
 std::unique_ptr<std::list<Rectangle>> MetadataManager::rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const {
     std::unique_ptr<std::list<Rectangle>> rectangles(new std::list<Rectangle>());
-    std::string query = "SELECT frame, x, y, width, height FROM %s WHERE %s = '%s' and frame >= " + std::to_string(firstFrameInclusive) + " and frame < " + std::to_string(lastFrameExclusive);
+    std::string query;
+    if (metadataSpecification_.expectedValue().length())
+        query = "SELECT frame, x, y, width, height FROM %s WHERE %s = '%s' and frame >= ";
+    else
+        query = "SELECT frame, x, y, width, height FROM %s WHERE %s = %s and frame >= ";
+
+    query = query + std::to_string(firstFrameInclusive) + " and frame < " + std::to_string(lastFrameExclusive);
     selectFromMetadataAndApplyFunction(query.c_str(), [&](sqlite3_stmt *stmt) {
         unsigned int frame = sqlite3_column_int(stmt, 0);
         unsigned int x = sqlite3_column_int(stmt, 1);
@@ -480,7 +514,11 @@ std::vector<int> MetadataManager::framesForTileAndMetadata(unsigned int tile, co
         ASSERT_SQLITE_OK(sqlite3_create_function(db, "RECTANGLEINTERSECT", 4, SQLITE_UTF8 | SQLITE_DETERMINISTIC, &tileRectangle, doesRectangleIntersectTileRectangle, NULL, NULL));
     };
 
-    std::string query = "SELECT DISTINCT frame FROM %s WHERE %s = '%s' AND frame >= %s AND frame < %s AND RECTANGLEINTERSECT(x, y, width, height) == 1;";
+    std::string query;
+    if (metadataSpecification_.expectedValue().length())
+        query = "SELECT DISTINCT frame FROM %s WHERE %s = '%s' AND frame >= %s AND frame < %s AND RECTANGLEINTERSECT(x, y, width, height) == 1;";
+    else
+        query = "SELECT DISTINCT frame FROM %s WHERE %s = %s AND frame >= %s AND frame < %s AND RECTANGLEINTERSECT(x, y, width, height) == 1;";
 
     std::vector<int> frames;
     selectFromMetadataAndApplyFunctionWithFrameLimits(query.c_str(), [&](sqlite3_stmt *stmt) {

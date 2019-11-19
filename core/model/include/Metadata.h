@@ -11,7 +11,14 @@ namespace lightdb {
         MetadataSpecification(const std::string &tableName, const std::string &columnName, const std::string &expectedValue,
                 unsigned int firstFrame = 0, unsigned int lastFrame = UINT32_MAX)
             : tableName_(tableName), columnName_(columnName), expectedValue_(expectedValue),
+            expectedIntValue_(-1),
             firstFrame_(firstFrame), lastFrame_(lastFrame)
+        { }
+
+        MetadataSpecification(const std::string &tableName, const std::string &columnName, int expectedValue,
+                              unsigned int firstFrame = 0, unsigned int lastFrame = UINT32_MAX)
+                : tableName_(tableName), columnName_(columnName), expectedValue_(""), expectedIntValue_(expectedValue),
+                  firstFrame_(firstFrame), lastFrame_(lastFrame)
         { }
 
         MetadataSpecification(const MetadataSpecification &other, unsigned int numberOfFrames)
@@ -23,6 +30,7 @@ namespace lightdb {
         const std::string &tableName() const { return tableName_; }
         const std::string &columnName() const { return columnName_; }
         const std::string &expectedValue() const { return expectedValue_; }
+        const int &expectedIntValue() const { return expectedIntValue_; }
 
         unsigned int firstFrame() const { return firstFrame_; }
         unsigned int lastFrame() const { return lastFrame_; }
@@ -31,6 +39,7 @@ namespace lightdb {
         std::string tableName_;
         std::string columnName_;
         std::string expectedValue_;
+        int expectedIntValue_;
         unsigned int firstFrame_;
         unsigned int lastFrame_;
     };

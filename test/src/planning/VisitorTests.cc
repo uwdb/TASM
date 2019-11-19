@@ -404,6 +404,14 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
     }
 }
 
+TEST_F(VisitorTestFixture, testTrackVehicle) {
+    auto video = "traffic-2k-001";
+    PixelMetadataSpecification selection("labels", "tracking_id", 0);
+    auto input = Scan(video);
+    input.downcast<ScannedLightField>().setWillReadEntireEntry(false);
+    Coordinator().execute(input.Select(selection));
+}
+
 TEST_F(VisitorTestFixture, testTilingOnDecode30) {
     std::default_random_engine generator(1);
     unsigned int timeRange = 2;

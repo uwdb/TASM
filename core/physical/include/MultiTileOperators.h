@@ -171,8 +171,9 @@ private:
             endOfFramesIterator_ = std::lower_bound(physical.metadataManager()->orderedFramesForMetadata().begin(),
                     physical.metadataManager()->orderedFramesForMetadata().end(),
                     tileLocationProvider_->lastFrameWithLayout());
-            if (endOfFramesIterator_ != physical.metadataManager()->orderedFramesForMetadata().end())
-                std::cerr << "WARNING: Video has fewer frames than in object database" << std::endl;
+            std::cout << "***numberOfFrames," << tileLocationProvider_->lastFrameWithLayout() << std::endl;
+//            if (endOfFramesIterator_ != physical.metadataManager()->orderedFramesForMetadata().end())
+//                std::cerr << "WARNING: Video has fewer frames than in object database" << std::endl;
             preprocess();
         }
 
@@ -260,8 +261,13 @@ private:
             assert(totalVideoWidth_);
             assert(totalVideoHeight_);
             // TODO: Figure out how to get maximum coded width/height.
+            static const unsigned int CodedDimension = 32;
             configuration.max_width = std::max(totalVideoWidth_, configuration.max_width);
+            if (configuration.max_width % CodedDimension)
+                configuration.max_width = (configuration.max_width / CodedDimension + 1) * CodedDimension;
             configuration.max_height = std::max(totalVideoHeight_, configuration.max_height);
+            if (configuration.max_height % CodedDimension)
+                configuration.max_height = (configuration.max_height / CodedDimension + 1) * CodedDimension;
 
             auto cpuData = MaterializedLightFieldReference::make<CPUEncodedFrameData>(
                     Codec::hevc(),

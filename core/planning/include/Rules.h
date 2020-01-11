@@ -973,6 +973,8 @@ namespace lightdb::optimization {
         const OptimizerReference optimizer_;
     };
 
+    static unsigned int UNIFORM_TILING_DIMENSION = 1;
+
     class ChooseStore : public OptimizerRule {
     public:
         using OptimizerRule::OptimizerRule;
@@ -1046,13 +1048,34 @@ namespace lightdb::optimization {
                 if (node.metadataManager()) {
 //                    auto tileLayoutDuration = 60; // TODO: Make layout duration argument to CrackedLightField.
                     assert(node.layoutDuration());
-                    tileConfig = std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
-                                                            node.layoutDuration(),
-                                                            node.metadataManager(),
-                                                            width,
-                                                            height);
+                    assert(node.crackingStrategy() != CrackingStrategy::None);
+                    if (node.crackingStrategy() == CrackingStrategy::SmallTiles) {
+                        tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                                node.layoutDuration(),
+                                node.metadataManager(),
+                                width,
+                                height);
+                    } else if (node.crackingStrategy() == CrackingStrategy::GroupingExtent) {
+                        tileConfig = std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
+                                node.layoutDuration(),
+                                node.metadataManager(),
+                                width,
+                                height);
+                    } else {
+                        // Unrecognized cracking strategy.
+                        assert(false);
+                    }
                 } else {
-                    tileConfig = std::make_shared<tiles::Threex3TileConfigurationProvider>(width, height);
+                    if (UNIFORM_TILING_DIMENSION == 2)
+                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<2>>(width, height);
+                    else if (UNIFORM_TILING_DIMENSION == 3)
+                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<3>>(width, height);
+                    else if (UNIFORM_TILING_DIMENSION == 4)
+                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<4>>(width, height);
+                    else if (UNIFORM_TILING_DIMENSION == 5)
+                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<5>>(width, height);
+                    else
+                        assert(false);
                 }
 
                 auto crack = plan().emplace<physical::CrackVideo>(

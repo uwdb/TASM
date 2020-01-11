@@ -19,6 +19,12 @@ namespace lightdb {
     namespace logical { class Algebra; }
     using LightFieldReference = shared_reference<LightField, logical::Algebra>;
 
+    enum class CrackingStrategy {
+        None,
+        SmallTiles,
+        GroupingExtent,
+    };
+
     namespace catalog {
         class Entry;
         class TileEntry;

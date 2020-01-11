@@ -883,8 +883,8 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
 
     m_stCreateEncodeParams.darWidth = pEncCfg->width;
     m_stCreateEncodeParams.darHeight = pEncCfg->height;
-    m_stCreateEncodeParams.frameRateNum = static_cast<uint32_t>(pEncCfg->framerate.fps());
-    m_stCreateEncodeParams.frameRateDen = 1;
+    m_stCreateEncodeParams.frameRateNum = static_cast<uint32_t>(pEncCfg->framerate.numerator()); // static_cast<uint32_t>(pEncCfg->framerate.fps());
+    m_stCreateEncodeParams.frameRateDen = static_cast<uint32_t>(pEncCfg->framerate.denominator()); // 1;
     m_stCreateEncodeParams.enableEncodeAsync = 0;
 
     m_stCreateEncodeParams.enablePTD = 1;
@@ -923,7 +923,8 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
 
     if (pEncCfg->bitrate || pEncCfg->videoBufferingVerifier.maxBitrate)
     {
-        m_stEncodeConfig.rcParams.rateControlMode = (NV_ENC_PARAMS_RC_MODE)pEncCfg->quantization.rateControlMode;
+        m_stEncodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_VBR; //  (NV_ENC_PARAMS_RC_MODE)pEncCfg->quantization.rateControlMode;
+        m_stEncodeConfig.rcParams.targetQuality = 28;
         m_stEncodeConfig.rcParams.averageBitRate = pEncCfg->bitrate;
         m_stEncodeConfig.rcParams.maxBitRate = pEncCfg->videoBufferingVerifier.maxBitrate;
         m_stEncodeConfig.rcParams.vbvBufferSize = pEncCfg->videoBufferingVerifier.size;

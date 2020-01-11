@@ -27,6 +27,7 @@ struct Configuration {
         { }
 
         lightdb::real_type fps() const { return (lightdb::real_type)*this; }
+
     } framerate;
     struct {
         unsigned int left, top;

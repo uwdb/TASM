@@ -120,7 +120,7 @@ public:
 
       // Should be part of init, but oh well.
       preallocatedFrameArrays_.resize(NUMBER_OF_PREALLOCATED_FRAMES);
-      heightOfPreallocatedFrameArrays_ = largestHeight * 3 / 2;
+      heightOfPreallocatedFrameArrays_ = (largestHeight + 0) * 3 / 2;
 
       for (unsigned int i = 0u; i < NUMBER_OF_PREALLOCATED_FRAMES; ++i) {
           CUdeviceptr handle;

@@ -174,7 +174,13 @@ private:
             std::cout << "***numberOfFrames," << tileLocationProvider_->lastFrameWithLayout() << std::endl;
 //            if (endOfFramesIterator_ != physical.metadataManager()->orderedFramesForMetadata().end())
 //                std::cerr << "WARNING: Video has fewer frames than in object database" << std::endl;
+            Timer timer;
+            timer.startSection("preprocess");
             preprocess();
+            timer.endSection("preprocess");
+            timer.printAllTimes();
+            sqlTimer_.printAllTimes();
+            std::cout << "done" << std::endl;
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -383,7 +389,9 @@ private:
                 auto tileRect = currentTileLayout_->rectangleForTile(i);
                 tileNumberForCurrentLayoutToFrames_[i].reserve(possibleFrames.size());
                 for (auto frame = possibleFrames.begin(); frame != possibleFrames.end(); ++frame) {
+                    sqlTimer_.startSection("getframes");
                     auto &rectanglesForFrame = physical().metadataManager()->rectanglesForFrame(*frame);
+                    sqlTimer_.endSection("getframes");
                     bool anyIntersect = std::any_of(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](auto &rectangle) {
                         return tileRect.intersects(rectangle);
                     });
@@ -394,6 +402,8 @@ private:
             }
             return possibleFrames.begin();
         }
+
+        Timer sqlTimer_;
 
         unsigned int tileNumberForCurrentLayout_;
         const std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider_;

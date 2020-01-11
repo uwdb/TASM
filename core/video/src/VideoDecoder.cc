@@ -40,12 +40,8 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
                                          &mappedHandle, &pitch, &mapParameters)) != CUDA_SUCCESS)
             throw GpuCudaRuntimeError("Call to cuvidMapVideoFrame failed", result);
 
-//        CUdeviceptr newHandle;
-//        size_t newPitch;
-        auto width = format.coded_width; //  format.display_area.right - format.display_area.left;
-        auto height = format.coded_height; // format.display_area.bottom - format.display_area.top;
-//        result = cuMemAllocPitch(&newHandle, &newPitch, width, height * 3 / 2, 16);
-//        assert(result == CUDA_SUCCESS);
+        auto width = format.display_area.right - format.display_area.left; // format.coded_width;
+        auto height = format.display_area.bottom - format.display_area.top; // format.coded_height;
 
         while (!availableFrameArrays_.read_available())
             std::this_thread::yield();

@@ -406,20 +406,24 @@ namespace lightdb::logical {
                           std::optional<GeometryReference> geometry={},
                           Codec codec=Codec::hevc(),
                           std::shared_ptr<metadata::MetadataManager> metadataManager=nullptr,
-                          unsigned int layoutDuration=0)
+                          unsigned int layoutDuration=0,
+                          CrackingStrategy crackingStrategy=CrackingStrategy::None)
             : StoredLightField(source, name, catalog, geometry, codec),
             metadataManager_(metadataManager),
-            layoutDuration_(layoutDuration)
+            layoutDuration_(layoutDuration),
+            crackingStrategy_(crackingStrategy)
         { }
 
         std::shared_ptr<metadata::MetadataManager> metadataManager() const { return metadataManager_; }
         unsigned int layoutDuration() const { return layoutDuration_; }
+        CrackingStrategy crackingStrategy() const { return crackingStrategy_; }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<CrackedLightField>(visitor); }
 
     private:
         std::shared_ptr<metadata::MetadataManager> metadataManager_;
         unsigned int layoutDuration_;
+        CrackingStrategy crackingStrategy_;
     };
 
     class SavedLightField : public LightField {

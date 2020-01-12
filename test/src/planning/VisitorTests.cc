@@ -40,21 +40,6 @@ TEST_F(VisitorTestFixture, testBaz) {
     Coordinator().execute(encoded);
 }
 
-//TEST_F(VisitorTestFixture, testDropFrames) {
-//    // "/home/maureen/dog_videos/dog.hevc"
-//    // "/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc"
-//    auto input = Load("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-//    auto shortened = input.Map(DropFrames).Save("/home/maureen/uadetrac_videos/MVI_20011/MVI_20011_car_frames.hevc");
-//    Coordinator().execute(shortened);
-//}
-
-//TEST_F(VisitorTestFixture, testSelectPixels) {
-//    // "/home/maureen/dog_videos/dog_pixels_gpu.hevc"
-//    auto input = Load("/home/maureen/dog_videos/runningDog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-//    auto selected = input.Map(SelectPixels).Save("/home/maureen/dog_videos/runningDogPixels.hevc");
-//    Coordinator().execute(selected);
-//}
-
 TEST_F(VisitorTestFixture, testMakeBoxes) {
     auto yolo = lightdb::extensibility::Load("yolo");
     auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
@@ -69,31 +54,6 @@ TEST_F(VisitorTestFixture, testDrawBoxes) {
 
 }
 
-//TEST_F(VisitorTestFixture, testMapAndBoxThings) {
-///*    auto left = Scan("red10");
-//    auto right = Scan("red10");
-//    auto unioned = left.Union(right);
-//    auto encoded = unioned.Encode();
-//    */
-//    //auto foo = dlopen("/home/bhaynes/projects/yolo/cmake-build-debug/libyolo.so", RTLD_LAZY | RTLD_GLOBAL);
-//    //printf( "Could not open file : %s\n", dlerror() );
-//    auto yolo = lightdb::extensibility::Load("yolo"); //, "/home/bhaynes/projects/yolo/cmake-build-debug");
-//
-//    auto input = Load("/home/maureen/dog_videos/dog.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-//    Coordinator().execute(input.Map(DropFrames).Save("/home/maureen/dog_videos/dog_dog.hevc"));
-////    auto boxes = Load("/home/maureen/dog_videos/short_dog_labels/dog_short_dog_labels.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-////    Coordinator().execute(boxes.Union(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
-//
-////    auto input = Load("/home/maureen/dog_videos/dogBoxes.boxes", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-////    Coordinator().execute(input);
-//
-////    auto boxesOnInput = input.Map(yolo).Union(input).Save("/home/maureen/boxes_on_dog.hevc");
-////    auto boxes = input.Map(yolo);
-////    Coordinator().execute(boxes.Save("/home/maureen/lightdb/dogBoxes.boxes"));
-//
-////    Coordinator().execute(boxes.Uniocdn(input).Save("/home/maureen/dog_videos/boxes_on_dogs.hevc"));
-//}
-
 TEST_F(VisitorTestFixture, testLoadAndSelectFrames) {
 //    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
     auto input = Scan("dog_with_keyframes_real");
@@ -106,6 +66,55 @@ TEST_F(VisitorTestFixture, testLoadAndSelectFrames) {
 TEST_F(VisitorTestFixture, testScanAndSink) {
     auto input = Scan("traffic-4k");
     Coordinator().execute(input.Sink());
+}
+
+TEST_F(VisitorTestFixture, testIngestAndCrack) {
+    /* Read raw video into LightDB. */
+    std::string videoName = "elfuente2_2";
+    auto input = Load(
+            "/home/maureen/NFLX_dataset/ElFuente2_hevc.mp4",
+            Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(input.Store(videoName));
+
+    /* Crack entire video into uniform tiles. */
+    // This is ugly, but set "UNIFORM_TILING_DIMENSION" to the number of uniform tiles you want. It currently works for 2-5.
+    UNIFORM_TILING_DIMENSION = 2;
+    auto outputName = videoName + std::to_string(UNIFORM_TILING_DIMENSION) + "x" + std::to_string(UNIFORM_TILING_DIMENSION);
+    Coordinator().execute(Scan(videoName).StoreCracked(outputName));
+
+    /* Crack entire video into tiles based on metadata. */
+
+    // Specify object to crack on by specifying table name, column, and value.
+    auto object = "person";
+    MetadataSpecification metadataSelection("labels", "label", object);
+
+    // In StoreCracked, specify the key to "VideoPathToLabelsPath" (in MetadataLightField.cc) that points to the relevant database of objects.
+    auto databasePathKey = "elfuente2";
+
+    // Specify the number of frames the layout should persist for. Specifying a number greater than the number of frames
+    // means that the same tile layout will be used for the entire video.
+    auto layoutDuration = 20000000;
+
+    // Specify the name that the cracked video will be saved under.
+    auto savedName = videoName + "-cracked-" + object + "-entire-video";
+
+    // Specify cracking strategy.
+    // GroupingExtent - One large tile around all of the objects.
+    // SmallTiles - Small tiles around objects that are far enough apart.
+    auto crackingStrategy = CrackingStrategy::GroupingExtent;
+
+    // I don't remember why StoreCracked takes a pointer to metadata specification, but it does.
+    Coordinator().execute(Scan(videoName).StoreCracked(savedName, databasePathKey, &metadataSelection, layoutDuration, crackingStrategy));
+
+    /* Select pixels containing a person. */
+    // Currently this results in decode + sink.
+    auto firstFrame = 0u;
+    auto lastFrame = 180u; // Not inclusive.
+    // PixelMetadataSpecification takes the DB table, column, and value to match on.
+    PixelMetadataSpecification selection("labels", "label", object, firstFrame, lastFrame);
+
+    // Argument passed to ScanMultiTiled has to be a key in "VideoPathToLabelsPath".
+    Coordinator().execute(ScanMultiTiled(savedName).Select(selection));
 }
 
 TEST_F(VisitorTestFixture, testCrackIntoTiles) {

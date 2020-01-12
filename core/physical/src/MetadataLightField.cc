@@ -325,6 +325,7 @@ namespace lightdb::associations {
                     {"elfuente2-cracked-person-smalltiles-duration30", "/home/maureen/NFLX_dataset/detections/labels/elfuente2.db"},
                     {"elfuente2-cracked-person-smalltiles-duration60", "/home/maureen/NFLX_dataset/detections/labels/elfuente2.db"},
                     {"elfuente2-cracked-person-smalltiles-duration90", "/home/maureen/NFLX_dataset/detections/labels/elfuente2.db"},
+                    {"elfuente2_2-cracked-person-entire-video", "/home/maureen/NFLX_dataset/detections/labels/elfuente2.db"},
 
                     // oldtown
                     {"oldtown", "/home/maureen/NFLX_dataset/detections/labels/oldTown.db"},

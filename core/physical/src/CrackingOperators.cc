@@ -54,6 +54,8 @@ void CrackVideo::Runtime::readDataFromEncoders(bool shouldFlush) {
 }
 
 void CrackVideo::Runtime::encodeFrameToTiles(const GPUFrameReference &frame, int frameNumber) {
+    return; // Speed up getting tile layouts without actually doing encoding.
+
     bool shouldBeKeyframe = physical().desiredKeyframes().count(frameNumber);
     tiles::KeyframeConfigurationProvider *keyframeProvider = nullptr;
     if ((keyframeProvider = dynamic_cast<tiles::KeyframeConfigurationProvider *>(tileConfigurationProvider_.get())) != nullptr) {

@@ -923,8 +923,8 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
 
     if (pEncCfg->bitrate || pEncCfg->videoBufferingVerifier.maxBitrate)
     {
-        m_stEncodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_VBR; //  (NV_ENC_PARAMS_RC_MODE)pEncCfg->quantization.rateControlMode;
-        m_stEncodeConfig.rcParams.targetQuality = 28;
+        m_stEncodeConfig.rcParams.rateControlMode = (NV_ENC_PARAMS_RC_MODE)pEncCfg->quantization.rateControlMode; // NV_ENC_PARAMS_RC_VBR;
+//        m_stEncodeConfig.rcParams.targetQuality = 28;
         m_stEncodeConfig.rcParams.averageBitRate = pEncCfg->bitrate;
         m_stEncodeConfig.rcParams.maxBitRate = pEncCfg->videoBufferingVerifier.maxBitrate;
         m_stEncodeConfig.rcParams.vbvBufferSize = pEncCfg->videoBufferingVerifier.size;

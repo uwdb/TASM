@@ -174,8 +174,8 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
 }
 
 TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
-    std::vector<std::string> videos{ "traffic-2k-001" }; //, "traffic-1k-002",  "traffic-4k-000", "traffic-4k-002",
-//                                       "traffic-4k-002-ds1k"}; // "traffic-2k-001", "traffic-4k-002-ds2k",
+    std::vector<std::string> videos{ "traffic-2k-001" , "traffic-1k-002",  "traffic-4k-000", "traffic-4k-002",
+                                       "traffic-4k-002-ds1k", "traffic-4k-002-ds2k", "car-pov-2k-000-shortened", "car-pov-2k-001-shortened" };
 //    std::vector<std::string> videos{"birdsincage", "crowdrun", "elfuente1", "elfuente2", "oldtown", "seeking", "tennis"};
     std::unordered_map<std::string, std::vector<std::string>> videoToObjectsToCrackOn({
         {"aerial", {"car"}},
@@ -223,9 +223,9 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
         std::string object = "car";
 //        for (const auto &object : videoToObjectsToCrackOn.at(video)) {
             MetadataSpecification metadataSpecification("labels", "label", object);
-            std::vector<int> smallTileDurations{1};
+            std::vector<int> smallTileDurations{1, 2, 3};
             for (const auto &durationMultiplier : smallTileDurations) {
-                int duration = minFramesPerLayout * durationMultiplier;
+                int duration = baseFramerate * durationMultiplier;
                 auto input = Scan(video);
                 std::string savedName = video + "-cracked-" + object + "-smalltiles-duration" + std::to_string(duration);
                 std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
@@ -233,15 +233,15 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
                                                          CrackingStrategy::SmallTiles));
             }
 
-//            std::vector<int> largeTileDurations{1, 2, 3};
-//            for (const auto &durationMultiplier : largeTileDurations) {
-//                int duration = minFramesPerLayout * durationMultiplier;
-//                auto input = Scan(video);
-//                std::string savedName = video + "-cracked-" + object + "-grouping-extent-duration" + std::to_string(duration);
-//                std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
-//                Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
-//                                                         CrackingStrategy::GroupingExtent));
-//            }
+            std::vector<int> largeTileDurations{1, 2, 3};
+            for (const auto &durationMultiplier : largeTileDurations) {
+                int duration = baseFramerate * durationMultiplier;
+                auto input = Scan(video);
+                std::string savedName = video + "-cracked-" + object + "-grouping-extent-duration" + std::to_string(duration);
+                std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
+                Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
+                                                         CrackingStrategy::GroupingExtent));
+            }
 //            {
 //                auto input = Scan(video);
 //                auto duration = 2800000;

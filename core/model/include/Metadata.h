@@ -35,6 +35,8 @@ namespace lightdb {
         unsigned int firstFrame() const { return firstFrame_; }
         unsigned int lastFrame() const { return lastFrame_; }
 
+        virtual std::string whereClauseConstraints(bool includeFrameLimits = false) const;
+
     private:
         std::string tableName_;
         std::string columnName_;

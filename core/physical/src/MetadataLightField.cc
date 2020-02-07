@@ -614,22 +614,6 @@ namespace lightdb::associations {
             } );
 } // namespace lightdb::associations
 
-namespace lightdb {
-std::string MetadataSpecification::whereClauseConstraints(bool includeFrameLimits) const {
-    std::string valueConstraint = columnName_ + "= ";
-    if (expectedValue_.length())
-        valueConstraint += "'" + expectedValue_ + "'" ;
-    else
-        valueConstraint += std::to_string(expectedIntValue_);
-
-    if (!includeFrameLimits)
-        return valueConstraint;
-
-    return valueConstraint + " AND frame >= " + std::to_string(firstFrame_) + " AND frame < " + std::to_string(lastFrame_);
-}
-
-} // namespace lightdb
-
 namespace lightdb::physical {
 
 std::vector<Rectangle> MetadataLightField::allRectangles() {

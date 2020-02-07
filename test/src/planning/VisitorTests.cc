@@ -56,68 +56,68 @@ TEST_F(VisitorTestFixture, testDrawBoxes) {
 
 }
 
-TEST_F(VisitorTestFixture, testLoadAndSelectFrames) {
-//    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    auto input = Scan("dog_with_keyframes_real");
-    MetadataSpecification metadataSelection("LABELS", "LABEL", "dog");
-    Coordinator().execute(input.Select(metadataSelection).Store("dog_with_dog_selected"));
-//    Coordinator().execute(input.Select(metadataSelection).Save("/home/maureen/dog_videos/dog_with_dog_selected.hevc"));
-//    Coordinator().execute(input.Save("/home/maureen/test-add-pic-output-flag.hevc"));
-}
+//TEST_F(VisitorTestFixture, testLoadAndSelectFrames) {
+////    auto input = Load("/home/maureen/dog_videos/dog_with_keyframes.hevc", Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+//    auto input = Scan("dog_with_keyframes_real");
+//    MetadataSpecification metadataSelection("LABELS", "LABEL", "dog");
+//    Coordinator().execute(input.Select(metadataSelection).Store("dog_with_dog_selected"));
+////    Coordinator().execute(input.Select(metadataSelection).Save("/home/maureen/dog_videos/dog_with_dog_selected.hevc"));
+////    Coordinator().execute(input.Save("/home/maureen/test-add-pic-output-flag.hevc"));
+//}
 
 TEST_F(VisitorTestFixture, testScanAndSink) {
     auto input = Scan("traffic-4k");
     Coordinator().execute(input.Sink());
 }
 
-TEST_F(VisitorTestFixture, testIngestAndCrack) {
-    /* Read raw video into LightDB. */
-    std::string videoName = "elfuente2_2";
-    auto input = Load(
-            "/home/maureen/NFLX_dataset/ElFuente2_hevc.mp4",
-            Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Store(videoName));
-
-    /* Crack entire video into uniform tiles. */
-    // This is ugly, but set "UNIFORM_TILING_DIMENSION" to the number of uniform tiles you want. It currently works for 2-5.
-    UNIFORM_TILING_DIMENSION = 2;
-    auto outputName = videoName + std::to_string(UNIFORM_TILING_DIMENSION) + "x" + std::to_string(UNIFORM_TILING_DIMENSION);
-    Coordinator().execute(Scan(videoName).StoreCracked(outputName));
-
-    /* Crack entire video into tiles based on metadata. */
-
-    // Specify object to crack on by specifying table name, column, and value.
-    auto object = "person";
-    MetadataSpecification metadataSelection("labels", "label", object);
-
-    // In StoreCracked, specify the key to "VideoPathToLabelsPath" (in MetadataLightField.cc) that points to the relevant database of objects.
-    auto databasePathKey = "elfuente2";
-
-    // Specify the number of frames the layout should persist for. Specifying a number greater than the number of frames
-    // means that the same tile layout will be used for the entire video.
-    auto layoutDuration = 20000000;
-
-    // Specify the name that the cracked video will be saved under.
-    auto savedName = videoName + "-cracked-" + object + "-entire-video";
-
-    // Specify cracking strategy.
-    // GroupingExtent - One large tile around all of the objects.
-    // SmallTiles - Small tiles around objects that are far enough apart.
-    auto crackingStrategy = CrackingStrategy::GroupingExtent;
-
-    // I don't remember why StoreCracked takes a pointer to metadata specification, but it does.
-    Coordinator().execute(Scan(videoName).StoreCracked(savedName, databasePathKey, &metadataSelection, layoutDuration, crackingStrategy));
-
-    /* Select pixels containing a person. */
-    // Currently this results in decode + sink.
-    auto firstFrame = 0u;
-    auto lastFrame = 180u; // Not inclusive.
-    // PixelMetadataSpecification takes the DB table, column, and value to match on.
-    PixelMetadataSpecification selection("labels", "label", object, firstFrame, lastFrame);
-
-    // Argument passed to ScanMultiTiled has to be a key in "VideoPathToLabelsPath".
-    Coordinator().execute(ScanMultiTiled(savedName).Select(selection));
-}
+//TEST_F(VisitorTestFixture, testIngestAndCrack) {
+//    /* Read raw video into LightDB. */
+//    std::string videoName = "elfuente2_2";
+//    auto input = Load(
+//            "/home/maureen/NFLX_dataset/ElFuente2_hevc.mp4",
+//            Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+//    Coordinator().execute(input.Store(videoName));
+//
+//    /* Crack entire video into uniform tiles. */
+//    // This is ugly, but set "UNIFORM_TILING_DIMENSION" to the number of uniform tiles you want. It currently works for 2-5.
+//    UNIFORM_TILING_DIMENSION = 2;
+//    auto outputName = videoName + std::to_string(UNIFORM_TILING_DIMENSION) + "x" + std::to_string(UNIFORM_TILING_DIMENSION);
+//    Coordinator().execute(Scan(videoName).StoreCracked(outputName));
+//
+//    /* Crack entire video into tiles based on metadata. */
+//
+//    // Specify object to crack on by specifying table name, column, and value.
+//    auto object = "person";
+//    MetadataSpecification metadataSelection("labels", "label", object);
+//
+//    // In StoreCracked, specify the key to "VideoPathToLabelsPath" (in MetadataLightField.cc) that points to the relevant database of objects.
+//    auto databasePathKey = "elfuente2";
+//
+//    // Specify the number of frames the layout should persist for. Specifying a number greater than the number of frames
+//    // means that the same tile layout will be used for the entire video.
+//    auto layoutDuration = 20000000;
+//
+//    // Specify the name that the cracked video will be saved under.
+//    auto savedName = videoName + "-cracked-" + object + "-entire-video";
+//
+//    // Specify cracking strategy.
+//    // GroupingExtent - One large tile around all of the objects.
+//    // SmallTiles - Small tiles around objects that are far enough apart.
+//    auto crackingStrategy = CrackingStrategy::GroupingExtent;
+//
+//    // I don't remember why StoreCracked takes a pointer to metadata specification, but it does.
+//    Coordinator().execute(Scan(videoName).StoreCracked(savedName, databasePathKey, &metadataSelection, layoutDuration, crackingStrategy));
+//
+//    /* Select pixels containing a person. */
+//    // Currently this results in decode + sink.
+//    auto firstFrame = 0u;
+//    auto lastFrame = 180u; // Not inclusive.
+//    // PixelMetadataSpecification takes the DB table, column, and value to match on.
+//    PixelMetadataSpecification selection("labels", "label", object, firstFrame, lastFrame);
+//
+//    // Argument passed to ScanMultiTiled has to be a key in "VideoPathToLabelsPath".
+//    Coordinator().execute(ScanMultiTiled(savedName).Select(selection));
+//}
 
 TEST_F(VisitorTestFixture, testWorkloadCostEstimation) {
     struct VideoData{
@@ -395,7 +395,7 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
 //    auto duration = 30;
     for (const auto &duration : durations) {
         auto input = Scan(name);
-        MetadataSpecification metadataSelection("labels", "label", "car");
+        MetadataSpecification metadataSelection("labels", std::make_shared<SingleMetadataElement>("label", "car"));
         std::string savedName = "test-crack"; // + std::to_string(duration);
         Coordinator().execute(input.StoreCracked(savedName, name, &metadataSelection, duration));
     }
@@ -451,10 +451,8 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
 //        if (minFramesPerLayout % baseFramerate)
 //            minFramesPerLayout = baseFramerate * (minFramesPerLayout / baseFramerate + 1);
 
-//        std::string object = "car";
         for (const auto &object : videoToObjectsToCrackOn.at(video)) {
-            MetadataSpecification metadataSpecification("labels", "label", object);
-//            std::vector<int> smallTileDurations{10, 30, 60, 300, 600};
+            MetadataSpecification metadataSpecification("labels", std::make_shared<SingleMetadataElement>("label", object));
             std::vector<int> smallTileDurations{1, 2, 3, 4, 5};
             for (const auto &durationMultiplier : smallTileDurations) {
                 int duration = baseFramerate * durationMultiplier;
@@ -506,7 +504,7 @@ TEST_F(VisitorTestFixture, testDecodeSmallTilesFromTrafficVideos) {
             minFramesPerLayout = baseFramerate * (minFramesPerLayout / baseFramerate + 1);
 
         std::cout << "\n***object," << object << std::endl;
-        PixelMetadataSpecification selection("labels", "label", object);
+        PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object));
         for (auto durationMultiplier : tileDurations) {
             auto duration = durationMultiplier * baseFramerate;
             bool suffixIsForEntireVideo = durationMultiplier < 0;
@@ -524,21 +522,21 @@ TEST_F(VisitorTestFixture, testDecodeSmallTilesFromTrafficVideos) {
     }
 }
 
-TEST_F(VisitorTestFixture, testCrackBasedOnMetadata2) {
-    auto input = Scan("traffic-1k-002");
-    MetadataSpecification metadataSelection("labels", "label", "car");
-    Coordinator().execute(input.StoreCracked("traffic-1k-002-cracked-grouping-extent-duration60", "traffic-1k-002", &metadataSelection));
-}
+//TEST_F(VisitorTestFixture, testCrackBasedOnMetadata2) {
+//    auto input = Scan("traffic-1k-002");
+//    MetadataSpecification metadataSelection("labels", "label", "car");
+//    Coordinator().execute(input.StoreCracked("traffic-1k-002-cracked-grouping-extent-duration60", "traffic-1k-002", &metadataSelection));
+//}
 
-TEST_F(VisitorTestFixture, testExecuteCracking) {
-    PixelMetadataSpecification selection("labels", "label", "car", 8670, 8790);
+//TEST_F(VisitorTestFixture, testExecuteCracking) {
+//    PixelMetadataSpecification selection("labels", "label", "car", 8670, 8790);
+////
+////    auto input = Scan("traffic-2k");
+////    Coordinator().execute(input.Select(selection).Sink());
 //
-//    auto input = Scan("traffic-2k");
-//    Coordinator().execute(input.Select(selection).Sink());
-
-    auto input = ScanMultiTiled("traffic-2k-single-tile");
-    Coordinator().execute(input.Select(selection, true).Sink());
-}
+//    auto input = ScanMultiTiled("traffic-2k-single-tile");
+//    Coordinator().execute(input.Select(selection, true).Sink());
+//}
 
 TEST_F(VisitorTestFixture, testRemoveTiles) {
     REMOVE_TILES()
@@ -572,8 +570,8 @@ TEST_F(VisitorTestFixture, testIdealCrackingOnAlternatingSelections) {
             {
                 auto catalogEntry = "traffic-4k-002-single-tile";
 //                auto catalogEntry = "traffic-2k-001";
-                PixelMetadataSpecification selection("labels", "label", label, start,
-                                                     start + numberOfFramesInTimeRange);
+                PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label, start,
+                                                     start + numberOfFramesInTimeRange));
 
 
                 std::cout << std::endl << "\n\nStep: Selecting pixels with method " << method << " for object " << label
@@ -639,7 +637,7 @@ TEST_F(VisitorTestFixture, testLayoutImpactOnSelection) {
 
                 auto label = "car";
                 auto catalogEntry = "traffic-4k-002-downsampled2k-cracked-groupingextent-layoutduration30-car";
-                PixelMetadataSpecification selection("labels", "label", label, start, start+numberOfFramesInTimeRange);
+                PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label, start, start+numberOfFramesInTimeRange));
 
 
                 std::cout << std::endl << "\n\nStep: Selecting pixels with method " << method << " for object " << label
@@ -660,7 +658,7 @@ TEST_F(VisitorTestFixture, testLayoutImpactOnSelection) {
 
                 auto label = "car";
                 auto catalogEntry = "traffic-4k-002-downsampled2k-cracked-groupingextent-layoutduration60-car";
-                PixelMetadataSpecification selection("labels", "label", label, start, start+numberOfFramesInTimeRange);
+                PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label, start, start+numberOfFramesInTimeRange));
 
 
                 std::cout << std::endl << "\n\nStep: Selecting pixels with method " << method << " for object " << label
@@ -697,7 +695,7 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
 
     auto object = "car";
     unsigned int start = distribution(generator) / 30 * 30;
-    PixelMetadataSpecification selection("labels", "label", object, start, start + numberOfFramesInTimeRange);
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object, start, start + numberOfFramesInTimeRange));
 
     auto input = ScanMultiTiled(catalogEntry);
     Coordinator().execute(input.Select(selection, true));
@@ -707,7 +705,7 @@ TEST_F(VisitorTestFixture, testBasicSelection) {
     auto catalogEntry = "car-pov-2k-001-shortened";
     auto object = "car";
 
-    PixelMetadataSpecification selection("labels", "label", object);
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object));
 //    bool usesOnlyOneTile = false;
     auto input = Scan(catalogEntry);
 //    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
@@ -765,7 +763,7 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
         const auto &objectsForVideo = videoToObjectsToCrackOn.at(video);
         for (const auto &queryObject : objectsForVideo) {
             std::cout << "\n***object," << queryObject << std::endl;
-            PixelMetadataSpecification selection("labels", "label", queryObject);
+            PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", queryObject));
 
             auto runQuery = [&](const std::string &video, const std::string &suffix, bool usesOnlyOneTile) {
                 for (int i = 0; i < 3; ++i) {
@@ -825,7 +823,7 @@ TEST_F(VisitorTestFixture, testTrackVehicle) {
     std::unordered_set<std::string> usesOnlyOneTileStrategies{"-3x3", "-cracked-grouping-extent-entire-video"};
 
     for (const auto &trackingId : trackingIds) {
-        PixelMetadataSpecification selection("labels", "tracking_id", trackingId);
+        PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("tracking_id", trackingId));
         std::cout << "\n***tracking_id," << trackingId << std::endl;
 
         for (int i = 0; i < 1; ++i) {
@@ -869,7 +867,7 @@ TEST_F(VisitorTestFixture, testTilingOnDecode30) {
         unsigned int start = distribution(generator) / 30 * 30;
 
         auto object = "car";
-        PixelMetadataSpecification selection("labels", "label", object, start, start + numberOfFramesInTimeRange);
+        PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object, start, start + numberOfFramesInTimeRange));
         {
             std::cout << std::endl << "\n\nStep: entry: " << catalogEntry << ", object: " << object
                       << ", time-range: " << timeRange << ", strategy: " << method
@@ -904,7 +902,7 @@ TEST_F(VisitorTestFixture, testTilingOnDecode60) {
         unsigned int start = distribution(generator) / 30 * 30;
 
         auto object = "car";
-        PixelMetadataSpecification selection("labels", "label", object, start, start + numberOfFramesInTimeRange);
+        PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object, start, start + numberOfFramesInTimeRange));
         {
             std::cout << std::endl << "\n\nStep: entry: " << catalogEntry << ", object: " << object
                       << ", time-range: " << timeRange << ", strategy: " << method
@@ -938,7 +936,7 @@ TEST_F(VisitorTestFixture, testTilingOnDecode120) {
         unsigned int start = distribution(generator) / 30 * 30;
 
         auto object = "car";
-        PixelMetadataSpecification selection("labels", "label", object, start, start + numberOfFramesInTimeRange);
+        PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object, start, start + numberOfFramesInTimeRange));
         {
             std::cout << std::endl << "\n\nStep: entry: " << catalogEntry << ", object: " << object
                       << ", time-range: " << timeRange << ", strategy: " << method
@@ -957,318 +955,312 @@ TEST_F(VisitorTestFixture, testTilingOnDecode120) {
     }
 }
 
-TEST_F(VisitorTestFixture, testTileLayoutDurationOnSelectPixels) {
-    std::vector<unsigned int> timeRanges{2, 5};
-    for (auto timeRange : timeRanges) {
-        std::vector<std::string> entries{"traffic-2k-001-cracked-layoutduration30-car",
-                                         "traffic-2k-001-cracked-layoutduration60-car",
-                                         "traffic-2k-001-cracked-layoutduration120-car",
-                                         "traffic-2k-001-cracked-layoutduration240-car"};
-        for (auto &entry : entries) {
-            std::default_random_engine generator(1);
+//TEST_F(VisitorTestFixture, testTileLayoutDurationOnSelectPixels) {
+//    std::vector<unsigned int> timeRanges{2, 5};
+//    for (auto timeRange : timeRanges) {
+//        std::vector<std::string> entries{"traffic-2k-001-cracked-layoutduration30-car",
+//                                         "traffic-2k-001-cracked-layoutduration60-car",
+//                                         "traffic-2k-001-cracked-layoutduration120-car",
+//                                         "traffic-2k-001-cracked-layoutduration240-car"};
+//        for (auto &entry : entries) {
+//            std::default_random_engine generator(1);
+//
+//            auto numberOfFramesInTimeRange = timeRange * 60 * 30;
+//            auto totalNumberOfFrames = 27000;
+//
+//            std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
+//
+//            auto numberOfRounds = 20u;
+//
+//            for (auto i = 0u; i < numberOfRounds; ++i) {
+//                unsigned int start = distribution(generator) / 30 * 30;
+//
+//                PixelMetadataSpecification selection("labels", "label", "car", start,
+//                                                     start + numberOfFramesInTimeRange);
+//
+//                {
+//                    std::cout << std::endl << "\n\nStep: Selecting pixels from " << entry
+//                              << " from frames for "
+//                              << timeRange << " min, from " << start << " to " << start + numberOfFramesInTimeRange
+//                              << std::endl;
+//                    auto evenCracked = ScanMultiTiled(entry);
+//                    Coordinator().execute(evenCracked.Select(selection).Sink());
+//                }
+//
+//                sleep(3);
+//                GLOBAL_TIMER.reset();
+//            }
+//        }
+//    }
+//}
 
-            auto numberOfFramesInTimeRange = timeRange * 60 * 30;
-            auto totalNumberOfFrames = 27000;
-
-            std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-
-            auto numberOfRounds = 20u;
-
-            for (auto i = 0u; i < numberOfRounds; ++i) {
-                unsigned int start = distribution(generator) / 30 * 30;
-
-                PixelMetadataSpecification selection("labels", "label", "car", start,
-                                                     start + numberOfFramesInTimeRange);
-
-                {
-                    std::cout << std::endl << "\n\nStep: Selecting pixels from " << entry
-                              << " from frames for "
-                              << timeRange << " min, from " << start << " to " << start + numberOfFramesInTimeRange
-                              << std::endl;
-                    auto evenCracked = ScanMultiTiled(entry);
-                    Coordinator().execute(evenCracked.Select(selection).Sink());
-                }
-
-                sleep(3);
-                GLOBAL_TIMER.reset();
-            }
-        }
-    }
-}
-
-TEST_F(VisitorTestFixture, testPerformanceOnRandomSelectPixels) {
-    REMOVE_TILES()
-
-    std::default_random_engine generator(1);
-
-    const unsigned int fps = 30;
-    const unsigned int minimumNumberOfSelectionSeconds = 30;
-    const unsigned int maximumNumberOfSelectionSeconds = 180;
-    std::uniform_int_distribution<int> timeRangeDistribution(minimumNumberOfSelectionSeconds, maximumNumberOfSelectionSeconds);
-
-    auto totalNumberOfFrames = 27000;
-    // Make sure that no matter what start point we pick, it is far enough from the end even for the maximum selection range.
-    // *30 because 30 FPS
-    std::uniform_int_distribution<int> startingPointDistribution(0, totalNumberOfFrames - maximumNumberOfSelectionSeconds * fps);
-
-    auto method = "cracking";
-    auto numberOfRounds = 40u;
-    for (auto i = 0u; i < numberOfRounds; ++i) {
-        auto start = startingPointDistribution(generator) / 30 * 30;
-        auto duration = timeRangeDistribution(generator);
-        auto numberOfFramesInTimeRange = duration * fps;
-
-        {
-            auto label = "car";
-            PixelMetadataSpecification selection("labels", "label", label, start, start + numberOfFramesInTimeRange);
-
-            auto catalogEntry = "traffic-2k-001-single-tile-car";
-            std::cout << std::endl << "\n\nStep: Selecting pixels with method " << method << " for object " << label << " at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-            auto input = ScanMultiTiled(catalogEntry);
-            Coordinator().execute(input.Select(selection, true).Sink());
-        }
-
-        sleep(3);
-        GLOBAL_TIMER.reset();
-
-        {
-            auto label = "pedestrian";
-            PixelMetadataSpecification selection("labels", "label", label, start, start + numberOfFramesInTimeRange);
-
-            auto catalogEntry = "traffic-2k-001-single-tile-pedestrian";
-            std::cout << std::endl << "\n\nStep: Selecting pixels with method " << method << " for object " << label << " at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-            auto input = ScanMultiTiled(catalogEntry);
-            Coordinator().execute(input.Select(selection, true).Sink());
-        }
-
-        sleep(3);
-        GLOBAL_TIMER.reset();
-
+//TEST_F(VisitorTestFixture, testPerformanceOnRandomSelectPixels) {
+//    REMOVE_TILES()
+//
+//    std::default_random_engine generator(1);
+//
+//    const unsigned int fps = 30;
+//    const unsigned int minimumNumberOfSelectionSeconds = 30;
+//    const unsigned int maximumNumberOfSelectionSeconds = 180;
+//    std::uniform_int_distribution<int> timeRangeDistribution(minimumNumberOfSelectionSeconds, maximumNumberOfSelectionSeconds);
+//
+//    auto totalNumberOfFrames = 27000;
+//    // Make sure that no matter what start point we pick, it is far enough from the end even for the maximum selection range.
+//    // *30 because 30 FPS
+//    std::uniform_int_distribution<int> startingPointDistribution(0, totalNumberOfFrames - maximumNumberOfSelectionSeconds * fps);
+//
+//    auto method = "cracking";
+//    auto numberOfRounds = 40u;
+//    for (auto i = 0u; i < numberOfRounds; ++i) {
+//        auto start = startingPointDistribution(generator) / 30 * 30;
+//        auto duration = timeRangeDistribution(generator);
+//        auto numberOfFramesInTimeRange = duration * fps;
+//
 //        {
-//            auto catalogEntry = "traffic-2k-cracked-gop60";
-//            std::cout << std::endl << "\n\nStep: Selecting pixels with method ideal-tiled at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-//            auto idealCracked = ScanMultiTiled(catalogEntry);
-//            Coordinator().execute(idealCracked.Select(selection).Sink());
+//            auto label = "car";
+//            PixelMetadataSpecification selection("labels", "label", label, start, start + numberOfFramesInTimeRange);
+//
+//            auto catalogEntry = "traffic-2k-001-single-tile-car";
+//            std::cout << std::endl << "\n\nStep: Selecting pixels with method " << method << " for object " << label << " at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+//            auto input = ScanMultiTiled(catalogEntry);
+//            Coordinator().execute(input.Select(selection, true).Sink());
 //        }
 //
 //        sleep(3);
 //        GLOBAL_TIMER.reset();
 //
 //        {
-//            auto catalogEntry = "traffic-2k-single-tile";
-//            std::cout << std::endl << "\n\nStep: Selecting pixels with method cracking at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+//            auto label = "pedestrian";
+//            PixelMetadataSpecification selection("labels", "label", label, start, start + numberOfFramesInTimeRange);
+//
+//            auto catalogEntry = "traffic-2k-001-single-tile-pedestrian";
+//            std::cout << std::endl << "\n\nStep: Selecting pixels with method " << method << " for object " << label << " at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+//            auto input = ScanMultiTiled(catalogEntry);
+//            Coordinator().execute(input.Select(selection, true).Sink());
+//        }
+//
+//        sleep(3);
+//        GLOBAL_TIMER.reset();
+//
+////        {
+////            auto catalogEntry = "traffic-2k-cracked-gop60";
+////            std::cout << std::endl << "\n\nStep: Selecting pixels with method ideal-tiled at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+////            auto idealCracked = ScanMultiTiled(catalogEntry);
+////            Coordinator().execute(idealCracked.Select(selection).Sink());
+////        }
+////
+////        sleep(3);
+////        GLOBAL_TIMER.reset();
+////
+////        {
+////            auto catalogEntry = "traffic-2k-single-tile";
+////            std::cout << std::endl << "\n\nStep: Selecting pixels with method cracking at " << catalogEntry << " from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+////            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
+////            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
+////        }
+////
+////        sleep(3);
+////        GLOBAL_TIMER.reset();
+//
+//    }
+//}
+
+//TEST_F(VisitorTestFixture, testCrackingPerformanceOnRandomSelectPixels) {
+//    std::default_random_engine generator(1);
+//
+//    const unsigned int fps = 30;
+//    const unsigned int minimumNumberOfSelectionSeconds = 30;
+//    const unsigned int maximumNumberOfSelectionSeconds = 180;
+//    std::uniform_int_distribution<int> timeRangeDistribution(minimumNumberOfSelectionSeconds, maximumNumberOfSelectionSeconds);
+//
+//    auto totalNumberOfFrames = 27000;
+//    // Make sure that no matter what start point we pick, it is far enough from the end even for the maximum selection range.
+//    // *30 because 30 FPS
+//    std::uniform_int_distribution<int> startingPointDistribution(0, totalNumberOfFrames - maximumNumberOfSelectionSeconds * fps);
+//
+//    auto numberOfRounds = 40u;
+//    for (auto i = 0u; i < numberOfRounds; ++i) {
+//        auto start = startingPointDistribution(generator) / 30 * 30;
+//        auto duration = timeRangeDistribution(generator);
+//        auto numberOfFramesInTimeRange = duration * fps;
+//
+//        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
+//
+//        {
+//            std::cout << std::endl << "\n\nStep: Selecting pixels when cracking video from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
 //            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
 //            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
 //        }
 //
 //        sleep(3);
 //        GLOBAL_TIMER.reset();
-
-    }
-}
-
-TEST_F(VisitorTestFixture, testCrackingPerformanceOnRandomSelectPixels) {
-    std::default_random_engine generator(1);
-
-    const unsigned int fps = 30;
-    const unsigned int minimumNumberOfSelectionSeconds = 30;
-    const unsigned int maximumNumberOfSelectionSeconds = 180;
-    std::uniform_int_distribution<int> timeRangeDistribution(minimumNumberOfSelectionSeconds, maximumNumberOfSelectionSeconds);
-
-    auto totalNumberOfFrames = 27000;
-    // Make sure that no matter what start point we pick, it is far enough from the end even for the maximum selection range.
-    // *30 because 30 FPS
-    std::uniform_int_distribution<int> startingPointDistribution(0, totalNumberOfFrames - maximumNumberOfSelectionSeconds * fps);
-
-    auto numberOfRounds = 40u;
-    for (auto i = 0u; i < numberOfRounds; ++i) {
-        auto start = startingPointDistribution(generator) / 30 * 30;
-        auto duration = timeRangeDistribution(generator);
-        auto numberOfFramesInTimeRange = duration * fps;
-
-        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
-
-        {
-            std::cout << std::endl << "\n\nStep: Selecting pixels when cracking video from frames for " << duration << " sec, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
-            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
-        }
-
-        sleep(3);
-        GLOBAL_TIMER.reset();
-
-    }
-}
+//
+//    }
+//}
 
 
-TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
-    std::default_random_engine generator(1);
-
-    auto timeRangeInMinutes = 1;
-    // * 60 seconds / minute * 30 frames / second
-    auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
-    auto totalNumberOfFrames = 27000;
-
-    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-
-    auto numberOfRounds = 30u;
-
-    for (auto i = 0u; i < numberOfRounds; ++i) {
-        unsigned int start = distribution(generator) / 30 * 30;
-
-        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
-
-        {
-            std::cout << std::endl << "\n\nStep: Selecting pixels in not cracked video for " << timeRangeInMinutes << " min, from frames " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-            auto notCracked = Scan("traffic-2k");
-            Coordinator().execute(notCracked.Select(selection).Sink());
-        }
-
-//        sleep(3);
-
+//TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels) {
+//    std::default_random_engine generator(1);
+//
+//    auto timeRangeInMinutes = 1;
+//    // * 60 seconds / minute * 30 frames / second
+//    auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
+//    auto totalNumberOfFrames = 27000;
+//
+//    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
+//
+//    auto numberOfRounds = 30u;
+//
+//    for (auto i = 0u; i < numberOfRounds; ++i) {
+//        unsigned int start = distribution(generator) / 30 * 30;
+//
+//        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
+//
 //        {
-//            std::cout << std::endl << "\n\nStep: Selecting pixels in a custom-tiled video from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-//            auto idealCracked = ScanMultiTiled("traffic-2k-cracked-gop60");
-//            Coordinator().execute(idealCracked.Select(selection).Sink());
+//            std::cout << std::endl << "\n\nStep: Selecting pixels in not cracked video for " << timeRangeInMinutes << " min, from frames " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+//            auto notCracked = Scan("traffic-2k");
+//            Coordinator().execute(notCracked.Select(selection).Sink());
 //        }
+//
+////        sleep(3);
+//
+////        {
+////            std::cout << std::endl << "\n\nStep: Selecting pixels in a custom-tiled video from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+////            auto idealCracked = ScanMultiTiled("traffic-2k-cracked-gop60");
+////            Coordinator().execute(idealCracked.Select(selection).Sink());
+////        }
+////
+////        {
+////            std::cout << std::endl << "\n\nStep: Selecting pixels in a 3x3 cracked video from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+////            auto evenCracked = ScanMultiTiled("traffic-2k-cracked3x3");
+////            Coordinator().execute(evenCracked.Select(selection).Sink());
+////        }
+//
+//        sleep(3);
+//        GLOBAL_TIMER.reset();
+//
+////        {
+////            std::cout << std::endl << "\n\nStep: Selecting pixels while cracking from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+////            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
+////            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
+////        }
+//    }
+//}
+
+//TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels3min) {
+//    std::default_random_engine generator(1);
+//
+//    auto timeRangeInMinutes = 3;
+//    // * 60 seconds / minute * 30 frames / second
+//    auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
+//    auto totalNumberOfFrames = 27000;
+//
+//    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
+//
+//    auto numberOfRounds = 30u;
+//
+//    for (auto i = 0u; i < numberOfRounds; ++i) {
+//        unsigned int start = distribution(generator) / 30 * 30;
+//
+//        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
 //
 //        {
 //            std::cout << std::endl << "\n\nStep: Selecting pixels in a 3x3 cracked video from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
 //            auto evenCracked = ScanMultiTiled("traffic-2k-cracked3x3");
 //            Coordinator().execute(evenCracked.Select(selection).Sink());
 //        }
+//
+//        sleep(3);
+//        GLOBAL_TIMER.reset();
+//    }
+//}
 
-        sleep(3);
-        GLOBAL_TIMER.reset();
-
+//TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels2min) {
+//    std::default_random_engine generator(1);
+//
+//    auto timeRangeInMinutes = 2;
+//    // * 60 seconds / minute * 30 frames / second
+//    auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
+//    auto totalNumberOfFrames = 27000;
+//
+//    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
+//
+//    auto numberOfRounds = 30u;
+//
+//    for (auto i = 0u; i < numberOfRounds; ++i) {
+//        unsigned int start = distribution(generator) / 30 * 30;
+//
+//        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
+//
 //        {
-//            std::cout << std::endl << "\n\nStep: Selecting pixels while cracking from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-//            auto crackingInProgress = ScanMultiTiled("traffic-2k-single-tile");
-//            Coordinator().execute(crackingInProgress.Select(selection, true).Sink());
+//            std::cout << std::endl << "\n\nStep: Selecting pixels in a 3x3 cracked video from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+//            auto evenCracked = ScanMultiTiled("traffic-2k-cracked3x3");
+//            Coordinator().execute(evenCracked.Select(selection).Sink());
 //        }
-    }
-}
+//
+//        sleep(3);
+//        GLOBAL_TIMER.reset();
+//    }
+//}
 
-TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels3min) {
-    std::default_random_engine generator(1);
+//TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels1min) {
+//    std::default_random_engine generator(1);
+//
+//    auto timeRangeInMinutes = 1;
+//    // * 60 seconds / minute * 30 frames / second
+//    auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
+//    auto totalNumberOfFrames = 27000;
+//
+//    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
+//
+//    auto numberOfRounds = 60u;
+//
+//    for (auto i = 0u; i < numberOfRounds; ++i) {
+//        unsigned int start = distribution(generator) / 30 * 30;
+//
+//        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
+//
+//        {
+//            std::cout << std::endl << "\n\nStep: Selecting pixels in a 3x3 cracked video from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
+//            auto evenCracked = ScanMultiTiled("traffic-2k-cracked3x3");
+//            Coordinator().execute(evenCracked.Select(selection).Sink());
+//        }
+//
+//        sleep(3);
+//        GLOBAL_TIMER.reset();
+//    }
+//}
 
-    auto timeRangeInMinutes = 3;
-    // * 60 seconds / minute * 30 frames / second
-    auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
-    auto totalNumberOfFrames = 27000;
+//TEST_F(VisitorTestFixture, testReadCrackedTiles) {
+//    auto input = ScanMultiTiled("MVI_63563_960x576_100frames_cracked");
+//    PixelMetadataSpecification selection("labels", "label", "van");
+//    Coordinator().execute(input.Select(selection).Sink()); //.Store("from_cracked"));
+//}
 
-    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
+//TEST_F(VisitorTestFixture, testReadNonCracked) {
+//    auto input = Scan("MVI_63563_960x576_100frames");
+//    PixelMetadataSpecification selection("labels", "label", "van");
+//    Coordinator().execute(input.Select(selection).Sink()); //.Store("vans_from_cracked"));
+//}
 
-    auto numberOfRounds = 30u;
+//TEST_F(VisitorTestFixture, testScanTiled1) {
+//    // Has 2x2 tiling.
+//    auto input = ScanTiled("jackson_square_1hr_680x512_gops_for_tiles");
+//    PixelsInFrameMetadataSpecification selection("LABELS", "LABEL", "car");
+//    Coordinator().execute(input.Select(selection).Save("/home/maureen/noscope_videos/jackson_car_pixels.hevc")); //.Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/selected.hevc"));
+//}
 
-    for (auto i = 0u; i < numberOfRounds; ++i) {
-        unsigned int start = distribution(generator) / 30 * 30;
+//TEST_F(VisitorTestFixture, testScanTiledToPixels) {
+//    auto input = ScanTiled("jackson_square_gops_for_tiles");
+//    PixelMetadataSpecification selection("LABELS", "LABEL", "car");
+//    Coordinator().execute(input.Select(selection).Store("jackson_square_car_pixels"));
+//}
 
-        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
-
-        {
-            std::cout << std::endl << "\n\nStep: Selecting pixels in a 3x3 cracked video from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-            auto evenCracked = ScanMultiTiled("traffic-2k-cracked3x3");
-            Coordinator().execute(evenCracked.Select(selection).Sink());
-        }
-
-        sleep(3);
-        GLOBAL_TIMER.reset();
-    }
-}
-
-TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels2min) {
-    std::default_random_engine generator(1);
-
-    auto timeRangeInMinutes = 2;
-    // * 60 seconds / minute * 30 frames / second
-    auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
-    auto totalNumberOfFrames = 27000;
-
-    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-
-    auto numberOfRounds = 30u;
-
-    for (auto i = 0u; i < numberOfRounds; ++i) {
-        unsigned int start = distribution(generator) / 30 * 30;
-
-        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
-
-        {
-            std::cout << std::endl << "\n\nStep: Selecting pixels in a 3x3 cracked video from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-            auto evenCracked = ScanMultiTiled("traffic-2k-cracked3x3");
-            Coordinator().execute(evenCracked.Select(selection).Sink());
-        }
-
-        sleep(3);
-        GLOBAL_TIMER.reset();
-    }
-}
-
-TEST_F(VisitorTestFixture, testCrackingImpactOnSelectPixels1min) {
-    std::default_random_engine generator(1);
-
-    auto timeRangeInMinutes = 1;
-    // * 60 seconds / minute * 30 frames / second
-    auto numberOfFramesInTimeRange = timeRangeInMinutes * 60 * 30;
-    auto totalNumberOfFrames = 27000;
-
-    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-
-    auto numberOfRounds = 60u;
-
-    for (auto i = 0u; i < numberOfRounds; ++i) {
-        unsigned int start = distribution(generator) / 30 * 30;
-
-        PixelMetadataSpecification selection("labels", "label", "car", start, start + numberOfFramesInTimeRange);
-
-        {
-            std::cout << std::endl << "\n\nStep: Selecting pixels in a 3x3 cracked video from frames for " << timeRangeInMinutes << " min, from " << start << " to " << start+numberOfFramesInTimeRange << std::endl;
-            auto evenCracked = ScanMultiTiled("traffic-2k-cracked3x3");
-            Coordinator().execute(evenCracked.Select(selection).Sink());
-        }
-
-        sleep(3);
-        GLOBAL_TIMER.reset();
-    }
-}
-
-TEST_F(VisitorTestFixture, testReadCrackedTiles) {
-    auto input = ScanMultiTiled("MVI_63563_960x576_100frames_cracked");
-    PixelMetadataSpecification selection("labels", "label", "van");
-    Coordinator().execute(input.Select(selection).Sink()); //.Store("from_cracked"));
-}
-
-TEST_F(VisitorTestFixture, testReadNonCracked) {
-    auto input = Scan("MVI_63563_960x576_100frames");
-    PixelMetadataSpecification selection("labels", "label", "van");
-    Coordinator().execute(input.Select(selection).Sink()); //.Store("vans_from_cracked"));
-}
-
-TEST_F(VisitorTestFixture, testScanTiled1) {
-    // Has 2x2 tiling.
-    auto input = ScanTiled("jackson_square_1hr_680x512_gops_for_tiles");
-    PixelsInFrameMetadataSpecification selection("LABELS", "LABEL", "car");
-    Coordinator().execute(input.Select(selection).Save("/home/maureen/noscope_videos/jackson_car_pixels.hevc")); //.Save("/home/maureen/uadetrac_videos/MVI_63563/tiles/selected.hevc"));
-}
-
-TEST_F(VisitorTestFixture, testScanTiledToPixels) {
-    auto input = ScanTiled("jackson_square_gops_for_tiles");
-    PixelMetadataSpecification selection("LABELS", "LABEL", "car");
-    Coordinator().execute(input.Select(selection).Store("jackson_square_car_pixels"));
-}
-
-TEST_F(VisitorTestFixture, testScanNotTiledAndSelectPixelsInFrame) {
-    auto input = Scan("jackson_square_1hr_680x512");
-    PixelsInFrameMetadataSpecification selection("LABELS", "LABEL", "car");
-    Coordinator().execute(input.Select(selection).Store("jackson_town_square_car_pixels_in_frame"));
-}
-
-TEST_F(VisitorTestFixture, testScanTiled2) {
-    auto input = ScanTiled("MVI_63563_gop30");
-    PixelMetadataSpecification selection("LABELS", "LABEL", "others");
-    Coordinator().execute(input.Select(selection).Sink()); //.Store("MVI_63563_pixels"));
-}
+//TEST_F(VisitorTestFixture, testScanNotTiledAndSelectPixelsInFrame) {
+//    auto input = Scan("jackson_square_1hr_680x512");
+//    PixelsInFrameMetadataSpecification selection("LABELS", "LABEL", "car");
+//    Coordinator().execute(input.Select(selection).Store("jackson_town_square_car_pixels_in_frame"));
+//}
 
 TEST_F(VisitorTestFixture, testScanSink) {
     auto input = Scan("traffic-2k-001");
@@ -1291,72 +1283,24 @@ static const char *videoToScan = "/home/maureen/noscope_videos/jackson_town_squa
 static const std::string videoCatalogName = "MVI_63563_gop30";
 static const std::string labelCategory = "bus";
 
-TEST_F(VisitorTestFixture, testLoadAndSelectFramesBasic) {
-    auto input = Scan(videoCatalogName);
-    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
-}
+//TEST_F(VisitorTestFixture, testLoadAndSelectFramesBasic) {
+//    auto input = Scan(videoCatalogName);
+//    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
+//    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+//}
 
-TEST_F(VisitorTestFixture, testLoadAndSelectPixelsBasic) {
-    auto input = Scan(videoCatalogName);
-    PixelMetadataSpecification selection("labels", "label", labelCategory);
-    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
-}
-
-TEST_F(VisitorTestFixture, testLoadAndSelectFrames250) {
-    auto input = Scan(videoCatalogName + "_gop250");
-    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
-}
-
-TEST_F(VisitorTestFixture, testLoadAndSelectFrames60) {
-    auto input = Scan(videoCatalogName + "_gop60");
-    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
-}
-
-TEST_F(VisitorTestFixture, testLoadAndSelectFrames30) {
-    auto input = Scan(videoCatalogName + "_gop30");
-    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
-}
-
-TEST_F(VisitorTestFixture, testLoadAndSelectFrames15) {
-    auto input = Scan(videoCatalogName + "_gop15");
-    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
-}
-
-TEST_F(VisitorTestFixture, testLoadAndSelectFrames10) {
-    auto input = Scan(videoCatalogName + "_gop10");
-    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
-}
-
-TEST_F(VisitorTestFixture, testLoadAndSelectFrames5) {
-    auto input = Scan(videoCatalogName + "_gop5");
-    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
-}
-
-TEST_F(VisitorTestFixture, testLoadAndSelectFrames1) {
-    auto input = Scan(videoCatalogName + "_gop1");
-    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
-}
-
-TEST_F(VisitorTestFixture, testLoadAndSelectFramesCustom) {
-    auto input = Scan(videoCatalogName + "_" + labelCategory);
-    MetadataSpecification selection("LABELS", "LABEL", labelCategory);
-    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
-}
+//TEST_F(VisitorTestFixture, testLoadAndSelectPixelsBasic) {
+//    auto input = Scan(videoCatalogName);
+//    PixelMetadataSpecification selection("labels", "label", labelCategory);
+//    Coordinator().execute(input.Select(selection).Store(videoCatalogName + "_selected"));
+//}
 
 TEST_F(VisitorTestFixture, testSavingMetadata) {
 //    auto input = Scan(videoCatalogName);
     auto filenames = { "upper_left.hevc", "lower_left.hevc", "upper_right.hevc", "lower_right.hevc", "black_tile.hevc" };
     for (auto &file : filenames) {
         auto input = Load(std::filesystem::path("/home/maureen/noscope_videos/tiles/2x2tiles") / file, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-        MetadataSpecification selection("LABELS", "LABEL", "car");
+        MetadataSpecification selection("LABELS", std::make_shared<SingleMetadataElement>("LABEL", "car"));
         Coordinator().execute(input.Encode(selection).Store("jackson_square_1hr_680x512_gops_for_tiles"));
     }
 }
@@ -1414,7 +1358,7 @@ TEST_F(VisitorTestFixture, testEncodeForMetadata) {
     // Store
 
     auto input = Scan("dog_with_keyframes");
-    MetadataSpecification metadataSelection("LABELS", "LABEL", "dog");
+    MetadataSpecification metadataSelection("LABELS", std::make_shared<SingleMetadataElement>("LABEL", "dog"));
     Coordinator().execute(input.Encode(metadataSelection).Store("dog_with_keyframes_real"));
 }
 

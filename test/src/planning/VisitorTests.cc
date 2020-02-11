@@ -223,17 +223,17 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
         std::string object = "car";
 //        for (const auto &object : videoToObjectsToCrackOn.at(video)) {
             MetadataSpecification metadataSpecification("labels", "label", object);
-            std::vector<int> smallTileDurations{1, 2, 3};
-            for (const auto &durationMultiplier : smallTileDurations) {
-                int duration = baseFramerate * durationMultiplier;
-                auto input = Scan(video);
-                std::string savedName = video + "-cracked-" + object + "-smalltiles-duration" + std::to_string(duration);
-                std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
-                Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
-                                                         CrackingStrategy::SmallTiles));
-            }
+            std::vector<int> smallTileDurations{4};
+//            for (const auto &durationMultiplier : smallTileDurations) {
+//                int duration = baseFramerate * durationMultiplier;
+//                auto input = Scan(video);
+//                std::string savedName = video + "-cracked-" + object + "-smalltiles-duration" + std::to_string(duration);
+//                std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
+//                Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
+//                                                         CrackingStrategy::SmallTiles));
+//            }
 
-            std::vector<int> largeTileDurations{1, 2, 3};
+            std::vector<int> largeTileDurations{2};
             for (const auto &durationMultiplier : largeTileDurations) {
                 int duration = baseFramerate * durationMultiplier;
                 auto input = Scan(video);
@@ -255,13 +255,13 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
 }
 
 TEST_F(VisitorTestFixture, testDecodeSmallTilesFromTrafficVideos) {
-    std::vector<std::string> videos{  "traffic-2k-001", "traffic-4k-002-ds2k"};  //"traffic-4k-000", "traffic-4k-002", "traffic-4k-000", "traffic-1k-002", "car-pov-2k-000-shortened", "car-pov-2k-001-shortened",
+    std::vector<std::string> videos{  "traffic-2k-001", "traffic-4k-002-ds2k", "traffic-4k-000", "traffic-4k-002", "car-pov-2k-000-shortened", "car-pov-2k-001-shortened" };
 //    "traffic-4k-002-ds1k",
     auto MAX_TILE_LAYOUTS = 64;
     unsigned int baseFramerate = 30;
 
     std::string object = "car";
-    std::vector<int> tileDurations{1, 2, 3};
+    std::vector<int> tileDurations{1, 2};
 
     for (const auto &video : videos) {
         unsigned int numFramesInVideo = 27001;
@@ -277,11 +277,11 @@ TEST_F(VisitorTestFixture, testDecodeSmallTilesFromTrafficVideos) {
         std::cout << "\n***object," << object << std::endl;
         PixelMetadataSpecification selection("labels", "label", object);
         for (auto durationMultiplier : tileDurations) {
-            auto duration = durationMultiplier * minFramesPerLayout;
+            auto duration = durationMultiplier * baseFramerate;
             bool suffixIsForEntireVideo = durationMultiplier < 0;
             auto layoutDurationString = suffixIsForEntireVideo ? "entire-video" : "duration" + std::to_string(duration);
-            std::string suffix = "-cracked-" + object + "-smalltiles-" + layoutDurationString;
-            for (int i = 0; i < 3; ++i) {
+            std::string suffix = "-cracked-" + object + "-grouping-extent-" + layoutDurationString;
+            for (int i = 0; i < 1; ++i) {
                 std::cout << "\n***video," << video << "\n***tile strategy," << suffix << std::endl;
 
                 bool usesOnlyOneTile = suffixIsForEntireVideo;

@@ -974,6 +974,7 @@ namespace lightdb::optimization {
     };
 
     static unsigned int UNIFORM_TILING_DIMENSION = 1;
+    static unsigned int UNIFORM_TILING_DIMENSION_COLUMNS = -1;
 
     class ChooseStore : public OptimizerRule {
     public:
@@ -1067,13 +1068,26 @@ namespace lightdb::optimization {
                     }
                 } else {
                     if (UNIFORM_TILING_DIMENSION == 2)
-                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<2>>(width, height);
+                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<2, 2>>(width, height);
                     else if (UNIFORM_TILING_DIMENSION == 3)
-                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<3>>(width, height);
+                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<3, 3>>(width, height);
                     else if (UNIFORM_TILING_DIMENSION == 4)
-                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<4>>(width, height);
+                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<4, 4>>(width, height);
                     else if (UNIFORM_TILING_DIMENSION == 5)
-                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<5>>(width, height);
+                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<5, 5>>(width, height);
+                    else if (UNIFORM_TILING_DIMENSION == 6)
+                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<6, 6>>(width, height);
+                    else if (UNIFORM_TILING_DIMENSION == 7) {
+                        assert(UNIFORM_TILING_DIMENSION_COLUMNS > 0);
+                        if (UNIFORM_TILING_DIMENSION_COLUMNS == 7)
+                            tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<7, 7>>(width, height);
+                        else if (UNIFORM_TILING_DIMENSION_COLUMNS == 8)
+                            tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<7, 8>>(width, height);
+                        else if (UNIFORM_TILING_DIMENSION_COLUMNS == 9)
+                            tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<7, 9>>(width, height);
+                        else if (UNIFORM_TILING_DIMENSION_COLUMNS == 10)
+                            tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<7, 10>>(width, height);
+                    }
                     else
                         assert(false);
                 }

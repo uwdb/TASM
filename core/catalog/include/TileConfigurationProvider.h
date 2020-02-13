@@ -280,23 +280,23 @@ public:
     }
 };
 
-template <int GridSize>
+template <int Rows, int Columns>
 class UniformTileconfigurationProvider: public TileConfigurationProvider {
 public:
     UniformTileconfigurationProvider(unsigned int totalWidth, unsigned int totalHeight)
-        : widthPerColumn_(totalWidth / GridSize),
-        heightPerRow_(totalHeight / GridSize)
+        : widthPerColumn_(totalWidth / Columns),
+        heightPerRow_(totalHeight / Rows)
     {}
 
     unsigned int maximumNumberOfTiles() override {
-        return GridSize * GridSize;
+        return Columns * Rows;
     }
 
     const TileLayout &tileLayoutForFrame(unsigned int frame) override {
         if (layoutPtr)
             return *layoutPtr;
 
-        layoutPtr = std::make_unique<TileLayout>(GridSize, GridSize, std::vector<unsigned int>(GridSize, widthPerColumn_), std::vector<unsigned int>(GridSize, heightPerRow_));
+        layoutPtr = std::make_unique<TileLayout>(Columns, Rows, std::vector<unsigned int>(Columns, widthPerColumn_), std::vector<unsigned int>(Rows, heightPerRow_));
         return *layoutPtr;
     }
 

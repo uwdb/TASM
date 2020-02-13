@@ -301,6 +301,21 @@ public:
     }
 
 private:
+    std::vector<unsigned int> tile_dimensions(unsigned int codedDimension, unsigned int displayDimension, unsigned int numTiles) {
+        static unsigned int CTBS_SIZE_Y = 32;
+        std::vector<unsigned int> dimensions(numTiles);
+        unsigned int total = 0;
+        for (auto i = 0u; i < numTiles; ++i) {
+            unsigned int proposedDimension = ((i + 1) * codedDimension / numTiles) - (i * codedDimension / numTiles);
+            if (total + proposedDimension > displayDimension)
+                proposedDimension = displayDimension - total;
+
+            dimensions[i] = proposedDimension;
+            total += proposedDimension;
+        }
+        return dimensions;
+    }
+
     unsigned int widthPerColumn_;
     unsigned int heightPerRow_;
     std::unique_ptr<TileLayout> layoutPtr;

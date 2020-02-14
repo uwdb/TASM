@@ -90,7 +90,7 @@ private:
             LOG_IF(WARNING, configuration_.output_surfaces < 8)
                 << "Decode configuration output surfaces is low, limiting throughput";
 
-            if(!decoder_.frame_queue().isComplete()) {
+            if(!decoder_.frame_queue().isComplete() || decoder_.decodedPictureQueue().read_available()) {
                 do {
                     auto frame = session_.decode(physical().poll_duration());
                     if (frame.has_value())
@@ -109,6 +109,7 @@ private:
             }
             else {
                 GLOBAL_TIMER.endSection("GPUDecodeFromCPU");
+                std::cout << "ANALYSIS: num-frames-from-decoder " << numberOfFramesDecoded_ << std::endl;
                 return std::nullopt;
             }
         }

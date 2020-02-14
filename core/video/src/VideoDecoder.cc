@@ -26,6 +26,10 @@ CUVIDEOFORMAT CudaDecoder::FormatFromCreateInfo(CUVIDDECODECREATEINFO createInfo
 }
 
 void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
+    while (!decodedPictureQueue_.write_available()) {
+        std::this_thread::yield();
+    }
+
     CUresult result;
     CUdeviceptr mappedHandle;
     unsigned int pitch;
@@ -83,7 +87,7 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
                     std::forward_as_tuple(frame->picture_index),
                     std::forward_as_tuple(newHandle, pitchOfPreallocatedFrameArrays_, format)));
 
-            decodedPictureQueue_.push(data);
+            assert(decodedPictureQueue_.push(data));
         }
     }
 }

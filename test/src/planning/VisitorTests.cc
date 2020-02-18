@@ -232,33 +232,34 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
         std::string object = "car";
 //        for (const auto &object : videoToObjectsToCrackOn.at(video)) {
             MetadataSpecification metadataSpecification("labels", "label", object);
-            std::vector<int> smallTileDurations{10, 30, 60, 300, 600};
-            for (const auto &durationMultiplier : smallTileDurations) {
-                int duration = baseFramerate * durationMultiplier;
-                auto input = Scan(video);
-                std::string savedName = video + "-cracked-" + object + "-smalltiles-duration" + std::to_string(duration);
-                std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
-                Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
-                                                         CrackingStrategy::SmallTiles));
-            }
-
-            std::vector<int> largeTileDurations{10, 30, 60, 300, 600};
-            for (const auto &durationMultiplier : largeTileDurations) {
-                int duration = baseFramerate * durationMultiplier;
-                auto input = Scan(video);
-                std::string savedName = video + "-cracked-" + object + "-grouping-extent-duration" + std::to_string(duration);
-                std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
-                Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
-                                                         CrackingStrategy::GroupingExtent));
-            }
-//            {
+//            std::vector<int> smallTileDurations{10, 30, 60, 300, 600};
+            std::vector<int> smallTileDurations{280000000};
+//            for (const auto &durationMultiplier : smallTileDurations) {
+//                int duration = baseFramerate * durationMultiplier;
 //                auto input = Scan(video);
-//                auto duration = 2800000;
-//                std::string savedName = video + "-cracked-2-" + object + "-grouping-extent-entire-video";
-//                std::cout << "*** Cracking " << video << ", grouped entire video to " << savedName << std::endl;
+//                std::string savedName = video + "-cracked-" + object + "-smalltiles-entire-video"; //duration" + std::to_string(duration);
+//                std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
+//                Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
+//                                                         CrackingStrategy::SmallTiles));
+//            }
+
+//            std::vector<int> largeTileDurations{10, 30, 60, 300, 600};
+//            for (const auto &durationMultiplier : largeTileDurations) {
+//                int duration = baseFramerate * durationMultiplier;
+//                auto input = Scan(video);
+//                std::string savedName = video + "-cracked-" + object + "-grouping-extent-duration" + std::to_string(duration);
+//                std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
 //                Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
 //                                                         CrackingStrategy::GroupingExtent));
 //            }
+            {
+                auto input = Scan(video);
+                auto duration = 2800000;
+                std::string savedName = video + "-cracked-" + object + "-grouping-extent-entire-video";
+                std::cout << "*** Cracking " << video << ", grouped entire video to " << savedName << std::endl;
+                Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
+                                                         CrackingStrategy::GroupingExtent));
+            }
 //        }
     }
 }
@@ -492,9 +493,7 @@ TEST_F(VisitorTestFixture, testBasicSelection) {
 }
 
 TEST_F(VisitorTestFixture, testMeasureTiles) {
-    std::vector<std::string> videos{"car-pov-2k-000-shortened", "car-pov-2k-001-shortened", "traffic-2k-001",
-                                    "traffic-4k-002-ds2k",
-                                    "traffic-4k-000", "traffic-4k-002"};
+    std::vector<std::string> videos{"birdsincage", "crowdrun", "elfuente1", "elfuente2", "oldtown", "seeking", "tennis"};
 //    std::vector<std::string> videos {
 ////        "traffic-1k-002",
 //        "traffic-2k-001",
@@ -538,8 +537,8 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
     std::vector<std::string> uniformTileSuffixes{"-6x6", "-7x7", "-7x8", "-7x9", "-7x10"};
 
     for (const auto &video : videos) {
-        auto baseFramerate = 30; //videoToFramerate.at(video);
-        const auto &objectsForVideo = {"car"}; //videoToObjectsToCrackOn.at(video);
+        auto baseFramerate = videoToFramerate.at(video);
+        const auto &objectsForVideo = videoToObjectsToCrackOn.at(video);
         for (const auto &queryObject : objectsForVideo) {
             std::cout << "\n***object," << queryObject << std::endl;
             PixelMetadataSpecification selection("labels", "label", queryObject);
@@ -568,19 +567,19 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
                 runQuery(video, suffix, !usesOnlyOneTile);
             };
 
-            std::string crackingObject = queryObject;
-            std::vector<int> smallLayoutDurationMultipliers{10, 30, 60, 300, 600};
-            std::vector<int> largeLayoutDurationMultipliers{10, 30, 60, 300, 600};
-            for (const auto &layoutDurationMultiplier : smallLayoutDurationMultipliers) {
-                setUpQuery(video, crackingObject, "-smalltiles-", baseFramerate, layoutDurationMultiplier);
-            }
-            for (const auto &layoutDurationMultiplier : largeLayoutDurationMultipliers) {
-                setUpQuery(video, crackingObject, "-grouping-extent-", baseFramerate, layoutDurationMultiplier);
-            }
-//                for (const auto &suffix : uniformTileSuffixes) {
-//                    bool usesOnlyOneTile = true;
-//                    runQuery(video, suffix, usesOnlyOneTile);
-//                }
+//            std::string crackingObject = queryObject;
+//            std::vector<int> smallLayoutDurationMultipliers{10, 30, 60, 300, 600};
+//            std::vector<int> largeLayoutDurationMultipliers{10, 30, 60, 300, 600};
+//            for (const auto &layoutDurationMultiplier : smallLayoutDurationMultipliers) {
+//                setUpQuery(video, crackingObject, "-smalltiles-", baseFramerate, layoutDurationMultiplier);
+//            }
+//            for (const auto &layoutDurationMultiplier : largeLayoutDurationMultipliers) {
+//                setUpQuery(video, crackingObject, "-grouping-extent-", baseFramerate, layoutDurationMultiplier);
+//            }
+                for (const auto &suffix : uniformTileSuffixes) {
+                    bool usesOnlyOneTile = true;
+                    runQuery(video, suffix, usesOnlyOneTile);
+                }
 //            for (int i = 0; i < 2; ++i) {
 //                std::cout << "\n***video," << video << "\n***tile strategy,none" << std::endl;
 //                auto input = Scan(video);

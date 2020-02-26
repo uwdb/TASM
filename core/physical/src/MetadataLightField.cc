@@ -599,6 +599,18 @@ namespace lightdb::associations {
                     {"tennis-cracked-tennis racket-smalltiles-duration24", "/home/maureen/NFLX_dataset/detections/labels/tennis.db"},
                     {"tennis-cracked-tennis racket-smalltiles-duration48", "/home/maureen/NFLX_dataset/detections/labels/tennis.db"},
                     {"tennis-cracked-tennis racket-smalltiles-duration72", "/home/maureen/NFLX_dataset/detections/labels/tennis.db"},
+
+                    // XIPH DATASET
+                    {"red_kayak", "/home/maureen/xiph/labels/red_kayak.db"},
+                    {"touchdown_pass", "/home/maureen/xiph/labels/touchdown_pass.db"},
+                    {"park_joy_2k", "/home/maureen/xiph/labels/park_joy_2k.db"},
+                    {"park_joy_4k", "/home/maureen/xiph/labels/park_joy_4k.db"},
+                    {"Netflix_ToddlerFountain", "/home/maureen/xiph/labels/Netflix_ToddlerFountain.db"},
+                    {"Netflix_Narrator", "/home/maureen/xiph/labels/Netflix_Narrator.db"},
+                    {"Netflix_FoodMarket", "/home/maureen/xiph/labels/Netflix_FoodMarket.db"},
+                    {"Netflix_FoodMarket2", "/home/maureen/xiph/labels/Netflix_FoodMarket2.db"},
+                    {"Netflix_DrivingPOV", "/home/maureen/xiph/labels/Netflix_DrivingPOV.db"},
+                    {"Netflix_BoxingPractice", "/home/maureen/xiph/labels/Netflix_BoxingPractice.db"},
             } );
 } // namespace lightdb::associations
 

@@ -365,18 +365,27 @@ TEST_F(VisitorTestFixture, testScanMultiTiled) {
 }
 
 TEST_F(VisitorTestFixture, testScanAndSave) {
-    std::vector<std::string> videos{"car-pov-2k-000-shortened.mp4", "car-pov-2k-001-shortened.mp4"};
-    std::vector<std::string> videoNames{"car-pov-2k-000-shortened", "car-pov-2k-001-shortened"};
+    std::vector<std::string> videos{
+        "touchdown_pass",
+        "red_kayak",
+        "park_joy_4k",
+        "park_joy_2k",
+        "Netflix_ToddlerFountain",
+        "Netflix_Narrator",
+        "Netflix_FoodMarket",
+        "Netflix_FoodMarket2",
+        "Netflix_DrivingPOV",
+        "Netflix_BoxingPractice",
+    };
 
     for (auto i = 0u; i < videos.size(); ++i)
     {
         std::string &video = videos[i];
-        std::string &videoName = videoNames[i];
-        auto videoPath = "/home/maureen/" + video;
+        auto videoPath = "/home/maureen/xiph/" + video + ".mp4";
         auto input = Load(
                 videoPath,
                 Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-        Coordinator().execute(input.Store(videoName));
+        Coordinator().execute(input.Store(video));
     }
 }
 
@@ -706,17 +715,19 @@ TEST_F(VisitorTestFixture, testBasicSelection) {
 }
 
 TEST_F(VisitorTestFixture, testMeasureTiles) {
-    std::vector<std::string> videos{"birdsincage", "crowdrun", "elfuente1", "elfuente2", "oldtown", "seeking", "tennis"};
-//    std::vector<std::string> videos {
-////        "traffic-1k-002",
-//        "traffic-2k-001",
-//        "car-pov-2k-001-shortened",
-//        "car-pov-2k-000-shortened",
-////        "traffic-4k-002-ds1k",
-//        "traffic-4k-002-ds2k",
-//        "traffic-4k-002",
-//        "traffic-4k-000",
-//    };
+    std::vector<std::string> videos{
+        "red_kayak",
+        "touchdown_pass",
+        "park_joy_2k",
+        "park_joy_4k",
+        "Netflix_ToddlerFountain",
+        "Netflix_Narrator",
+        "Netflix_FoodMarket",
+        "Netflix_FoodMarket2",
+        "Netflix_DrivingPOV",
+        "Netflix_BoxingPractice",
+    };
+
     std::unordered_map<std::string, std::vector<std::string>> videoToObjectsToCrackOn({
         {"aerial", {"car"}},
         {"busy", {"person", "car", "bus"}},

@@ -13,6 +13,8 @@
 #include <iostream>
 #include <random>
 
+#include "WorkloadCostEstimator.h"
+
 using namespace lightdb;
 using namespace lightdb::logical;
 using namespace lightdb::optimization;
@@ -117,6 +119,212 @@ TEST_F(VisitorTestFixture, testIngestAndCrack) {
     Coordinator().execute(ScanMultiTiled(savedName).Select(selection));
 }
 
+TEST_F(VisitorTestFixture, testWorkloadCostEstimation) {
+    struct VideoData{
+        VideoData(std::string name, std::string object, unsigned int width, unsigned int height, unsigned int framerate)
+            : name(name), object(object), width(width), height(height), framerate(framerate) {}
+        std::string name;
+        std::string object;
+        unsigned int width;
+        unsigned int height;
+        unsigned int framerate;
+    };
+    auto width2k = 1920u;
+    auto height2k = 1080u;
+    auto width4k = 3840u;
+    auto height4k = 1980u;
+
+
+    std::vector<VideoData> videos{
+//        VideoData("birdsincage", "bird", width2k, height2k, 30),
+        VideoData("crowdrun", "person", width2k, height2k, 25),
+        VideoData("elfuente1", "person", width2k, height2k, 30),
+        VideoData("elfuente2", "person", width2k, height2k, 30),
+//        VideoData("oldtown", "car", width2k, height2k, 25),
+        VideoData("seeking", "person", width2k, height2k, 25),
+        VideoData("tennis", "person", width2k, height2k, 24),
+//        VideoData("traffic-2k-001", "car", width2k, height2k, 30),
+        VideoData("traffic-4k-002-ds2k", "car", width2k, height2k, 30),
+//        VideoData("car-pov-2k-000-shortened", "car", width2k, height2k, 30),
+//        VideoData("car-pov-2k-001-shortened", "car", width2k, height2k, 30),
+//        VideoData("traffic-4k-000", "car", width4k, height4k, 30),
+        VideoData("traffic-4k-002", "car", width4k, height4k, 30),
+    };
+
+    std::vector<double> linearExpressionCostsUniform{1.43079765e-06, 1.28300213e-01, 0};
+    std::vector<double> linearExpressionCostsCustom{1.50967675e-06, 2.18405155e-01, 0};
+
+    std::unordered_map<std::string, std::vector<unsigned int>> videoToBestUniformOrder{
+            {"birdsincage", {5, 4, 6, 2, 3, 7}},
+            {"crowdrun", {2, 5, 3, 4, 6, 7}},
+            {"elfuente1", {2, 3, 4, 5, 6, 7}},
+            {"elfuente2", {3, 4, 2, 5, 6, 7}},
+            {"oldtown", {5, 6, 4, 7, 3, 2}},
+            {"seeking", {2, 3, 4, 5, 6, 7}},
+            {"tennis", {3, 2, 4, 5, 6, 7}},
+            {"traffic-2k-001", {4, 6, 3, 7, 2, 5}},
+            {"traffic-4k-002-ds2k", {6, 7, 2, 5, 4, 3}},
+            {"car-pov-2k-000-shortened", {5, 4, 3, 6, 7, 2}},
+            {"car-pov-2k-001-shortened", {4, 5, 2, 6, 3, 7}},
+            {"traffic-4k-000", {6, 7, 4, 5, 3, 2}},
+            {"traffic-4k-002", {7, 6, 5, 4, 2, 3}},
+    };
+    std::unordered_map<std::string, std::vector<std::string>> videoToBestCustomOrder{
+            {"birdsincage", {"big_4s", "big_entire", "small_4s", "big_3s", "big_2s", "big_1s",
+                                    "small_2s", "small_5s", "small_3s", "big_5s", "small_1s"}},
+            {"crowdrun", {"big_entire", "small_1s", "big_1s", "big_3s", "small_3s", "small_2s",
+                                 "big_2s", "big_4s", "small_4s", "small_5s", "big_5s"}},
+            {"elfuente1", {"small_4s", "big_1s", "small_1s", "small_2s", "small_3s", "big_entire",
+                                  "big_2s", "big_3s", "small_5s", "big_4s", "big_5s"}},
+            {"elfuente2", {"big_1s", "small_1s", "big_5s", "small_5s", "big_entire", "small_2s",
+                                  "big_2s", "small_4s", "big_3s", "big_4s", "small_3s"}},
+            {"oldtown", {"big_1s", "big_2s", "small_3s", "big_3s", "big_entire", "small_5s",
+                                "small_2s", "small_4s", "big_4s", "big_5s", "small_1s"}},
+            {"seeking", {"big_3s", "big_4s", "big_entire", "small_3s", "small_4s", "big_2s",
+                                "small_2s", "small_1s", "big_5s", "big_1s", "small_5s"}},
+            {"tennis", {"big_1s", "small_1s", "small_2s", "big_2s", "small_3s", "small_4s",
+                               "big_entire", "big_5s", "small_5s", "big_3s", "big_4s"}},
+            {"traffic-2k-001", {"big_1s", "big_2s", "small_1s", "small_2s", "small_4s", "big_entire"}},
+            {"traffic-4k-002-ds2k", {"small_1s", "small_2s", "small_4s", "big_1s", "big_2s", "big_entire"}},
+            {"car-pov-2k-000-shortened", {"small_1s", "big_1s", "small_2s", "big_2s", "small_4s", "big_entire"}},
+            {"car-pov-2k-001-shortened", {"small_1s", "small_2s", "small_4s", "big_1s", "big_2s", "big_entire"}},
+            {"traffic-4k-000", {"small_1s", "big_1s", "small_2s", "big_2s", "small_4s", "big_entire"}},
+            {"traffic-4k-002", {"small_1s", "small_2s", "small_4s", "big_1s", "big_2s", "big_entire"}},
+    };
+
+    for (const auto &videoData : videos) {
+        auto width = videoData.width;
+        auto height = videoData.height;
+
+        std::vector<std::pair<unsigned int, std::shared_ptr<tiles::TileConfigurationProvider>>> uniformConfigurations{
+            std::make_pair(2, std::make_shared<tiles::UniformTileconfigurationProvider<2, 2>>(width, height)),
+            std::make_pair(3, std::make_shared<tiles::UniformTileconfigurationProvider<3, 3>>(width, height)),
+            std::make_pair(4, std::make_shared<tiles::UniformTileconfigurationProvider<4, 4>>(width, height)),
+            std::make_pair(5, std::make_shared<tiles::UniformTileconfigurationProvider<5, 5>>(width, height)),
+            std::make_pair(6, std::make_shared<tiles::UniformTileconfigurationProvider<6, 6>>(width, height)),
+            std::make_pair(7, std::make_shared<tiles::UniformTileconfigurationProvider<7, 8>>(width, height)),
+        };
+
+        PixelMetadataSpecification selection("labels", "label", videoData.object);
+        unsigned int gopLength = videoData.framerate;
+        Workload workload(videoData.name, {selection}, {1});
+        auto metadataManagerForCustomTiles = workload.metadataManagerForQuery(0);
+
+        std::vector<std::pair<std::string, std::shared_ptr<tiles::TileConfigurationProvider>>> customConfigurations{
+            std::make_pair("small_1s", std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                    videoData.framerate,
+                    metadataManagerForCustomTiles,
+                    width,
+                    height)),
+            std::make_pair("small_2s", std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                    2*videoData.framerate,
+                    metadataManagerForCustomTiles,
+                    width,
+                    height)),
+            std::make_pair("small_3s", std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                    3*videoData.framerate,
+                    metadataManagerForCustomTiles,
+                    width,
+                    height)),
+            std::make_pair("small_4s", std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                    4*videoData.framerate,
+                    metadataManagerForCustomTiles,
+                    width,
+                    height)),
+            std::make_pair("small_5s", std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                    5*videoData.framerate,
+                    metadataManagerForCustomTiles,
+                    width,
+                    height)),
+            std::make_pair("big_1s", std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
+                    videoData.framerate,
+                    metadataManagerForCustomTiles,
+                    width,
+                    height)),
+            std::make_pair("big_2s", std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
+                    2*videoData.framerate,
+                    metadataManagerForCustomTiles,
+                    width,
+                    height)),
+            std::make_pair("big_3s", std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
+                    3*videoData.framerate,
+                    metadataManagerForCustomTiles,
+                    width,
+                    height)),
+            std::make_pair("big_4s", std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
+                    4*videoData.framerate,
+                    metadataManagerForCustomTiles,
+                    width,
+                    height)),
+            std::make_pair("big_5s", std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
+                    5*videoData.framerate,
+                    metadataManagerForCustomTiles,
+                    width,
+                    height)),
+            std::make_pair("big_entire", std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
+                    28000000,
+                    metadataManagerForCustomTiles,
+                    width,
+                    height)),
+        };
+
+        std::vector<std::pair<unsigned int, double>> uniformEstimatedCosts;
+        std::vector<std::pair<std::string, double>> customEstimatedCosts;
+
+        for (const auto &uniformConfiguration : uniformConfigurations)
+            uniformEstimatedCosts.push_back(std::make_pair(uniformConfiguration.first,
+                    WorkloadCostEstimator(uniformConfiguration.second, workload, gopLength,
+                            linearExpressionCostsUniform[0], linearExpressionCostsUniform[1], linearExpressionCostsUniform[2]
+                            ).estimatedCostForWorkload()));
+
+        for (const auto &customConfiguration : customConfigurations)
+            customEstimatedCosts.push_back(std::make_pair(customConfiguration.first,
+                    WorkloadCostEstimator(customConfiguration.second, workload, gopLength,
+                            linearExpressionCostsCustom[0], linearExpressionCostsCustom[1], linearExpressionCostsCustom[2]
+                            ).estimatedCostForWorkload()));
+
+        std::sort(uniformEstimatedCosts.begin(), uniformEstimatedCosts.end(), [](auto &o1, auto &o2) {
+            return o1.second < o2.second;
+        });
+        std::sort(customEstimatedCosts.begin(), customEstimatedCosts.end(), [](auto &o1, auto &o2) {
+            return o1.second < o2.second;
+        });
+
+        std::cout << "\nBest for video " << videoData.name << ": ";
+        for (const auto &tileAndCost : uniformEstimatedCosts)
+            std::cout << tileAndCost.first << ", ";
+        std::cout << std::endl;
+        for (const auto &tileAndCost : customEstimatedCosts)
+            std::cout << tileAndCost.first << ", ";
+        std::cout << std::endl;
+
+        // Compute error for uniform and custom.
+        // Let error be the index of the best layout.
+        auto &actualUniformOrder = videoToBestUniformOrder.at(videoData.name);
+        auto bestUniform = std::find_if(uniformEstimatedCosts.begin(), uniformEstimatedCosts.end(), [&](auto &pair) {
+            return pair.first == actualUniformOrder[0];
+        });
+        auto uniformError = std::distance(uniformEstimatedCosts.begin(), bestUniform);
+        auto predictedUniform = std::find_if(actualUniformOrder.begin(), actualUniformOrder.end(), [&](auto &numTiles) {
+            return numTiles == uniformEstimatedCosts[0].first;
+        });
+        auto predictedUniformError = std::distance(actualUniformOrder.begin(), predictedUniform);
+        auto &actualCustomOrder = videoToBestCustomOrder.at(videoData.name);
+        auto bestCustom = std::find_if(customEstimatedCosts.begin(), customEstimatedCosts.end(), [&](auto &pair) {
+            return pair.first == actualCustomOrder[0];
+        });
+        auto customError = std::distance(customEstimatedCosts.begin(), bestCustom);
+        auto predictedCustom = std::find_if(actualCustomOrder.begin(), actualCustomOrder.end(), [&](auto &tileInfo) {
+            return tileInfo == customEstimatedCosts[0].first;
+        });
+        auto predictedCustomError = predictedCustom == actualCustomOrder.end()
+                ? -1
+                : std::distance(actualCustomOrder.begin(), predictedCustom);
+        std::cout << videoData.name << " " << uniformError << " " << customError
+                    << " " << predictedUniformError << " " << predictedCustomError << std::endl;
+    }
+}
+
 TEST_F(VisitorTestFixture, testCrackIntoTiles) {
     std::vector<std::string> videos{
         "birdsincage",
@@ -144,6 +352,11 @@ TEST_F(VisitorTestFixture, testCrackIntoTiles) {
             Coordinator().execute(input.StoreCracked(outputName));
         }
     }
+}
+
+TEST_F(VisitorTestFixture, testCrackIntoUniform) {
+    UNIFORM_TILING_DIMENSION = 2;
+    Coordinator().execute(Scan("elfuente2").StoreCracked("elfuente2-2x2"));
 }
 
 TEST_F(VisitorTestFixture, testScanMultiTiled) {

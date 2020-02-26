@@ -25,6 +25,11 @@ namespace lightdb {
                     && height == other.height;
         }
 
+        bool hasEqualDimensions(const Rectangle &other) const {
+            return width == other.width
+                    && height == other.height;
+        }
+
         unsigned int area() const {
             return width * height;
         }

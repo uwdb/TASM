@@ -168,10 +168,10 @@ private:
                     didSignalEOS_(false),
                     currentTileNumber_(0)
         {
-            endOfFramesIterator_ = std::lower_bound(physical.metadataManager()->orderedFramesForMetadata().begin(),
+            endOfFramesIterator_ = std::upper_bound(physical.metadataManager()->orderedFramesForMetadata().begin(),
                     physical.metadataManager()->orderedFramesForMetadata().end(),
                     tileLocationProvider_->lastFrameWithLayout());
-            std::cout << "***numberOfFrames," << tileLocationProvider_->lastFrameWithLayout() << std::endl;
+            std::cout << "***numberOfFrames," << tileLocationProvider_->lastFrameWithLayout() + 1 << std::endl;
 //            if (endOfFramesIterator_ != physical.metadataManager()->orderedFramesForMetadata().end())
 //                std::cerr << "WARNING: Video has fewer frames than in object database" << std::endl;
             Timer timer;

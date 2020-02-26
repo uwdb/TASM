@@ -205,7 +205,7 @@ TEST_F(VisitorTestFixture, testWorkloadCostEstimation) {
             std::make_pair(7, std::make_shared<tiles::UniformTileconfigurationProvider<7, 8>>(width, height)),
         };
 
-        PixelMetadataSpecification selection("labels", "label", videoData.object);
+        PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", videoData.object));
         unsigned int gopLength = videoData.framerate;
         Workload workload(videoData.name, {selection}, {1});
         auto metadataManagerForCustomTiles = workload.metadataManagerForQuery(0);

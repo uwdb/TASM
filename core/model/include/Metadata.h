@@ -90,6 +90,54 @@ namespace lightdb {
         std::vector<std::shared_ptr<MetadataElement>> elements_;
     };
 
+    class OrMetadataElement : public MetadataElement {
+    public:
+        OrMetadataElement(const std::vector<std::shared_ptr<MetadataElement>> &elements)
+            : elements_(elements) {}
+
+        std::string whereClauseConstraints(bool includeFrameLimits) const override {
+            if (includeFrameLimits && !constraintWithLimits_.empty())
+                return constraintWithLimits_;
+            else if (!includeFrameLimits && !constraintWithoutLimits_.empty())
+                return constraintWithoutLimits_;
+
+            std::string &constraint = includeFrameLimits ? constraintWithLimits_ : constraintWithoutLimits_;
+
+            for (auto i = 0u; i < elements_.size(); ++i) {
+                constraint += "(" + elements_[i]->whereClauseConstraints(includeFrameLimits) + ")";
+                if (i < elements_.size() - 1)
+                    constraint += " OR ";
+            }
+            return constraint;
+        }
+
+        void updateLastFrameConstraints(unsigned int lastFrame) override {
+            for (auto element : elements_)
+                element->updateLastFrameConstraints(lastFrame);
+        }
+
+        unsigned int firstFrame() const override {
+            std::vector<unsigned int> firstFrames(elements_.size());
+            std::transform(elements_.begin(), elements_.end(), firstFrames.begin(), [](auto m) {
+                return m->firstFrame();
+            });
+            return *std::min_element(firstFrames.begin(), firstFrames.end());
+        }
+
+        unsigned int lastFrame() const override {
+            std::vector<unsigned int> lastFrames(elements_.size());
+            std::transform(elements_.begin(), elements_.end(), lastFrames.begin(), [](auto m) {
+                return m->lastFrame();
+            });
+            return *std::max_element(lastFrames.begin(), lastFrames.end());
+        }
+
+    private:
+        std::vector<std::shared_ptr<MetadataElement>> elements_;
+        mutable std::string constraintWithLimits_;
+        mutable std::string constraintWithoutLimits_;
+    };
+
     class MetadataSpecification {
     public:
         MetadataSpecification(const std::string &tableName, std::shared_ptr<MetadataElement> metadataElement)

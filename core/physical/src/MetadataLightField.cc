@@ -782,7 +782,7 @@ const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) con
     if (frameToRectangles_.count(frame))
         return frameToRectangles_[frame];
 
-    std::string query = "SELECT frame, x, y, width, height FROM %s WHERE " + metadataSpecification_.whereClauseConstraints(false) + " and frame = " + std::to_string(frame) + ";";
+    std::string query = "SELECT frame, x, y, width, height FROM %s WHERE (" + metadataSpecification_.whereClauseConstraints(false) + ") and frame = " + std::to_string(frame) + ";";
 
     selectFromMetadataAndApplyFunction(query.c_str(), [this, frame](sqlite3_stmt *stmt) {
         unsigned int queryFrame = sqlite3_column_int(stmt, 0);

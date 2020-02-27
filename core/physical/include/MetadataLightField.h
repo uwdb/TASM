@@ -114,16 +114,27 @@ namespace lightdb::logical {
         MetadataSubsetLightFieldWithoutSources(const LightFieldReference &lightField,
                                                 const MetadataSpecification &metadataSpecification,
                                                 MetadataSubsetType subsetType,
-                                                const std::string metadataIdentifier,
+                                                std::string metadataIdentifier,
                                                 bool shouldCrack = false,
                                                 bool shouldReadEntireGOPs = false)
                 : LightField(lightField),
                 metadataSpecification_(metadataSpecification),
                 subsetType_(subsetType),
-                metadataManager_(std::make_shared<metadata::MetadataManager>(metadataIdentifier, metadataSpecification_)),
+//                metadataManager_(std::make_shared<metadata::MetadataManager>(metadataIdentifier, metadataSpecification_)),
                 shouldCrack_(shouldCrack),
                 shouldReadEntireGOPs_(shouldReadEntireGOPs)
-        { }
+        {
+            // Transform metadataIdentifier.
+            auto crackedPos = metadataIdentifier.find("-cracked");
+            if (crackedPos != std::string::npos) {
+                metadataIdentifier = metadataIdentifier.substr(0, crackedPos);
+            } else {
+                crackedPos = metadataIdentifier.find_last_of("-");
+                metadataIdentifier = metadataIdentifier.substr(0, crackedPos);
+            }
+            metadataManager_ = std::make_shared<metadata::MetadataManager>(metadataIdentifier, metadataSpecification_);
+
+        }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightFieldWithoutSources>(visitor); }
 

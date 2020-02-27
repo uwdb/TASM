@@ -327,30 +327,24 @@ TEST_F(VisitorTestFixture, testWorkloadCostEstimation) {
 
 TEST_F(VisitorTestFixture, testCrackIntoTiles) {
     std::vector<std::string> videos{
-        "birdsincage",
-        "crowdrun",
-        "elfuente1",
-        "elfuente2",
-        "oldtown",
-        "seeking",
-        "tennis",
+        "red_kayak",
     };
 
     for (const auto &video : videos) {
-        UNIFORM_TILING_DIMENSION = 6;
-        auto outputName = video + "-" + std::to_string(6) + "x" + std::to_string(6);
+        UNIFORM_TILING_DIMENSION = 2;
+        auto outputName = video + "-" + std::to_string(2) + "x" + std::to_string(2);
         std::cout << "Cracking " << video << " to " << outputName << std::endl;
         auto input = Scan(video);
         Coordinator().execute(input.StoreCracked(outputName));
 
-        UNIFORM_TILING_DIMENSION = 7;
-        for (int i = 7; i <= 10; ++i) {
-            UNIFORM_TILING_DIMENSION_COLUMNS = i;
-            auto outputName = video + "-" + std::to_string(UNIFORM_TILING_DIMENSION) + "x" + std::to_string(UNIFORM_TILING_DIMENSION_COLUMNS);
-            std::cout << "Cracking " << video << " to " << outputName << std::endl;
-            auto input = Scan(video);
-            Coordinator().execute(input.StoreCracked(outputName));
-        }
+//        UNIFORM_TILING_DIMENSION = 7;
+//        for (int i = 7; i <= 10; ++i) {
+//            UNIFORM_TILING_DIMENSION_COLUMNS = i;
+//            auto outputName = video + "-" + std::to_string(UNIFORM_TILING_DIMENSION) + "x" + std::to_string(UNIFORM_TILING_DIMENSION_COLUMNS);
+//            std::cout << "Cracking " << video << " to " << outputName << std::endl;
+//            auto input = Scan(video);
+//            Coordinator().execute(input.StoreCracked(outputName));
+//        }
     }
 }
 
@@ -702,12 +696,15 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
 }
 
 TEST_F(VisitorTestFixture, testBasicSelection) {
-    auto catalogEntry = "car-pov-2k-001-shortened";
-    auto object = "car";
+    auto catalogEntry = "red_kayak-2x2";
 
-    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object));
+    auto boatSelection = std::make_shared<SingleMetadataElement>("label", "boat");
+    auto boardSelection = std::make_shared<SingleMetadataElement>("label", "surfboard");
+    std::vector<std::shared_ptr<MetadataElement>> selections{boatSelection, boardSelection};
+
+    PixelMetadataSpecification selection("labels", std::make_shared<OrMetadataElement>(selections));
 //    bool usesOnlyOneTile = false;
-    auto input = Scan(catalogEntry);
+    auto input = ScanMultiTiled(catalogEntry, true);
 //    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
     Coordinator().execute(input.Select(selection));
 }

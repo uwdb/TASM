@@ -799,7 +799,10 @@ const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) con
 
 std::unique_ptr<std::list<Rectangle>> MetadataManager::rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const {
     std::unique_ptr<std::list<Rectangle>> rectangles(new std::list<Rectangle>());
-    std::string query = "SELECT frame, x, y, width, height FROM %s WHERE " + metadataSpecification_.whereClauseConstraints(true);
+    std::string query = "SELECT frame, x, y, width, height FROM %s WHERE ("
+            + metadataSpecification_.whereClauseConstraints(false)
+            + ") AND frame >= " + std::to_string(firstFrameInclusive)
+            + " AND frame < " + std::to_string(lastFrameExclusive);
 
     selectFromMetadataAndApplyFunction(query.c_str(), [&](sqlite3_stmt *stmt) {
         unsigned int frame = sqlite3_column_int(stmt, 0);

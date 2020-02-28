@@ -70,6 +70,7 @@ public:
         double totalCost = 0;
         for (auto i = 0u; i < workload_.numberOfQueries(); ++i) {
             auto sawMultipleLayouts = 0u;
+            firstTileDimensions_ = nullptr;
             auto costElementsForQuery = estimateCostForQuery(i, sawMultipleLayouts);
             totalCost += workload_.numberOfTimesQueryIsExecuted(i) *
                             (pixelCostWeight_ * costElementsForQuery.numPixels
@@ -77,6 +78,12 @@ public:
                             + decodingStrategyWeight_ * sawMultipleLayouts);
         }
         return totalCost;
+    }
+
+    bool queryRequiresMultipleLayouts(unsigned int queryNum) {
+        auto sawMultipleLayouts = 0u;
+        estimateCostForQuery(queryNum, sawMultipleLayouts);
+        return sawMultipleLayouts;
     }
 
 private:

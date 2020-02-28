@@ -548,10 +548,10 @@ namespace lightdb::optimization {
                         auto &scan = scanParent.downcast<physical::ScanFramesFromFileEncodedReader>();
                         scan.setFramesToRead(node.orderedFramesForMetadata());
                         std::cout << "***numberOfFrames," << node.source().mp4Reader().numberOfSamples() << std::endl;
-                        std::cout << "Frames: ";
-                        for (auto frame : node.orderedFramesForMetadata())
-                            std::cout << frame << ", ";
-                        std::cout << std::endl;
+//                        std::cout << "Frames: ";
+//                        for (auto frame : node.orderedFramesForMetadata())
+//                            std::cout << frame << ", ";
+//                        std::cout << std::endl;
 //                        auto merge = plan().emplace<physical::MergeTilePixels>(logical, physical_parents, tiles::NoTilesLayout, std::unordered_map<int, int>());
 //                        plan().emplace<physical::SaveFramesToFiles>(logical, merge);
                         plan().emplace<physical::Sink>(logical, parent);

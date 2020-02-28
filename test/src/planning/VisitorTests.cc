@@ -12,6 +12,7 @@
 #include "timer.h"
 #include <iostream>
 #include <random>
+#include <regex>
 
 #include "WorkloadCostEstimator.h"
 
@@ -32,6 +33,83 @@ public:
 protected:
     Catalog catalog;
 };
+
+static std::unordered_map<std::string, std::vector<std::string>> videoToObjectsToCrackOn({
+      {"aerial", {"car"}},
+      {"busy", {"person", "car", "bus"}},
+      {"childs", {"person"}},
+      {"nature", {"bird"}},
+      {"birdsincage", {"bird"}},
+      {"crowdrun", {"person"}},
+      {"elfuente1", {"person"}},
+      {"elfuente2", {"person"}},
+      {"oldtown", {"car"}},
+      {"seeking", {"person"}},
+      {"tennis", {"person"}}, //, "sports ball", "tennis racket"
+      {"elfuente_full_correctfps", {"person"}},
+      {"red_kayak", {"surfboard", "boat"}},
+      {"touchdown_pass", {"person"}},
+      {"park_joy_2k", {"person"}},
+      {"park_joy_4k", {"person"}},
+      {"Netflix_ToddlerFountain", {"person"}},
+      {"Netflix_Narrator", {"person"}},
+      {"Netflix_FoodMarket", {"person"}},
+      {"Netflix_FoodMarket2", {"person"}},
+      {"Netflix_DrivingPOV", {"car"}},
+      {"Netflix_BoxingPractice", {"person"}},
+});
+
+static std::unordered_map<std::string, unsigned int> videoToFramerate({
+    {"aerial", 29},
+    {"busy", 23},
+    {"childs", 23},
+    {"nature", 23},
+    {"birdsincage", 30},
+    {"crowdrun", 25},
+    {"elfuente1", 30},
+    {"elfuente2", 30},
+    {"oldtown", 25},
+    {"seeking", 25},
+    {"tennis", 24},
+    {"elfuente_full_correctfps", 59},
+    {"red_kayak", 30},
+    {"touchdown_pass", 30},
+    {"park_joy_2k", 50},
+    {"park_joy_4k", 50},
+    {"Netflix_ToddlerFountain", 60},
+    {"Netflix_Narrator", 60},
+    {"Netflix_FoodMarket", 60},
+    {"Netflix_FoodMarket2", 60},
+    {"Netflix_DrivingPOV", 60},
+    {"Netflix_BoxingPractice", 60},
+});
+
+static const unsigned int width2k = 1920;
+static const unsigned int height2k = 1080;
+static const unsigned int width4k = 3840;
+static std::unordered_map<std::string, std::pair<unsigned int, unsigned int>> videoToDimensions{
+        {"red_kayak", {width2k, height2k}},
+        {"touchdown_pass", {width2k, height2k}},
+        {"park_joy_2k", {width2k, height2k}},
+        {"park_joy_4k", {width4k, 2160}},
+        {"Netflix_ToddlerFountain", {4096, 2160}},
+        {"Netflix_Narrator", {4096, 2160}},
+        {"Netflix_FoodMarket", {4096, 2160}},
+        {"Netflix_FoodMarket2", {4096, 2160}},
+        {"Netflix_DrivingPOV", {4096, 2160}},
+        {"Netflix_BoxingPractice", {4096, 2160}},
+};
+
+static std::string combineStrings(const std::vector<std::string> &strings, std::string connector = "_") {
+    std::string combined = "";
+    auto lastIndex = strings.size() - 1;
+    for (auto i = 0u; i < strings.size(); ++i) {
+        combined += strings[i];
+        if (i < lastIndex)
+            combined += connector;
+    }
+    return combined;
+}
 
 TEST_F(VisitorTestFixture, testBaz) {
     auto name = "red10";
@@ -328,23 +406,34 @@ TEST_F(VisitorTestFixture, testWorkloadCostEstimation) {
 TEST_F(VisitorTestFixture, testCrackIntoTiles) {
     std::vector<std::string> videos{
         "red_kayak",
+        "touchdown_pass",
+        "park_joy_2k",
+        "park_joy_4k",
+        "Netflix_ToddlerFountain",
+        "Netflix_Narrator",
+        "Netflix_FoodMarket",
+        "Netflix_FoodMarket2",
+        "Netflix_DrivingPOV",
+        "Netflix_BoxingPractice",
     };
 
     for (const auto &video : videos) {
-        UNIFORM_TILING_DIMENSION = 2;
-        auto outputName = video + "-" + std::to_string(2) + "x" + std::to_string(2);
-        std::cout << "Cracking " << video << " to " << outputName << std::endl;
-        auto input = Scan(video);
-        Coordinator().execute(input.StoreCracked(outputName));
+        for (int i = 2; i <= 6; ++i) {
+            UNIFORM_TILING_DIMENSION = i;
+            auto outputName = video + "-" + std::to_string(i) + "x" + std::to_string(i);
+            std::cout << "Cracking " << video << " to " << outputName << std::endl;
+            auto input = Scan(video);
+            Coordinator().execute(input.StoreCracked(outputName));
+        }
 
-//        UNIFORM_TILING_DIMENSION = 7;
-//        for (int i = 7; i <= 10; ++i) {
-//            UNIFORM_TILING_DIMENSION_COLUMNS = i;
-//            auto outputName = video + "-" + std::to_string(UNIFORM_TILING_DIMENSION) + "x" + std::to_string(UNIFORM_TILING_DIMENSION_COLUMNS);
-//            std::cout << "Cracking " << video << " to " << outputName << std::endl;
-//            auto input = Scan(video);
-//            Coordinator().execute(input.StoreCracked(outputName));
-//        }
+        UNIFORM_TILING_DIMENSION = 7;
+        for (int i = 7; i <= 10; ++i) {
+            UNIFORM_TILING_DIMENSION_COLUMNS = i;
+            auto outputName = video + "-" + std::to_string(UNIFORM_TILING_DIMENSION) + "x" + std::to_string(UNIFORM_TILING_DIMENSION_COLUMNS);
+            std::cout << "Cracking " << video << " to " << outputName << std::endl;
+            auto input = Scan(video);
+            Coordinator().execute(input.StoreCracked(outputName));
+        }
     }
 }
 
@@ -396,62 +485,40 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
 }
 
 TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
-//    std::vector<std::string> videos{ "car-pov-2k-000-shortened", "car-pov-2k-001-shortened", "traffic-2k-001" }; //, "traffic-4k-002-ds2k",
-//                                     "traffic-4k-000", "traffic-4k-002" };
-//        "traffic-2k-001" , "traffic-1k-002",  "traffic-4k-000", "traffic-4k-002",
-//                                       "traffic-4k-002-ds1k", "traffic-4k-002-ds2k", "car-pov-2k-000-shortened", "car-pov-2k-001-shortened" };
-    std::vector<std::string> videos{ "birdsincage", "crowdrun", "elfuente1", "elfuente2", "oldtown", "seeking", "tennis"};
-    std::unordered_map<std::string, std::vector<std::string>> videoToObjectsToCrackOn({
-        {"aerial", {"car"}},
-        {"busy", {"person", "car", "bus"}},
-        {"childs", {"person"}},
-        {"nature", {"bird"}},
-        {"birdsincage", {"bird"}},
-        {"crowdrun", {"person"}},
-        {"elfuente1", {"person"}},
-        {"elfuente2", {"person"}},
-        {"oldtown", {"car"}},
-        {"seeking", {"person"}},
-        {"tennis", {"person"}}, //, "sports ball", "tennis racket"
-        {"elfuente_full_correctfps", {"person"}},
-    });
-    std::unordered_map<std::string, unsigned int> videoToFramerate({
-        {"aerial", 29},
-        {"busy", 23},
-        {"childs", 23},
-        {"nature", 23},
-        {"birdsincage", 30},
-        {"crowdrun", 25},
-        {"elfuente1", 30},
-        {"elfuente2", 30},
-        {"oldtown", 25},
-        {"seeking", 25},
-        {"tennis", 24},
-        {"elfuente_full_correctfps", 59},
-    });
-
-//    auto MAX_TILE_LAYOUTS = 64;
+    std::vector<std::string> videos{
+//        "touchdown_pass",
+        "red_kayak",
+//        "park_joy_4k",
+//        "park_joy_2k",
+//        "Netflix_ToddlerFountain",
+//        "Netflix_Narrator",
+//        "Netflix_FoodMarket",
+//        "Netflix_FoodMarket2",
+//        "Netflix_DrivingPOV",
+//        "Netflix_BoxingPractice",
+    };
 
     for (const auto &video : videos) {
         unsigned int baseFramerate = videoToFramerate.at(video);
+        const auto &objectsToCrackOn = videoToObjectsToCrackOn.at(video);
+        std::shared_ptr<MetadataElement> metadataElement;
+        if (objectsToCrackOn.size() == 1) {
+            metadataElement = std::make_shared<SingleMetadataElement>("label", objectsToCrackOn[0]);
+        } else {
+            std::vector<std::shared_ptr<MetadataElement>> componentElements(objectsToCrackOn.size());
+            std::transform(objectsToCrackOn.begin(), objectsToCrackOn.end(), componentElements.begin(), [](auto obj) {
+                return std::make_shared<SingleMetadataElement>("label", obj);
+            });
+            metadataElement = std::make_shared<OrMetadataElement>(componentElements);
+        }
+        auto crackingObject = combineStrings(objectsToCrackOn);
 
-//        unsigned int numFramesInVideo = 27001;
-//        if (video == "car-pov-2k-000-shortened")
-//            numFramesInVideo = 15302;
-//        else if (video == "car-pov-2k-001-shortened")
-//            numFramesInVideo = 17102;
-//
-//        int minFramesPerLayout = ceil(numFramesInVideo / MAX_TILE_LAYOUTS);
-//        if (minFramesPerLayout % baseFramerate)
-//            minFramesPerLayout = baseFramerate * (minFramesPerLayout / baseFramerate + 1);
-
-        for (const auto &object : videoToObjectsToCrackOn.at(video)) {
-            MetadataSpecification metadataSpecification("labels", std::make_shared<SingleMetadataElement>("label", object));
+         MetadataSpecification metadataSpecification("labels", metadataElement);
             std::vector<int> smallTileDurations{1, 2, 3, 4, 5};
             for (const auto &durationMultiplier : smallTileDurations) {
                 int duration = baseFramerate * durationMultiplier;
                 auto input = Scan(video);
-                std::string savedName = video + "-cracked-" + object + "-smalltiles-duration" + std::to_string(duration);
+                std::string savedName = video + "-cracked-" + crackingObject + "-smalltiles-duration" + std::to_string(duration);
                 std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
                 Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
                                                          CrackingStrategy::SmallTiles));
@@ -461,20 +528,19 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
             for (const auto &durationMultiplier : largeTileDurations) {
                 int duration = baseFramerate * durationMultiplier;
                 auto input = Scan(video);
-                std::string savedName = video + "-cracked-" + object + "-grouping-extent-duration" + std::to_string(duration);
+                std::string savedName = video + "-cracked-" + crackingObject + "-grouping-extent-duration" + std::to_string(duration);
                 std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
                 Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
                                                          CrackingStrategy::GroupingExtent));
             }
-//            {
-//                auto input = Scan(video);
-//                auto duration = 2800000;
-//                std::string savedName = video + "-cracked-" + object + "-grouping-extent-entire-video";
-//                std::cout << "*** Cracking " << video << ", grouped entire video to " << savedName << std::endl;
-//                Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
-//                                                         CrackingStrategy::GroupingExtent));
-//            }
-        }
+            {
+                auto input = Scan(video);
+                auto duration = 2800000;
+                std::string savedName = video + "-cracked-" + crackingObject + "-grouping-extent-entire-video";
+                std::cout << "*** Cracking " << video << ", grouped entire video to " << savedName << std::endl;
+                Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
+                                                         CrackingStrategy::GroupingExtent));
+            }
     }
 }
 
@@ -723,47 +789,36 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
         "Netflix_BoxingPractice",
     };
 
-    std::unordered_map<std::string, std::vector<std::string>> videoToObjectsToCrackOn({
-        {"aerial", {"car"}},
-        {"busy", {"person", "car", "bus"}},
-        {"childs", {"person"}},
-        {"nature", {"bird"}},
-        {"birdsincage", {"bird"}},
-        {"crowdrun", {"person"}},
-        {"elfuente1", {"person"}},
-        {"elfuente2", {"person"}},
-        {"oldtown", {"car"}},
-        {"seeking", {"person"}},
-        {"tennis", {"person"}}, // , "sports ball", "tennis racket"
-        {"elfuente_full", {"person" , "car"}}
-    });
-    std::unordered_map<std::string, unsigned int> videoToFramerate({
-        {"aerial", 29},
-        {"busy", 23},
-        {"childs", 23},
-        {"nature", 23},
-        {"birdsincage", 30},
-        {"crowdrun", 25},
-        {"elfuente1", 30},
-        {"elfuente2", 30},
-        {"oldtown", 25},
-        {"seeking", 25},
-        {"tennis", 24},
-        {"elfuente_full", 59},
-    });
-
-    std::unordered_set<std::string> usesOnlyOneTileStrategies{ "-2x2", "-3x3", "-4x4", "-5x5"};
-    std::vector<std::string> uniformTileSuffixes{"-6x6", "-7x7", "-7x8", "-7x9", "-7x10"};
+//    std::unordered_set<std::string> usesOnlyOneTileStrategies{ "-2x2", "-3x3", "-4x4", "-5x5"};
+    std::vector<std::string> uniformTileSuffixes{"-2x2", "-3x3", "-4x4", "-5x5", "-6x6", "-7x7", "-7x8", "-7x9", "-7x10"};
 
     for (const auto &video : videos) {
         auto baseFramerate = videoToFramerate.at(video);
         const auto &objectsForVideo = videoToObjectsToCrackOn.at(video);
-        for (const auto &queryObject : objectsForVideo) {
-            std::cout << "\n***object," << queryObject << std::endl;
-            PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", queryObject));
+        std::string queryObject = combineStrings(objectsForVideo);
+        std::cout << "\n***object," << queryObject << std::endl;
+        std::shared_ptr<MetadataElement> metadataElement;
+        if (objectsForVideo.size() == 1) {
+            metadataElement = std::make_shared<SingleMetadataElement>("label", objectsForVideo[0]);
+        } else {
+            // Build OR element from all elements.
+            std::vector<std::shared_ptr<MetadataElement>> objectElements(objectsForVideo.size());
+            std::transform(objectsForVideo.begin(), objectsForVideo.end(), objectElements.begin(), [](auto obj) {
+                return std::make_shared<SingleMetadataElement>("label", obj);
+            });
+            metadataElement = std::make_shared<OrMetadataElement>(objectElements);
+        }
+
+        PixelMetadataSpecification selection("labels", metadataElement);
+//        for (int i = 0; i < 4; ++i) {
+//            std::cout << "\n***video," << video << "\n***tile strategy,none" << std::endl;
+//            auto input = Scan(video);
+//            input.downcast<ScannedLightField>().setWillReadEntireEntry(false);
+//            Coordinator().execute(input.Select(selection));
+//        }
 
             auto runQuery = [&](const std::string &video, const std::string &suffix, bool usesOnlyOneTile) {
-                for (int i = 0; i < 3; ++i) {
+                for (int i = 0; i < 4; ++i) {
                     std::cout << "\n***video," << video << "\n***tile strategy," << suffix << std::endl;
 
                     auto catalogEntry = video + suffix;
@@ -779,33 +834,49 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
                 auto layoutDurationString = suffixIsForEntireVideo ? "entire-video" : "duration" + std::to_string(
                         layoutDuration);
                 std::string suffix = "-cracked-" + crackingObject + suffixSpecifier + layoutDurationString;
-                bool usesOnlyOneTile = usesOnlyOneTileStrategies.count(suffix) || suffixIsForEntireVideo; // || (shouldLookAtSameCrackingAndQueryObjects && suffixIsForEntireVideo);
-                runQuery(video, suffix, usesOnlyOneTile);
 
-                // Just to be save for the longer durations.
-                runQuery(video, suffix, !usesOnlyOneTile);
+                // Figure out if should be copying.
+                bool usesOnlyOneTile;
+                if (suffixIsForEntireVideo)
+                    usesOnlyOneTile = true;
+                else {
+                    Workload workload(video, {selection}, {1});
+                    std::shared_ptr<tiles::TileConfigurationProvider> tileConfig;
+                    std::shared_ptr<metadata::MetadataManager> metadataManager = std::make_shared<metadata::MetadataManager>(
+                            video, selection);
+                    const auto &dimensions = videoToDimensions.at(video);
+                    if (suffixSpecifier.find("smalltiles") != std::string::npos) {
+                        tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(layoutDuration,
+                                                                                                metadataManager,
+                                                                                                dimensions.first,
+                                                                                                dimensions.second);
+                    } else {
+                        tileConfig = std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(layoutDuration,
+                                                                                                       metadataManager,
+                                                                                                       dimensions.first,
+                                                                                                       dimensions.second);
+                    }
+                    WorkloadCostEstimator costEstimator(tileConfig, workload, videoToFramerate.at(video), 0, 0, 0);
+                    usesOnlyOneTile = !costEstimator.queryRequiresMultipleLayouts(0);
+                }
+//                std::cout << video << ", " << suffix << ", " << usesOnlyOneTile << std::endl;
+                runQuery(video, suffix, usesOnlyOneTile);
             };
 
             std::string crackingObject = queryObject;
             std::vector<int> smallLayoutDurationMultipliers{1, 2, 3, 4, 5};
-            std::vector<int> largeLayoutDurationMultipliers{1, 2, 3, 4, 5};
+            std::vector<int> largeLayoutDurationMultipliers{1, 2, 3, 4, 5, -1};
             for (const auto &layoutDurationMultiplier : smallLayoutDurationMultipliers) {
                 setUpQuery(video, crackingObject, "-smalltiles-", baseFramerate, layoutDurationMultiplier);
             }
             for (const auto &layoutDurationMultiplier : largeLayoutDurationMultipliers) {
                 setUpQuery(video, crackingObject, "-grouping-extent-", baseFramerate, layoutDurationMultiplier);
             }
-//                for (const auto &suffix : uniformTileSuffixes) {
-//                    bool usesOnlyOneTile = true;
-//                    runQuery(video, suffix, usesOnlyOneTile);
-//                }
-//            for (int i = 0; i < 2; ++i) {
-//                std::cout << "\n***video," << video << "\n***tile strategy,none" << std::endl;
-//                auto input = Scan(video);
-//                input.downcast<ScannedLightField>().setWillReadEntireEntry(false);
-//                Coordinator().execute(input.Select(selection));
+//            for (const auto &suffix : uniformTileSuffixes) {
+//                bool usesOnlyOneTile = true;
+//                runQuery(video, suffix, usesOnlyOneTile);
 //            }
-        }
+
     }
 }
 

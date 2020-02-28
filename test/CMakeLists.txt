@@ -14,7 +14,8 @@ file(GLOB LIGHTDB_CORE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/core/*/include/")
 include_directories(${LIGHTDB_CORE_INCLUDE_DIRS})
 
 # Get test source files
-file(GLOB_RECURSE LIGHTDB_TEST_SOURCES "src/*VisitorTests.cc")
+file(GLOB_RECURSE LIGHTDB_TEST_SOURCES "src/*VisitorTests.cc" "src/*KeyframePlacementTests.cc")
+message("LIGHTDB_TEST_SOURCES: ${LIGHTDB_TEST_SOURCES}")
 
 # Build tests
 add_executable(lightdb_test EXCLUDE_FROM_ALL ${LIGHTDB_TEST_SOURCES})

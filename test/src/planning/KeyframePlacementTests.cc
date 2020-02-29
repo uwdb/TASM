@@ -1,3 +1,4 @@
+#include "KeyframeFinder.h"
 #include "HeuristicOptimizer.h"
 #include "Metadata.h"
 #include "SelectPixels.h"
@@ -53,16 +54,23 @@ TEST_F(KeyframePlacementTestFixture, testEncodeVideosWithGOPs) {
     Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::GOPSize, static_cast<unsigned int>(-1)}}).Store("nature2"));
 }
 
+TEST_F(KeyframePlacementTestFixture, testEncodeVideoWithSpecificKeyframes) {
+    auto input = Scan("birdsincage");
+    std::unordered_set<int> keyframes{0, 10};
+    Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::Keyframes, keyframes},
+                                                       {EncodeOptions::GOPSize, static_cast<unsigned int>(-1)}}).Store("birdsincage_keyframes"));
+}
+
 TEST_F(KeyframePlacementTestFixture, testGetKeyframes) {
     std::string video = "nature";
     FrameMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", "bird"));
     std::shared_ptr<metadata::MetadataManager> metadataManager = std::make_shared<metadata::MetadataManager>(video, selection);
     auto framesForSelection = metadataManager->orderedFramesForMetadata();
 
-    std::cout << "\nFrames (" << framesForSelection.size() << "): " << std::endl;
-    for (const auto &frame : framesForSelection)
-        std::cout << frame << ", ";
-    std::cout << std::endl;
+//    std::cout << "\nFrames (" << framesForSelection.size() << "): " << std::endl;
+//    for (const auto &frame : framesForSelection)
+//        std::cout << frame << ", ";
+//    std::cout << std::endl;
 
     // Now want to transform frames for selection into start/end pairs.
     auto startEndRanges = convertFramesToRanges(framesForSelection);
@@ -71,4 +79,15 @@ TEST_F(KeyframePlacementTestFixture, testGetKeyframes) {
     for (const auto &range : startEndRanges)
         std::cout << range.first << ", " << range.second << std::endl;
     std::cout << std::endl;
+
+    auto numFramesInNature = 900; //3578;
+    auto maxNumberOfKeyframes = 40;
+    startEndRanges.resize(4);
+    KeyframeFinder finder(numFramesInNature, maxNumberOfKeyframes, startEndRanges);
+
+    auto keyframes = finder.getKeyframes(numFramesInNature, 1);
+
+    auto keyframes2 = finder.getKeyframes(numFramesInNature, maxNumberOfKeyframes);
+
+    std::cout << "here" << std::endl;
 }

@@ -14,16 +14,12 @@ class NaiveSelectFrames: public PhysicalOperator, GPUOperator {
 public:
     explicit NaiveSelectFrames(const LightFieldReference &logical,
                                 PhysicalOperatorReference &parent,
-                                std::unordered_set<int> framesToKeep)
+                                const std::unordered_set<int> &framesToKeep)
         : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "NaiveSelectFrames-init")),
         GPUOperator(parent),
-        metadataSpecification_(logical.downcast<logical::MetadataSubsetLightField>().metadataSpecification()),
-        source_(logical.downcast<logical::MetadataSubsetLightField>().source()),
         framesToKeep_(framesToKeep)
     {}
 
-    const MetadataSpecification &metadataSpecification() const { return metadataSpecification_; }
-    const catalog::Source &source() const { return source_; }
     const std::unordered_set<int> &framesToKeep() const { return framesToKeep_; }
 
 private:
@@ -31,22 +27,40 @@ private:
     public:
         explicit Runtime(NaiveSelectFrames &physical)
             : runtime::UnaryRuntime<NaiveSelectFrames, GPUDecodedFrameData>(physical),
-                    frameNumber_(0)
+                    frameNumber_(0),
+                    numberOfKeptFrames_(0)
         {}
 
         std::optional<MaterializedLightFieldReference> read() override {
-            if (iterator() == iterator().eos())
+            if (iterator() == iterator().eos()) {
+                std::cout << "\nANALYSIS: num-kept-frames " << numberOfKeptFrames_ << std::endl;
                 return {};
+            }
+
+            auto decodedReference = iterator()++;
+            auto decoded = decodedReference.downcast<GPUDecodedFrameData>();
+            auto configuration = decoded.configuration();
+            auto geometry = decoded.geometry();
+            physical::GPUDecodedFrameData output{configuration, geometry};
+
+            for (const auto &frame : decoded.frames()) {
+                int frameNumber = -1;
+                frameNumber = frame->getFrameNumber(frameNumber) ? frameNumber : frameNumber_++;
+                if (physical().framesToKeep().count(frameNumber)) {
+                    output.frames().emplace_back(frame);
+                    ++numberOfKeptFrames_;
+                }
+            }
+            return {output};
 
             // This intentionally does nothing because this physical operator never actually ends up in a physical plan.
-            return {};
+//            return {};
         }
     private:
         unsigned long frameNumber_;
+        unsigned int numberOfKeptFrames_;
     };
 
-    const MetadataSpecification metadataSpecification_;
-    const catalog::Source source_;
     const std::unordered_set<int> framesToKeep_;
 };
 

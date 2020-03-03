@@ -5,6 +5,8 @@
 #ifndef LIGHTDB_METADATA_H
 #define LIGHTDB_METADATA_H
 
+#include <unordered_set>
+
 namespace lightdb {
     class MetadataElement {
     public:
@@ -189,6 +191,20 @@ namespace lightdb {
 
     class PixelsInFrameMetadataSpecification : public MetadataSpecification {
         using MetadataSpecification::MetadataSpecification;
+    };
+
+    class FrameSpecification {
+    public:
+        FrameSpecification(const std::vector<int> &framesToRead)
+            : framesToRead_(framesToRead),
+            framesToReadAsSet_(framesToRead_.begin(), framesToRead_.end())
+        { }
+
+        const std::vector<int> &framesToRead() const { return framesToRead_; }
+        const std::unordered_set<int> &framesToReadAsASet() const { return framesToReadAsSet_; }
+    private:
+        std::vector<int> framesToRead_;
+        std::unordered_set<int> framesToReadAsSet_;
     };
 
 } // namespace lightdb

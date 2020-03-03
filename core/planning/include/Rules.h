@@ -428,6 +428,28 @@ namespace lightdb::optimization {
     public:
         using OptimizerRule::OptimizerRule;
 
+        bool visit(const logical::FrameSubsetLightField &node) override {
+            if (!plan().has_physical_assignment(node)) {
+                auto physical_parents = functional::flatmap<std::vector<PhysicalOperatorReference>>(
+                        node.parents().begin(), node.parents().end(),
+                        [this](auto &parent) { return plan().unassigned(parent); });
+
+                if(physical_parents.empty())
+                    return false;
+
+                assert(physical_parents.size() == 1);
+
+                auto &parent = physical_parents[0];
+                auto &grandparent = parent->parents()[0];
+                assert(grandparent.is<physical::ScanFramesFromFileEncodedReader>());
+                grandparent.downcast<physical::ScanFramesFromFileEncodedReader>().setFramesToRead(node.frameSpecification()->framesToRead());
+
+                plan().emplace<physical::NaiveSelectFrames>(plan().lookup(node), parent, node.frameSpecification()->framesToReadAsASet());
+                return true;
+            }
+            return false;
+        }
+
         bool visit(const logical::MetadataSubsetLightFieldWithoutSources &node) override {
             if (!plan().has_physical_assignment(node)) {
                 auto physical_parents = functional::flatmap<std::vector<PhysicalOperatorReference>>(
@@ -511,7 +533,7 @@ namespace lightdb::optimization {
                         node.parents().begin(), node.parents().end(),
                         [this](auto &parent) { return plan().unassigned(parent); });
 
-                if(physical_parents.empty())
+                if (physical_parents.empty())
                     return false;
 
 //                assert(physical_parents.size() == 1);
@@ -568,7 +590,8 @@ namespace lightdb::optimization {
                         if (!tileLayoutPtr)
                             tileLayoutPtr = std::make_unique<tiles::TileLayout>(tiles::TileLayout(tileLayout));
 
-                        std::vector<int> framesForTileAndMetadata = node.framesForTileAndMetadata(tileNumber, tileLayout);
+                        std::vector<int> framesForTileAndMetadata = node.framesForTileAndMetadata(tileNumber,
+                                                                                                  tileLayout);
 
                         // Assign these frames to the scan operator.
                         scan.setFramesToRead(framesForTileAndMetadata);
@@ -624,10 +647,12 @@ namespace lightdb::optimization {
                 /* For combo selection */
                 if (physical_parents.size() == 2) {
                     bool frontIsNonSequentialScan = parent.is<physical::ScanNonSequentialFramesFromFileEncodedReader>();
-                    auto &scanNonSequentialFrames = frontIsNonSequentialScan ? physical_parents.front().downcast<physical::ScanNonSequentialFramesFromFileEncodedReader>()
-                                                        : physical_parents.back().downcast<physical::ScanNonSequentialFramesFromFileEncodedReader>();
-                    auto &scanSequentialFrames = frontIsNonSequentialScan ? physical_parents.back().downcast<physical::ScanSequentialFramesFromFileEncodedReader>()
-                                                        : physical_parents.front().downcast<physical::ScanSequentialFramesFromFileEncodedReader>();
+                    auto &scanNonSequentialFrames = frontIsNonSequentialScan
+                                                    ? physical_parents.front().downcast<physical::ScanNonSequentialFramesFromFileEncodedReader>()
+                                                    : physical_parents.back().downcast<physical::ScanNonSequentialFramesFromFileEncodedReader>();
+                    auto &scanSequentialFrames = frontIsNonSequentialScan
+                                                 ? physical_parents.back().downcast<physical::ScanSequentialFramesFromFileEncodedReader>()
+                                                 : physical_parents.front().downcast<physical::ScanSequentialFramesFromFileEncodedReader>();
 
                     auto sequentialAndNonSequentialFrames = node.sequentialFramesAndNonSequentialFrames();
                     scanSequentialFrames.setFramesToRead(sequentialAndNonSequentialFrames.first);
@@ -639,7 +664,8 @@ namespace lightdb::optimization {
                     auto encode = plan().emplace<physical::GPUEncodeToCPU>(logical, decode, Codec::hevc());
 
                     encode.downcast<physical::GPUEncodeToCPU>().setFramesToKeep(scanNonSequentialFrames.framesToRead());
-                    encode.downcast<physical::GPUEncodeToCPU>().setDesiredKeyframes(metadata::MetadataManager::idealKeyframesForFrames(scanNonSequentialFrames.framesToRead()));
+                    encode.downcast<physical::GPUEncodeToCPU>().setDesiredKeyframes(
+                            metadata::MetadataManager::idealKeyframesForFrames(scanNonSequentialFrames.framesToRead()));
                     return true;
                 }
 
@@ -653,6 +679,11 @@ namespace lightdb::optimization {
 
                 /* For non-homorphic selection (decode & encode everything) */
                 plan().emplace<physical::NaiveSelectFrames>(plan().lookup(node), parent, node.framesForMetadata());
+                auto &grandParent = parent->parents()[0];
+                if (grandParent.is<physical::ScanFramesFromFileEncodedReader>()) {
+                    auto &scan = grandParent.downcast<physical::ScanFramesFromFileEncodedReader>();
+                    scan.setFramesToRead(node.orderedFramesForMetadata());
+                }
 
                 return true;
             } else

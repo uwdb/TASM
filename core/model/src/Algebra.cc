@@ -89,9 +89,19 @@ namespace lightdb::logical {
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, std::vector<catalog::Source>({ this_.downcast<ExternalLightField>().source() }), std::optional(this_.downcast<ExternalLightField>().source().filename().parent_path()));
         else if (this_.is<ScannedLightField>()) {
             auto &scan = this_.downcast<ScannedLightField>();
+            auto metadataIdentifier = scan.entry().name();
+            auto gopPos = metadataIdentifier.find("-gop");
+            if (gopPos != std::string::npos)
+                metadataIdentifier = metadataIdentifier.substr(0, gopPos);
+            else {
+                gopPos = metadataIdentifier.find("-customGOP");
+                if (gopPos != std::string::npos)
+                    metadataIdentifier = metadataIdentifier.substr(0, gopPos);
+            }
+
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType,
                                                                        scan.sources(),
-                                                                       std::optional(scan.entry().name()));
+                                                                       std::optional(metadataIdentifier));
         } else if (this_.is<ScannedTiledLightField>()) {
             auto &scan = this_.downcast<ScannedTiledLightField>();
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, scan.sources(), std::optional(scan.entry().name()));
@@ -100,6 +110,10 @@ namespace lightdb::logical {
             return LightFieldReference::make<MetadataSubsetLightFieldWithoutSources>(this_, metadataSpecification, subsetType, scan.tileLayoutsManager()->entry().name(), shouldCrack, shouldReadEntireGOPs);
         } else
             assert(false);
+    }
+
+    LightFieldReference Algebra::Select(std::shared_ptr<const FrameSpecification> frameSpecification) {
+        return LightFieldReference::make<FrameSubsetLightField>(this_, frameSpecification);
     }
 
     LightFieldReference Algebra::Store(const std::string &name, const Codec &codec,

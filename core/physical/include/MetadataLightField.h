@@ -199,6 +199,19 @@ namespace lightdb::logical {
         std::vector<catalog::Source> sources_;
         metadata::MetadataManager metadataManager_;
     };
+
+    class FrameSubsetLightField : public LightField {
+    public:
+        explicit FrameSubsetLightField(const LightFieldReference &lightField, std::shared_ptr<const FrameSpecification> frameSpecification)
+            : LightField(lightField), frameSpecification_(frameSpecification)
+        {}
+
+        void accept(LightFieldVisitor &visitor) override { LightField::accept<FrameSubsetLightField>(visitor); }
+        std::shared_ptr<const FrameSpecification> frameSpecification() const { return frameSpecification_; }
+
+    private:
+        std::shared_ptr<const FrameSpecification> frameSpecification_;
+    };
 } // namespace lightdb::logical
 
 

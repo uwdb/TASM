@@ -43,6 +43,7 @@ namespace lightdb {
             LightFieldReference Select(const PixelMetadataSpecification&, bool shouldCrack=false, bool shouldReadEntireGOPs=false);
             LightFieldReference Select(const PixelsInFrameMetadataSpecification&);
             LightFieldReference Select(const MetadataSpecification&, MetadataSubsetType subsetType = MetadataSubsetTypeFrame, bool shouldCrack = false, bool shouldReadEntireGOPs=false);
+            LightFieldReference Select(std::shared_ptr<const FrameSpecification> frameSpecification);
 
 
             LightFieldReference Union(std::vector<LightFieldReference>); //TODO needs merge function

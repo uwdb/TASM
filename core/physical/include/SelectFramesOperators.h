@@ -52,9 +52,6 @@ private:
                 }
             }
             return {output};
-
-            // This intentionally does nothing because this physical operator never actually ends up in a physical plan.
-//            return {};
         }
     private:
         unsigned long frameNumber_;

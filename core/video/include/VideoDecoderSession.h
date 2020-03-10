@@ -107,7 +107,7 @@ protected:
                         bool gotTileNumber = (*reader).getTileNumberIfSet(tileNumber);
                         if (gotFirstFrameIndex && gotNumberOfFrames) {
                             for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
-                                decoder.frameNumberQueue().push(i);
+                                assert(decoder.frameNumberQueue().push(i));
 
                                 if (gotTileNumber)
                                     decoder.tileNumberQueue().push(tileNumber);

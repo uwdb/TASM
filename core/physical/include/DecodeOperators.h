@@ -70,7 +70,7 @@ private:
               configuration_{configuration(), codec()}, // FIXME: This fails if there is no data from the parent.
               geometry_{geometry()},
               queue_{lock()},
-              frameNumberQueue_(4000),
+              frameNumberQueue_(27002),
               tileNumberQueue_(4000), // Not sure what size makes sense here.
               decoder_{configuration_, queue_, lock(), frameNumberQueue_, tileNumberQueue_, physical.isDecodingDifferentSizes()},
               session_{decoder_, iterator(), iterator().eos()},

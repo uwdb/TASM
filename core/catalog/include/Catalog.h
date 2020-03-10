@@ -23,6 +23,7 @@ namespace lightdb {
         None,
         SmallTiles,
         GroupingExtent,
+        Uniform
     };
 
     namespace catalog {

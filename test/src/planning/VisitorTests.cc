@@ -405,40 +405,40 @@ TEST_F(VisitorTestFixture, testWorkloadCostEstimation) {
 
 TEST_F(VisitorTestFixture, testCrackIntoTiles) {
     std::vector<std::string> videos{
-        "red_kayak",
-        "touchdown_pass",
-        "park_joy_2k",
-        "park_joy_4k",
-        "Netflix_ToddlerFountain",
-        "Netflix_Narrator",
-        "Netflix_FoodMarket",
-        "Netflix_FoodMarket2",
-        "Netflix_DrivingPOV",
-        "Netflix_BoxingPractice",
+//        "MOT16-01",
+//        "MOT16-02",
+//        "MOT16-03",
+//        "MOT16-04",
+//        "MOT16-05",
+//        "MOT16-06",
+        "MOT16-07",
+        "MOT16-08",
+        "MOT16-09",
+        "MOT16-10",
+        "MOT16-11",
+        "MOT16-12",
+        "MOT16-13",
+        "MOT16-14"
     };
 
     for (const auto &video : videos) {
         for (int i = 2; i <= 6; ++i) {
-            UNIFORM_TILING_DIMENSION = i;
             auto outputName = video + "-" + std::to_string(i) + "x" + std::to_string(i);
             std::cout << "Cracking " << video << " to " << outputName << std::endl;
             auto input = Scan(video);
-            Coordinator().execute(input.StoreCracked(outputName));
+            Coordinator().execute(input.StoreCrackedUniform(outputName, i, i));
         }
 
-        UNIFORM_TILING_DIMENSION = 7;
         for (int i = 7; i <= 10; ++i) {
-            UNIFORM_TILING_DIMENSION_COLUMNS = i;
-            auto outputName = video + "-" + std::to_string(UNIFORM_TILING_DIMENSION) + "x" + std::to_string(UNIFORM_TILING_DIMENSION_COLUMNS);
+            auto outputName = video + "-" + std::to_string(7) + "x" + std::to_string(i);
             std::cout << "Cracking " << video << " to " << outputName << std::endl;
             auto input = Scan(video);
-            Coordinator().execute(input.StoreCracked(outputName));
+            Coordinator().execute(input.StoreCrackedUniform(outputName, i, 7));
         }
     }
 }
 
 TEST_F(VisitorTestFixture, testCrackIntoUniform) {
-    UNIFORM_TILING_DIMENSION = 2;
     Coordinator().execute(Scan("elfuente2").StoreCracked("elfuente2-2x2"));
 }
 
@@ -449,22 +449,26 @@ TEST_F(VisitorTestFixture, testScanMultiTiled) {
 
 TEST_F(VisitorTestFixture, testScanAndSave) {
     std::vector<std::string> videos{
-        "touchdown_pass",
-        "red_kayak",
-        "park_joy_4k",
-        "park_joy_2k",
-        "Netflix_ToddlerFountain",
-        "Netflix_Narrator",
-        "Netflix_FoodMarket",
-        "Netflix_FoodMarket2",
-        "Netflix_DrivingPOV",
-        "Netflix_BoxingPractice",
+        "MOT16-01",
+        "MOT16-02",
+        "MOT16-03",
+        "MOT16-04",
+        "MOT16-05",
+        "MOT16-06",
+        "MOT16-07",
+        "MOT16-08",
+        "MOT16-09",
+        "MOT16-10",
+        "MOT16-11",
+        "MOT16-12",
+        "MOT16-13",
+        "MOT16-14"
     };
 
     for (auto i = 0u; i < videos.size(); ++i)
     {
         std::string &video = videos[i];
-        auto videoPath = "/home/maureen/xiph/" + video + ".mp4";
+        auto videoPath = "/home/maureen/mot16/MOT16/videos/" + video + ".mp4";
         auto input = Load(
                 videoPath,
                 Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));

@@ -145,6 +145,15 @@ namespace lightdb::logical {
                 crackingStrategy);
     }
 
+    LightFieldReference Algebra::StoreCrackedUniform(const std::string &name,
+                                                  unsigned int uniformDimensionsCols,
+                                                    unsigned int uniformDimensionsRows) {
+        return LightFieldReference::make<CrackedLightField>(this_, name, catalog::Catalog::instance(),
+                CrackingStrategy::Uniform,
+                uniformDimensionsCols,
+                uniformDimensionsRows);
+    }
+
     LightFieldReference Algebra::Sink() {
         return LightFieldReference::make<SunkLightField>(this_);
     }

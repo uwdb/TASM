@@ -409,14 +409,39 @@ namespace lightdb::logical {
                           unsigned int layoutDuration=0,
                           CrackingStrategy crackingStrategy=CrackingStrategy::None)
             : StoredLightField(source, name, catalog, geometry, codec),
-            metadataManager_(metadataManager),
-            layoutDuration_(layoutDuration),
-            crackingStrategy_(crackingStrategy)
+              metadataManager_(metadataManager),
+              layoutDuration_(layoutDuration),
+              crackingStrategy_(crackingStrategy),
+              uniformDimensionsCols_(0),
+              uniformDimensionsRows_(0)
         { }
+
+        CrackedLightField(const LightFieldReference &source,
+                std::string name,
+                const catalog::Catalog &catalog,
+                CrackingStrategy crackingStrategy,
+                unsigned int uniformDimensionsCols,
+                unsigned int uniformDimensionsRows)
+            : StoredLightField(source, name, catalog, {}, Codec::hevc()),
+              layoutDuration_(0),
+              crackingStrategy_(crackingStrategy),
+              uniformDimensionsCols_(uniformDimensionsCols),
+              uniformDimensionsRows_(uniformDimensionsRows)
+        {
+            assert(crackingStrategy_ == CrackingStrategy::Uniform);
+        }
 
         std::shared_ptr<metadata::MetadataManager> metadataManager() const { return metadataManager_; }
         unsigned int layoutDuration() const { return layoutDuration_; }
         CrackingStrategy crackingStrategy() const { return crackingStrategy_; }
+        unsigned int uniformDimensionsCols() const {
+            assert(crackingStrategy_ == CrackingStrategy::Uniform);
+            return uniformDimensionsCols_;
+        }
+        unsigned int uniformDimensionsRows() const {
+            assert(crackingStrategy_ == CrackingStrategy::Uniform);
+            return uniformDimensionsRows_;
+        }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<CrackedLightField>(visitor); }
 
@@ -424,6 +449,8 @@ namespace lightdb::logical {
         std::shared_ptr<metadata::MetadataManager> metadataManager_;
         unsigned int layoutDuration_;
         CrackingStrategy crackingStrategy_;
+        unsigned int uniformDimensionsCols_;
+        unsigned int uniformDimensionsRows_;
     };
 
     class SavedLightField : public LightField {

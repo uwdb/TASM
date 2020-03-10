@@ -10,6 +10,7 @@ endforeach()
 # Gather the core source files
 file(GLOB_RECURSE LIGHTDB_SOURCES "*.cc")
 set(LIGHTDB_SOURCES ${LIGHTDB_SOURCES} ${NVIDIASDK_SOURCES})
+message("sources: ${LIGHTDB_SOURCES}")
 
 # Compile sources with PIC
 add_library(lightdb OBJECT ${LIGHTDB_SOURCES})

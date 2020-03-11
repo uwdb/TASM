@@ -105,12 +105,26 @@ protected:
                         bool gotFirstFrameIndex = (*reader).getFirstFrameIndexIfSet(firstFrameIndex);
                         bool gotNumberOfFrames = (*reader).getNumberOfFramesIfSet(numberOfFrames);
                         bool gotTileNumber = (*reader).getTileNumberIfSet(tileNumber);
+
                         if (gotFirstFrameIndex && gotNumberOfFrames) {
+                            if (decoder.frameNumberQueue().write_available() < static_cast<unsigned int>(numberOfFrames)) {
+                                if (!nextDataQueue.read_available()) {
+                                    // There should be at least some data to decode.
+                                    assert(i);
+                                    break;
+                                } else {
+                                    while (decoder.frameNumberQueue().write_available() < numberOfFrames)
+                                        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//                                        std::this_thread::yield();
+                                }
+                            }
+
                             for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
+
                                 assert(decoder.frameNumberQueue().push(i));
 
                                 if (gotTileNumber)
-                                    decoder.tileNumberQueue().push(tileNumber);
+                                    assert(decoder.tileNumberQueue().push(tileNumber));
                             }
                         }
 

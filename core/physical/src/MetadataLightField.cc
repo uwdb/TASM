@@ -611,6 +611,20 @@ namespace lightdb::associations {
                     {"Netflix_FoodMarket2", "/home/maureen/xiph/labels/Netflix_FoodMarket2.db"},
                     {"Netflix_DrivingPOV", "/home/maureen/xiph/labels/Netflix_DrivingPOV.db"},
                     {"Netflix_BoxingPractice", "/home/maureen/xiph/labels/Netflix_BoxingPractice.db"},
+
+                    // MOT16 dataset
+                    {"MOT16-01", "/home/maureen/mot16/labels/MOT16-01.db"},
+                    {"MOT16-02", "/home/maureen/mot16/labels/MOT16-02.db"},
+                    {"MOT16-03", "/home/maureen/mot16/labels/MOT16-03.db"},
+                    {"MOT16-04", "/home/maureen/mot16/labels/MOT16-04.db"},
+                    {"MOT16-07", "/home/maureen/mot16/labels/MOT16-07.db"},
+                    {"MOT16-08", "/home/maureen/mot16/labels/MOT16-08.db"},
+                    {"MOT16-09", "/home/maureen/mot16/labels/MOT16-09.db"},
+                    {"MOT16-10", "/home/maureen/mot16/labels/MOT16-10.db"},
+                    {"MOT16-11", "/home/maureen/mot16/labels/MOT16-11.db"},
+                    {"MOT16-12", "/home/maureen/mot16/labels/MOT16-12.db"},
+                    {"MOT16-13", "/home/maureen/mot16/labels/MOT16-13.db"},
+                    {"MOT16-14", "/home/maureen/mot16/labels/MOT16-14.db"},
             } );
 } // namespace lightdb::associations
 

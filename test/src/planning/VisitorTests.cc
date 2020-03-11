@@ -57,6 +57,20 @@ static std::unordered_map<std::string, std::vector<std::string>> videoToObjectsT
       {"Netflix_FoodMarket2", {"person"}},
       {"Netflix_DrivingPOV", {"car"}},
       {"Netflix_BoxingPractice", {"person"}},
+      {"MOT16-01", {"object"}},
+      {"MOT16-02", {"object"}},
+      {"MOT16-03", {"object"}},
+      {"MOT16-04", {"object"}},
+      {"MOT16-05", {"object"}},
+      {"MOT16-06", {"object"}},
+      {"MOT16-07", {"object"}},
+      {"MOT16-08", {"object"}},
+      {"MOT16-09", {"object"}},
+      {"MOT16-10", {"object"}},
+      {"MOT16-11", {"object"}},
+      {"MOT16-12", {"object"}},
+      {"MOT16-13", {"object"}},
+      {"MOT16-14", {"object"}},
 });
 
 static std::unordered_map<std::string, unsigned int> videoToFramerate({
@@ -82,6 +96,18 @@ static std::unordered_map<std::string, unsigned int> videoToFramerate({
     {"Netflix_FoodMarket2", 60},
     {"Netflix_DrivingPOV", 60},
     {"Netflix_BoxingPractice", 60},
+    {"MOT16-01", 30},
+    {"MOT16-02", 30},
+    {"MOT16-03", 30},
+    {"MOT16-04", 30},
+    {"MOT16-07", 30},
+    {"MOT16-08", 30},
+    {"MOT16-09", 30},
+    {"MOT16-10", 30},
+    {"MOT16-11", 30},
+    {"MOT16-12", 30},
+    {"MOT16-13", 25},
+    {"MOT16-14", 25},
 });
 
 static const unsigned int width2k = 1920;
@@ -98,6 +124,18 @@ static std::unordered_map<std::string, std::pair<unsigned int, unsigned int>> vi
         {"Netflix_FoodMarket2", {4096, 2160}},
         {"Netflix_DrivingPOV", {4096, 2160}},
         {"Netflix_BoxingPractice", {4096, 2160}},
+        {"MOT16-01", {1920, 1080}},
+        {"MOT16-02", {1920, 1080}},
+        {"MOT16-03", {1920, 1080}},
+        {"MOT16-04", {1920, 1080}},
+        {"MOT16-07", {1920, 1080}},
+        {"MOT16-08", {1920, 1080}},
+        {"MOT16-09", {1920, 1080}},
+        {"MOT16-10", {1920, 1080}},
+        {"MOT16-11", {1920, 1080}},
+        {"MOT16-12", {1920, 1080}},
+        {"MOT16-13", {1920, 1080}},
+        {"MOT16-14", {1920, 1080}},
 };
 
 static std::string combineStrings(const std::vector<std::string> &strings, std::string connector = "_") {
@@ -490,16 +528,18 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
 
 TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
     std::vector<std::string> videos{
-//        "touchdown_pass",
-        "red_kayak",
-//        "park_joy_4k",
-//        "park_joy_2k",
-//        "Netflix_ToddlerFountain",
-//        "Netflix_Narrator",
-//        "Netflix_FoodMarket",
-//        "Netflix_FoodMarket2",
-//        "Netflix_DrivingPOV",
-//        "Netflix_BoxingPractice",
+        "MOT16-01",
+        "MOT16-02",
+        "MOT16-03",
+        "MOT16-04",
+        "MOT16-07",
+        "MOT16-08",
+        "MOT16-09",
+        "MOT16-10",
+        "MOT16-11",
+        "MOT16-12",
+        "MOT16-13",
+        "MOT16-14"
     };
 
     for (const auto &video : videos) {
@@ -779,22 +819,41 @@ TEST_F(VisitorTestFixture, testBasicSelection) {
     Coordinator().execute(input.Select(selection));
 }
 
+TEST_F(VisitorTestFixture, testFailureCase) {
+//    ***video,MOT16-03
+//                   ***tile strategy,-5x5
+    auto metadataElement = std::make_shared<SingleMetadataElement>("label", "object");
+    PixelMetadataSpecification selection("labels", metadataElement);
+    {
+        auto input = ScanMultiTiled("MOT16-03-6x6", true);
+        Coordinator().execute(input.Select(selection));
+    }
+    for (auto i = 7; i <= 10; ++i) {
+        std::string video = "MOT16-03-7x" + std::to_string(i);
+        auto input = ScanMultiTiled(video, true);
+        Coordinator().execute(input.Select(selection));
+    }
+}
+
 TEST_F(VisitorTestFixture, testMeasureTiles) {
     std::vector<std::string> videos{
-        "red_kayak",
-        "touchdown_pass",
-        "park_joy_2k",
-        "park_joy_4k",
-        "Netflix_ToddlerFountain",
-        "Netflix_Narrator",
-        "Netflix_FoodMarket",
-        "Netflix_FoodMarket2",
-        "Netflix_DrivingPOV",
-        "Netflix_BoxingPractice",
+        "MOT16-01",
+        "MOT16-02",
+        "MOT16-03",
+        "MOT16-04",
+        "MOT16-07",
+        "MOT16-08",
+        "MOT16-09",
+        "MOT16-10",
+        "MOT16-11",
+        "MOT16-12",
+        "MOT16-13",
+        "MOT16-14"
     };
 
 //    std::unordered_set<std::string> usesOnlyOneTileStrategies{ "-2x2", "-3x3", "-4x4", "-5x5"};
     std::vector<std::string> uniformTileSuffixes{"-2x2", "-3x3", "-4x4", "-5x5", "-6x6", "-7x7", "-7x8", "-7x9", "-7x10"};
+//    std::vector<std::string> uniformTileSuffixes{"-2x2", "-3x3", "-4x4", "-5x5", "-6x6", "-7x7", "-7x8", "-7x9", "-7x10"};
 
     for (const auto &video : videos) {
         auto baseFramerate = videoToFramerate.at(video);
@@ -822,7 +881,7 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
 //        }
 
             auto runQuery = [&](const std::string &video, const std::string &suffix, bool usesOnlyOneTile) {
-                for (int i = 0; i < 4; ++i) {
+                for (int i = 0; i < 3; ++i) {
                     std::cout << "\n***video," << video << "\n***tile strategy," << suffix << std::endl;
 
                     auto catalogEntry = video + suffix;

@@ -62,7 +62,7 @@ private:
     public:
         explicit Runtime(GPUEncodeToCPU &physical)
             : runtime::GPUUnaryRuntime<GPUEncodeToCPU, GPUDecodedFrameData>(physical),
-              encodeConfiguration_{configuration(), this->physical().codec().nvidiaId().value(), gop()},
+              encodeConfiguration_{configuration(), this->physical().codec().nvidiaId().value(), gop(configuration().framerate)},
               encoder_{this->context(), encodeConfiguration_, lock()},
               writer_{encoder_.api()},
               encodeSession_{encoder_, writer_},
@@ -155,16 +155,17 @@ private:
         }
 
     private:
-        unsigned int gop() const {
+        unsigned int gop(const Configuration::FrameRate &framerate) const {
             auto option = logical().is<OptionContainer<>>()
                           ? logical().downcast<OptionContainer<>>().get_option(EncodeOptions::GOPSize)
                           : std::nullopt;
 
             if(option.has_value() && option.value().type() != typeid(unsigned int))
                 throw InvalidArgumentError("Invalid GOP option specified", EncodeOptions::GOPSize);
-            else
+            else {
                 return std::any_cast<unsigned int>(option.value_or(
-                        std::make_any<unsigned int>(kDefaultGopSize)));
+                        std::make_any<unsigned int>(framerate.denominator() == 1 ? framerate.numerator() : kDefaultGopSize)));
+            }
         }
 
         std::unordered_set<int> getDesiredKeyframes() const {

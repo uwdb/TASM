@@ -192,7 +192,7 @@ TEST_F(KeyframePlacementTestFixture, testBirdSelectionOnIdealGOPs) {
         auto startEndRanges = convertFramesToRanges(framesForSelection);
         auto numFramesInNature = 3578;
         auto maxNumberOfKeyframes = 155;
-        KeyframeFinder finder(numFramesInNature, maxNumberOfKeyframes, {startEndRanges});
+        KeyframeFinderOptOneTwo finder(numFramesInNature, maxNumberOfKeyframes, {startEndRanges});
         auto keyframes = finder.getKeyframes(numFramesInNature, maxNumberOfKeyframes);
         std::unordered_set<int> uniqueKeyframes(keyframes.begin(), keyframes.end());
 
@@ -224,18 +224,40 @@ TEST_F(KeyframePlacementTestFixture, testSelectOnVisualRoadVideos) {
             "traffic-4k-000",
     };
 
-    std::vector<unsigned int> gopLengths{30, 60, 120, 480, 1800, 5400, static_cast<unsigned int>(-1)};
+//    std::vector<unsigned int> gopLengths{30, 60, 120, 480, 1800, 5400, static_cast<unsigned int>(-1)};
 
     // For each video/gop:
     // - Select cars, then select frames with pedestrians.
     FrameMetadataSpecification carSelection("labels", std::make_shared<SingleMetadataElement>("label", "car"));
     FrameMetadataSpecification pedestrianSelection("labels", std::make_shared<SingleMetadataElement>("label", "pedestrian"));
+
     for (const auto &video : videos) {
-        for (auto gopLength : gopLengths) {
-            for (int i = 0; i < 3; ++i) {
-                std::string catalogVideo = video + "-gop_" + std::to_string(gopLength);
+        // Encode the video if it doesn't exist already.
+        std::string savedName = video + "-customGOP_alt";
+        if (!Catalog::instance().exists(savedName)) {
+            metadata::MetadataManager carMetadataManager(video, carSelection);
+            auto framesForCarSelection = carMetadataManager.orderedFramesForMetadata();
+            metadata::MetadataManager pedestrianMetadataManager(video, pedestrianSelection);
+            auto framesforPedestrianSelection = pedestrianMetadataManager.orderedFramesForMetadata();
+
+            auto startEndRangesForCars = convertFramesToRanges(framesForCarSelection);
+            auto startEndRangesForPedestrians = convertFramesToRanges(framesforPedestrianSelection);
+            auto numFramesInTraffic = 27001;
+            auto maxNumberOfKeyframes = 900;
+            KeyframeFinderOptOneTwo finder(numFramesInTraffic, maxNumberOfKeyframes, {startEndRangesForCars, startEndRangesForPedestrians});
+            auto keyframes = finder.getKeyframes(numFramesInTraffic, maxNumberOfKeyframes);
+            std::unordered_set<int> uniqueKeyframes(keyframes.begin(), keyframes.end());
+
+            auto input = Scan(video);
+            Coordinator().execute(input.Encode(Codec::hevc(), {{EncodeOptions::Keyframes, uniqueKeyframes},
+                                                               {EncodeOptions::GOPSize, static_cast<unsigned int>(-1)}}).Store(savedName));
+        }
+
+//        for (auto gopLength : gopLengths) {
+            for (int i = 0; i < 1; ++i) {
+                std::string catalogVideo =  savedName; //video + "-gop_" + std::to_string(gopLength);
                 std::cout << "\niteration " << i << std::endl;
-                std::cout << "gop-length " << gopLength << std::endl;
+//                std::cout << "gop-length " << gopLength << std::endl;
                 std::cout << "catalog-video " << catalogVideo << std::endl;
                 std::cout << "input-video " << video << std::endl;
 
@@ -253,7 +275,7 @@ TEST_F(KeyframePlacementTestFixture, testSelectOnVisualRoadVideos) {
                 }
 
             }
-        }
+//        }
     }
 }
 

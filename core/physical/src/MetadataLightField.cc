@@ -625,6 +625,11 @@ namespace lightdb::associations {
                     {"MOT16-12", "/home/maureen/mot16/labels/MOT16-12.db"},
                     {"MOT16-13", "/home/maureen/mot16/labels/MOT16-13.db"},
                     {"MOT16-14", "/home/maureen/mot16/labels/MOT16-14.db"},
+
+                    // NETFLIX dataset
+                    {"meridian", "/home/maureen/Netflix/labels/meridian_60fps.db"},
+                    {"elfuente_full", "/home/maureen/cdvl/labels/elfuente_full_60fps.db"},
+                    {"cosmos", "/home/maureen/Netflix/labels/cosmos.db"},
             } );
 } // namespace lightdb::associations
 

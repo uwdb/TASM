@@ -532,6 +532,44 @@ TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
     }
 }
 
+TEST_F(VisitorTestFixture, testCrackBasedOnAllDetections) {
+    std::string video("elfuente_full");
+    std::string crackingObject("all_objects");
+    unsigned int baseFramerate = videoToFramerate.at(video);
+    std::shared_ptr<MetadataElement> metadataElement = std::make_shared<AllMetadataElement>();
+    MetadataSpecification metadataSpecification("labels", metadataElement);
+    std::vector<int> smallTileDurations{1, 2, 3, 4, 5};
+    for (const auto &durationMultiplier : smallTileDurations) {
+        int duration = baseFramerate * durationMultiplier;
+        auto input = Scan(video);
+        std::string savedName =
+                video + "-cracked-" + crackingObject + "-smalltiles-duration" + std::to_string(duration);
+        std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
+        Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
+                                                 CrackingStrategy::SmallTiles));
+    }
+
+    std::vector<int> largeTileDurations{1, 2, 3, 4, 5};
+    for (const auto &durationMultiplier : largeTileDurations) {
+        int duration = baseFramerate * durationMultiplier;
+        auto input = Scan(video);
+        std::string savedName =
+                video + "-cracked-" + crackingObject + "-grouping-extent-duration" + std::to_string(duration);
+        std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
+        Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
+                                                 CrackingStrategy::GroupingExtent));
+    }
+    {
+        auto input = Scan(video);
+        auto duration = 2800000;
+        std::string savedName = video + "-cracked-" + crackingObject + "-grouping-extent-entire-video";
+        std::cout << "*** Cracking " << video << ", grouped entire video to " << savedName << std::endl;
+        Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
+                                                 CrackingStrategy::GroupingExtent));
+    }
+
+}
+
 TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
     std::vector<std::string> videos{
         "traffic-2k-001",
@@ -847,16 +885,14 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
 //    std::vector<std::string> videos{
 //        "meridian",
 //    };
-    std::string video("traffic-2k-001");
+    std::string video("elfuente_full");
     std::vector<std::vector<std::string>> queryObjects{
-            {"car"},
-            {"pedestrian"},
+            {"person"},
+            {"car", "truck", "boat"},
     };
 
     std::vector<std::vector<std::string>> crackingObjectsList{
-            {"car"},
-            {"pedestrian"},
-            {"car", "pedestrian"},
+            {"all_objects"},
     };
 
 
@@ -883,12 +919,12 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
         }
 
         PixelMetadataSpecification selection("labels", metadataElement);
-        for (int i = 0; i < 3; ++i) {
-            std::cout << "\n***video," << video << "\n***tile strategy,none" << std::endl;
-            auto input = Scan(video);
-            input.downcast<ScannedLightField>().setWillReadEntireEntry(false);
-            Coordinator().execute(input.Select(selection));
-        }
+//        for (int i = 0; i < 3; ++i) {
+//            std::cout << "\n***video," << video << "\n***tile strategy,none" << std::endl;
+//            auto input = Scan(video);
+//            input.downcast<ScannedLightField>().setWillReadEntireEntry(false);
+//            Coordinator().execute(input.Select(selection));
+//        }
 
             auto runQuery = [&](const std::string &video, const std::string &suffix, bool usesOnlyOneTile) {
                 for (int i = 0; i < 3; ++i) {

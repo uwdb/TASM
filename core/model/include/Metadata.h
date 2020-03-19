@@ -16,6 +16,39 @@ namespace lightdb {
         virtual unsigned int lastFrame() const = 0;
     };
 
+    class AllMetadataElement : public MetadataElement {
+    public:
+        AllMetadataElement(const std::string &columnName = "label", unsigned int firstFrame = 0, unsigned int lastFrame = UINT32_MAX)
+            : columnName_(columnName),
+            firstFrame_(firstFrame),
+            lastFrame_(lastFrame) {}
+
+        std::string whereClauseConstraints(bool includeFrameLimits) const override {
+            std::string baseClause = columnName_ + " NOT LIKE ''";
+            if (!includeFrameLimits)
+                return baseClause;
+
+            return baseClause + " frame >= " + std::to_string(firstFrame_) + " AND frame < " + std::to_string(lastFrame_);
+        }
+
+        void updateLastFrameConstraints(unsigned int lastFrame) override {
+            lastFrame_ = std::min(lastFrame_, lastFrame);
+        }
+
+        unsigned int firstFrame() const override {
+            return firstFrame_;
+        }
+
+        unsigned int lastFrame() const override {
+            return lastFrame_;
+        }
+
+    private:
+        const std::string columnName_;
+        unsigned int firstFrame_;
+        unsigned int lastFrame_;
+    };
+
     class SingleMetadataElement : public MetadataElement {
     public:
         SingleMetadataElement(const std::string &columnName, const std::string &expectedValue, unsigned int firstFrame = 0, unsigned int lastFrame = UINT32_MAX)

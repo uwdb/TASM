@@ -630,6 +630,13 @@ namespace lightdb::associations {
                     {"meridian", "/home/maureen/Netflix/labels/meridian_60fps.db"},
                     {"elfuente_full", "/home/maureen/cdvl/labels/elfuente_full_60fps.db"},
                     {"cosmos", "/home/maureen/Netflix/labels/cosmos.db"},
+
+                    // El Fuente full scenes
+                    {"market_all", "/home/maureen/cdvl/elfuente_scenes/labels/market_all.db"},
+                    {"narrator", "/home/maureen/cdvl/elfuente_scenes/labels/narrator.db"},
+                    {"river_boat", "/home/maureen/cdvl/elfuente_scenes/labels/river_boat.db"},
+                    {"square_with_fountain", "/home/maureen/cdvl/elfuente_scenes/labels/square_with_fountain.db"},
+                    {"street_night_view", "/home/maureen/cdvl/elfuente_scenes/labels/street_night_view.db"},
             } );
 } // namespace lightdb::associations
 

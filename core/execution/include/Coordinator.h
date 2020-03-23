@@ -66,6 +66,7 @@ public:
         auto outputs = submit(plan);
         auto context = execution::make<transactions::SingleNodeVolatileTransaction>(plan);
 
+        GLOBAL_TIMER.reset();
         Timer timer;
         timer.startSection("query");
 

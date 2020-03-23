@@ -42,8 +42,8 @@ private:
                     tileEncodersManager_(EncodeConfiguration((*iterators().front()).downcast<GPUDecodedFrameData>().configuration(), Codec::hevc().nvidiaId().value(), 1000), context(), lock()),
                     firstFrameInGroup_(-1),
                     lastFrameInGroup_(-1),
-                    frameNumber_(0),
-                    threadPool_(context(), 1)
+                    frameNumber_(0)
+//                    threadPool_(context(), 1)
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -170,7 +170,7 @@ private:
         // This should actually probably be a list of output streams related to the current tile group's transaction.
         std::unordered_map<unsigned int, std::list<std::unique_ptr<bytestring>>> encodedDataForTiles_;
 
-        GPUThreadPool threadPool_;
+//        GPUThreadPool threadPool_;
     };
     const std::string outputEntryName_;
     std::unordered_set<int> desiredKeyframes_;

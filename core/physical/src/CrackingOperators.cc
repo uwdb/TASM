@@ -61,7 +61,7 @@ void CrackVideo::Runtime::encodeFrameToTiles(const GPUFrameReference &frame, int
     }
     for (auto &tileIndex : tilesCurrentlyBeingEncoded_) {
         Rectangle rect = currentTileLayout_.rectangleForTile(tileIndex);
-        tileEncodersManager_.encodeFrameForIdentifier(tileIndex, *frame, rect.y, rect.x, shouldBeKeyframe);
+        tileEncodersManager_.encodeFrameForIdentifier(tileIndex, frame, rect.y, rect.x, shouldBeKeyframe);
     }
 }
 

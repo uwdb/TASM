@@ -2,7 +2,6 @@
 #define LIGHTDB_MULTIPLEENCODERMANAGER_H
 
 #include "EncodeWriter.h"
-#include "ThreadPool.h"
 #include "VideoEncoder.h"
 #include "VideoEncoderSession.h"
 #include <queue>
@@ -15,13 +14,12 @@ public:
             : encodeConfiguration_(std::move(encodeConfiguration)),
               encoder_{context, encodeConfiguration_, lock},
               writer_{encoder_.api()},
-              encodeSession_{encoder_, writer_},
-              threadPool_(context, 1)
+              encodeSession_{encoder_, writer_}
     { }
 
     void updateConfiguration(unsigned int newWidth, unsigned int newHeight);
     std::unique_ptr<bytestring> getEncodedFrames();
-    void encodeFrame(GPUFrameReference frame, unsigned int top, unsigned int left, bool isKeyframe);
+    void encodeFrame(Frame &frame, unsigned int top, unsigned int left, bool isKeyframe);
     void flush();
 
 private:
@@ -29,7 +27,6 @@ private:
     VideoEncoder encoder_;
     MemoryEncodeWriter writer_;
     VideoEncoderSession encodeSession_;
-    GPUThreadPool threadPool_;
 };
 
 class MultipleEncoderManager {
@@ -67,9 +64,7 @@ public:
         idToEncoder_.at(identifier)->updateConfiguration(newWidth, newHeight);
     }
 
-    void encodeFrameForIdentifier(unsigned int identifier, GPUFrameReference frame, unsigned int top, unsigned int left, bool isKeyframe) {
-        // Map frame once on main thread.
-        auto cudaFrame = frame->cuda();
+    void encodeFrameForIdentifier(unsigned int identifier, Frame &frame, unsigned int top, unsigned int left, bool isKeyframe) {
         assert(idToEncoder_.count(identifier));
         idToEncoder_.at(identifier)->encodeFrame(frame, top, left, isKeyframe);
     }

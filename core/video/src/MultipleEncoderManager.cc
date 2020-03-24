@@ -14,24 +14,15 @@ void TileEncoder::updateConfiguration(unsigned int newWidth, unsigned int newHei
 
 std::unique_ptr<bytestring> TileEncoder::getEncodedFrames() {
     unsigned int numberOfFrames;
-    std::unique_ptr<bytestring> encodedData;
-    threadPool_.push([&]() {
-        writer_.dequeueToPtr(encodedData, numberOfFrames);
-    });
-    threadPool_.waitAll();
-    return encodedData;
+    return writer_.dequeueToPtr(numberOfFrames);
 }
 
-void TileEncoder::encodeFrame(GPUFrameReference frame, unsigned int top, unsigned int left, bool isKeyframe) {
-    threadPool_.push([=]() {
-        encodeSession_.Encode(*frame, top, left, isKeyframe);
-    });
+void TileEncoder::encodeFrame(Frame &frame, unsigned int top, unsigned int left, bool isKeyframe) {
+    encodeSession_.Encode(frame, top, left, isKeyframe);
 }
 
 void TileEncoder::flush() {
-    threadPool_.push([&]() {
-        encodeSession_.Flush();
-    });
+    encodeSession_.Flush();
 }
 
 } // namespace lightdb

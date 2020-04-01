@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "timer.h"
+#include <climits>
 #include <iostream>
 #include <random>
 #include <regex>
@@ -45,7 +46,7 @@ static std::unordered_map<std::string, std::vector<std::string>> videoToObjectsT
       {"elfuente2", {"person"}},
       {"oldtown", {"car"}},
       {"seeking", {"person"}},
-      {"tennis", {"person"}}, //, "sports ball", "tennis racket"
+      {"tennis", {"person", "sports_ball", "tennis_racket"}},
       {"elfuente_full_correctfps", {"person"}},
       {"red_kayak", {"surfboard", "boat"}},
       {"touchdown_pass", {"person"}},
@@ -55,7 +56,7 @@ static std::unordered_map<std::string, std::vector<std::string>> videoToObjectsT
       {"Netflix_Narrator", {"person"}},
       {"Netflix_FoodMarket", {"person"}},
       {"Netflix_FoodMarket2", {"person"}},
-      {"Netflix_DrivingPOV", {"car"}},
+      {"Netflix_DrivingPOV", {"car", "truck"}},
       {"Netflix_BoxingPractice", {"person"}},
       {"MOT16-01", {"object"}},
       {"MOT16-02", {"object"}},
@@ -474,11 +475,11 @@ TEST_F(VisitorTestFixture, testWorkloadCostEstimation) {
 
 TEST_F(VisitorTestFixture, testCrackIntoTiles) {
     std::vector<std::string> videos{
-        "market_all"
+        "Netflix_FoodMarket2"
     };
 
     for (const auto &video : videos) {
-        for (int i = 2; i <= 4; ++i) {
+        for (int i = 7; i <= 7; ++i) {
             auto outputName = video + "-" + std::to_string(i) + "x" + std::to_string(i);
             std::cout << "Cracking " << video << " to " << outputName << std::endl;
             auto input = Scan(video);
@@ -505,21 +506,41 @@ TEST_F(VisitorTestFixture, testScanMultiTiled) {
 
 TEST_F(VisitorTestFixture, testScanAndSaveMultiple) {
     std::vector<std::string> videos{
-        "market_all",
-        "narrator",
-        "river_boat",
-        "square_with_fountain",
-        "street_night_view",
+//        "market_all",
+//        "narrator",
+//        "river_boat",
+//        "square_with_fountain",
+//        "street_night_view",
+//        "traffic-2k-001",
+//        "traffic-4k-002"
+            "birdsincage",
+            "crowdrun",
+            "elfuente1",
+            "elfuente2",
+            "oldtown",
+            "seeking",
+            "tennis",
+            "red_kayak",
+            "touchdown_pass",
+            "park_joy_2k",
+            "park_joy_4k",
+            "Netflix_ToddlerFountain",
+            "Netflix_Narrator",
+            "Netflix_FoodMarket",
+            "Netflix_FoodMarket2",
+            "Netflix_DrivingPOV",
+            "Netflix_BoxingPractice",
     };
 
     for (auto i = 0u; i < videos.size(); ++i)
     {
         std::string &video = videos[i];
-        auto videoPath = "/home/maureen/cdvl/elfuente_scenes/elfuente_full_" + video + ".mp4";
+        std::cout << "\nVideo " << video << std::endl;
+        auto videoPath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/" + video + "/1-0-stream.mp4";
         auto input = Load(
                 videoPath,
                 Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-        Coordinator().execute(input.Store(video));
+        Coordinator().execute(input.Store(video + "_2"));
     }
 }
 
@@ -530,16 +551,84 @@ TEST_F(VisitorTestFixture, testScanAndSave) {
     Coordinator().execute(input.Store("market-all-2"));
 }
 
-TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
-    std::string video("market_all");
-    unsigned int baseFramerate = videoToFramerate.at(video);
-//    const auto &objects = videoToObjectsToCrackOn.at(video);
-    std::string object("person");
+struct CrackingInfo {
+    CrackingInfo(CrackingStrategy s, int d, std::string object)
+        : strategy(s), duration(d), queryObject(object)
+    {}
 
-    auto input = Scan(video);
-    MetadataSpecification metadataSelection("labels", std::make_shared<SingleMetadataElement>("label", object));
-    std::string savedName = "test_async_encode";
-    Coordinator().execute(input.StoreCracked(savedName, video, &metadataSelection, baseFramerate, CrackingStrategy::SmallTiles));
+    CrackingStrategy strategy;
+    int duration;
+    std::string queryObject;
+};
+
+
+
+TEST_F(VisitorTestFixture, testCrackParticularCasesBasedOnMetadata) {
+    std::unordered_map<std::string, std::vector<CrackingInfo>> videoToCrackingInfo{
+            {"birdsincage", {CrackingInfo(CrackingStrategy::SmallTiles, 120, "bird")}},
+//            {"car-pov-2k-000-shortened", CrackingInfo(CrackingStrategy::GroupingExtent, -1, "pedestrian")},
+//            {"car-pov-2k-001-shortened", CrackingInfl(CrackingStrategy::GroupingExtent, -1, "pedestrian")},
+            {"cosmos", {CrackingInfo(CrackingStrategy::SmallTiles, 24, "person"),
+                        CrackingInfo(CrackingStrategy::GroupingExtent, 24, "sheep")}},
+            {"elfuente1", {CrackingInfo(CrackingStrategy::SmallTiles, 120, "person")}},
+            {"elfuente_full", {CrackingInfo(CrackingStrategy::SmallTiles, 60, "person")}},
+            {"market_all", {CrackingInfo(CrackingStrategy::SmallTiles, 300, "car"),
+                            CrackingInfo(CrackingStrategy::SmallTiles, 60, "person"),
+                            CrackingInfo(CrackingStrategy::SmallTiles, 120, "truck")}},
+            {"narrator", {CrackingInfo(CrackingStrategy::GroupingExtent, 120, "car"),
+                          CrackingInfo(CrackingStrategy::SmallTiles, 60, "person")}},
+            {"river_boat", {CrackingInfo(CrackingStrategy::SmallTiles, 60, "boat"),
+                            CrackingInfo(CrackingStrategy::SmallTiles, 60, "person")}},
+            {"seeking", {CrackingInfo(CrackingStrategy::GroupingExtent, 75, "person")}},
+            {"square_with_fountain", {CrackingInfo(CrackingStrategy::SmallTiles, 60, "bicycle"),
+                                      CrackingInfo(CrackingStrategy::GroupingExtent, 60, "person")}},
+            {"street_night_view", {CrackingInfo(CrackingStrategy::SmallTiles, 60, "car"),
+                                   CrackingInfo(CrackingStrategy::SmallTiles, 60, "person")}}
+//            {"MOT16-01", CrackingInfo(CrackingStrategy::GroupingExtent, 30)},
+//            {"MOT16-02", CrackingInfo(CrackingStrategy::SmallTiles, 30)},
+//            {"MOT16-03", CrackingInfo(CrackingStrategy::GroupingExtent, 30)},
+//            {"MOT16-04", CrackingInfo(CrackingStrategy::GroupingExtent, 60)},
+//            {"MOT16-07", CrackingInfo(CrackingStrategy::GroupingExtent, -1)},
+//            {"MOT16-08", CrackingInfo(CrackingStrategy::GroupingExtent, -1)},
+//            {"MOT16-09", CrackingInfo(CrackingStrategy::GroupingExtent, -1)},
+//            {"MOT16-10", CrackingInfo(CrackingStrategy::GroupingExtent, 90)},
+//            {"MOT16-11", CrackingInfo(CrackingStrategy::GroupingExtent, 60)},
+//            {"MOT16-12", CrackingInfo(CrackingStrategy::SmallTiles, 150)},
+//            {"MOT16-13", CrackingInfo(CrackingStrategy::SmallTiles, 25)},
+//            {"MOT16-14", CrackingInfo(CrackingStrategy::GroupingExtent, 125)},
+    };
+
+    for (auto it = videoToCrackingInfo.begin(); it != videoToCrackingInfo.end(); ++it) {
+        auto video = it->first;
+        for (const auto &crackingInfo : it->second) {
+            auto object = crackingInfo.queryObject;
+            auto input = Scan(video);
+            MetadataSpecification metadataSelection("labels", std::make_shared<SingleMetadataElement>("label", object));
+            std::string crackingStr =
+                    crackingInfo.strategy == CrackingStrategy::SmallTiles ? "-smalltiles-" : "-grouping-extent-";
+            std::string durationStr =
+                    crackingInfo.duration == -1 ? "entire-video" : "duration" + std::to_string(crackingInfo.duration);
+            std::string savedName = video + "-cracked-" + object + crackingStr + durationStr;
+            std::cout << "Cracking " << video << " to " << savedName << std::endl;
+            Coordinator().execute(input.StoreCracked(savedName, video, &metadataSelection,
+                                                     crackingInfo.duration == -1 ? INT_MAX : crackingInfo.duration,
+                                                     crackingInfo.strategy));
+        }
+    }
+}
+
+TEST_F(VisitorTestFixture, testCrackBasedOnMetadata) {
+    std::string video("traffic-4k-002-ds2k");
+    unsigned int baseFramerate = 30;
+    std::vector<std::string> labels{"MOG", "MOG2"};
+
+    for (const auto &label : labels) {
+        auto input = Scan(video);
+        MetadataSpecification metadataSelection("labels", std::make_shared<SingleMetadataElement>("label", label));
+        std::string savedName = video + "-cracked-" + label + "-smalltiles-duration" + std::to_string(baseFramerate);
+        Coordinator().execute(
+                input.StoreCracked(savedName, video, &metadataSelection, baseFramerate, CrackingStrategy::SmallTiles));
+    }
 }
 
 TEST_F(VisitorTestFixture, testCrackBasedOnAllDetections) {
@@ -587,26 +676,45 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
 //        "river_boat",
 //        "square_with_fountain",
 //        "street_night_view",
-        "traffic-2k-001",
-        "traffic-4k-002",
+//        "traffic-2k-001",
+//        "traffic-4k-002",
+        "birdsincage",
+        "crowdrun",
+        "elfuente1",
+        "elfuente2",
+        "oldtown",
+        "seeking",
+        "tennis",
+        "red_kayak",
+        "touchdown_pass",
+        "park_joy_2k",
+        "park_joy_4k",
+        "Netflix_ToddlerFountain",
+        "Netflix_Narrator",
+        "Netflix_FoodMarket",
+        "Netflix_FoodMarket2",
+        "Netflix_DrivingPOV",
+        "Netflix_BoxingPractice",
     };
 
     for (const auto &video : videos) {
         unsigned int baseFramerate = videoToFramerate.at(video);
         auto objectsToCrackOn = videoToObjectsToCrackOn.at(video);
-        objectsToCrackOn.push_back("all");
+        if (objectsToCrackOn.size() > 1)
+            objectsToCrackOn.push_back("all");
         for (auto crackingObject : objectsToCrackOn) {
             std::shared_ptr<MetadataElement> metadataElement; // = std::make_shared<SingleMetadataElement>("label", crackingObject);
             if (crackingObject != "all") {
                 metadataElement = std::make_shared<SingleMetadataElement>("label", crackingObject);
             } else {
-                std::vector<std::shared_ptr<MetadataElement>> componentElements(objectsToCrackOn.size());
-                std::transform(objectsToCrackOn.begin(), objectsToCrackOn.end(), componentElements.begin(),
+                std::vector<std::string> realObjectsToCrackOn(objectsToCrackOn.begin(), objectsToCrackOn.end() - 1);
+                std::vector<std::shared_ptr<MetadataElement>> componentElements(realObjectsToCrackOn.size());
+                std::transform(realObjectsToCrackOn.begin(), realObjectsToCrackOn.end(), componentElements.begin(),
                                [](auto obj) {
                                    return std::make_shared<SingleMetadataElement>("label", obj);
                                });
                 metadataElement = std::make_shared<OrMetadataElement>(componentElements);
-                crackingObject = combineStrings(objectsToCrackOn);
+                crackingObject = combineStrings(realObjectsToCrackOn);
             }
 
             MetadataSpecification metadataSpecification("labels", metadataElement);
@@ -618,7 +726,7 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
                         video + "-cracked-" + crackingObject + "-smalltiles-duration" + std::to_string(duration);
                 std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
                 std::cout << "Video " << video << "\nCracking-object " << crackingObject << std::endl;
-                std::cout << "Tile-strategy small-dur-60" << std::endl;
+                std::cout << "Tile-strategy small-dur-" << duration << std::endl;
                 Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
                                                          CrackingStrategy::SmallTiles));
             }
@@ -631,7 +739,7 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
                         video + "-cracked-" + crackingObject + "-grouping-extent-duration" + std::to_string(duration);
                 std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
                 std::cout << "Video " << video << "\nCracking-object " << crackingObject << std::endl;
-                std::cout << "Tile-strategy one-dur-60" << std::endl;
+                std::cout << "Tile-strategy one-dur-" << duration << std::endl;
                 Coordinator().execute(input.StoreCracked(savedName, video, &metadataSpecification, duration,
                                                          CrackingStrategy::GroupingExtent));
             }
@@ -867,22 +975,26 @@ TEST_F(VisitorTestFixture, debugTilingByCracking) {
 }
 
 TEST_F(VisitorTestFixture, testBasicSelection) {
-    auto catalogEntry = "red_kayak-2x2";
+    std::string video("traffic-4k-002-ds2k");
+    std::vector<std::string> crackingStrategies{"MOG", "MOG2"};
+    std::vector<std::string> objects{"car", "pedestrian"};
 
-    auto boatSelection = std::make_shared<SingleMetadataElement>("label", "boat");
-    auto boardSelection = std::make_shared<SingleMetadataElement>("label", "surfboard");
-    std::vector<std::shared_ptr<MetadataElement>> selections{boatSelection, boardSelection};
-
-    PixelMetadataSpecification selection("labels", std::make_shared<OrMetadataElement>(selections));
-//    bool usesOnlyOneTile = false;
-    auto input = ScanMultiTiled(catalogEntry, true);
-//    input.downcast<ScannedLightField>().setWillReadEntireEntry(false); // To force scan by GOP.
-    Coordinator().execute(input.Select(selection));
+    for (const auto &crackingStrategy : crackingStrategies) {
+        auto catalogEntry = video + "-cracked-" + crackingStrategy + "-smalltiles-duration30";
+        for (const auto &object : objects) {
+            PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object));
+            for (int i = 0; i < 3; ++i) {
+                std::cout << "\nVideo " << video << "\nCracking-object " << crackingStrategy << "\nQuery-object " << object << "\nTile-strategy smalltiles\nDuration 30" << std::endl;
+                auto input = ScanMultiTiled(catalogEntry, false);
+                Coordinator().execute(input.Select(selection));
+            }
+        }
+    }
 }
 
 TEST_F(VisitorTestFixture, testFailureCase) {
-    std::string queryObject("truck");
-    std::string video("narrator");
+    std::string queryObject("pedestrian");
+    std::string video("traffic-4k-002-ds2k");
     auto metadata = std::make_shared<SingleMetadataElement>("label", queryObject);
     PixelMetadataSpecification selection("labels", metadata);
 
@@ -1007,6 +1119,33 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
     }
 }
 
+TEST_F(VisitorTestFixture, testCompareTilings) {
+    std::string video("Netflix_FoodMarket2");
+
+    std::vector<std::string> suffixes{
+        "-7x7",
+        "-cracked-person-smalltiles-duration60",
+    };
+
+    auto metadataSelection = std::make_shared<SingleMetadataElement>("label", "person");
+    PixelMetadataSpecification selection("labels", metadataSelection);
+
+    std::vector<bool> usesOneTiles{true, false};
+    for (const auto& suffix : suffixes) {
+        for (bool usesOnlyOneTile : usesOneTiles) {
+            for (int i = 0; i < 3; ++i) {
+                std::cout << "Video " << video << std::endl;
+                std::cout << "Suffix " << suffix << std::endl;
+                std::cout << "Uses-one-tile " << usesOnlyOneTile << std::endl;
+
+                auto catalogEntry = video + suffix;
+                auto input = ScanMultiTiled(catalogEntry, usesOnlyOneTile);
+                Coordinator().execute(input.Select(selection));
+            }
+        }
+    }
+}
+
 TEST_F(VisitorTestFixture, testTrackVehicle) {
     auto video = "traffic-2k-001";
     auto object = "car";
@@ -1042,113 +1181,7 @@ TEST_F(VisitorTestFixture, testTrackVehicle) {
     }
 }
 
-TEST_F(VisitorTestFixture, testTilingOnDecode30) {
-    std::default_random_engine generator(1);
-    unsigned int timeRange = 2;
-    auto numberOfFramesInTimeRange = timeRange * 60 * 30;
-    auto totalNumberOfFrames = 27000;
 
-    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 1u;
-    auto method = "ideal-dimsAlignedTo64-20atOnce-noWaitForFrame";
-    auto layoutDuration = 30;
-    auto catalogEntry = "traffic-2k-001-cracked-dimsAlignedTo64-layoutduration30-car";
-
-    // Get to the questionable iteration for visual profiler.
-    for (auto i = 0u; i < 3; ++i)
-        distribution(generator);
-
-    for (auto i = 0u; i < numberOfRounds; ++i) {
-        unsigned int start = distribution(generator) / 30 * 30;
-
-        auto object = "car";
-        PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object, start, start + numberOfFramesInTimeRange));
-        {
-            std::cout << std::endl << "\n\nStep: entry: " << catalogEntry << ", object: " << object
-                      << ", time-range: " << timeRange << ", strategy: " << method
-                      << ", tile-layout-duration: " << layoutDuration
-                      << ", first-frame: " << start
-                      << ", last-frame: " << start + numberOfFramesInTimeRange << std::endl;
-
-            auto input = ScanMultiTiled(catalogEntry);
-            Coordinator().execute(input.Select(selection));
-        }
-
-        GLOBAL_TIMER.reset();
-        RECONFIGURE_DECODER_TIMER.reset();
-        READ_FROM_NEW_FILE_TIMER.reset();
-        sleep(3);
-    }
-}
-
-
-TEST_F(VisitorTestFixture, testTilingOnDecode60) {
-    std::default_random_engine generator(1);
-    unsigned int timeRange = 2;
-    auto numberOfFramesInTimeRange = timeRange * 60 * 30;
-    auto totalNumberOfFrames = 27000;
-
-    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 15u;
-    auto method = "groupextent-alignedTo32";
-    auto layoutDuration = 60;
-    auto catalogEntry = "traffic-2k-001-cracked-groupingextent-alignedTo32-layoutduration60-car"; //"traffic-2k-001-cracked-layoutduration60-car";
-    for (auto i = 0u; i < numberOfRounds; ++i) {
-        unsigned int start = distribution(generator) / 30 * 30;
-
-        auto object = "car";
-        PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object, start, start + numberOfFramesInTimeRange));
-        {
-            std::cout << std::endl << "\n\nStep: entry: " << catalogEntry << ", object: " << object
-                      << ", time-range: " << timeRange << ", strategy: " << method
-                      << ", tile-layout-duration: " << layoutDuration
-                      << ", first-frame: " << start
-                      << ", last-frame: " << start + numberOfFramesInTimeRange << std::endl;
-
-            auto input = ScanMultiTiled(catalogEntry);
-            Coordinator().execute(input.Select(selection));
-        }
-
-        GLOBAL_TIMER.reset();
-        RECONFIGURE_DECODER_TIMER.reset();
-        READ_FROM_NEW_FILE_TIMER.reset();
-        sleep(3);
-    }
-}
-
-TEST_F(VisitorTestFixture, testTilingOnDecode120) {
-    std::default_random_engine generator(1);
-    unsigned int timeRange = 2;
-    auto numberOfFramesInTimeRange = timeRange * 60 * 30;
-    auto totalNumberOfFrames = 27000;
-
-    std::uniform_int_distribution<int> distribution(0, totalNumberOfFrames - numberOfFramesInTimeRange);
-    auto numberOfRounds = 15u;
-    auto method = "groupextent-alignedTo32";
-    auto layoutDuration = 120;
-    auto catalogEntry = "traffic-2k-001-cracked-groupingextent-alignedTo32-layoutduration120-car"; //"traffic-2k-001-cracked-layoutduration60-car";
-    for (auto i = 0u; i < numberOfRounds; ++i) {
-        unsigned int start = distribution(generator) / 30 * 30;
-
-        auto object = "car";
-        PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object, start, start + numberOfFramesInTimeRange));
-        {
-            std::cout << std::endl << "\n\nStep: entry: " << catalogEntry << ", object: " << object
-                      << ", time-range: " << timeRange << ", strategy: " << method
-                      << ", tile-layout-duration: " << layoutDuration
-                      << ", first-frame: " << start
-                      << ", last-frame: " << start + numberOfFramesInTimeRange << std::endl;
-
-            auto input = ScanMultiTiled(catalogEntry);
-            Coordinator().execute(input.Select(selection));
-        }
-
-        GLOBAL_TIMER.reset();
-        RECONFIGURE_DECODER_TIMER.reset();
-        READ_FROM_NEW_FILE_TIMER.reset();
-        sleep(3);
-    }
-}
 
 //TEST_F(VisitorTestFixture, testTileLayoutDurationOnSelectPixels) {
 //    std::vector<unsigned int> timeRanges{2, 5};

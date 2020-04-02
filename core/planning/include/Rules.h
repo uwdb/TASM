@@ -1121,6 +1121,8 @@ namespace lightdb::optimization {
                     }
                     else
                         assert(false);
+                } else if (node.crackingStrategy() == CrackingStrategy::OneTile) {
+                    tileConfig = std::make_shared<tiles::SingleTileConfigurationProvider>(width, height);
                 }
 
                 auto crack = plan().emplace<physical::CrackVideo>(

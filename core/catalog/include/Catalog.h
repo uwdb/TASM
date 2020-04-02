@@ -23,7 +23,8 @@ namespace lightdb {
         None,
         SmallTiles,
         GroupingExtent,
-        Uniform
+        Uniform,
+        OneTile,
     };
 
     namespace catalog {

@@ -280,6 +280,26 @@ public:
     }
 };
 
+class SingleTileConfigurationProvider: public TileConfigurationProvider {
+public:
+    SingleTileConfigurationProvider(unsigned int totalWidth, unsigned int totalHeight)
+        : totalWidth_(totalWidth), totalHeight_(totalHeight)
+    { }
+
+    unsigned int maximumNumberOfTiles() override {
+        return 1;
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        static TileLayout oneTileLayout = TileLayout(1, 1, {totalWidth_}, {totalHeight_});
+        return oneTileLayout;
+    }
+
+private:
+    unsigned int totalWidth_;
+    unsigned  int totalHeight_;
+};
+
 template <int Rows, int Columns>
 class UniformTileconfigurationProvider: public TileConfigurationProvider {
 public:

@@ -70,6 +70,7 @@ public:
     }
 
     static std::pair<unsigned int, unsigned int> firstAndLastFramesFromPath(const std::filesystem::path &directoryPath);
+    static unsigned int tileVersionFromPath(const std::filesystem::path &directoryPath);
 
 private:
     static std::string temporaryFilenameExtension() {

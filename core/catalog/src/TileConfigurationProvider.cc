@@ -24,6 +24,8 @@ void TileLayoutsManager::loadAllTileConfigurations() {
         auto tileDirectoryPath = dir.path();
         // Parse frame range from path.
         auto firstAndLastFrame = catalog::TileFiles::firstAndLastFramesFromPath(tileDirectoryPath);
+        auto tileVersion = catalog::TileFiles::tileVersionFromPath(tileDirectoryPath);
+        dirId = tileVersion;
         directoryIntervals.emplace_back(firstAndLastFrame.first, firstAndLastFrame.second, dirId);
         if (firstAndLastFrame.second > maximumFrame_)
             maximumFrame_ = firstAndLastFrame.second;

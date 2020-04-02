@@ -682,10 +682,12 @@ private:
             return frameToLayoutId_.at(frame);
 
         auto layoutIds = tileLayoutsManager_->tileLayoutIdsForFrame(frame);
-        assert(layoutIds.size() == 1);
+//        assert(layoutIds.size() == 1);
+        // Pick the one with the largest value.
+        auto layoutId = *std::max_element(layoutIds.begin(), layoutIds.end());
 
-        frameToLayoutId_[frame] = layoutIds.front();
-        return layoutIds.front();
+        frameToLayoutId_[frame] = layoutId;
+        return layoutId;
     }
 
     std::shared_ptr<const TileLayoutsManager> tileLayoutsManager_;

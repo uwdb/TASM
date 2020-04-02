@@ -45,4 +45,11 @@ namespace lightdb::catalog {
 
         return std::make_pair(firstFrame, lastFrame);
     }
+
+    unsigned int TileFiles::tileVersionFromPath(const std::filesystem::path &directoryPath) {
+        std::string directoryName = directoryPath.filename();
+        auto lastSeparator = directoryName.rfind(separating_string_);
+        return std::stoul(directoryName.substr(lastSeparator+1));
+    }
+
 } // namespace lightdb::catalog

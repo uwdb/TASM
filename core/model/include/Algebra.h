@@ -20,6 +20,11 @@ namespace lightdb {
         LightFieldReference ScanTiled(const std::string &name);
         LightFieldReference ScanMultiTiled(const std::string &name, bool usesOnlyOneTile = false);
 
+        LightFieldReference ScanAndRetile(const std::string &name,
+                                          const MetadataSpecification &metadataSpecification,
+                                          unsigned int layoutDuration,
+                                          CrackingStrategy crackingStrategy);
+
         LightFieldReference ScanByGOP(const std::string &name);
         LightFieldReference Scan(const std::string &name);
         LightFieldReference Scan(const catalog::Catalog&, const std::string &name);

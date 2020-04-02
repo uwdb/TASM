@@ -15,6 +15,29 @@ namespace lightdb::logical {
         return Catalog::instance().getMultiTiled(name, usesOnlyOneTile);
     }
 
+    LightFieldReference ScanAndRetile(const std::string &name,
+                                  const MetadataSpecification &metadataSpecification,
+                                  unsigned int layoutDuration,
+                                  CrackingStrategy crackingStrategy) {
+
+        // Transform metadataIdentifier.
+        std::string metadataIdentifier;
+        auto crackedPos = name.find("-cracked");
+        if (crackedPos != std::string::npos) {
+            metadataIdentifier = name.substr(0, crackedPos);
+        } else {
+            crackedPos = metadataIdentifier.find_last_of("-");
+            metadataIdentifier = name.substr(0, crackedPos);
+        }
+        auto metadataManager = std::make_shared<metadata::MetadataManager>(metadataIdentifier, metadataSpecification);
+        auto entry = std::make_shared<catalog::Entry>(Catalog::instance().entry(metadataIdentifier));
+
+        auto lightField = Catalog::instance().getMultiTiledForRetiling(name);
+        lightField.downcast<logical::MultiTiledLightFieldForRetiling>().setProperties(
+                metadataManager, crackingStrategy, layoutDuration, entry);
+        return lightField;
+    }
+
     LightFieldReference Scan(const std::string &name) {
         return Scan(Catalog::instance(), name);
     }

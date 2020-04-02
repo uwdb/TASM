@@ -41,6 +41,9 @@ namespace lightdb {
                 bool operator!=(const iterator &other) const { return !(*this == other); }
 
                 void operator++() {
+                    if (eos_)
+                        return;
+
                     assert(!eos_);
                     current_.reset();
                     eos_ = !(current_ = runtime_->read()).has_value();

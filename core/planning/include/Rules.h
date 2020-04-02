@@ -61,6 +61,44 @@ namespace lightdb::optimization {
     public:
         using OptimizerRule::OptimizerRule;
 
+        bool visit(const logical::MultiTiledLightFieldForRetiling &node) override {
+            if (!plan().has_physical_assignment(node)) {
+                auto framesToRetile = node.metadataManager()->orderedFramesForMetadata();
+                tiles::SingleTileLocationProvider locationProvider(node.tileLayoutsManager());
+                auto configProvider = node.tileConfigurationProvider();
+
+                std::vector<int> framesWithDifferentLayout;
+                std::copy_if(framesToRetile.begin(), framesToRetile.end(), std::back_inserter(framesWithDifferentLayout),
+                        [&](int frame) {
+                            return locationProvider.tileLayoutForFrame(frame) != configProvider->tileLayoutForFrame(frame);
+                        });
+
+                assert(node.entry()->sources().size() == 1);
+
+
+                auto logical = plan().lookup(node);
+                auto scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, node.entry()->sources()[0]);
+                scan.downcast<physical::ScanFramesFromFileEncodedReader>().setFramesToRead(framesWithDifferentLayout);
+
+                if (framesWithDifferentLayout.size()) {
+                    auto gpu = plan().allocator().gpu();
+                    auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
+                    auto crack = plan().emplace<physical::CrackVideo>(
+                            logical,
+                            decode,
+                            std::unordered_set<int>(),
+                            configProvider,
+                            node.tileLayoutsManager()->entry().name());
+                    plan().emplace<physical::Sink>(logical, crack);
+                } else {
+                    plan().emplace<physical::Sink>(logical, scan);
+                }
+
+                return true;
+            }
+            return false;
+        }
+
         bool visit(const logical::ScannedMultiTiledLightField &node) override {
             if (!plan().has_physical_assignment(node)) {
                 // Insert a place-holder operator because we won't know what files to decode / how many decoders to initialize

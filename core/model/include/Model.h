@@ -239,6 +239,55 @@ namespace lightdb::logical {
         bool usesOnlyOneTile_;
     };
 
+    class MultiTiledLightFieldForRetiling : public LightField {
+    public:
+        explicit MultiTiledLightFieldForRetiling(std::shared_ptr<tiles::TileLayoutsManager> tileLayoutsManager)
+            : LightField({}, Volume::limits(), YUVColorSpace::instance()),
+            tileLayoutsManager_(tileLayoutsManager)
+        {}
+
+        void setProperties(
+                std::shared_ptr<metadata::MetadataManager> metadataManager,
+                CrackingStrategy crackingStrategy,
+                unsigned int layoutDuration,
+                std::shared_ptr<catalog::Entry> entry) {
+            metadataManager_ = metadataManager;
+            entry_ = entry;
+
+            switch (crackingStrategy) {
+                case CrackingStrategy::SmallTiles:
+                    tileConfigurationProvider_ = std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                            layoutDuration,
+                            metadataManager,
+                            tileLayoutsManager_->totalWidth(),
+                            tileLayoutsManager_->totalHeight());
+                    break;
+                case CrackingStrategy::GroupingExtent:
+                    tileConfigurationProvider_ = std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
+                            layoutDuration,
+                            metadataManager,
+                            tileLayoutsManager_->totalWidth(),
+                            tileLayoutsManager_->totalHeight());
+                    break;
+                default:
+                    assert(false);
+            }
+        }
+
+        const std::shared_ptr<const tiles::TileLayoutsManager> tileLayoutsManager() const { return tileLayoutsManager_; }
+        const std::shared_ptr<metadata::MetadataManager> metadataManager() const { return metadataManager_; }
+        const std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider() const { return tileConfigurationProvider_; }
+        std::shared_ptr<catalog::Entry> entry() const { return entry_; }
+
+        void accept(LightFieldVisitor &visitor) override { LightField::accept<MultiTiledLightFieldForRetiling>(visitor); }
+
+    private:
+        const std::shared_ptr<const tiles::TileLayoutsManager> tileLayoutsManager_;
+        std::shared_ptr<metadata::MetadataManager> metadataManager_;
+        std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider_;
+        std::shared_ptr<catalog::Entry> entry_;
+    };
+
     class ScannedTiledLightField : public LightField, public StreamBackedLightField {
     public:
         explicit ScannedTiledLightField(catalog::TileEntry tileEntry)

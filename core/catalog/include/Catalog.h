@@ -90,18 +90,20 @@ namespace lightdb {
 
             LightFieldReference getTiled(const std::string &name) const;
             LightFieldReference getMultiTiled(const std::string &name, bool usesOnlyOneTile = false) const;
+            LightFieldReference getMultiTiledForRetiling(const std::string &name) const;
             LightFieldReference getByGOP(const std::string &name) const;
             LightFieldReference get(const std::string &name, bool create=false) const;
             LightFieldReference create(const std::string& name) const;
             bool exists(const std::string &name) const;
             const std::filesystem::path &path() const { return path_; }
 
+            Entry entry(const std::string &name) const;
+
         private:
             Catalog() : path_("") { }
 
             const std::filesystem::path path_;
 
-            inline Entry entry(const std::string &name) const;
             TileEntry tileEntry(const std::string &name) const;
             MultiTileEntry multiTileEntry(const std::string &name) const;
 

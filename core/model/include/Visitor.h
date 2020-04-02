@@ -30,6 +30,7 @@ namespace lightdb {
         class ScannedMultiTiledLightField;
         class MetadataSubsetLightFieldWithoutSources;
         class FrameSubsetLightField;
+        class MultiTiledLightFieldForRetiling;
     }
 
     class LightFieldVisitor {
@@ -58,6 +59,7 @@ namespace lightdb {
         virtual void visit(const logical::ScannedMultiTiledLightField &l) { visit((const LightField&)l); }
         virtual void visit(const logical::MetadataSubsetLightFieldWithoutSources &l) { visit((const LightField&)l); }
         virtual void visit(const logical::FrameSubsetLightField &l) { visit((const LightField&)l); }
+        virtual void visit(const logical::MultiTiledLightFieldForRetiling &l) { visit((const LightField&)l); }
 
     protected:
         LightFieldVisitor() = default;
@@ -108,6 +110,7 @@ namespace lightdb {
         virtual State visit(const logical::ScannedMultiTiledLightField &l) { return visit((const LightField&)(l)); }
         virtual State visit(const logical::MetadataSubsetLightFieldWithoutSources &l) { return visit((const LightField&)(l)); }
         virtual State visit(const logical::FrameSubsetLightField &l) { return visit((const LightField&)(l)); }
+        virtual State visit(const logical::MultiTiledLightFieldForRetiling &l) { return visit((const LightField&)(l)); }
 
         virtual State visit(State state, const LightField &field) { return state + visit(field); }
         virtual State visit(State state, const logical::ConstantLightField &field) { return state + visit(field); }
@@ -133,6 +136,7 @@ namespace lightdb {
         virtual State visit(State state, const logical::ScannedMultiTiledLightField &field) { return state + visit(field); }
         virtual State visit(State state, const logical::MetadataSubsetLightFieldWithoutSources &field) { return state + visit(field); }
         virtual State visit(State state, const logical::FrameSubsetLightField &field) { return state + visit(field); }
+        virtual State visit(State state, const logical::MultiTiledLightFieldForRetiling &field) { return state + visit(field); }
 
         class AdaptedVisitor: public LightFieldVisitor {
         public:
@@ -164,6 +168,7 @@ namespace lightdb {
             void visit(const logical::ScannedMultiTiledLightField &field) final { state_ = visitor_.visit(state_, field); }
             void visit(const logical::MetadataSubsetLightFieldWithoutSources &field) final { state_ = visitor_.visit(state_, field); }
             void visit(const logical::FrameSubsetLightField &field) final { state_ = visitor_.visit(state_, field); }
+            void visit(const logical::MultiTiledLightFieldForRetiling &field) final { state_ = visitor_.visit(state_, field); }
 
             State result() const { return state_; }
 

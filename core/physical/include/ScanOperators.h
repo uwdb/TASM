@@ -69,12 +69,15 @@ public:
 
     explicit ScanFramesFromFileEncodedReader(const LightFieldReference &logical, catalog::Source source)
             : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanFramesFromFileEncodedReader-init")),
+              shouldReadEntireGOPs_(false),
               source_(std::move(source))
     { }
 
     const catalog::Source &source() const { return source_; }
     const std::vector<int> &framesToRead() const { return framesToRead_; }
+
     const std::vector<int> &globalFramesToRead() const { return globalFramesToRead_; }
+    bool shouldReadEntireGOPs() const { return shouldReadEntireGOPs_; }
 
     void setFramesToRead(const std::vector<int> &frames) {
         framesToRead_ = frames;
@@ -84,13 +87,17 @@ public:
         globalFramesToRead_ = frames;
     }
 
+    void setShouldReadEntireGOPs(bool shouldReadEntirety) {
+        shouldReadEntireGOPs_ = shouldReadEntirety;
+    }
+
 private:
 
     class Runtime: public runtime::Runtime<ScanFramesFromFileEncodedReader> {
     public:
         explicit Runtime(ScanFramesFromFileEncodedReader &physical)
             : runtime::Runtime<ScanFramesFromFileEncodedReader>(physical),
-                    frameReader_(physical.source().filename(), physical.framesToRead())
+                    frameReader_(physical.source().filename(), physical.framesToRead(), 0, physical.shouldReadEntireGOPs())
         {
             if (physical.globalFramesToRead().size())
                 frameReader_.setGlobalFrames(physical.globalFramesToRead());
@@ -125,12 +132,13 @@ private:
 
     std::vector<int> framesToRead_;
     std::vector<int> globalFramesToRead_;
+    bool shouldReadEntireGOPs_;
 
 protected:
     const catalog::Source source_;
 
     virtual const std::string &timerIdentifier() const {
-        static const std::string timerIdentifier = "ScanFramesFromFileEncodedReader";
+        static const std::string timerIdentifier = "";
         return timerIdentifier;
     }
 };

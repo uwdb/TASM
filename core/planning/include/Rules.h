@@ -79,6 +79,7 @@ namespace lightdb::optimization {
                 auto logical = plan().lookup(node);
                 auto scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, node.entry()->sources()[0]);
                 scan.downcast<physical::ScanFramesFromFileEncodedReader>().setFramesToRead(framesWithDifferentLayout);
+                scan.downcast<physical::ScanFramesFromFileEncodedReader>().setShouldReadEntireGOPs(true);
 
                 if (framesWithDifferentLayout.size()) {
                     auto gpu = plan().allocator().gpu();

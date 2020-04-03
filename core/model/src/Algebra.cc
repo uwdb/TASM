@@ -29,8 +29,9 @@ namespace lightdb::logical {
             crackedPos = metadataIdentifier.find_last_of("-");
             metadataIdentifier = name.substr(0, crackedPos);
         }
-        auto metadataManager = std::make_shared<metadata::MetadataManager>(metadataIdentifier, metadataSpecification);
         auto entry = std::make_shared<catalog::Entry>(Catalog::instance().entry(metadataIdentifier));
+
+        auto metadataManager = std::make_shared<metadata::MetadataManager>(metadataIdentifier, MetadataSpecification(metadataSpecification, entry->sources()[0].mp4Reader().numberOfSamples()));
 
         auto lightField = Catalog::instance().getMultiTiledForRetiling(name);
         lightField.downcast<logical::MultiTiledLightFieldForRetiling>().setProperties(

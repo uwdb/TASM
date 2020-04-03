@@ -18,7 +18,8 @@ namespace lightdb::logical {
     LightFieldReference ScanAndRetile(const std::string &name,
                                   const MetadataSpecification &metadataSpecification,
                                   unsigned int layoutDuration,
-                                  CrackingStrategy crackingStrategy) {
+                                  CrackingStrategy crackingStrategy,
+                                  bool retileOnlyIfDifferent) {
 
         // Transform metadataIdentifier.
         std::string metadataIdentifier;
@@ -35,7 +36,7 @@ namespace lightdb::logical {
 
         auto lightField = Catalog::instance().getMultiTiledForRetiling(name);
         lightField.downcast<logical::MultiTiledLightFieldForRetiling>().setProperties(
-                metadataManager, crackingStrategy, layoutDuration, entry);
+                metadataManager, crackingStrategy, layoutDuration, entry, retileOnlyIfDifferent);
         return lightField;
     }
 

@@ -46,13 +46,13 @@ public:
         unsigned long long numTiles;
     };
 
-    WorkloadCostEstimator(std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider,
+    WorkloadCostEstimator(std::shared_ptr<tiles::TileLayoutProvider> tileLayoutProvider,
         Workload workload,
         unsigned int gopLength,
         double pixelCostWeight,
         double tileCostWeight,
         double decodeCostWeight)
-        : tileConfigurationProvider_(tileConfigurationProvider),
+        : tileLayoutProvider_(tileLayoutProvider),
         workload_(std::move(workload)),
         gopLength_(gopLength),
         totalNumberOfPixels_(0),
@@ -64,7 +64,9 @@ public:
 //        With decode strategy: coef: [1.49375947e-06 1.33864548e-01 3.69633770e+03]
     }
 
-    CostElements estimateCostForQuery(unsigned int queryNum, unsigned int &sawMultipleLayouts);
+    CostElements estimateCostForQuery(unsigned int queryNum, unsigned int &sawMultipleLayouts, std::unordered_map<unsigned int, CostElements> *costByGOP = nullptr);
+
+
 
     double estimatedCostForWorkload() {
         double totalCost = 0;
@@ -86,19 +88,20 @@ public:
         return sawMultipleLayouts;
     }
 
-private:
     unsigned int gopForFrame(unsigned int frameNum) const {
         return frameNum / gopLength_;
     }
+
+private:
     unsigned int keyframeForFrame(unsigned int frameNum) const {
         return gopForFrame(frameNum) * gopLength_;
     }
-    CostElements estimateCostForNextGOP(std::vector<int>::const_iterator &start,
+    std::pair<int, CostElements> estimateCostForNextGOP(std::vector<int>::const_iterator &start,
             std::vector<int>::const_iterator end,
             std::shared_ptr<metadata::MetadataManager> metadataManager,
             unsigned int &sawMultipleLayouts);
 
-    std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider_;
+    std::shared_ptr<tiles::TileLayoutProvider> tileLayoutProvider_;
     Workload workload_;
     unsigned int gopLength_;
     unsigned int totalNumberOfPixels_;

@@ -74,6 +74,9 @@ namespace lightdb::metadata {
             closeDatabase();
         }
 
+        const std::string &metadataIdentifier() const { return videoIdentifier_; }
+        const MetadataSpecification &metadataSpecification() const { return metadataSpecification_; }
+
         const std::unordered_set<int> &framesForMetadata() const;
         const std::vector<int> &orderedFramesForMetadata() const;
         const std::unordered_set<int> &idealKeyframesForMetadata() const;

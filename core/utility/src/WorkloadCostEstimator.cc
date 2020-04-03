@@ -2,7 +2,7 @@
 
 namespace lightdb{
 
-WorkloadCostEstimator::CostElements WorkloadCostEstimator::estimateCostForQuery(unsigned int queryNum, unsigned int &sawMultipleLayouts) {
+WorkloadCostEstimator::CostElements WorkloadCostEstimator::estimateCostForQuery(unsigned int queryNum, unsigned int &sawMultipleLayouts, std::unordered_map<unsigned int, CostElements> *costByGOP) {
     auto metadataManager = workload_.metadataManagerForQuery(queryNum);
     auto start = metadataManager->orderedFramesForMetadata().begin();
     // FIXME: prev() is necessary due to a bug in Select() that caused the last frame to be skipped.
@@ -10,25 +10,29 @@ WorkloadCostEstimator::CostElements WorkloadCostEstimator::estimateCostForQuery(
 
     unsigned long long totalNumberOfPixels = 0;
     unsigned long long totalNumberOfTiles = 0;
+
     while (start != end) {
         auto costElements = estimateCostForNextGOP(start, end, metadataManager, sawMultipleLayouts);
-        totalNumberOfPixels += costElements.numPixels;
-        totalNumberOfTiles += costElements.numTiles;
+        totalNumberOfPixels += costElements.second.numPixels;
+        totalNumberOfTiles += costElements.second.numTiles;
+
+        if (costByGOP)
+            costByGOP->emplace(costElements);
     }
 
     return WorkloadCostEstimator::CostElements(totalNumberOfPixels, totalNumberOfTiles);
 }
 
-WorkloadCostEstimator::CostElements WorkloadCostEstimator::estimateCostForNextGOP(std::vector<int>::const_iterator &currentFrame,
+std::pair<int, WorkloadCostEstimator::CostElements> WorkloadCostEstimator::estimateCostForNextGOP(std::vector<int>::const_iterator &currentFrame,
                                                            std::vector<int>::const_iterator end,
                                                            std::shared_ptr<metadata::MetadataManager> metadataManager,
                                                            unsigned int &sawMultipleLayouts) {
     if (currentFrame == end)
-        return CostElements(0, 0);
+        return std::make_pair(-1, CostElements(0, 0));
 
     auto gopNum = gopForFrame(*currentFrame);
     auto keyframe = keyframeForFrame(*currentFrame);
-    auto layoutForGOP = tileConfigurationProvider_->tileLayoutForFrame(*currentFrame);
+    auto layoutForGOP = tileLayoutProvider_->tileLayoutForFrame(*currentFrame);
 
     // Find the frames that have an object overlapping the tiles.
     auto numberOfTiles = layoutForGOP.numberOfTiles();
@@ -62,7 +66,7 @@ WorkloadCostEstimator::CostElements WorkloadCostEstimator::estimateCostForNextGO
         totalNumTiles += numTiles;
         totalNumPixels += layoutForGOP.rectangleForTile(i).area() * numTiles;
     }
-    return CostElements(totalNumPixels, totalNumTiles);
+    return std::make_pair(gopNum, CostElements(totalNumPixels, totalNumTiles));
 }
 
 } // namespace lightdb

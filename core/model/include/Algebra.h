@@ -23,7 +23,8 @@ namespace lightdb {
         LightFieldReference ScanAndRetile(const std::string &name,
                                           const MetadataSpecification &metadataSpecification,
                                           unsigned int layoutDuration,
-                                          CrackingStrategy crackingStrategy);
+                                          CrackingStrategy crackingStrategy,
+                                          bool retileOnlyIfDifferent = false);
 
         LightFieldReference ScanByGOP(const std::string &name);
         LightFieldReference Scan(const std::string &name);

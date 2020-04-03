@@ -112,7 +112,7 @@ class ScanMultiTileOperator : public PhysicalOperator {
 public:
     explicit ScanMultiTileOperator(const LightFieldReference &logical,
             std::shared_ptr<const metadata::MetadataManager> metadataManager,
-            std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider,
+            std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider,
             bool shouldReadEntireGOPs = false)
         : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanMultiTileOperator-init", tileLocationProvider, shouldReadEntireGOPs)),
         tileNumber_(0),
@@ -151,7 +151,7 @@ private:
         };
 
     public:
-        explicit Runtime(ScanMultiTileOperator &physical, std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider, bool shouldReadEntireGOPs)
+        explicit Runtime(ScanMultiTileOperator &physical, std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider, bool shouldReadEntireGOPs)
             : runtime::Runtime<ScanMultiTileOperator>(physical),
                     tileNumberForCurrentLayout_(0),
                     tileLocationProvider_(tileLocationProvider),
@@ -406,7 +406,7 @@ private:
         Timer sqlTimer_;
 
         unsigned int tileNumberForCurrentLayout_;
-        const std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider_;
+        const std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;
         std::vector<int>::const_iterator framesIterator_;
         std::vector<int>::const_iterator endOfFramesIterator_;
         bool shouldReadEntireGOPs_;
@@ -440,7 +440,7 @@ private:
 
     unsigned int tileNumber_;
     const std::shared_ptr<const metadata::MetadataManager> metadataManager_;
-    const std::shared_ptr<const tiles::TileLocationProvider> tileLocationProvider_;
+    const std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;
 
 };
 

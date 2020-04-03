@@ -147,13 +147,17 @@ struct hash<lightdb::Interval<T>> {
 } // namespace std
 
 namespace lightdb::tiles {
-// TODO: This will likely have to know what pixels on each frame are required to make a good decision.
-// TODO: Support including information about the desired resolution for each tile.
-// TODO: This should be split into 2 classes tileLayoutForFrame() and maximumNumberOfTiles().
-class TileConfigurationProvider {
+
+class TileLayoutProvider {
+public:
+    virtual const TileLayout &tileLayoutForFrame(unsigned int frame) = 0;
+    ~TileLayoutProvider() {}
+};
+
+class TileConfigurationProvider : public TileLayoutProvider {
 public:
     virtual unsigned int maximumNumberOfTiles() = 0;
-    virtual const TileLayout &tileLayoutForFrame(unsigned int frame) = 0;
+//    virtual const TileLayout &tileLayoutForFrame(unsigned int frame) = 0;
 
     virtual ~TileConfigurationProvider() { }
 };
@@ -163,121 +167,6 @@ public:
     virtual bool shouldFrameBeKeyframe(unsigned int frame) = 0;
 
     virtual ~KeyframeConfigurationProvider() { }
-};
-
-class MetadataTileConfigurationProvider : public TileConfigurationProvider, public KeyframeConfigurationProvider {
-public:
-    // Init with metadata specification.
-    // Also have to be able to specify where keyframes should be.
-    // We may be only cracking a particular range of frames, or further cracking an existing tile.
-    MetadataTileConfigurationProvider(std::shared_ptr<metadata::MetadataManager> &metadataManager,
-            unsigned int firstFrameToConsider,
-            unsigned int lastFrameToConsider,
-            Rectangle portionOfFrameToConsider)
-        : metadataManager_(metadataManager),
-        firstFrameToConsider_(firstFrameToConsider),
-        lastFrameToConsider_(lastFrameToConsider),
-        portionOfFrameToConsider_(std::move(portionOfFrameToConsider))
-    {
-        pickKeyframes();
-        computeTileConfigurations();
-    }
-
-    unsigned int maximumNumberOfTiles() override {
-        return 0;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        return EmptyTileLayout;
-    }
-
-    bool shouldFrameBeKeyframe(unsigned int frame) override {
-        return false;
-    }
-
-private:
-    void computeTileConfigurations();
-    void pickKeyframes();
-    void setUpGOPs();
-    std::vector<int> framesForGOP(unsigned int gopNumber);
-
-    std::shared_ptr<metadata::MetadataManager> metadataManager_;
-    unsigned int firstFrameToConsider_;
-    unsigned int lastFrameToConsider_;
-    Rectangle portionOfFrameToConsider_;
-    std::set<int> keyframes_;
-    std::vector<std::vector<int>> gopFramesThatContainObject_;
-};
-
-class IdealTileConfigurationProvider : public TileConfigurationProvider {
-public:
-    IdealTileConfigurationProvider(std::shared_ptr<metadata::MetadataManager> metadataManager,
-            unsigned int frameWidth,
-            unsigned int frameHeight)
-        : metadataManager_(metadataManager),
-        frameWidth_(frameWidth),
-        frameHeight_(frameHeight)
-    { }
-
-    unsigned int maximumNumberOfTiles() override {
-        return 0;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override;
-
-private:
-    std::shared_ptr<metadata::MetadataManager> metadataManager_;
-    unsigned int frameWidth_;
-    unsigned int frameHeight_;
-
-    std::unordered_map<unsigned int, TileLayout> frameToTileLayout_;
-};
-
-class NaiveTileConfigurationProvider : public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 2;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        static TileLayout tileLayout = TileLayout(2, 1, {480, 480}, {576});
-        return tileLayout;
-    }
-};
-
-class GOP30TileConfigurationProvider : public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 4;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        static TileLayout twoTileLayout = TileLayout(2, 1, {480, 480}, {576});
-        static TileLayout fourTileLayout = TileLayout(2, 2, {480, 480}, {288, 288});
-
-        if (frame < 30)
-            return twoTileLayout;
-        else if (30 <= frame && frame < 60)
-            return fourTileLayout;
-        else if (60 <= frame && frame < 90)
-            return twoTileLayout;
-        else if (frame >= 90)
-            return fourTileLayout;
-        else
-            return twoTileLayout;
-    }
-};
-
-class SingleTileFor2kConfigurationProvider: public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 1;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        static TileLayout oneTileLayout = TileLayout(1, 1, {1920}, {1080});
-        return oneTileLayout;
-    }
 };
 
 class SingleTileConfigurationProvider: public TileConfigurationProvider {
@@ -339,161 +228,6 @@ private:
     unsigned int widthPerColumn_;
     unsigned int heightPerRow_;
     std::unique_ptr<TileLayout> layoutPtr;
-};
-
-class Threex3TileConfigurationProvider: public TileConfigurationProvider {
-public:
-    Threex3TileConfigurationProvider(unsigned int totalWidth, unsigned int totalHeight)
-        : widthPerColumn_(totalWidth / 3),
-        heightPerColumn_(totalHeight / 3)
-    {}
-
-    unsigned int maximumNumberOfTiles() override {
-        return 9;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        if (layoutPtr)
-            return *layoutPtr;
-
-        layoutPtr = std::make_unique<TileLayout>(3, 3, std::vector<unsigned int>(3, widthPerColumn_), std::vector<unsigned int>(3, heightPerColumn_));
-        return *layoutPtr;
-    }
-
-private:
-    unsigned int widthPerColumn_;
-    unsigned int heightPerColumn_;
-    std::unique_ptr<TileLayout> layoutPtr;
-};
-
-class Threex3TileFor1kConfigurationProvider: public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 9;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        static TileLayout threex3Layout = TileLayout(3, 3, {320, 320, 320}, {180, 180, 180});
-        return threex3Layout;
-    }
-};
-
-class Threex3TileFor2kConfigurationProvider: public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 9;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        static TileLayout threex3Layout = TileLayout(3, 3, {640, 640, 640}, {360, 360, 360});
-        return threex3Layout;
-    }
-};
-
-class Threex3TileFor4kConfigurationProvider: public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 9;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        static TileLayout threex3Layout = TileLayout(3, 3, {1280, 1280, 1280}, {660, 660, 660});
-        return threex3Layout;
-    }
-};
-
-
-class SingleTileFor4kConfigurationProvider: public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 1;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        static TileLayout oneTileLayout = TileLayout(1, 1, {3840}, {1980});
-        return oneTileLayout;
-    }
-};
-
-class AlternatingTileFor4kConfigurationProvider: public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 1;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        static TileLayout oneTileLayout = TileLayout(1, 1, {3840}, {1980});
-        static TileLayout twoTileLayout = TileLayout(2, 2, {1920, 1920}, {1080, 900});
-
-        return ((frame / 30) % 2) ? oneTileLayout : twoTileLayout;
-    }
-};
-
-class GOP30TileConfigurationProvider2x2And3x3 : public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 9;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-//        static TileLayout fourTileLayout = TileLayout(2, 2, {960, 960}, {540, 540});
-        static TileLayout nineTileLayout = TileLayout(3, 3, {640, 640, 640}, {360, 360, 360});
-
-        return nineTileLayout;
-//        if ((frame / 30) % 30)
-//            return fourTileLayout;
-//        else
-//            return nineTileLayout;
-    }
-
-};
-
-class CustomVanTileConfigurationProvider : public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 4;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        static TileLayout twoTileLayout = TileLayout(2, 1, {480, 480}, {576});
-        static TileLayout fourTileLayout = TileLayout(2, 2, {480, 480}, {288, 288});
-
-        if (frame <= 15)
-            return twoTileLayout;
-        else if (frame > 15 && frame < 55)
-            return fourTileLayout;
-        else
-            return twoTileLayout;
-    }
-};
-
-class CustomVan4x4TileConfigurationProvider : public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 4;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        static TileLayout twoTileLayout = TileLayout(2, 1, {480, 480}, {576});
-        static TileLayout fourTileLayout = TileLayout(2, 2, {480, 480}, {288, 288});
-
-        if (frame <= 15)
-            return fourTileLayout;
-        else if (frame > 15 && frame < 55)
-            return twoTileLayout;
-        else
-            return fourTileLayout;
-    }
-};
-
-class CustomJacksonSquareTileConfigurationProvider : public TileConfigurationProvider {
-public:
-    unsigned int maximumNumberOfTiles() override {
-        return 0;
-    }
-
-    const TileLayout &tileLayoutForFrame(unsigned int frame) override;
-
 };
 
 class GroupingExtentsTileConfigurationProvider : public TileConfigurationProvider {
@@ -611,10 +345,10 @@ private:
     unsigned int maximumFrame_;
 };
 
-class TileLocationProvider {
+class TileLocationProvider : public TileLayoutProvider {
 public:
     virtual std::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const = 0;
-    virtual const TileLayout &tileLayoutForFrame(unsigned int frame) const = 0;
+//    virtual const TileLayout &tileLayoutForFrame(unsigned int frame) const = 0;
     unsigned int frameOffsetInTileFile(const std::filesystem::path &tilePath) const {
         return catalog::TileFiles::firstAndLastFramesFromPath(tilePath.parent_path()).first;
     }
@@ -622,38 +356,6 @@ public:
 
     virtual ~TileLocationProvider() { }
 };
-
-//class MultiTileLocationProvider : public TileLocationProvider {
-//public:
-//    MultiTileLocationProvider(std::shared_ptr<const TileLayoutsManager> tileLayoutsManager,
-//            std::shared_ptr<const metadata::MetadataManager> metadataManager,
-//            unsigned int tileGroupSize = 30)
-//        : tileLayoutsManager_(tileLayoutsManager),
-//          metadataManager_(metadataManager),
-//          tileGroupSize_(tileGroupSize)
-//    { }
-//
-//    std::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const override {
-//        return tileLayoutsManager_->locationOfTileForFrameAndConfiguration(tileNumber, frame, tileLayoutForFrame(frame));
-//    }
-//
-//    const TileLayout &tileLayoutForFrame(unsigned int frame) const override;
-//
-//
-//private:
-//    void insertTileLayoutForTileGroup(TileLayout &layout, unsigned int frame) const;
-//    unsigned int tileGroupForFrame(unsigned int frame) const {
-//        return frame / tileGroupSize_;
-//    }
-//
-//    std::shared_ptr<const TileLayoutsManager> tileLayoutsManager_;
-//    std::shared_ptr<const metadata::MetadataManager> metadataManager_;
-//    unsigned int tileGroupSize_;
-//
-//    mutable std::unordered_map<TileLayout, std::shared_ptr<const TileLayout>> tileLayoutReferences_;
-//    mutable std::unordered_map<unsigned int, std::shared_ptr<const TileLayout>> tileGroupToTileLayout_;
-//    mutable std::recursive_mutex mutex_;
-//};
 
 class SingleTileLocationProvider : public TileLocationProvider {
 public:
@@ -665,7 +367,7 @@ public:
         return tileLayoutsManager_->locationOfTileForId(tileNumber, layoutIdForFrame(frame));
     }
 
-    const TileLayout &tileLayoutForFrame(unsigned int frame) const override {
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
         std::scoped_lock lock(mutex_);
         return tileLayoutsManager_->tileLayoutForId(layoutIdForFrame(frame));
     }

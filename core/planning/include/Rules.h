@@ -26,6 +26,7 @@
 #include "SelectFramesOperators.h"
 #include "SelectPixelsOperators.h"
 #include "TileOperators.h"
+#include "WorkloadCostEstimator.h"
 
 namespace lightdb::optimization {
     class ChooseMaterializedScans : public OptimizerRule {
@@ -64,14 +65,46 @@ namespace lightdb::optimization {
         bool visit(const logical::MultiTiledLightFieldForRetiling &node) override {
             if (!plan().has_physical_assignment(node)) {
                 auto framesToRetile = node.metadataManager()->orderedFramesForMetadata();
-                tiles::SingleTileLocationProvider locationProvider(node.tileLayoutsManager());
+                auto locationProvider = std::make_shared<tiles::SingleTileLocationProvider>(node.tileLayoutsManager());
                 auto configProvider = node.tileConfigurationProvider();
 
                 std::vector<int> framesWithDifferentLayout;
-                std::copy_if(framesToRetile.begin(), framesToRetile.end(), std::back_inserter(framesWithDifferentLayout),
-                        [&](int frame) {
-                            return locationProvider.tileLayoutForFrame(frame) != configProvider->tileLayoutForFrame(frame);
-                        });
+                if (node.shouldRetileOnlyIfVeryDifferent()) {
+                    // For each GOP, compare the number of pixels to decode with the current layout and the proposed layout.
+                    Workload workload(node.metadataManager()->metadataIdentifier(), {node.metadataManager()->metadataSpecification()}, {1});
+                    int gopLength = node.entry()->sources()[0].configuration().framerate.fps();
+                    WorkloadCostEstimator currentLayoutEstimator(locationProvider, workload, gopLength, 1, 0, 0);
+                    WorkloadCostEstimator proposedLayoutEstimator(configProvider, workload, gopLength, 1, 0, 0);
+
+                    std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> currentCosts(new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
+                    std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> proposedCosts(new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
+
+                    unsigned int sawMultipleLayouts;
+                    currentLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, currentCosts.get());
+                    proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
+
+                    assert(currentCosts->size() == proposedCosts->size());
+                    std::unordered_set<unsigned int> gopsToRetile;
+                    for (auto curIt = currentCosts->begin(); curIt != currentCosts->end(); ++curIt) {
+                        auto curCosts = curIt->second;
+                        auto newCosts = proposedCosts->at(curIt->first);
+
+                        if (newCosts.numPixels <= 0.8 * curCosts.numPixels)
+                            gopsToRetile.insert(curIt->first);
+                    }
+                    std::copy_if(framesToRetile.begin(), framesToRetile.end(),
+                                 std::back_inserter(framesWithDifferentLayout),
+                                 [&](int frame) {
+                                     return gopsToRetile.count(proposedLayoutEstimator.gopForFrame(frame));
+                                 });
+                } else {
+                    std::copy_if(framesToRetile.begin(), framesToRetile.end(),
+                                 std::back_inserter(framesWithDifferentLayout),
+                                 [&](int frame) {
+                                     return locationProvider->tileLayoutForFrame(frame) !=
+                                            configProvider->tileLayoutForFrame(frame);
+                                 });
+                }
 
                 assert(node.entry()->sources().size() == 1);
 

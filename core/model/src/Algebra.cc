@@ -19,7 +19,7 @@ namespace lightdb::logical {
                                   const MetadataSpecification &metadataSpecification,
                                   unsigned int layoutDuration,
                                   CrackingStrategy crackingStrategy,
-                                  bool retileOnlyIfDifferent) {
+                                  RetileStrategy retileOnlyIfDifferent) {
 
         // Transform metadataIdentifier.
         std::string metadataIdentifier;

@@ -20,11 +20,17 @@ namespace lightdb {
         LightFieldReference ScanTiled(const std::string &name);
         LightFieldReference ScanMultiTiled(const std::string &name, bool usesOnlyOneTile = false);
 
+        enum class RetileStrategy {
+            RetileAlways,
+            RetileIfDifferent,
+            RetileBasedOnRegret
+        };
+
         LightFieldReference ScanAndRetile(const std::string &name,
                                           const MetadataSpecification &metadataSpecification,
                                           unsigned int layoutDuration,
                                           CrackingStrategy crackingStrategy,
-                                          bool retileOnlyIfDifferent = false);
+                                          RetileStrategy retileOnlyIfDifferent = RetileStrategy::RetileAlways);
 
         LightFieldReference ScanByGOP(const std::string &name);
         LightFieldReference Scan(const std::string &name);

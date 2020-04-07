@@ -244,7 +244,7 @@ namespace lightdb::logical {
         explicit MultiTiledLightFieldForRetiling(std::shared_ptr<tiles::TileLayoutsManager> tileLayoutsManager)
             : LightField({}, Volume::limits(), YUVColorSpace::instance()),
             tileLayoutsManager_(tileLayoutsManager),
-            retileOnlyIfDifferent_(false)
+              retileStrategy_(RetileStrategy::RetileAlways)
         {}
 
         void setProperties(
@@ -252,8 +252,8 @@ namespace lightdb::logical {
                 CrackingStrategy crackingStrategy,
                 unsigned int layoutDuration,
                 std::shared_ptr<catalog::Entry> entry,
-                bool retileOnlyIfDifferent) {
-            retileOnlyIfDifferent_ = retileOnlyIfDifferent;
+                RetileStrategy retileStrategy) {
+            retileStrategy_ = retileStrategy;
 
             metadataManager_ = metadataManager;
             entry_ = entry;
@@ -282,7 +282,7 @@ namespace lightdb::logical {
         const std::shared_ptr<metadata::MetadataManager> metadataManager() const { return metadataManager_; }
         const std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider() const { return tileConfigurationProvider_; }
         std::shared_ptr<catalog::Entry> entry() const { return entry_; }
-        bool shouldRetileOnlyIfVeryDifferent() const { return retileOnlyIfDifferent_; }
+        RetileStrategy retileStrategy() const { return retileStrategy_; }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MultiTiledLightFieldForRetiling>(visitor); }
 
@@ -291,7 +291,7 @@ namespace lightdb::logical {
         std::shared_ptr<metadata::MetadataManager> metadataManager_;
         std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider_;
         std::shared_ptr<catalog::Entry> entry_;
-        bool retileOnlyIfDifferent_;
+        RetileStrategy retileStrategy_;
     };
 
     class ScannedTiledLightField : public LightField, public StreamBackedLightField {

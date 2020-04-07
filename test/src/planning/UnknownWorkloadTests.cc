@@ -513,13 +513,13 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryIfLayoutIsVeryDiff
                 std::cout << "Last-frame " << selection->lastFrame() << std::endl;
 
                 {
-                    bool shouldRetileOnlyIfLayoutIsVeryDifferent = true;
+                    auto retileStrategy = logical::RetileStrategy::RetileIfDifferent;
                     auto retileOp = ScanAndRetile(
                             catalogName,
                             *selection,
                             framerate,
                             CrackingStrategy::SmallTiles,
-                            shouldRetileOnlyIfLayoutIsVeryDifferent);
+                            retileStrategy);
                     Coordinator().execute(retileOp);
                 }
             }

@@ -69,7 +69,7 @@ namespace lightdb::optimization {
                 auto configProvider = node.tileConfigurationProvider();
 
                 std::vector<int> framesWithDifferentLayout;
-                if (node.shouldRetileOnlyIfVeryDifferent()) {
+                if (node.retileStrategy() == logical::RetileStrategy::RetileIfDifferent) {
                     // For each GOP, compare the number of pixels to decode with the current layout and the proposed layout.
                     Workload workload(node.metadataManager()->metadataIdentifier(), {node.metadataManager()->metadataSpecification()}, {1});
                     int gopLength = node.entry()->sources()[0].configuration().framerate.fps();
@@ -97,7 +97,7 @@ namespace lightdb::optimization {
                                  [&](int frame) {
                                      return gopsToRetile.count(proposedLayoutEstimator.gopForFrame(frame));
                                  });
-                } else {
+                } else if (node.retileStrategy() == logical::RetileStrategy::RetileAlways) {
                     std::copy_if(framesToRetile.begin(), framesToRetile.end(),
                                  std::back_inserter(framesWithDifferentLayout),
                                  [&](int frame) {

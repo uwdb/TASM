@@ -247,6 +247,11 @@ namespace lightdb::logical {
               retileStrategy_(RetileStrategy::RetileAlways)
         {}
 
+        void setRegretAccumulator(std::shared_ptr<RegretAccumulator> regretAccumulator) {
+            assert(retileStrategy_ == RetileStrategy::RetileBasedOnRegret);
+            regretAccumulator_ = regretAccumulator;
+        }
+
         void setProperties(
                 std::shared_ptr<metadata::MetadataManager> metadataManager,
                 CrackingStrategy crackingStrategy,
@@ -283,6 +288,7 @@ namespace lightdb::logical {
         const std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider() const { return tileConfigurationProvider_; }
         std::shared_ptr<catalog::Entry> entry() const { return entry_; }
         RetileStrategy retileStrategy() const { return retileStrategy_; }
+        std::shared_ptr<RegretAccumulator> regretAccumulator() const { return regretAccumulator_; }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MultiTiledLightFieldForRetiling>(visitor); }
 
@@ -292,6 +298,7 @@ namespace lightdb::logical {
         std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider_;
         std::shared_ptr<catalog::Entry> entry_;
         RetileStrategy retileStrategy_;
+        std::shared_ptr<RegretAccumulator> regretAccumulator_;
     };
 
     class ScannedTiledLightField : public LightField, public StreamBackedLightField {

@@ -66,66 +66,158 @@ namespace lightdb::optimization {
             if (!plan().has_physical_assignment(node)) {
                 auto framesToRetile = node.metadataManager()->orderedFramesForMetadata();
                 auto locationProvider = std::make_shared<tiles::SingleTileLocationProvider>(node.tileLayoutsManager());
-                auto configProvider = node.tileConfigurationProvider();
 
-                std::vector<int> framesWithDifferentLayout;
-                if (node.retileStrategy() == logical::RetileStrategy::RetileIfDifferent) {
-                    // For each GOP, compare the number of pixels to decode with the current layout and the proposed layout.
-                    Workload workload(node.metadataManager()->metadataIdentifier(), {node.metadataManager()->metadataSpecification()}, {1});
+                int gopLength = node.entry()->sources()[0].configuration().framerate.fps();
+
+                if (node.retileStrategy() != logical::RetileStrategy::RetileBasedOnRegret) {
+                    auto configProvider = node.tileConfigurationProvider();
+
+                    std::vector<int> framesWithDifferentLayout;
+                    if (node.retileStrategy() == logical::RetileStrategy::RetileIfDifferent) {
+                        // For each GOP, compare the number of pixels to decode with the current layout and the proposed layout.
+                        Workload workload(node.metadataManager()->metadataIdentifier(),
+                                          {node.metadataManager()->metadataSpecification()}, {1});
+                        WorkloadCostEstimator currentLayoutEstimator(locationProvider, workload, gopLength, 1, 0, 0);
+                        WorkloadCostEstimator proposedLayoutEstimator(configProvider, workload, gopLength, 1, 0, 0);
+
+                        std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> currentCosts(
+                                new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
+                        std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> proposedCosts(
+                                new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
+
+                        unsigned int sawMultipleLayouts;
+                        currentLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, currentCosts.get());
+                        proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
+
+                        assert(currentCosts->size() == proposedCosts->size());
+                        std::unordered_set<unsigned int> gopsToRetile;
+                        for (auto curIt = currentCosts->begin(); curIt != currentCosts->end(); ++curIt) {
+                            auto curCosts = curIt->second;
+                            auto newCosts = proposedCosts->at(curIt->first);
+                            if (newCosts.numPixels <= 0.8 * curCosts.numPixels)
+                                gopsToRetile.insert(curIt->first);
+                        }
+                        std::copy_if(framesToRetile.begin(), framesToRetile.end(),
+                                     std::back_inserter(framesWithDifferentLayout),
+                                     [&](int frame) {
+                                         return gopsToRetile.count(proposedLayoutEstimator.gopForFrame(frame));
+                                     });
+                    } else if (node.retileStrategy() == logical::RetileStrategy::RetileAlways) {
+                        std::copy_if(framesToRetile.begin(), framesToRetile.end(),
+                                     std::back_inserter(framesWithDifferentLayout),
+                                     [&](int frame) {
+                                         return locationProvider->tileLayoutForFrame(frame) !=
+                                                configProvider->tileLayoutForFrame(frame);
+                                     });
+                    } else {
+                        assert(false);
+                    }
+
+                    assert(node.entry()->sources().size() == 1);
+
+
+                    auto logical = plan().lookup(node);
+                    auto scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical,
+                                                                                          node.entry()->sources()[0]);
+                    scan.downcast<physical::ScanFramesFromFileEncodedReader>().setFramesToRead(
+                            framesWithDifferentLayout);
+                    scan.downcast<physical::ScanFramesFromFileEncodedReader>().setShouldReadEntireGOPs(true);
+
+                    if (framesWithDifferentLayout.size()) {
+                        auto gpu = plan().allocator().gpu();
+                        auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
+                        auto crack = plan().emplace<physical::CrackVideo>(
+                                logical,
+                                decode,
+                                std::unordered_set<int>(),
+                                configProvider,
+                                node.tileLayoutsManager()->entry().name());
+                        plan().emplace<physical::Sink>(logical, crack);
+                    } else {
+                        plan().emplace<physical::Sink>(logical, scan);
+                    }
+                } else {
+                    // Retiling based on regret.
+                    assert(node.regretAccumulator());
+                    Workload workload(node.metadataManager()->metadataIdentifier(),
+                                      {node.metadataManager()->metadataSpecification()}, {1});
                     int gopLength = node.entry()->sources()[0].configuration().framerate.fps();
                     WorkloadCostEstimator currentLayoutEstimator(locationProvider, workload, gopLength, 1, 0, 0);
-                    WorkloadCostEstimator proposedLayoutEstimator(configProvider, workload, gopLength, 1, 0, 0);
-
-                    std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> currentCosts(new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
-                    std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> proposedCosts(new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
+                    std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> currentCosts(
+                            new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
 
                     unsigned int sawMultipleLayouts;
                     currentLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, currentCosts.get());
-                    proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
 
-                    assert(currentCosts->size() == proposedCosts->size());
-                    std::unordered_set<unsigned int> gopsToRetile;
-                    for (auto curIt = currentCosts->begin(); curIt != currentCosts->end(); ++curIt) {
-                        auto curCosts = curIt->second;
-                        auto newCosts = proposedCosts->at(curIt->first);
+                    for (const auto &layoutId : node.regretAccumulator()->layoutIdentifiers()) {
+                        WorkloadCostEstimator proposedLayoutEstimator(node.regretAccumulator()->configurationProviderForIdentifier(layoutId),
+                                workload, gopLength, 1, 0, 0);
 
-                        if (newCosts.numPixels <= 0.8 * curCosts.numPixels)
-                            gopsToRetile.insert(curIt->first);
+                        std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> proposedCosts(
+                                new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
+
+                        proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
+
+                        assert(currentCosts->size() == proposedCosts->size());
+
+                        for (auto curIt = currentCosts->begin(); curIt != currentCosts->end(); ++curIt) {
+                            auto curCosts = curIt->second;
+                            auto possibleCosts = proposedCosts->at(curIt->first);
+                            long long int regret = curCosts.numPixels - possibleCosts.numPixels;
+                            node.regretAccumulator()->addRegretToGOP(curIt->first, regret, layoutId);
+                        }
                     }
-                    std::copy_if(framesToRetile.begin(), framesToRetile.end(),
-                                 std::back_inserter(framesWithDifferentLayout),
-                                 [&](int frame) {
-                                     return gopsToRetile.count(proposedLayoutEstimator.gopForFrame(frame));
-                                 });
-                } else if (node.retileStrategy() == logical::RetileStrategy::RetileAlways) {
-                    std::copy_if(framesToRetile.begin(), framesToRetile.end(),
-                                 std::back_inserter(framesWithDifferentLayout),
-                                 [&](int frame) {
-                                     return locationProvider->tileLayoutForFrame(frame) !=
-                                            configProvider->tileLayoutForFrame(frame);
-                                 });
-                }
 
-                assert(node.entry()->sources().size() == 1);
+                    // Find the various layouts to retile to.
+                    std::unordered_map<unsigned int, std::string> gopToLayoutId;
+                    for (auto it = currentCosts->begin(); it != currentCosts->end(); ++it) {
+                        auto gopNum = it->first;
+                        std::string idForGOP;
+                        if (node.regretAccumulator()->shouldRetileGOP(gopNum, idForGOP)) {
+                            gopToLayoutId[gopNum] = idForGOP;
+                            node.regretAccumulator()->resetRegretForGOP(gopNum);
+                        }
+                    }
 
-
-                auto logical = plan().lookup(node);
-                auto scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, node.entry()->sources()[0]);
-                scan.downcast<physical::ScanFramesFromFileEncodedReader>().setFramesToRead(framesWithDifferentLayout);
-                scan.downcast<physical::ScanFramesFromFileEncodedReader>().setShouldReadEntireGOPs(true);
-
-                if (framesWithDifferentLayout.size()) {
+                    // Build a query plan for each retiling operation.
+                    std::vector<PhysicalOperatorReference> crackOperators;
+                    auto logical = plan().lookup(node);
+                    auto source = node.entry()->sources()[0];
                     auto gpu = plan().allocator().gpu();
-                    auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
-                    auto crack = plan().emplace<physical::CrackVideo>(
-                            logical,
-                            decode,
-                            std::unordered_set<int>(),
-                            configProvider,
-                            node.tileLayoutsManager()->entry().name());
-                    plan().emplace<physical::Sink>(logical, crack);
-                } else {
-                    plan().emplace<physical::Sink>(logical, scan);
+                    std::unique_ptr<std::unordered_map<unsigned int, std::shared_ptr<tiles::TileConfigurationProvider>>> gopToConfigProvider(new std::unordered_map<unsigned int, std::shared_ptr<tiles::TileConfigurationProvider>>());
+                    std::vector<int> framesWithDifferentLayout;
+
+                    for (auto frame : framesToRetile) {
+                        auto gop = currentLayoutEstimator.gopForFrame(frame);
+                        if (gopToLayoutId.count(gop)) {
+                            if (!gopToConfigProvider->count(gop)) {
+                                gopToConfigProvider->emplace(gop,
+                                                               node.regretAccumulator()->configurationProviderForIdentifier(
+                                                                       gopToLayoutId.at(gop)));
+                            }
+                            framesWithDifferentLayout.push_back(frame);
+                        }
+                    }
+
+                    auto scan = plan().emplace<physical::ScanFramesFromFileEncodedReader>(logical, source);
+                    scan.downcast<physical::ScanFramesFromFileEncodedReader>().setFramesToRead(framesWithDifferentLayout);
+                    scan.downcast<physical::ScanFramesFromFileEncodedReader>().setShouldReadEntireGOPs(true);
+
+                    if (framesWithDifferentLayout.empty()) {
+                        plan().emplace<physical::Sink>(logical, scan);
+                    } else {
+                        auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
+
+                        auto tileConfig = std::make_shared<tiles::ConglomerationTileConfigurationProvider>(std::move(gopToConfigProvider), gopLength);
+                        auto crack = plan().emplace<physical::CrackVideo>(
+                                logical,
+                                decode,
+                                std::unordered_set<int>(),
+                                tileConfig,
+                                node.tileLayoutsManager()->entry().name()
+                                );
+                        plan().emplace<physical::Sink>(logical, crack);
+                    }
                 }
 
                 return true;

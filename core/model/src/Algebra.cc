@@ -19,7 +19,8 @@ namespace lightdb::logical {
                                   const MetadataSpecification &metadataSpecification,
                                   unsigned int layoutDuration,
                                   CrackingStrategy crackingStrategy,
-                                  RetileStrategy retileOnlyIfDifferent) {
+                                  RetileStrategy retileOnlyIfDifferent,
+                                  std::shared_ptr<RegretAccumulator> regretAccumulator) {
 
         // Transform metadataIdentifier.
         std::string metadataIdentifier;
@@ -37,6 +38,10 @@ namespace lightdb::logical {
         auto lightField = Catalog::instance().getMultiTiledForRetiling(name);
         lightField.downcast<logical::MultiTiledLightFieldForRetiling>().setProperties(
                 metadataManager, crackingStrategy, layoutDuration, entry, retileOnlyIfDifferent);
+
+        if (regretAccumulator)
+            lightField.downcast<logical::MultiTiledLightFieldForRetiling>().setRegretAccumulator(regretAccumulator);
+
         return lightField;
     }
 

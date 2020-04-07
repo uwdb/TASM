@@ -19,6 +19,10 @@
 #include <map>
 #include <mutex>
 
+namespace lightdb::tiles {
+class TileConfigurationProvider;
+}
+
 namespace lightdb::physical {
     class MetadataLightField;
     using MetadataLightFieldReference = shared_reference<MetadataLightField, pool::BufferPoolEntry<MetadataLightField>>;
@@ -215,6 +219,17 @@ namespace lightdb::logical {
     private:
         std::shared_ptr<const FrameSpecification> frameSpecification_;
     };
+
+class RegretAccumulator {
+public:
+    virtual void addRegretToGOP(unsigned int gop, long long int regret, const std::string &layoutIdentifier) = 0;
+    virtual bool shouldRetileGOP(unsigned int gop, std::string &layoutIdentifier) = 0;
+    virtual void resetRegretForGOP(unsigned int gop) = 0;
+    virtual std::shared_ptr<tiles::TileConfigurationProvider> configurationProviderForIdentifier(const std::string &identifier) = 0;
+    virtual const std::vector<std::string> layoutIdentifiers() = 0;
+    virtual ~RegretAccumulator() {}
+};
+
 } // namespace lightdb::logical
 
 

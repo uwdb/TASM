@@ -162,6 +162,23 @@ public:
     virtual ~TileConfigurationProvider() { }
 };
 
+class ConglomerationTileConfigurationProvider : public TileConfigurationProvider {
+public:
+    ConglomerationTileConfigurationProvider(std::unique_ptr<std::unordered_map<unsigned int, std::shared_ptr<TileConfigurationProvider>>> gopToConfigProvider, unsigned int gopLength)
+        : gopToConfigProvider_(std::move(gopToConfigProvider)),
+        gopLength_(gopLength)
+    {}
+
+    unsigned int maximumNumberOfTiles() override { return 0; }
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        return gopToConfigProvider_->at(frame / gopLength_)->tileLayoutForFrame(frame);
+    }
+
+private:
+    std::unique_ptr<std::unordered_map<unsigned int, std::shared_ptr<TileConfigurationProvider>>> gopToConfigProvider_;
+    unsigned int gopLength_;
+};
+
 class KeyframeConfigurationProvider {
 public:
     virtual bool shouldFrameBeKeyframe(unsigned int frame) = 0;

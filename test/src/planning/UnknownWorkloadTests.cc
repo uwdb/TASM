@@ -23,6 +23,8 @@ using namespace lightdb::optimization;
 using namespace lightdb::catalog;
 using namespace lightdb::execution;
 
+static unsigned int NUM_QUERIES = 20;
+
 static std::unordered_map<std::string, std::pair<unsigned int, unsigned int>> videoToDimensions{
         {"traffic-2k-001", {1920, 1080}},
         {"car-pov-2k-001-shortened", {1920, 1080}},
@@ -232,6 +234,22 @@ private:
     unsigned int alternateQueryObjectNumber_;
 };
 
+static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum, const std::string &video, unsigned int duration, std::default_random_engine *generator) {
+    std::string object("car");
+    std::vector<std::string> objects{"car", "pedestrian"};
+    if (workloadNum == 1) {
+        return std::make_unique<VRWorkload1Generator>(video, object, duration, generator);
+    } else if (workloadNum == 2) {
+        return std::make_unique<VRWorkload2Generator>(video, objects, NUM_QUERIES, duration, generator);
+    } else if (workloadNum == 3) {
+        return std::make_unique<VRWorkload3Generator>(video, objects, duration, generator);
+    } else if (workloadNum == 4) {
+        return std::make_unique<VRWorkload4Generator>(video, objects, NUM_QUERIES, duration, generator);
+    } else {
+        assert(false);
+    }
+}
+
 static void DeleteTiles(const std::string &catalogEntryName) {
     static std::string basePath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/";
     auto catalogPath = basePath + catalogEntryName;
@@ -264,8 +282,6 @@ static void DeleteTilesPastNum(const std::string &catalogEntryName, unsigned int
             std::filesystem::remove_all(dir.path());
     }
 }
-
-static unsigned int NUM_QUERIES = 20;
 
 // Workload 1: Select a single object
 // TileStrategy: No tiles.
@@ -657,11 +673,163 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryIfLayoutIsVeryDiff
     }
 }
 
-TEST_F(UnknownWorkloadTestFixture, testDeleteTilesPastNum) {
-    std::string dir("test_dir");
-    DeleteTilesPastNum(dir, 1);
-    std::cout << "done " << std::endl;
+class TestRegretAccumulator : public RegretAccumulator {
+public:
+    TestRegretAccumulator(const std::string &video, unsigned int width, unsigned int height, unsigned int gopLength, const std::vector<std::string> &labels) {
+        gopSizeInPixels_ = width * height * gopLength;
+        labels_ = labels;
+        for (const auto & label : labels) {
+            auto metadataManager = std::make_shared<metadata::MetadataManager>(video,
+                    MetadataSpecification("labels", std::make_shared<SingleMetadataElement>("label", label)));
+            idToConfig_[label] = std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                    gopLength,
+                    metadataManager,
+                    width,
+                    height);
+        }
+    }
+
+    void addRegretToGOP(unsigned int gop, long long int regret, const std::string &layoutIdentifier) override {
+        if (!gopToRegret_[gop][layoutIdentifier])
+            gopToRegret_[gop][layoutIdentifier] = 0;
+
+        gopToRegret_[gop][layoutIdentifier] += regret;
+    }
+
+    bool shouldRetileGOP(unsigned int gop, std::string &layoutIdentifier) override {
+        long long int maxRegret = 0;
+        std::string labelWithMaxRegret;
+
+        for (auto it = gopToRegret_[gop].begin(); it != gopToRegret_[gop].end(); ++it) {
+            if (it->second > maxRegret) {
+                maxRegret = it->second;
+                labelWithMaxRegret = it->first;
+            }
+        }
+        if (maxRegret >= gopSizeInPixels_ * 0.65) {
+            layoutIdentifier = labelWithMaxRegret;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    void resetRegretForGOP(unsigned int gop) override {
+        for (auto it = gopToRegret_[gop].begin(); it != gopToRegret_[gop].end(); ++it)
+            it->second = 0;
+    }
+
+    std::shared_ptr<tiles::TileConfigurationProvider> configurationProviderForIdentifier(const std::string &identifier)  override {
+        return idToConfig_.at(identifier);
+    }
+
+    const std::vector<std::string> layoutIdentifiers() override {
+        return labels_;
+    }
+
+private:
+    std::vector<std::string> labels_;
+    std::unordered_map<std::string, std::shared_ptr<tiles::TileConfigurationProvider>> idToConfig_;
+    long long int gopSizeInPixels_;
+    std::unordered_map<unsigned int, std::unordered_map<std::string, long long int>> gopToRegret_;
+};
+
+TEST_F(UnknownWorkloadTestFixture, testRegretAccumulator) {
+    std::string video("traffic-2k-001");
+    std::vector<std::string> objects{"car", "pedestrian"};
+    unsigned int width = 1920;
+    unsigned int height = 1080;
+    unsigned int gopLength = 30;
+
+    TestRegretAccumulator acc(video, width, height, gopLength, objects);
+
+    std::string retileObj;
+
+    assert(!acc.shouldRetileGOP(0, retileObj));
+    assert(!acc.shouldRetileGOP(10, retileObj));
+
+    // GOP pixels: 62,208,000
+    // half that, 31104000
+    long long int halfGOP = 31104000;
+
+    acc.addRegretToGOP(0, halfGOP - 1, "car");
+    assert(!acc.shouldRetileGOP(0, retileObj));
+
+    acc.addRegretToGOP(0, halfGOP - 1, "pedestrian");
+    assert(!acc.shouldRetileGOP(0, retileObj));
+
+    acc.addRegretToGOP(0, 10, "car");
+    assert(acc.shouldRetileGOP(0, retileObj));
+    assert(retileObj == "car");
+    assert(!acc.shouldRetileGOP(10, retileObj));
 }
 
+TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingRegret) {
+    std::cout << "\nWorkload-strategy tile-query-duration-if-regret-accumulates" << std::endl;
 
+    std::vector<std::string> videos{
+            "traffic-2k-001",
+            "car-pov-2k-001-shortened",
+            "traffic-4k-000",
+            "traffic-4k-002",
+    };
+
+    unsigned int framerate = 30;
+
+//    std::default_random_engine generator(7);
+    for (const auto &video : videos) {
+        auto videoDimensions = videoToDimensions.at(video);
+        std::string catalogName = video + "-cracked";
+        for (auto duration : videoToQueryDurations.at(video)) {
+
+            auto regretAccumulator = std::make_shared<TestRegretAccumulator>(
+                    video,
+                    videoDimensions.first, videoDimensions.second, framerate,
+                    std::vector<std::string>{"car", "pedestrian"});
+
+            std::default_random_engine generator(videoToProbabilitySeed.at(video));
+
+            // Delete tiles from previous runs.
+            DeleteTiles(catalogName);
+
+            auto queryGenerator = GetGenerator(1, video, duration, &generator);
+            for (auto i = 0u; i < NUM_QUERIES; ++i) {
+                std::string object;
+                auto selection = queryGenerator->getNextQuery(i, &object);
+
+                // Step 1: Run query.
+                std::cout << "Video " << video << std::endl;
+                std::cout << "Query-object " << object << std::endl;
+                std::cout << "Uses-only-one-tile 0" << std::endl;
+                std::cout << "Selection-duration " << duration << std::endl;
+                std::cout << "Iteration " << i << std::endl;
+                std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                {
+                    auto input = ScanMultiTiled(catalogName, false);
+                    Coordinator().execute(input.Select(*selection));
+                }
+
+                // Step 2: Crack around objects in query.
+                std::cout << "Video " << video << std::endl;
+                std::cout << "Cracking-around-object " << object << std::endl;
+                std::cout << "Cracking-duration " << duration << std::endl;
+                std::cout << "Iteration " << i << std::endl;
+                std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+
+                {
+                    auto retileOp = ScanAndRetile(
+                            catalogName,
+                            *selection,
+                            framerate,
+                            CrackingStrategy::SmallTiles,
+                            RetileStrategy::RetileBasedOnRegret,
+                            regretAccumulator);
+                    Coordinator().execute(retileOp);
+                }
+            }
+        }
+    }
+}
 

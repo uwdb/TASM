@@ -37,6 +37,13 @@ static std::unordered_map<std::string, unsigned int> videoToProbabilitySeed {
         {"traffic-4k-002", 22},
 };
 
+static std::unordered_map<std::string, unsigned int> videoToMaxKNNTile {
+        {"traffic-2k-001", 850},
+        {"car-pov-2k-001-shortened", 283},
+        {"traffic-4k-000", 683},
+        {"traffic-4k-002", 883},
+};
+
 class UnknownWorkloadTestFixture : public testing::Test {
 public:
     UnknownWorkloadTestFixture()
@@ -182,6 +189,49 @@ private:
     std::uniform_real_distribution<float> probabilityDistribution_;
 };
 
+class VRWorkload4Generator : public WorkloadGenerator {
+    // objects[0] is the primary query object.
+    // objects[1] is the alternate query object.
+public:
+    VRWorkload4Generator(const std::string &video, const std::vector<std::string> &objects, unsigned int numberOfQueries, unsigned int duration, std::default_random_engine *generator)
+            : video_(video), objects_(objects), totalNumberOfQueries_(numberOfQueries), numberOfFramesInDuration_(duration * 30),
+              generator_(generator), startingFrameDistribution_(0, videoToNumFrames.at(video_) - numberOfFramesInDuration_ - 1)
+    {
+        assert(objects_.size() == 2);
+
+        alternateQueryObjectNumber_ = totalNumberOfQueries_ / 2;
+    }
+
+    std::shared_ptr<PixelMetadataSpecification> getNextQuery(unsigned int queryNum, std::string *outQueryObject) override {
+        std::string object = queryNum == alternateQueryObjectNumber_ ? objects_[1] : objects_[0];
+        if (outQueryObject)
+            *outQueryObject = object;
+
+        int firstFrame, lastFrame;
+        std::shared_ptr<PixelMetadataSpecification> selection;
+        bool hasObjects = false;
+        while (!hasObjects) {
+            firstFrame = startingFrameDistribution_(*generator_);
+            lastFrame = firstFrame + numberOfFramesInDuration_;
+            selection = std::make_shared<PixelMetadataSpecification>(
+                    "labels",
+                    std::make_shared<SingleMetadataElement>("label", object, firstFrame, lastFrame));
+            auto metadataManager = std::make_unique<metadata::MetadataManager>(video_, *selection);
+            hasObjects = metadataManager->framesForMetadata().size();
+        }
+        return selection;
+    }
+
+private:
+    std::string video_;
+    std::vector<std::string> objects_;
+    unsigned int totalNumberOfQueries_;
+    unsigned int numberOfFramesInDuration_;
+    std::default_random_engine *generator_;
+    std::uniform_int_distribution<int> startingFrameDistribution_;
+    unsigned int alternateQueryObjectNumber_;
+};
+
 static void DeleteTiles(const std::string &catalogEntryName) {
     static std::string basePath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/";
     auto catalogPath = basePath + catalogEntryName;
@@ -195,6 +245,22 @@ static void DeleteTiles(const std::string &catalogEntryName) {
         if (!tileVersion)
             continue;
         else
+            std::filesystem::remove_all(dir.path());
+    }
+}
+
+static void DeleteTilesPastNum(const std::string &catalogEntryName, unsigned int maxOriginalTileNum) {
+    static std::string basePath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/";
+    auto catalogPath = basePath + catalogEntryName;
+
+    for (auto &dir : std::filesystem::directory_iterator(catalogPath)) {
+        if (!dir.is_directory())
+            continue;
+
+        auto dirName = dir.path().filename().string();
+        auto lastSep = dirName.rfind("-");
+        auto tileVersion = std::stoul(dirName.substr(lastSep + 1));
+        if (tileVersion > maxOriginalTileNum)
             std::filesystem::remove_all(dir.path());
     }
 }
@@ -219,7 +285,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadNoTiles) {
     for (const auto &video : videos) {
         for (auto duration : videoToQueryDurations.at(video)) {
             std::default_random_engine generator(videoToProbabilitySeed.at(video));
-            VRWorkload3Generator queryGenerator(video, {"car", "pedestrian"}, duration, &generator);
+            VRWorkload4Generator queryGenerator(video, {"car", "pedestrian"}, NUM_QUERIES, duration, &generator);
 
             for (auto i = 0u; i < NUM_QUERIES; ++i) {
                 std::string object;
@@ -287,7 +353,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundAll) {
 
         for (auto duration : videoToQueryDurations.at(video)) {
             std::default_random_engine generator(videoToProbabilitySeed.at(video));
-            VRWorkload3Generator queryGenerator(video, {"car", "pedestrian"}, duration, &generator);
+            VRWorkload4Generator queryGenerator(video, {"car", "pedestrian"}, NUM_QUERIES, duration, &generator);
 
             for (auto i = 0u; i < NUM_QUERIES; ++i) {
                 std::string object;
@@ -363,7 +429,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQuery) {
             // Delete tiles from previous runs.
             DeleteTiles(catalogName);
 
-            VRWorkload3Generator queryGenerator(video, {"car", "pedestrian"}, duration, &generator);
+            VRWorkload4Generator queryGenerator(video, {"car", "pedestrian"}, NUM_QUERIES, duration, &generator);
             for (auto i = 0u; i < NUM_QUERIES; ++i) {
                 std::string object;
                 auto selection = queryGenerator.getNextQuery(i, &object);
@@ -424,7 +490,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryObjectInEntireVide
             // Delete tiles from previous runs.
             DeleteTiles(catalogName);
 
-            VRWorkload3Generator queryGenerator(video, {"car", "pedestrian"}, duration, &generator);
+            VRWorkload4Generator queryGenerator(video, {"car", "pedestrian"}, NUM_QUERIES, duration, &generator);
             for (auto i = 0u; i < NUM_QUERIES; ++i) {
                 std::string object;
                 auto selection = queryGenerator.getNextQuery(i, &object);
@@ -486,7 +552,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryIfLayoutIsVeryDiff
             // Delete tiles from previous runs.
             DeleteTiles(catalogName);
 
-            VRWorkload3Generator queryGenerator(video, {"car", "pedestrian"}, duration, &generator);
+            VRWorkload4Generator queryGenerator(video, {"car", "pedestrian"}, NUM_QUERIES, duration, &generator);
             for (auto i = 0u; i < NUM_QUERIES; ++i) {
                 std::string object;
                 auto selection = queryGenerator.getNextQuery(i, &object);
@@ -527,23 +593,74 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryIfLayoutIsVeryDiff
     }
 }
 
-TEST_F(UnknownWorkloadTestFixture, testHello1) {
-    sleep(30);
-    std::cout << "Hello 1" << std::endl;
-}
+TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryIfLayoutIsVeryDifferentStartWithKNNTiles) {
+    std::cout << "\nWorkload-strategy tile-query-duration-if-different-init-KNN-tiles" << std::endl;
 
-TEST_F(UnknownWorkloadTestFixture, testHello2) {
-    sleep(15);
-    std::cout << "Hello 3" << std::endl;
-}
+    std::vector<std::string> videos{
+            "traffic-2k-001",
+            "car-pov-2k-001-shortened",
+            "traffic-4k-000",
+            "traffic-4k-002",
+    };
 
-TEST_F(UnknownWorkloadTestFixture, testRandomProbab) {
-    std::default_random_engine probabilityGenerator(8);
-    std::uniform_real_distribution<float> probabilityDistribution(0.0, 1.0);
+    unsigned int framerate = 30;
+//    std::string object("car");
 
-    for (int i = 0; i < 50; ++i) {
-        std::cout << probabilityDistribution(probabilityGenerator) << std::endl;
+//    std::default_random_engine generator(7);
+    for (const auto &video : videos) {
+        std::string catalogName = video + "-cracked-KNN-smalltiles-duration30";
+        for (auto duration : videoToQueryDurations.at(video)) {
+            std::default_random_engine generator(videoToProbabilitySeed.at(video));
+            // Delete tiles from previous runs.
+            DeleteTilesPastNum(catalogName, videoToMaxKNNTile.at(video));
+
+//            VRWorkload4Generator queryGenerator(video, {"car", "pedestrian"}, NUM_QUERIES, duration, &generator);
+//            VRWorkload3Generator queryGenerator(video, {"car", "pedestrian"}, duration, &generator);
+            VRWorkload2Generator queryGenerator(video, {"car", "pedestrian"}, NUM_QUERIES, duration, &generator);
+            for (auto i = 0u; i < NUM_QUERIES; ++i) {
+                std::string object;
+                auto selection = queryGenerator.getNextQuery(i, &object);
+
+                // Step 1: Run query.
+                std::cout << "Video " << video << std::endl;
+                std::cout << "Query-object " << object << std::endl;
+                std::cout << "Uses-only-one-tile 0" << std::endl;
+                std::cout << "Selection-duration " << duration << std::endl;
+                std::cout << "Iteration " << i << std::endl;
+                std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                {
+                    auto input = ScanMultiTiled(catalogName, false);
+                    Coordinator().execute(input.Select(*selection));
+                }
+
+                // Step 2: Crack around objects in query.
+                std::cout << "Video " << video << std::endl;
+                std::cout << "Cracking-around-object " << object << std::endl;
+                std::cout << "Cracking-duration " << duration << std::endl;
+                std::cout << "Iteration " << i << std::endl;
+                std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+
+                {
+                    auto retileStrategy = logical::RetileStrategy::RetileIfDifferent;
+                    auto retileOp = ScanAndRetile(
+                            catalogName,
+                            *selection,
+                            framerate,
+                            CrackingStrategy::SmallTiles,
+                            retileStrategy);
+                    Coordinator().execute(retileOp);
+                }
+            }
+        }
     }
+}
+
+TEST_F(UnknownWorkloadTestFixture, testDeleteTilesPastNum) {
+    std::string dir("test_dir");
+    DeleteTilesPastNum(dir, 1);
+    std::cout << "done " << std::endl;
 }
 
 

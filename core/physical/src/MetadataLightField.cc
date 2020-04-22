@@ -219,6 +219,20 @@ const std::unordered_set<int> &MetadataManager::framesForMetadata() const {
     return framesForMetadata_;
 }
 
+const std::vector<int> &MetadataManager::framesForMetadataOrderedByNumObjects() const {
+    std::scoped_lock lock(mutex_);
+    if (didSetFramesForMetadataOrderedByNumObjects_)
+        return framesForMetadataOrderedByNumObjects_;
+
+    std::string query = "SELECT frame from %s WHERE " + metadataSpecification_.whereClauseConstraints(true) + " GROUP BY frame ORDER BY count(*) desc";
+    selectFromMetadataAndApplyFunctionWithFrameLimits(query.c_str(), [this](sqlite3_stmt *stmt) {
+        framesForMetadataOrderedByNumObjects_.push_back(sqlite3_column_int(stmt, 0));
+    });
+
+    didSetFramesForMetadataOrderedByNumObjects_ = true;
+    return framesForMetadataOrderedByNumObjects_;
+}
+
 const std::vector<int> &MetadataManager::orderedFramesForMetadata() const {
     {
         std::scoped_lock lock(mutex_);

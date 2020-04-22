@@ -15,6 +15,7 @@
 #include <random>
 #include <regex>
 
+#include "Distribution.h"
 #include "WorkloadCostEstimator.h"
 
 using namespace lightdb;
@@ -78,11 +79,51 @@ public:
     virtual ~WorkloadGenerator() {};
 };
 
+class FrameGenerator {
+public:
+    virtual int nextFrame(std::default_random_engine &generator) = 0;
+};
+
+class UniformFrameGenerator : public FrameGenerator {
+public:
+    UniformFrameGenerator(const std::string &video, unsigned int duration)
+        : startingFrameDistribution_(0, videoToNumFrames.at(video) - (duration * 30) - 1)
+    {}
+
+    int nextFrame(std::default_random_engine &generator) override {
+        return startingFrameDistribution_(generator);
+    }
+
+private:
+    std::uniform_int_distribution<int> startingFrameDistribution_;
+};
+
+class ZipfFrameGenerator : public FrameGenerator {
+public:
+    ZipfFrameGenerator(const std::string &video, unsigned int duration) {
+        auto maxFrame = videoToNumFrames.at(video) - (duration * 30) - 1;
+        MetadataSpecification selection("labels",
+                std::make_shared<AllMetadataElement>("label", 0, maxFrame));
+        metadata::MetadataManager metadataManager(video, selection);
+        orderedFrames_ = metadataManager.framesForMetadataOrderedByNumObjects();
+        distribution_ = std::make_unique<ZipfDistribution>(orderedFrames_.size(), 1.0);
+    }
+
+    int nextFrame(std::default_random_engine &generator) override {
+        return orderedFrames_[(*distribution_)(generator)];
+    }
+
+private:
+    std::vector<int> orderedFrames_;
+    std::unique_ptr<ZipfDistribution> distribution_;
+};
+
 class VRWorkload1Generator : public WorkloadGenerator {
 public:
-    VRWorkload1Generator(const std::string &video, const std::string &object, unsigned int duration, std::default_random_engine *generator)
-        : video_(video), object_(object), numberOfFramesInDuration_(duration * 30),
-        generator_(generator), startingFrameDistribution_(0, videoToNumFrames.at(video_) - numberOfFramesInDuration_ - 1)
+    VRWorkload1Generator(const std::string &video, const std::string &object, unsigned int duration, std::default_random_engine *generator,
+            std::unique_ptr<FrameGenerator> startingFrameDistribution)
+            : video_(video), object_(object), numberOfFramesInDuration_(duration * 30),
+              generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))  //startingFrameDistribution_(0, videoToNumFrames.at(video_) - numberOfFramesInDuration_ - 1)
     { }
 
     std::shared_ptr<PixelMetadataSpecification> getNextQuery(unsigned int queryNum, std::string *outQueryObject = nullptr) override {
@@ -90,7 +131,7 @@ public:
         std::shared_ptr<PixelMetadataSpecification> selection;
         bool hasObjects = false;
         while (!hasObjects) {
-            firstFrame = startingFrameDistribution_(*generator_);
+            firstFrame = startingFrameDistribution_->nextFrame(*generator_);
             lastFrame = firstFrame + numberOfFramesInDuration_;
             selection = std::make_shared<PixelMetadataSpecification>(
                     "labels",
@@ -109,7 +150,8 @@ private:
     std::string object_;
     unsigned int numberOfFramesInDuration_;
     std::default_random_engine *generator_;
-    std::uniform_int_distribution<int> startingFrameDistribution_;
+//    std::uniform_int_distribution<int> startingFrameDistribution_;
+    std::unique_ptr<FrameGenerator> startingFrameDistribution_;
 };
 
 class VRWorkload2Generator : public WorkloadGenerator {
@@ -234,11 +276,29 @@ private:
     unsigned int alternateQueryObjectNumber_;
 };
 
-static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum, const std::string &video, unsigned int duration, std::default_random_engine *generator) {
+enum class Distribution {
+    Uniform,
+    Zipf,
+};
+static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum, const std::string &video, unsigned int duration,
+        std::default_random_engine *generator, Distribution distribution = Distribution::Uniform) {
     std::string object("car");
     std::vector<std::string> objects{"car", "pedestrian"};
+
+    std::unique_ptr<FrameGenerator> frameGenerator;
+    switch (distribution) {
+        case Distribution::Uniform:
+            frameGenerator.reset(new UniformFrameGenerator(video, duration));
+            break;
+        case Distribution::Zipf:
+            frameGenerator.reset(new ZipfFrameGenerator(video, duration));
+            break;
+        default:
+            assert(false);
+    };
+
     if (workloadNum == 1) {
-        return std::make_unique<VRWorkload1Generator>(video, object, duration, generator);
+        return std::make_unique<VRWorkload1Generator>(video, object, duration, generator, std::move(frameGenerator));
     } else if (workloadNum == 2) {
         return std::make_unique<VRWorkload2Generator>(video, objects, NUM_QUERIES, duration, generator);
     } else if (workloadNum == 3) {
@@ -289,10 +349,10 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadNoTiles) {
     std::cout << "\nWorkload-strategy no-tiles" << std::endl;
 
     std::vector<std::string> videos{
-        "traffic-2k-001",
-        "car-pov-2k-001-shortened",
-        "traffic-4k-000",
-        "traffic-4k-002",
+            "traffic-2k-001",
+            "car-pov-2k-001-shortened",
+            "traffic-4k-000",
+            "traffic-4k-002",
     };
 
 //    std::string object("car");
@@ -398,7 +458,7 @@ TEST_F(UnknownWorkloadTestFixture, testRetile4k) {
 TEST_F(UnknownWorkloadTestFixture, testPrepareForRetiling) {
     std::vector<std::string> videos{
             "traffic-2k-001",
-            "car-pov-2k-001-shortened",
+//            "car-pov-2k-001-shortened",
             "traffic-4k-000",
             "traffic-4k-002",
     };
@@ -680,7 +740,7 @@ public:
         labels_ = labels;
         for (const auto & label : labels) {
             auto metadataManager = std::make_shared<metadata::MetadataManager>(video,
-                    MetadataSpecification("labels", std::make_shared<SingleMetadataElement>("label", label)));
+                                                                               MetadataSpecification("labels", std::make_shared<SingleMetadataElement>("label", label)));
             idToConfig_[label] = std::make_shared<tiles::GroupingTileConfigurationProvider>(
                     gopLength,
                     metadataManager,
@@ -833,3 +893,22 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
     }
 }
 
+TEST_F(UnknownWorkloadTestFixture, testZipfDistribution) {
+    std::default_random_engine generator(5);
+
+    ZipfDistribution distribution(1000, 1.0);
+    for (int i = 0; i < 2000; ++i) {
+        auto r = distribution(generator);
+        std::cout << r << std::endl;
+    }
+}
+
+TEST_F(UnknownWorkloadTestFixture, testZipfDistribution2) {
+    std::default_random_engine generator(5);
+    UniformFrameGenerator frameGen("traffic-2k-001", 300);
+
+    for (int i = 0; i < 2000; ++i) {
+        auto r = frameGen.nextFrame(generator);
+        std::cout << r << std::endl;
+    }
+}

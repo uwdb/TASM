@@ -69,7 +69,9 @@ namespace lightdb::metadata {
                 didSetOrderedFramesForMetadata_(false),
                 orderedFramesForMetadata_(0),
                 didSetIdealKeyframesForMetadata_(false),
-                idealKeyframesForMetadata_(0)
+                idealKeyframesForMetadata_(0),
+                didSetFramesForMetadataOrderedByNumObjects_(false),
+                framesForMetadataOrderedByNumObjects_(0)
         {
             openDatabase();
         }
@@ -84,6 +86,7 @@ namespace lightdb::metadata {
         const std::unordered_set<int> &framesForMetadata() const;
         const std::vector<int> &orderedFramesForMetadata() const;
         const std::unordered_set<int> &idealKeyframesForMetadata() const;
+        const std::vector<int> &framesForMetadataOrderedByNumObjects() const;
 
         const std::vector<Rectangle> &rectanglesForFrame(int frame) const;
         std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
@@ -112,6 +115,9 @@ namespace lightdb::metadata {
         mutable std::unordered_map<int, std::vector<lightdb::Rectangle>> frameToRectangles_;
         sqlite3 *db_;
         mutable std::mutex mutex_;
+
+        mutable bool didSetFramesForMetadataOrderedByNumObjects_;
+        mutable std::vector<int> framesForMetadataOrderedByNumObjects_;
     };
 } // namespace lightdb::metadata
 

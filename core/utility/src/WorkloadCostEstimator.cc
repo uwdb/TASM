@@ -6,7 +6,8 @@ WorkloadCostEstimator::CostElements WorkloadCostEstimator::estimateCostForQuery(
     auto metadataManager = workload_.metadataManagerForQuery(queryNum);
     auto start = metadataManager->orderedFramesForMetadata().begin();
     // FIXME: prev() is necessary due to a bug in Select() that caused the last frame to be skipped.
-    auto end = std::prev(metadataManager->orderedFramesForMetadata().end(), 1);
+//    auto end = std::prev(metadataManager->orderedFramesForMetadata().end(), 1);
+    auto end = metadataManager->orderedFramesForMetadata().end();
 
     unsigned long long totalNumberOfPixels = 0;
     unsigned long long totalNumberOfTiles = 0;

@@ -189,7 +189,7 @@ public:
 class SingleTileConfigurationProvider: public TileConfigurationProvider {
 public:
     SingleTileConfigurationProvider(unsigned int totalWidth, unsigned int totalHeight)
-        : totalWidth_(totalWidth), totalHeight_(totalHeight)
+        : totalWidth_(totalWidth), totalHeight_(totalHeight), layout_(1, 1, {totalWidth_}, {totalHeight_})
     { }
 
     unsigned int maximumNumberOfTiles() override {
@@ -197,13 +197,13 @@ public:
     }
 
     const TileLayout &tileLayoutForFrame(unsigned int frame) override {
-        static TileLayout oneTileLayout = TileLayout(1, 1, {totalWidth_}, {totalHeight_});
-        return oneTileLayout;
+        return layout_;
     }
 
 private:
     unsigned int totalWidth_;
     unsigned  int totalHeight_;
+    TileLayout layout_;
 };
 
 template <int Rows, int Columns>

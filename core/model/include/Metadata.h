@@ -28,7 +28,7 @@ namespace lightdb {
             if (!includeFrameLimits)
                 return baseClause;
 
-            return baseClause + " frame >= " + std::to_string(firstFrame_) + " AND frame < " + std::to_string(lastFrame_);
+            return baseClause + " AND frame >= " + std::to_string(firstFrame_) + " AND frame < " + std::to_string(lastFrame_);
         }
 
         void updateLastFrameConstraints(unsigned int lastFrame) override {

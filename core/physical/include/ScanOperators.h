@@ -97,7 +97,8 @@ private:
     public:
         explicit Runtime(ScanFramesFromFileEncodedReader &physical)
             : runtime::Runtime<ScanFramesFromFileEncodedReader>(physical),
-                    frameReader_(physical.source().filename(), physical.framesToRead(), 0, physical.shouldReadEntireGOPs())
+                    frameReader_(physical.source().filename(), physical.framesToRead(), 0, physical.shouldReadEntireGOPs()),
+                    numberOfFramesRead_(0)
         {
             if (physical.globalFramesToRead().size())
                 frameReader_.setGlobalFrames(physical.globalFramesToRead());
@@ -121,13 +122,20 @@ private:
 
                 cpuData.downcast<CPUEncodedFrameData>().setFirstFrameIndexAndNumberOfFrames(gopPacket->firstFrameIndex(), gopPacket->numberOfFrames());
                 returnVal = {cpuData};
+                numberOfFramesRead_ += gopPacket->numberOfFrames();
             }
             if (physical().timerIdentifier().length())
                 GLOBAL_TIMER.endSection(physical().timerIdentifier());
             return returnVal;
         }
+
+        ~Runtime() override {
+            std::cout << "Number-of-decoded-frames " << numberOfFramesRead_ << std::endl;
+        }
     protected:
         EncodedFrameReader frameReader_;
+    private:
+        unsigned int numberOfFramesRead_;
     };
 
     std::vector<int> framesToRead_;

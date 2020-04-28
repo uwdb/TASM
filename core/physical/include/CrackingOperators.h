@@ -16,12 +16,14 @@ public:
             PhysicalOperatorReference &parent,
             std::unordered_set<int> desiredKeyframes,
             std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider,
-            std::string outputEntryName = "")
+            std::string outputEntryName = "",
+            unsigned int layoutDuration = 0)
         : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "CrackVideo-init", tileConfigurationProvider)),
         GPUOperator(parent),
         outputEntryName_(outputEntryName.length() ? outputEntryName : logical.downcast<logical::CrackedLightField>().name()),
         desiredKeyframes_(std::move(desiredKeyframes)),
-        tileConfigurationProvider_(tileConfigurationProvider)
+        tileConfigurationProvider_(tileConfigurationProvider),
+        layoutDuration_(layoutDuration)
     { }
 
     const std::string &outputEntryName() const { return outputEntryName_; }
@@ -31,6 +33,7 @@ public:
                     : catalog::Catalog::instance();
     }
     const std::unordered_set<int> &desiredKeyframes() const { return desiredKeyframes_; }
+    unsigned int layoutDuration() const { return layoutDuration_; }
 
 private:
     class Runtime : public runtime::GPURuntime<CrackVideo> {
@@ -39,7 +42,7 @@ private:
             : runtime::GPURuntime<CrackVideo>(physical),
                     geometry_(getGeometry()),
                     tileConfigurationProvider_(tileConfigurationProvider),
-                    tileEncodersManager_(EncodeConfiguration((*iterators().front()).downcast<GPUDecodedFrameData>().configuration(), Codec::hevc().nvidiaId().value(), 1000), context(), lock()),
+                    tileEncodersManager_(EncodeConfiguration((*iterators().front()).downcast<GPUDecodedFrameData>().configuration(), Codec::hevc().nvidiaId().value(), physical.layoutDuration() ?: 1000), context(), lock()),
                     firstFrameInGroup_(-1),
                     lastFrameInGroup_(-1),
                     frameNumber_(0)
@@ -175,6 +178,7 @@ private:
     const std::string outputEntryName_;
     std::unordered_set<int> desiredKeyframes_;
     std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider_;
+    unsigned int layoutDuration_;
 };
 
 } // namespace lightdb::physical

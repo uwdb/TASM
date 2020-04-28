@@ -1231,7 +1231,7 @@ namespace lightdb::optimization {
                 unsigned int height;
                 if (physical_parents[0]->parents()[0].is<physical::ScanSingleFileDecodeReader>()) {
                     auto &source = physical_parents[0]->parents()[0].downcast<physical::ScanSingleFileDecodeReader>().source();
-                    keyframes.insert(source.keyframes().begin(), source.keyframes().end());
+//                    keyframes.insert(source.keyframes().begin(), source.keyframes().end());
                     width = source.configuration().width;
                     height = source.configuration().height;
                 } else if (physical_parents[0]->parents()[0].is<physical::ScanFramesFromFileEncodedReader>()) {
@@ -1242,9 +1242,11 @@ namespace lightdb::optimization {
                     assert(false);
 
                 std::shared_ptr<tiles::TileConfigurationProvider> tileConfig;
+                unsigned int layoutDuration = 0;
                 if (node.metadataManager()) {
 //                    auto tileLayoutDuration = 60; // TODO: Make layout duration argument to CrackedLightField.
                     assert(node.layoutDuration());
+                    layoutDuration = node.layoutDuration();
                     assert(node.crackingStrategy() != CrackingStrategy::None);
                     if (node.crackingStrategy() == CrackingStrategy::SmallTiles) {
                         tileConfig = std::make_shared<tiles::GroupingTileConfigurationProvider>(
@@ -1293,7 +1295,9 @@ namespace lightdb::optimization {
                                  logical,
                                  physical_parents[0],
                                  keyframes,
-                                 tileConfig);
+                                 tileConfig,
+                                 "",
+                                 layoutDuration);
                 // TODO: Add encode & store for each tile.
 
 //                auto encode = plan().emplace<physical::GPUEncodeToCPU>(logical, physical_parents[0], Codec::hevc());

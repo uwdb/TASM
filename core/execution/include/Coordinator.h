@@ -73,13 +73,13 @@ public:
         auto iterators = functional::transform<runtime::RuntimeIterator>(
                 outputs.begin(), outputs.end(),
                 [](auto &out) { return out->runtime()->begin(); });
-        Progress progress(static_cast<int>(iterators.size()));
+//        Progress progress(static_cast<int>(iterators.size()));
 
         while(!iterators.empty()) {
             iterators.erase(std::remove_if(iterators.begin(), iterators.end(),
                                            [](auto &it) { ++it; return it == it.eos(); }),
                             iterators.end());
-            progress.display(outputs.size() - iterators.size());
+//            progress.display(outputs.size() - iterators.size());
         }
 
         timer.endSection("query");

@@ -94,7 +94,7 @@ namespace lightdb::optimization {
                         for (auto curIt = currentCosts->begin(); curIt != currentCosts->end(); ++curIt) {
                             auto curCosts = curIt->second;
                             auto newCosts = proposedCosts->at(curIt->first);
-                            if (newCosts.numPixels <= 0.8 * curCosts.numPixels)
+                            if (newCosts.numPixels <= 0.6 * curCosts.numPixels)
                                 gopsToRetile.insert(curIt->first);
                         }
                         std::copy_if(framesToRetile.begin(), framesToRetile.end(),

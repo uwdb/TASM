@@ -24,7 +24,7 @@ namespace lightdb {
             lastFrame_(lastFrame) {}
 
         std::string whereClauseConstraints(bool includeFrameLimits) const override {
-            std::string baseClause = columnName_ + " NOT LIKE ''";
+            std::string baseClause = columnName_ + " NOT LIKE 'YOLO%%' AND " + columnName_ + " NOT LIKE 'MOG%%' AND " + columnName_ + " != 'KNN'";
             if (!includeFrameLimits)
                 return baseClause;
 

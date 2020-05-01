@@ -25,21 +25,43 @@ using namespace lightdb::optimization;
 using namespace lightdb::catalog;
 using namespace lightdb::execution;
 
-static unsigned int NUM_QUERIES = 20;
+static unsigned int NUM_QUERIES = 60;
 static unsigned int WORKLOAD_NUM = 3;
 
 static std::unordered_map<std::string, std::pair<unsigned int, unsigned int>> videoToDimensions{
+//        {"traffic-2k-001", {1920, 1080}},
+//        {"car-pov-2k-001-shortened", {1920, 1080}},
+//        {"traffic-4k-000", {3840, 1980}},
+//        {"traffic-4k-002", {3840, 1980}},
         {"traffic-2k-001", {1920, 1080}},
+        {"car-pov-2k-000-shortened", {1920, 1080}},
         {"car-pov-2k-001-shortened", {1920, 1080}},
+        {"traffic-4k-002-ds2k", {1920, 1080}},
         {"traffic-4k-000", {3840, 1980}},
-        {"traffic-4k-002", {3840, 1980}}
+        {"traffic-4k-002", {3840, 1980}},
+        {"narrator", {4096, 2160}},
+        {"market_all", {4096, 2160}},
+        {"square_with_fountain", {4096, 2160}},
+        {"street_night_view", {4096, 2160}},
+        {"river_boat", {4096, 2160}},
 };
 
 static std::unordered_map<std::string, unsigned int> videoToProbabilitySeed {
+//        {"traffic-2k-001", 8},
+//        {"car-pov-2k-001-shortened", 12},
+//        {"traffic-4k-000", 15},
+//        {"traffic-4k-002", 22},
         {"traffic-2k-001", 8},
+        {"car-pov-2k-000-shortened", 11},
         {"car-pov-2k-001-shortened", 12},
+        {"traffic-4k-002-ds2k", 14},
         {"traffic-4k-000", 15},
         {"traffic-4k-002", 22},
+        {"narrator", 5},
+        {"market_all", 4},
+        {"square_with_fountain", 3},
+        {"street_night_view", 2},
+        {"river_boat", 1},
 };
 
 static std::unordered_map<std::string, unsigned int> videoToMaxKNNTile {
@@ -62,17 +84,76 @@ protected:
 };
 
 std::unordered_map<std::string, std::vector<unsigned int>> videoToQueryDurations{
-        {"traffic-2k-001", {60, 300}},
-        {"car-pov-2k-001-shortened", {60, 190}},
-        {"traffic-4k-000", {60, 300}},
-        {"traffic-4k-002", {60, 300}},
+//        {"traffic-2k-001", {60, 300}},
+//        {"car-pov-2k-001-shortened", {60, 190}},
+//        {"traffic-4k-000", {60, 300}},
+//        {"traffic-4k-002", {60, 300}},
+//
+        {"traffic-2k-001", {60}},
+        {"car-pov-2k-000-shortened", {60}},
+        {"car-pov-2k-001-shortened", {60}},
+        {"traffic-4k-002-ds2k", {60}},
+        {"traffic-4k-000", {60}},
+        {"traffic-4k-002", {60}},
+        {"narrator", {2}},
+        {"market_all", {3}},
+        {"square_with_fountain", {1}},
+        {"street_night_view", {2}},
+        {"river_boat", {3}},
 };
 
 std::unordered_map<std::string, unsigned int> videoToNumFrames{
+//        {"traffic-2k-001", 27001},
+//        {"car-pov-2k-001-shortened", 17102},
+//        {"traffic-4k-000", 27001},
+//        {"traffic-4k-002", 27001},
         {"traffic-2k-001", 27001},
+        {"car-pov-2k-000-shortened", 15302},
         {"car-pov-2k-001-shortened", 17102},
+        {"traffic-4k-002-ds2k", 27001},
         {"traffic-4k-000", 27001},
         {"traffic-4k-002", 27001},
+        {"narrator", 1228},
+        {"market_all", 2487},
+        {"square_with_fountain", 840},
+        {"street_night_view", 1380},
+        {"river_boat", 2817},
+};
+
+std::unordered_map<std::string, unsigned int> videoToFramerate{
+//        {"traffic-2k-001", 27001},
+//        {"car-pov-2k-001-shortened", 17102},
+//        {"traffic-4k-000", 27001},
+//        {"traffic-4k-002", 27001},
+        {"traffic-2k-001", 30},
+        {"car-pov-2k-000-shortened", 30},
+        {"car-pov-2k-001-shortened", 30},
+        {"traffic-4k-002-ds2k", 30},
+        {"traffic-4k-000", 30},
+        {"traffic-4k-002", 30},
+        {"narrator", 60},
+        {"market_all", 60},
+        {"square_with_fountain", 60},
+        {"street_night_view", 60},
+        {"river_boat", 60},
+};
+
+std::unordered_map<std::string, unsigned int> videoToStartForWindow{
+//        {"traffic-2k-001", 27001},
+//        {"car-pov-2k-001-shortened", 17102},
+//        {"traffic-4k-000", 27001},
+//        {"traffic-4k-002", 27001},
+//        {"traffic-2k-001", 30},
+//        {"car-pov-2k-000-shortened", 30},
+//        {"car-pov-2k-001-shortened", 30},
+//        {"traffic-4k-002-ds2k", 30},
+//        {"traffic-4k-000", 30},
+//        {"traffic-4k-002", 30},
+        {"narrator", 10},
+        {"market_all", 20},
+        {"square_with_fountain", 0},
+        {"street_night_view", 40},
+        {"river_boat", 70},
 };
 
 class WorkloadGenerator {
@@ -89,7 +170,7 @@ public:
 class UniformFrameGenerator : public FrameGenerator {
 public:
     UniformFrameGenerator(const std::string &video, unsigned int duration)
-        : startingFrameDistribution_(0, videoToNumFrames.at(video) - (duration * 30) - 1)
+        : startingFrameDistribution_(0, videoToNumFrames.at(video) - (duration * videoToFramerate.at(video)) - 1)
     {}
 
     int nextFrame(std::default_random_engine &generator) override {
@@ -103,16 +184,18 @@ private:
 class ZipfFrameGenerator : public FrameGenerator {
 public:
     ZipfFrameGenerator(const std::string &video, unsigned int duration) {
-        auto maxFrame = videoToNumFrames.at(video) - (duration * 30) - 1;
-        MetadataSpecification selection("labels",
-                std::make_shared<AllMetadataElement>("label", 0, maxFrame));
-        metadata::MetadataManager metadataManager(video, selection);
-        orderedFrames_ = metadataManager.framesForMetadataOrderedByNumObjects();
-        distribution_ = std::make_unique<ZipfDistribution>(orderedFrames_.size(), 1.0);
+        auto maxFrame = videoToNumFrames.at(video) - (duration * videoToFramerate.at(video)) - 1;
+//        MetadataSpecification selection("labels",
+//                std::make_shared<AllMetadataElement>("label", 0, maxFrame));
+//        metadata::MetadataManager metadataManager(video, selection);
+//        orderedFrames_ = metadataManager.framesForMetadataOrderedByNumObjects();
+//        distribution_ = std::make_unique<ZipfDistribution>(orderedFrames_.size(), 1.0);
+        distribution_ = std::make_unique<ZipfDistribution>(maxFrame, 1.0);
     }
 
     int nextFrame(std::default_random_engine &generator) override {
-        return orderedFrames_[(*distribution_)(generator)];
+//        return orderedFrames_[(*distribution_)(generator)];
+        return (*distribution_)(generator);
     }
 
 private:
@@ -123,22 +206,47 @@ private:
 class WindowUniformFrameGenerator : public FrameGenerator {
 public:
     WindowUniformFrameGenerator(const std::string &video, unsigned int duration, double windowFraction)
-        : startingFrameDistribution_(0, (int)(videoToNumFrames.at(video) * windowFraction) - (duration * 30) - 1)
-    {}
+    {
+        int firstFrame = videoToNumFrames.at(video) * videoToStartForWindow.at(video) / 100.0;
+        int numFrames = videoToNumFrames.at(video) * windowFraction;
+        int lastFrame = firstFrame + numFrames - (duration * videoToFramerate.at(video)) - 1;
+
+        startingFrameDistribution_ = std::make_unique<std::uniform_int_distribution<int>>(firstFrame, lastFrame);
+    }
 
     int nextFrame(std::default_random_engine &generator) override {
-        return startingFrameDistribution_(generator);
+        return (*startingFrameDistribution_)(generator);
     }
 
 private:
-    std::uniform_int_distribution<int> startingFrameDistribution_;
+    std::unique_ptr<std::uniform_int_distribution<int>> startingFrameDistribution_;
 };
+
+static std::string combineStrings(const std::vector<std::string> &strings, std::string connector = "_") {
+    std::string combined = "";
+    auto lastIndex = strings.size() - 1;
+    for (auto i = 0u; i < strings.size(); ++i) {
+        combined += strings[i];
+        if (i < lastIndex)
+            combined += connector;
+    }
+    return combined;
+}
+
+static std::shared_ptr<MetadataElement> MetadataElementForObjects(const std::vector<std::string> &objects, unsigned int firstFrame = 0, unsigned int lastFrame = UINT32_MAX) {
+    std::vector<std::shared_ptr<MetadataElement>> componentElements(objects.size());
+    std::transform(objects.begin(), objects.end(), componentElements.begin(),
+                   [&](auto obj) {
+                       return std::make_shared<SingleMetadataElement>("label", obj, firstFrame, lastFrame);
+                   });
+    return componentElements.size() == 1 ? componentElements.front() : std::make_shared<OrMetadataElement>(componentElements);
+}
 
 class VRWorkload1Generator : public WorkloadGenerator {
 public:
-    VRWorkload1Generator(const std::string &video, const std::string &object, unsigned int duration, std::default_random_engine *generator,
+    VRWorkload1Generator(const std::string &video, const std::vector<std::string> &objects, unsigned int duration, std::default_random_engine *generator,
             std::unique_ptr<FrameGenerator> startingFrameDistribution)
-            : video_(video), object_(object), numberOfFramesInDuration_(duration * 30),
+            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
               generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))  //startingFrameDistribution_(0, videoToNumFrames.at(video_) - numberOfFramesInDuration_ - 1)
     { }
 
@@ -149,21 +257,24 @@ public:
         while (!hasObjects) {
             firstFrame = startingFrameDistribution_->nextFrame(*generator_);
             lastFrame = firstFrame + numberOfFramesInDuration_;
+
+            auto metadataElement = MetadataElementForObjects(objects_, firstFrame, lastFrame);
+
             selection = std::make_shared<PixelMetadataSpecification>(
                     "labels",
-                    std::make_shared<SingleMetadataElement>("label", object_, firstFrame, lastFrame));
+                    metadataElement);
             auto metadataManager = std::make_unique<metadata::MetadataManager>(video_, *selection);
             hasObjects = metadataManager->framesForMetadata().size();
         }
         if (outQueryObject)
-            *outQueryObject = object_;
+            *outQueryObject = combineStrings(objects_);
 
         return selection;
     }
 
 private:
     std::string video_;
-    std::string object_;
+    std::vector<std::string> objects_;
     unsigned int numberOfFramesInDuration_;
     std::default_random_engine *generator_;
 //    std::uniform_int_distribution<int> startingFrameDistribution_;
@@ -174,7 +285,7 @@ class VRWorkload2Generator : public WorkloadGenerator {
 public:
     VRWorkload2Generator(const std::string &video, const std::vector<std::string> &objects, unsigned int numberOfQueries, unsigned int duration,
             std::default_random_engine *generator, std::unique_ptr<FrameGenerator> startingFrameDistribution)
-            : video_(video), objects_(objects), totalNumberOfQueries_(numberOfQueries), numberOfFramesInDuration_(duration * 30),
+            : video_(video), objects_(objects), totalNumberOfQueries_(numberOfQueries), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
               generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))
     {
         assert(objects_.size() == 2);
@@ -212,9 +323,9 @@ private:
 
 class VRWorkload3Generator : public WorkloadGenerator {
 public:
-    VRWorkload3Generator(const std::string &video, const std::vector<std::string> &objects, unsigned int duration, std::default_random_engine *generator,
+    VRWorkload3Generator(const std::string &video, const std::vector<std::vector<std::string>> &objects, unsigned int duration, std::default_random_engine *generator,
                          std::unique_ptr<FrameGenerator> startingFrameDistribution)
-            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * 30),
+            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
               generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution)),
               probabilityGenerator_(videoToProbabilitySeed.at(video)), probabilityDistribution_(0.0, 1.0)
     {
@@ -222,9 +333,9 @@ public:
     }
 
     std::shared_ptr<PixelMetadataSpecification> getNextQuery(unsigned int queryNum, std::string *outQueryObject) override {
-        std::string object = probabilityDistribution_(probabilityGenerator_) < 0.5 ? objects_[0] : objects_[1];
+        const std::vector<std::string> &objects = probabilityDistribution_(probabilityGenerator_) < 0.5 ? objects_[0] : objects_[1];
         if (outQueryObject)
-            *outQueryObject = object;
+            *outQueryObject = combineStrings(objects);
 
         int firstFrame, lastFrame;
         std::shared_ptr<PixelMetadataSpecification> selection;
@@ -232,9 +343,12 @@ public:
         while (!hasObjects) {
             firstFrame = startingFrameDistribution_->nextFrame(*generator_);
             lastFrame = firstFrame + numberOfFramesInDuration_;
+
+            auto metadataElement = MetadataElementForObjects(objects, firstFrame, lastFrame);
+
             selection = std::make_shared<PixelMetadataSpecification>(
                     "labels",
-                    std::make_shared<SingleMetadataElement>("label", object, firstFrame, lastFrame));
+                    metadataElement);
             auto metadataManager = std::make_unique<metadata::MetadataManager>(video_, *selection);
             hasObjects = metadataManager->framesForMetadata().size();
         }
@@ -243,7 +357,7 @@ public:
 
 private:
     std::string video_;
-    std::vector<std::string> objects_;
+    std::vector<std::vector<std::string>> objects_;
     unsigned int numberOfFramesInDuration_;
     std::default_random_engine *generator_;
 //    std::uniform_int_distribution<int> startingFrameDistribution_;
@@ -259,7 +373,7 @@ class VRWorkload4Generator : public WorkloadGenerator {
 public:
     VRWorkload4Generator(const std::string &video, const std::vector<std::string> &objects, unsigned int numberOfQueries, unsigned int duration, std::default_random_engine *generator,
                          std::unique_ptr<FrameGenerator> startingFrameDistribution)
-            : video_(video), objects_(objects), totalNumberOfQueries_(numberOfQueries), numberOfFramesInDuration_(duration * 30),
+            : video_(video), objects_(objects), totalNumberOfQueries_(numberOfQueries), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
               generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))
     {
         assert(objects_.size() == 2);
@@ -305,12 +419,48 @@ enum class Distribution {
 };
 
 static Distribution WORKLOAD_DISTRIBUTION = Distribution::Window;
-static float WINDOW_FRACTION = 0.5;
+static float WINDOW_FRACTION = 0.25;
+
+static std::unordered_map<std::string, std::unordered_map<int, std::vector<std::vector<std::string>>>> VideoToWorkloadToObjects {
+        {"narrator", {{1, {{"person"}}}, {3, {{"person"}, {"car"}}}}},
+        {"market_all", {{1, {{"person"}}}, {3, {{"person"}, {"car"}}}}},
+        {"square_with_fountain", {{1, {{"person"}}}, {3, {{"person"}, {"bicycle"}}}}},
+        {"street_night_view", {{1, {{"person"}}}, {3, {{"person"}, {"car"}}}}},
+        {"river_boat", {{1, {{"person"}}}, {3, {{"person"}, {"boat"}}}}}
+};
+
+static std::vector<std::string> GetObjectsForWorkload(unsigned int workloadNum, const std::string &video) {
+    if (!VideoToWorkloadToObjects.count(video)) {
+        std::vector<std::string> primaryObjects{"car", "truck", "bus", "motorbike"};
+        std::vector<std::string> allObjects{"car", "truck", "bus", "motorbike", "person"};
+        if (workloadNum == 1)
+            return primaryObjects;
+        else if (workloadNum == 3)
+            return allObjects;
+
+        assert(false);
+    }
+
+    std::vector<std::vector<std::string>> &objectsList = VideoToWorkloadToObjects.at(video).at(workloadNum);
+    std::vector<std::string> mergedObjects;
+    for (const auto &objects : objectsList)
+        mergedObjects.insert(mergedObjects.end(), objects.begin(), objects.end());
+
+    return mergedObjects;
+}
 
 static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum, const std::string &video, unsigned int duration,
         std::default_random_engine *generator, Distribution distribution = Distribution::Uniform) {
-    std::string object("car");
-    std::vector<std::string> objects{"car", "pedestrian"};
+//    std::string object("car");
+//    std::vector<std::string> objects{"car", "pedestrian"};
+
+    std::vector<std::vector<std::string>> workloadObjects;
+    if (!VideoToWorkloadToObjects.count(video)) {
+        workloadObjects = workloadNum == 1 ? std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"}} : std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"}, {"person"}};
+    } else {
+        workloadObjects = VideoToWorkloadToObjects.at(video).at(workloadNum);
+    }
+
 
     std::unique_ptr<FrameGenerator> frameGenerator;
     switch (distribution) {
@@ -329,13 +479,16 @@ static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum,
     };
 
     if (workloadNum == 1) {
-        return std::make_unique<VRWorkload1Generator>(video, object, duration, generator, std::move(frameGenerator));
+        assert(workloadObjects.size() == 1);
+        return std::make_unique<VRWorkload1Generator>(video, workloadObjects.front(), duration, generator, std::move(frameGenerator));
     } else if (workloadNum == 2) {
-        return std::make_unique<VRWorkload2Generator>(video, objects, NUM_QUERIES, duration, generator, std::move(frameGenerator));
+        assert(false);
+//        return std::make_unique<VRWorkload2Generator>(video, objects, NUM_QUERIES, duration, generator, std::move(frameGenerator));
     } else if (workloadNum == 3) {
-        return std::make_unique<VRWorkload3Generator>(video, objects, duration, generator, std::move(frameGenerator));
+        return std::make_unique<VRWorkload3Generator>(video, workloadObjects, duration, generator, std::move(frameGenerator));
     } else if (workloadNum == 4) {
-        return std::make_unique<VRWorkload4Generator>(video, objects, NUM_QUERIES, duration, generator, std::move(frameGenerator));
+        assert(false);
+//        return std::make_unique<VRWorkload4Generator>(video, objects, NUM_QUERIES, duration, generator, std::move(frameGenerator));
     } else {
         assert(false);
     }
@@ -389,43 +542,123 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadNoTiles) {
     std::cout << "\nWorkload-strategy no-tiles" << std::endl;
 
     std::vector<std::string> videos{
-            "traffic-2k-001",
-            "car-pov-2k-001-shortened",
-            "traffic-4k-000",
-            "traffic-4k-002",
+//            "traffic-2k-001",
+//            "car-pov-2k-001-shortened",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
+//        "traffic-2k-001",
+//        "car-pov-2k-000-shortened",
+//        "car-pov-2k-001-shortened",
+//        "traffic-4k-002-ds2k",
+//        "traffic-4k-000",
+//        "traffic-4k-002",
+        "narrator",
+        "market_all",
+        "square_with_fountain",
+        "street_night_view",
+        "river_boat",
     };
 
-    std::vector<int> workloads{1, 2, 3};
+    std::vector<int> workloads{3};
+    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf, Distribution::Window}; //
 
 //    std::string object("car");
 
 //    std::default_random_engine generator(7);
     for (auto workloadNum : workloads) {
         std::cout << "Workload " << workloadNum << std::endl;
-        for (const auto &video : videos) {
-            for (auto duration : videoToQueryDurations.at(video)) {
-                if (duration > 60)
-                    continue;
 
-                std::default_random_engine generator(videoToProbabilitySeed.at(video));
-                auto queryGenerator = GetGenerator(workloadNum, video, duration, &generator, WORKLOAD_DISTRIBUTION);
-                std::cout << "Distribution: " << (int) WORKLOAD_DISTRIBUTION << std::endl;
+        for (auto distribution : distributions) {
+            std::cout << "Distribution: " << (int) distribution << std::endl;
+            for (const auto &video : videos) {
+                auto workloadObjects = GetObjectsForWorkload(workloadNum, video);
+                std::cout << "Workload-objects " << combineStrings(workloadObjects) << std::endl;
 
-                for (auto i = 0u; i < NUM_QUERIES; ++i) {
-                    std::string object;
-                    auto selection = queryGenerator->getNextQuery(i, &object);
+                for (auto duration : videoToQueryDurations.at(video)) {
+                    std::default_random_engine generator(videoToProbabilitySeed.at(video));
+                    auto queryGenerator = GetGenerator(workloadNum, video, duration, &generator, distribution);
 
-                    std::cout << "Video " << video << std::endl;
-                    std::cout << "Tile-strategy none" << std::endl;
-                    std::cout << "Query-object " << object << std::endl;
-                    std::cout << "Uses-only-one-tile 1" << std::endl;
-                    std::cout << "Selection-duration " << duration << std::endl;
-                    std::cout << "Iteration " << i << std::endl;
-                    std::cout << "First-frame " << selection->firstFrame() << std::endl;
-                    std::cout << "Last-frame " << selection->lastFrame() << std::endl;
-                    auto input = Scan(video);
-                    input.downcast<ScannedLightField>().setWillReadEntireEntry(false);
-                    Coordinator().execute(input.Select(*selection));
+                    for (auto i = 0u; i < NUM_QUERIES; ++i) {
+                        std::string object;
+                        auto selection = queryGenerator->getNextQuery(i, &object);
+
+                        std::cout << "Video " << video << std::endl;
+                        std::cout << "Tile-strategy none" << std::endl;
+                        std::cout << "Query-object " << object << std::endl;
+                        std::cout << "Uses-only-one-tile 1" << std::endl;
+                        std::cout << "Selection-duration " << duration << std::endl;
+                        std::cout << "Iteration " << i << std::endl;
+                        std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                        std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                        auto input = Scan(video);
+                        input.downcast<ScannedLightField>().setWillReadEntireEntry(false);
+                        Coordinator().execute(input.Select(*selection));
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundWorkloadObjects) {
+    std::cout << "\nWorkload-strategy pre-tile-around-workload-objects" << std::endl;
+
+    std::vector<std::string> videos{
+//            "traffic-2k-001",
+//            "car-pov-2k-000-shortened",
+//            "car-pov-2k-001-shortened",
+//            "traffic-4k-002-ds2k",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
+            "narrator",
+            "market_all",
+            "square_with_fountain",
+            "street_night_view",
+            "river_boat",
+    };
+
+    std::vector<int> workloads{3};
+    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf}; //, Distribution::Window
+
+//    unsigned int framerate = 30;
+//    std::string object("car");
+
+//    std::default_random_engine generator(7);
+    for (auto workloadNum : workloads) {
+        std::cout << "Workload " << workloadNum << std::endl;
+
+        for (auto distribution : distributions) {
+            std::cout << "Distribution: " << (int) distribution << std::endl;
+
+            for (const auto &video : videos) {
+                auto workloadObjects = combineStrings(GetObjectsForWorkload(workloadNum, video));
+                std::cout << "Workload-objects " << workloadObjects << std::endl;
+
+                // First, tile around all of the objects in the video.
+//        auto catalogName = tileAroundAllObjects(video);
+                auto catalogName = video + "-cracked-" + workloadObjects + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video));
+
+                for (auto duration : videoToQueryDurations.at(video)) {
+                    std::default_random_engine generator(videoToProbabilitySeed.at(video));
+//            VRWorkload4Generator queryGenerator(video, {"car", "pedestrian"}, NUM_QUERIES, duration, &generator);
+                    auto queryGenerator = GetGenerator(workloadNum, video, duration, &generator, distribution);
+
+                    for (auto i = 0u; i < NUM_QUERIES; ++i) {
+                        std::string object;
+                        auto selection = queryGenerator->getNextQuery(i, &object);
+
+                        std::cout << "Video " << video << std::endl;
+                        std::cout << "Cracking-object " << "all_objects" << std::endl;
+                        std::cout << "Tile-strategy small-dur-30" << std::endl;
+                        std::cout << "Query-object " << object << std::endl;
+                        std::cout << "Uses-only-one-tile 0" << std::endl;
+                        std::cout << "Selection-duration " << duration << std::endl;
+                        std::cout << "Iteration " << i << std::endl;
+                        std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                        std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                        auto input = ScanMultiTiled(catalogName, false);
+                        Coordinator().execute(input.Select(*selection));
+                    }
                 }
             }
         }
@@ -515,10 +748,17 @@ TEST_F(UnknownWorkloadTestFixture, testRetile4k) {
 
 TEST_F(UnknownWorkloadTestFixture, testPrepareForRetiling) {
     std::vector<std::string> videos{
-            "traffic-2k-001",
+//            "traffic-2k-001",
 //            "car-pov-2k-001-shortened",
-            "traffic-4k-000",
-            "traffic-4k-002",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
+//        "car-pov-2k-000-shortened",
+//        "traffic-4k-002-ds2k",
+        "narrator",
+        "market_all",
+        "square_with_fountain",
+        "street_night_view",
+        "river_boat",
     };
 
     for (const auto &video : videos) {
@@ -613,83 +853,97 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQuery) {
 }
 
 TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAllObjectsAroundQuery) {
-    std::cout << "\nWorkload-strategy tile-query-duration-around-queried-objects" << std::endl;
+    std::cout << "\nWorkload-strategy tile-query-duration-around-workload-objects" << std::endl;
 
     std::vector<std::string> videos{
-            "traffic-2k-001",
-            "car-pov-2k-001-shortened",
-            "traffic-4k-000",
-            "traffic-4k-002",
+//            "traffic-2k-001",
+//            "car-pov-2k-000-shortened",
+//            "car-pov-2k-001-shortened",
+//            "traffic-4k-002-ds2k",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
+            "narrator",
+            "market_all",
+            "square_with_fountain",
+            "street_night_view",
+            "river_boat",
     };
 
-    unsigned int framerate = 30;
+//    unsigned int framerate = 30;
 //    std::string object("car");
-    std::vector<std::string> queriedObjects{"car", "pedestrian"};
+//    std::vector<std::string> queriedObjects{"car", "pedestrian"};
 
-    std::vector<int> workloads{1, 2, 3};
+    std::vector<int> workloads{3};
+    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf}; //, Distribution::Window
+
     for (auto workloadNum : workloads) {
-//        std::default_random_engine workload12Generator(7);
-
         std::cout << "Workload " << workloadNum << std::endl;
-        for (const auto &video : videos) {
-            std::string catalogName = video + "-cracked";
-            for (auto duration : videoToQueryDurations.at(video)) {
-                if (duration > 60)
-                    continue;
 
-                std::default_random_engine generator( videoToProbabilitySeed.at(video));
+        for (auto distribution : distributions) {
+            std::cout << "Distribution: " << int(distribution) << std::endl;
 
-                // Delete tiles from previous runs.
+            for (const auto &video : videos) {
+                auto workloadObjects = GetObjectsForWorkload(workloadNum, video);
+                std::cout << "Workload-objects " << combineStrings(workloadObjects) << std::endl;
+
+                std::string catalogName = video + "-cracked";
+
+                // Delete tiles after run.
                 DeleteTiles(catalogName);
                 ResetTileNum(catalogName, 0);
 
+                for (auto duration : videoToQueryDurations.at(video)) {
+                    std::default_random_engine generator(videoToProbabilitySeed.at(video));
+
+                    // Delete tiles from previous runs.
+                    DeleteTiles(catalogName);
+                    ResetTileNum(catalogName, 0);
+
 //            VRWorkload4Generator queryGenerator(video, {"car", "pedestrian"}, NUM_QUERIES, duration, &generator);
-                auto queryGenerator = GetGenerator(workloadNum, video, duration, &generator, WORKLOAD_DISTRIBUTION);
-                std::cout << "Distribution: " << int(WORKLOAD_DISTRIBUTION) << std::endl;
-                for (auto i = 0u; i < NUM_QUERIES; ++i) {
-                    std::string object;
-                    auto selection = queryGenerator->getNextQuery(i, &object);
+                    auto queryGenerator = GetGenerator(workloadNum, video, duration, &generator, distribution);
+                    for (auto i = 0u; i < NUM_QUERIES; ++i) {
+                        std::string object;
+                        auto selection = queryGenerator->getNextQuery(i, &object);
 
-                    // Step 1: Run query.
-                    std::cout << "Video " << video << std::endl;
-                    std::cout << "Query-object " << object << std::endl;
-                    std::cout << "Uses-only-one-tile 0" << std::endl;
-                    std::cout << "Selection-duration " << duration << std::endl;
-                    std::cout << "Iteration " << i << std::endl;
-                    std::cout << "First-frame " << selection->firstFrame() << std::endl;
-                    std::cout << "Last-frame " << selection->lastFrame() << std::endl;
-                    {
-                        auto input = ScanMultiTiled(catalogName, false);
-                        Coordinator().execute(input.Select(*selection));
-                    }
+                        // Step 1: Run query.
+                        std::cout << "Video " << video << std::endl;
+                        std::cout << "Query-object " << object << std::endl;
+                        std::cout << "Uses-only-one-tile 0" << std::endl;
+                        std::cout << "Selection-duration " << duration << std::endl;
+                        std::cout << "Iteration " << i << std::endl;
+                        std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                        std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                        {
+                            auto input = ScanMultiTiled(catalogName, false);
+                            Coordinator().execute(input.Select(*selection));
+                        }
 
-                    // Step 2: Crack around objects in query.
-                    std::vector<std::shared_ptr<MetadataElement>> componentElements(queriedObjects.size());
-                    std::transform(queriedObjects.begin(), queriedObjects.end(), componentElements.begin(),
-                                   [&](auto obj) {
-                                       return std::make_shared<SingleMetadataElement>("label", obj,
-                                                                                      selection->firstFrame(),
-                                                                                      selection->lastFrame());
-                                   });
-                    auto metadataElement = std::make_shared<OrMetadataElement>(componentElements);
-                    PixelMetadataSpecification queriedObjectsSelection("labels", metadataElement);
+                        // Step 2: Crack around objects in query.
+                        auto metadataElement = MetadataElementForObjects(workloadObjects, selection->firstFrame(),
+                                                                         selection->lastFrame());
+                        PixelMetadataSpecification queriedObjectsSelection("labels", metadataElement);
 
-                    std::cout << "Video " << video << std::endl;
-                    std::cout << "Cracking-around-objects " << object << std::endl;
-                    std::cout << "Cracking-duration " << duration << std::endl;
-                    std::cout << "Iteration " << i << std::endl;
-                    std::cout << "First-frame " << selection->firstFrame() << std::endl;
-                    std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                        std::cout << "Video " << video << std::endl;
+                        std::cout << "Cracking-around-objects " << object << std::endl;
+                        std::cout << "Cracking-duration " << duration << std::endl;
+                        std::cout << "Iteration " << i << std::endl;
+                        std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                        std::cout << "Last-frame " << selection->lastFrame() << std::endl;
 
-                    {
-                        auto retileOp = ScanAndRetile(
-                                catalogName,
-                                queriedObjectsSelection,
-                                framerate,
-                                CrackingStrategy::SmallTiles);
-                        Coordinator().execute(retileOp);
+                        {
+                            auto retileOp = ScanAndRetile(
+                                    catalogName,
+                                    queriedObjectsSelection,
+                                    videoToFramerate.at(video),
+                                    CrackingStrategy::SmallTiles);
+                            Coordinator().execute(retileOp);
+                        }
                     }
                 }
+
+                // Delete tiles after run.
+                DeleteTiles(catalogName);
+                ResetTileNum(catalogName, 0);
             }
         }
     }

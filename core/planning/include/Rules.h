@@ -138,11 +138,13 @@ namespace lightdb::optimization {
                     }
                 } else {
                     // Retiling based on regret.
+                    static const double pixelCostWeight = 1.608e-06;
+                    static const double tileCostWeight = 1.703e-01;
                     assert(node.regretAccumulator());
                     Workload workload(node.metadataManager()->metadataIdentifier(),
                                       {node.metadataManager()->metadataSpecification()}, {1});
                     int gopLength = node.entry()->sources()[0].configuration().framerate.fps();
-                    WorkloadCostEstimator currentLayoutEstimator(locationProvider, workload, gopLength, 1, 0, 0);
+                    WorkloadCostEstimator currentLayoutEstimator(locationProvider, workload, gopLength, pixelCostWeight, tileCostWeight, 0);
                     std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> currentCosts(
                             new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
 
@@ -151,7 +153,7 @@ namespace lightdb::optimization {
 
                     for (const auto &layoutId : node.regretAccumulator()->layoutIdentifiers()) {
                         WorkloadCostEstimator proposedLayoutEstimator(node.regretAccumulator()->configurationProviderForIdentifier(layoutId),
-                                workload, gopLength, 1, 0, 0);
+                                workload, gopLength, pixelCostWeight, tileCostWeight, 0);
 
                         std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> proposedCosts(
                                 new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
@@ -163,7 +165,7 @@ namespace lightdb::optimization {
                         for (auto curIt = currentCosts->begin(); curIt != currentCosts->end(); ++curIt) {
                             auto curCosts = curIt->second;
                             auto possibleCosts = proposedCosts->at(curIt->first);
-                            long long int regret = curCosts.numPixels - possibleCosts.numPixels;
+                            double regret = pixelCostWeight * (long long int)(curCosts.numPixels - possibleCosts.numPixels) + tileCostWeight * (int)(curCosts.numTiles - possibleCosts.numTiles);
                             node.regretAccumulator()->addRegretToGOP(curIt->first, regret, layoutId);
                         }
                     }
@@ -1229,20 +1231,23 @@ namespace lightdb::optimization {
                 std::unordered_set<int> keyframes;
                 unsigned int width;
                 unsigned int height;
+                unsigned int fps;
                 if (physical_parents[0]->parents()[0].is<physical::ScanSingleFileDecodeReader>()) {
                     auto &source = physical_parents[0]->parents()[0].downcast<physical::ScanSingleFileDecodeReader>().source();
 //                    keyframes.insert(source.keyframes().begin(), source.keyframes().end());
                     width = source.configuration().width;
                     height = source.configuration().height;
+                    fps = source.configuration().framerate.fps();
                 } else if (physical_parents[0]->parents()[0].is<physical::ScanFramesFromFileEncodedReader>()) {
                     auto &source = physical_parents[0]->parents()[0].downcast<physical::ScanFramesFromFileEncodedReader>().source();
                     width = source.configuration().width;
                     height = source.configuration().height;
+                    fps = source.configuration().framerate.fps();
                 } else
                     assert(false);
 
                 std::shared_ptr<tiles::TileConfigurationProvider> tileConfig;
-                unsigned int layoutDuration = 0;
+                unsigned int layoutDuration = node.layoutDuration();
                 if (node.metadataManager()) {
 //                    auto tileLayoutDuration = 60; // TODO: Make layout duration argument to CrackedLightField.
                     assert(node.layoutDuration());
@@ -1265,6 +1270,7 @@ namespace lightdb::optimization {
                         assert(false);
                     }
                 } else if (node.crackingStrategy() == CrackingStrategy::Uniform) {
+                    layoutDuration = fps;
                     if (node.uniformDimensionsCols() == 2 && node.uniformDimensionsRows() == 2)
                         tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<2, 2>>(width, height);
                     else if (node.uniformDimensionsCols() == 3 && node.uniformDimensionsRows() == 3)

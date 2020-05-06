@@ -228,7 +228,7 @@ namespace lightdb::logical {
 
 class RegretAccumulator {
 public:
-    virtual void addRegretToGOP(unsigned int gop, long long int regret, const std::string &layoutIdentifier) = 0;
+    virtual void addRegretToGOP(unsigned int gop, double regret, const std::string &layoutIdentifier) = 0;
     virtual bool shouldRetileGOP(unsigned int gop, std::string &layoutIdentifier) = 0;
     virtual void resetRegretForGOP(unsigned int gop) = 0;
     virtual std::shared_ptr<tiles::TileConfigurationProvider> configurationProviderForIdentifier(const std::string &identifier) = 0;

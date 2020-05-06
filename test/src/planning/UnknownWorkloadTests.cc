@@ -149,11 +149,11 @@ std::unordered_map<std::string, unsigned int> videoToStartForWindow{
 //        {"traffic-4k-002-ds2k", 30},
 //        {"traffic-4k-000", 30},
 //        {"traffic-4k-002", 30},
-        {"narrator", 10},
-        {"market_all", 20},
-        {"square_with_fountain", 0},
-        {"street_night_view", 40},
-        {"river_boat", 70},
+//        {"narrator", 10},
+//        {"market_all", 20},
+//        {"square_with_fountain", 0},
+//        {"street_night_view", 40},
+//        {"river_boat", 70},
 };
 
 class WorkloadGenerator {
@@ -207,11 +207,11 @@ class WindowUniformFrameGenerator : public FrameGenerator {
 public:
     WindowUniformFrameGenerator(const std::string &video, unsigned int duration, double windowFraction)
     {
-        int firstFrame = videoToNumFrames.at(video) * videoToStartForWindow.at(video) / 100.0;
+//        int firstFrame = videoToNumFrames.at(video) * videoToStartForWindow.at(video) / 100.0;
         int numFrames = videoToNumFrames.at(video) * windowFraction;
-        int lastFrame = firstFrame + numFrames - (duration * videoToFramerate.at(video)) - 1;
+        int lastFrame = numFrames - (duration * videoToFramerate.at(video)) - 1;
 
-        startingFrameDistribution_ = std::make_unique<std::uniform_int_distribution<int>>(firstFrame, lastFrame);
+        startingFrameDistribution_ = std::make_unique<std::uniform_int_distribution<int>>(0, lastFrame);
     }
 
     int nextFrame(std::default_random_engine &generator) override {
@@ -327,7 +327,7 @@ public:
                          std::unique_ptr<FrameGenerator> startingFrameDistribution)
             : video_(video), objects_(objects), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
               generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution)),
-              probabilityGenerator_(videoToProbabilitySeed.at(video)), probabilityDistribution_(0.0, 1.0)
+              probabilityGenerator_(42), probabilityDistribution_(0.0, 1.0)
     {
         assert(objects_.size() == 2);
     }
@@ -449,6 +449,10 @@ static std::vector<std::string> GetObjectsForWorkload(unsigned int workloadNum, 
     return mergedObjects;
 }
 
+static std::vector<std::vector<std::string>> GetObjectSetsForWorkload(unsigned int workloadNum) {
+    return workloadNum == 1 ? std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"}} : std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"}, {"person"}};
+}
+
 static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum, const std::string &video, unsigned int duration,
         std::default_random_engine *generator, Distribution distribution = Distribution::Uniform) {
 //    std::string object("car");
@@ -542,21 +546,17 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadNoTiles) {
     std::cout << "\nWorkload-strategy no-tiles" << std::endl;
 
     std::vector<std::string> videos{
-//            "traffic-2k-001",
-//            "car-pov-2k-001-shortened",
-//            "traffic-4k-000",
-//            "traffic-4k-002",
-//        "traffic-2k-001",
-//        "car-pov-2k-000-shortened",
-//        "car-pov-2k-001-shortened",
-//        "traffic-4k-002-ds2k",
-//        "traffic-4k-000",
-//        "traffic-4k-002",
-        "narrator",
-        "market_all",
-        "square_with_fountain",
-        "street_night_view",
-        "river_boat",
+        "traffic-2k-001",
+        "car-pov-2k-000-shortened",
+        "car-pov-2k-001-shortened",
+        "traffic-4k-002-ds2k",
+        "traffic-4k-000",
+        "traffic-4k-002",
+//        "narrator",
+//        "market_all",
+//        "square_with_fountain",
+//        "street_night_view",
+//        "river_boat",
     };
 
     std::vector<int> workloads{3};
@@ -604,21 +604,21 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundWorkloadObjects) {
     std::cout << "\nWorkload-strategy pre-tile-around-workload-objects" << std::endl;
 
     std::vector<std::string> videos{
-//            "traffic-2k-001",
-//            "car-pov-2k-000-shortened",
-//            "car-pov-2k-001-shortened",
-//            "traffic-4k-002-ds2k",
-//            "traffic-4k-000",
-//            "traffic-4k-002",
-            "narrator",
-            "market_all",
-            "square_with_fountain",
-            "street_night_view",
-            "river_boat",
+            "traffic-2k-001",
+            "car-pov-2k-000-shortened",
+            "car-pov-2k-001-shortened",
+            "traffic-4k-002-ds2k",
+            "traffic-4k-000",
+            "traffic-4k-002",
+//            "narrator",
+//            "market_all",
+//            "square_with_fountain",
+//            "street_night_view",
+//            "river_boat",
     };
 
     std::vector<int> workloads{3};
-    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf}; //, Distribution::Window
+    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf, Distribution::Window}; //, Distribution::Window
 
 //    unsigned int framerate = 30;
 //    std::string object("car");
@@ -636,7 +636,72 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundWorkloadObjects) {
 
                 // First, tile around all of the objects in the video.
 //        auto catalogName = tileAroundAllObjects(video);
-                auto catalogName = video + "-cracked-" + workloadObjects + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video));
+                auto catalogName = video + "-cracked-" + workloadObjects + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video)) + "-yolo";
+
+                for (auto duration : videoToQueryDurations.at(video)) {
+                    std::default_random_engine generator(videoToProbabilitySeed.at(video));
+//            VRWorkload4Generator queryGenerator(video, {"car", "pedestrian"}, NUM_QUERIES, duration, &generator);
+                    auto queryGenerator = GetGenerator(workloadNum, video, duration, &generator, distribution);
+
+                    for (auto i = 0u; i < NUM_QUERIES; ++i) {
+                        std::string object;
+                        auto selection = queryGenerator->getNextQuery(i, &object);
+
+                        std::cout << "Video " << video << std::endl;
+                        std::cout << "Cracking-object " << "all_objects" << std::endl;
+                        std::cout << "Tile-strategy small-dur-30" << std::endl;
+                        std::cout << "Query-object " << object << std::endl;
+                        std::cout << "Uses-only-one-tile 0" << std::endl;
+                        std::cout << "Selection-duration " << duration << std::endl;
+                        std::cout << "Iteration " << i << std::endl;
+                        std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                        std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                        auto input = ScanMultiTiled(catalogName, false);
+                        Coordinator().execute(input.Select(*selection));
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundAllDetectedObjects) {
+    std::cout << "\nWorkload-strategy pre-tile-around-all-objects" << std::endl;
+
+    std::vector<std::string> videos{
+            "traffic-2k-001",
+            "car-pov-2k-000-shortened",
+            "car-pov-2k-001-shortened",
+            "traffic-4k-002-ds2k",
+            "traffic-4k-000",
+            "traffic-4k-002",
+//            "narrator",
+//            "market_all",
+//            "square_with_fountain",
+//            "street_night_view",
+//            "river_boat",
+    };
+
+    std::vector<int> workloads{3}; // 1,
+    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf, Distribution::Window}; //
+
+//    unsigned int framerate = 30;
+//    std::string object("car");
+
+//    std::default_random_engine generator(7);
+    for (auto workloadNum : workloads) {
+        std::cout << "Workload " << workloadNum << std::endl;
+
+        for (auto distribution : distributions) {
+            std::cout << "Distribution: " << (int) distribution << std::endl;
+
+            for (const auto &video : videos) {
+                auto workloadObjects = combineStrings(GetObjectsForWorkload(workloadNum, video));
+                std::cout << "Workload-objects " << workloadObjects << std::endl;
+
+                // First, tile around all of the objects in the video.
+//        auto catalogName = tileAroundAllObjects(video);
+                auto catalogName = video + "-cracked-" + "all_objects" + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video)) + "-yolo";
 
                 for (auto duration : videoToQueryDurations.at(video)) {
                     std::default_random_engine generator(videoToProbabilitySeed.at(video));
@@ -743,26 +808,27 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundAll) {
 }
 
 TEST_F(UnknownWorkloadTestFixture, testRetile4k) {
-    Coordinator().execute(Scan("traffic-4k-002").PrepareForCracking("traffic-4k-002-cracked"));
+    Coordinator().execute(Scan("car-pov-2k-000-shortened").PrepareForCracking("car-pov-2k-000-shortened-cracked-2", 30));
 }
 
 TEST_F(UnknownWorkloadTestFixture, testPrepareForRetiling) {
     std::vector<std::string> videos{
-//            "traffic-2k-001",
-//            "car-pov-2k-001-shortened",
-//            "traffic-4k-000",
-//            "traffic-4k-002",
+            "traffic-2k-001",
+            "car-pov-2k-001-shortened",
+            "traffic-4k-000",
+            "traffic-4k-002",
 //        "car-pov-2k-000-shortened",
-//        "traffic-4k-002-ds2k",
-        "narrator",
-        "market_all",
-        "square_with_fountain",
-        "street_night_view",
-        "river_boat",
+        "traffic-4k-002-ds2k",
+//        "narrator",
+//        "market_all",
+//        "square_with_fountain",
+//        "street_night_view",
+//        "river_boat",
+//        "birdsincage"
     };
 
     for (const auto &video : videos) {
-        Coordinator().execute(Scan(video).PrepareForCracking(video + "-cracked"));
+        Coordinator().execute(Scan(video).PrepareForCracking(video + "-cracked", videoToFramerate.at(video)));
     }
 }
 
@@ -856,25 +922,25 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAllObjectsAroundQuery) {
     std::cout << "\nWorkload-strategy tile-query-duration-around-workload-objects" << std::endl;
 
     std::vector<std::string> videos{
-//            "traffic-2k-001",
-//            "car-pov-2k-000-shortened",
-//            "car-pov-2k-001-shortened",
-//            "traffic-4k-002-ds2k",
-//            "traffic-4k-000",
-//            "traffic-4k-002",
-            "narrator",
-            "market_all",
-            "square_with_fountain",
-            "street_night_view",
-            "river_boat",
+            "traffic-2k-001",
+            "car-pov-2k-000-shortened",
+            "car-pov-2k-001-shortened",
+            "traffic-4k-002-ds2k",
+            "traffic-4k-000",
+            "traffic-4k-002",
+//            "narrator",
+//            "market_all",
+//            "square_with_fountain",
+//            "street_night_view",
+//            "river_boat",
     };
 
 //    unsigned int framerate = 30;
 //    std::string object("car");
 //    std::vector<std::string> queriedObjects{"car", "pedestrian"};
 
-    std::vector<int> workloads{3};
-    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf}; //, Distribution::Window
+    std::vector<int> workloads{1, 3};
+    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf, Distribution::Window};
 
     for (auto workloadNum : workloads) {
         std::cout << "Workload " << workloadNum << std::endl;
@@ -887,10 +953,6 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAllObjectsAroundQuery) {
                 std::cout << "Workload-objects " << combineStrings(workloadObjects) << std::endl;
 
                 std::string catalogName = video + "-cracked";
-
-                // Delete tiles after run.
-                DeleteTiles(catalogName);
-                ResetTileNum(catalogName, 0);
 
                 for (auto duration : videoToQueryDurations.at(video)) {
                     std::default_random_engine generator(videoToProbabilitySeed.at(video));
@@ -1161,7 +1223,6 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryIfLayoutIsVeryDiff
 }
 
 TEST_F(UnknownWorkloadTestFixture, testWorkloadStartWithKNNTiles) {
-    std::cout << "\nWorkload-strategy tile-init-KNN-tiles" << std::endl;
 
     std::vector<std::string> videos{
             "traffic-2k-001",
@@ -1289,21 +1350,40 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadStartWithKNNTilesTileAroundQueryI
 
 class TestRegretAccumulator : public RegretAccumulator {
 public:
-    TestRegretAccumulator(const std::string &video, unsigned int width, unsigned int height, unsigned int gopLength, const std::vector<std::string> &labels) {
+    TestRegretAccumulator(const std::string &video, unsigned int width, unsigned int height, unsigned int gopLength, const std::vector<std::vector<std::string>> &labelsList, double threshold)
+        : threshold_(threshold){
         gopSizeInPixels_ = width * height * gopLength;
-        labels_ = labels;
-        for (const auto & label : labels) {
+        gopTilingCost_ = estimateCostToEncodeGOP(gopSizeInPixels_);
+
+        std::vector<std::string> individualLabels;
+        for (const auto & labels : labelsList) {
+            individualLabels.insert(individualLabels.end(), labels.begin(), labels.end());
+
+            auto metadataElement = MetadataElementForObjects(labels);
             auto metadataManager = std::make_shared<metadata::MetadataManager>(video,
-                                                                               MetadataSpecification("labels", std::make_shared<SingleMetadataElement>("label", label)));
-            idToConfig_[label] = std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                                                                               MetadataSpecification("labels", metadataElement));
+            auto id = combineStrings(labels);
+            labels_.push_back(id);
+            idToConfig_[id] = std::make_shared<tiles::GroupingTileConfigurationProvider>(
                     gopLength,
                     metadataManager,
                     width,
                     height);
         }
+        if (labelsList.size() > 1) {
+            auto combinedLabels = combineStrings(individualLabels);
+            auto metadataManager = std::make_shared<metadata::MetadataManager>(video, MetadataSpecification("labels",
+                                                                                                            MetadataElementForObjects(individualLabels)));
+            idToConfig_[combinedLabels] = std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                    gopLength,
+                    metadataManager,
+                    width,
+                    height);
+            labels_.push_back(combinedLabels);
+        }
     }
 
-    void addRegretToGOP(unsigned int gop, long long int regret, const std::string &layoutIdentifier) override {
+    void addRegretToGOP(unsigned int gop, double regret, const std::string &layoutIdentifier) override {
         if (!gopToRegret_[gop][layoutIdentifier])
             gopToRegret_[gop][layoutIdentifier] = 0;
 
@@ -1320,8 +1400,9 @@ public:
                 labelWithMaxRegret = it->first;
             }
         }
-        if (maxRegret >= gopSizeInPixels_ * 0.65) {
+        if (maxRegret > threshold_ * gopTilingCost_) {
             layoutIdentifier = labelWithMaxRegret;
+//            std::cout << "Retile GOP " << gop << " to " << layoutIdentifier << std::endl;
             return true;
         } else {
             return false;
@@ -1342,40 +1423,57 @@ public:
     }
 
 private:
+    double estimateCostToEncodeGOP(long long int sizeInPixels) const {
+        static double pixelCoef = 3.206e-06;
+        static double pixelIntercept = 2.592;
+
+        return pixelCoef * gopSizeInPixels_ + pixelIntercept;
+    }
+
+    double threshold_;
     std::vector<std::string> labels_;
     std::unordered_map<std::string, std::shared_ptr<tiles::TileConfigurationProvider>> idToConfig_;
     long long int gopSizeInPixels_;
-    std::unordered_map<unsigned int, std::unordered_map<std::string, long long int>> gopToRegret_;
+    double gopTilingCost_;
+    std::unordered_map<unsigned int, std::unordered_map<std::string, double>> gopToRegret_;
 };
 
 TEST_F(UnknownWorkloadTestFixture, testRegretAccumulator) {
     std::string video("traffic-2k-001");
-    std::vector<std::string> objects{"car", "pedestrian"};
+    auto catalog = video + "-cracked";
+    DeleteTiles(catalog);
+    ResetTileNum(catalog, 0);
+
+    std::vector<std::vector<std::string>> objects{{"car", "truck"}, {"person"}};
     unsigned int width = 1920;
     unsigned int height = 1080;
     unsigned int gopLength = 30;
 
-    TestRegretAccumulator acc(video, width, height, gopLength, objects);
+    auto regretACcumulator = std::make_shared<TestRegretAccumulator>(video, width, height, gopLength, objects, 0);
 
-    std::string retileObj;
+    {
+        PixelMetadataSpecification selection("labels", MetadataElementForObjects({"car", "truck"}, 0, 90));
+        auto retileOp = ScanAndRetile(
+                catalog,
+                selection,
+                30,
+                CrackingStrategy::SmallTiles,
+                RetileStrategy::RetileBasedOnRegret,
+                regretACcumulator);
+        Coordinator().execute(retileOp);
+    }
 
-    assert(!acc.shouldRetileGOP(0, retileObj));
-    assert(!acc.shouldRetileGOP(10, retileObj));
-
-    // GOP pixels: 62,208,000
-    // half that, 31104000
-    long long int halfGOP = 31104000;
-
-    acc.addRegretToGOP(0, halfGOP - 1, "car");
-    assert(!acc.shouldRetileGOP(0, retileObj));
-
-    acc.addRegretToGOP(0, halfGOP - 1, "pedestrian");
-    assert(!acc.shouldRetileGOP(0, retileObj));
-
-    acc.addRegretToGOP(0, 10, "car");
-    assert(acc.shouldRetileGOP(0, retileObj));
-    assert(retileObj == "car");
-    assert(!acc.shouldRetileGOP(10, retileObj));
+    {
+        PixelMetadataSpecification selection("labels", MetadataElementForObjects({"person"}, 0, 90));
+        auto retileOp = ScanAndRetile(
+                catalog,
+                selection,
+                30,
+                CrackingStrategy::SmallTiles,
+                RetileStrategy::RetileBasedOnRegret,
+                regretACcumulator);
+        Coordinator().execute(retileOp);
+    }
 }
 
 TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingRegret) {
@@ -1383,64 +1481,79 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
 
     std::vector<std::string> videos{
             "traffic-2k-001",
+            "car-pov-2k-000-shortened",
             "car-pov-2k-001-shortened",
+            "traffic-4k-002-ds2k",
             "traffic-4k-000",
             "traffic-4k-002",
     };
 
-    unsigned int framerate = 30;
+    std::vector<int> workloads{3};
+    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf, Distribution::Window}; // ,
+    std::vector<double> thresholds = {0, 1};
+    for (auto threshold : thresholds) {
+        std::cout << "Threshold: " << threshold << std::endl;
 
-//    std::default_random_engine generator(7);
-    for (const auto &video : videos) {
-        auto videoDimensions = videoToDimensions.at(video);
-        std::string catalogName = video + "-cracked";
-        for (auto duration : videoToQueryDurations.at(video)) {
+        for (auto workloadNum : workloads) {
+            std::cout << "Workload " << workloadNum << std::endl;
 
-            auto regretAccumulator = std::make_shared<TestRegretAccumulator>(
-                    video,
-                    videoDimensions.first, videoDimensions.second, framerate,
-                    std::vector<std::string>{"car", "pedestrian"});
+            for (auto distribution : distributions) {
+                std::cout << "Distribution: " << (int) distribution << std::endl;
+                for (const auto &video : videos) {
+                    auto videoDimensions = videoToDimensions.at(video);
+                    std::string catalogName = video + "-cracked";
+                    for (auto duration : videoToQueryDurations.at(video)) {
 
-            std::default_random_engine generator(videoToProbabilitySeed.at(video));
+                        auto regretAccumulator = std::make_shared<TestRegretAccumulator>(
+                                video,
+                                videoDimensions.first, videoDimensions.second, videoToFramerate.at(video),
+                                GetObjectSetsForWorkload(workloadNum),
+                                threshold);
 
-            // Delete tiles from previous runs.
-            DeleteTiles(catalogName);
+                        std::default_random_engine generator(videoToProbabilitySeed.at(video));
 
-            auto queryGenerator = GetGenerator(1, video, duration, &generator);
-            for (auto i = 0u; i < NUM_QUERIES; ++i) {
-                std::string object;
-                auto selection = queryGenerator->getNextQuery(i, &object);
+                        // Delete tiles from previous runs.
+                        DeleteTiles(catalogName);
+                        ResetTileNum(catalogName, 0);
 
-                // Step 1: Run query.
-                std::cout << "Video " << video << std::endl;
-                std::cout << "Query-object " << object << std::endl;
-                std::cout << "Uses-only-one-tile 0" << std::endl;
-                std::cout << "Selection-duration " << duration << std::endl;
-                std::cout << "Iteration " << i << std::endl;
-                std::cout << "First-frame " << selection->firstFrame() << std::endl;
-                std::cout << "Last-frame " << selection->lastFrame() << std::endl;
-                {
-                    auto input = ScanMultiTiled(catalogName, false);
-                    Coordinator().execute(input.Select(*selection));
-                }
+                        auto queryGenerator = GetGenerator(workloadNum, video, duration, &generator, distribution);
+                        for (auto i = 0u; i < NUM_QUERIES; ++i) {
+                            std::string object;
+                            auto selection = queryGenerator->getNextQuery(i, &object);
 
-                // Step 2: Crack around objects in query.
-                std::cout << "Video " << video << std::endl;
-                std::cout << "Cracking-around-object " << object << std::endl;
-                std::cout << "Cracking-duration " << duration << std::endl;
-                std::cout << "Iteration " << i << std::endl;
-                std::cout << "First-frame " << selection->firstFrame() << std::endl;
-                std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                            // Step 1: Run query.
+                            std::cout << "Video " << video << std::endl;
+                            std::cout << "Query-object " << object << std::endl;
+                            std::cout << "Uses-only-one-tile 0" << std::endl;
+                            std::cout << "Selection-duration " << duration << std::endl;
+                            std::cout << "Iteration " << i << std::endl;
+                            std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                            std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                            {
+                                auto input = ScanMultiTiled(catalogName, false);
+                                Coordinator().execute(input.Select(*selection));
+                            }
 
-                {
-                    auto retileOp = ScanAndRetile(
-                            catalogName,
-                            *selection,
-                            framerate,
-                            CrackingStrategy::SmallTiles,
-                            RetileStrategy::RetileBasedOnRegret,
-                            regretAccumulator);
-                    Coordinator().execute(retileOp);
+                            // Step 2: Crack around objects in query.
+                            std::cout << "Video " << video << std::endl;
+                            std::cout << "Cracking-around-object " << object << std::endl;
+                            std::cout << "Cracking-duration " << duration << std::endl;
+                            std::cout << "Iteration " << i << std::endl;
+                            std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                            std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+
+                            {
+                                auto retileOp = ScanAndRetile(
+                                        catalogName,
+                                        *selection,
+                                        videoToFramerate.at(video),
+                                        CrackingStrategy::SmallTiles,
+                                        RetileStrategy::RetileBasedOnRegret,
+                                        regretAccumulator);
+                                Coordinator().execute(retileOp);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1464,5 +1577,76 @@ TEST_F(UnknownWorkloadTestFixture, testZipfDistribution2) {
     for (int i = 0; i < 2000; ++i) {
         auto r = frameGen.nextFrame(generator);
         std::cout << r << std::endl;
+    }
+}
+
+TEST_F(UnknownWorkloadTestFixture, testTilingTimes) {
+
+    PixelMetadataSpecification selection("labels", MetadataElementForObjects({"car", "truck", "bus", "motorbike"}, 9628, 11428));
+//    {
+//        for (int i = 0; i < 3; ++i) {
+//            auto input = Scan("car-pov-2k-000-shortened");
+//            input.downcast<ScannedLightField>().setWillReadEntireEntry(false);
+//            Coordinator().execute(input.Select(selection));
+//        }
+//    }
+
+//    {
+//        for (int i = 0; i < 3; ++i) {
+//            auto input = ScanMultiTiled("car-pov-2k-000-shortened-cracked-car_truck_bus_motorbike-smalltiles-duration30-yolo", false);
+//            Coordinator().execute(input.Select(selection));
+//        }
+//    }
+
+    {
+//        std::string catalogName = "car-pov-2k-000-shortened-cracked";
+//        DeleteTiles(catalogName);
+//        ResetTileNum(catalogName, 0);
+        for (int i = 0; i < 3; ++i) {
+            auto input = ScanMultiTiled("car-pov-2k-000-shortened-cracked-2", false);
+            Coordinator().execute(input.Select(selection));
+        }
+    }
+}
+
+TEST_F(UnknownWorkloadTestFixture, tileNecessaryGOPs) {
+    std::string catalogName = "car-pov-2k-000-shortened-cracked-2";
+    DeleteTiles(catalogName);
+    ResetTileNum(catalogName, 0);
+
+    std::vector<int> gops{243, 242, 241, 240, 239, 238, 233, 232, 234, 235, 236, 237, 260,
+    259, 258, 257, 256, 255, 254, 253, 252, 251, 250, 249, 248, 247,
+    246, 225, 224, 223, 222, 221, 220, 219, 218, 217, 216, 212, 213,
+    214, 215, 226, 227, 228, 229, 230, 231, 244, 245, 270, 269, 268,
+    267, 266, 265, 264, 263, 262, 261, 186, 185, 184, 183, 157, 156,
+    155, 154, 153, 152, 148, 145, 144, 143, 142, 141, 140, 211, 210,
+    209, 208, 182, 181, 180, 179, 178, 172, 171, 173, 174, 175, 176,
+    187, 188, 189, 190, 191, 192, 193, 194, 196, 197, 198, 199, 201,
+    202, 203, 204, 205, 206, 207, 272, 271, 177, 200,  79,  78,  77,
+    76,  75,  74,  58,  59,  63,  64,  66,  67,  68,  69,  70,  71,
+    72,  73, 151, 150, 149, 147, 146, 139, 390, 389, 388, 387, 380,
+    379, 378, 376, 375, 374, 373, 372, 324, 321, 280, 276, 275, 274,
+    273, 283, 284, 285, 286, 287, 288, 309, 308, 307, 306, 305, 298,
+    297, 296, 295, 294, 277, 278, 279, 281, 282, 165, 164, 163, 162,
+    161, 158, 115, 114, 113, 112, 111, 106, 105, 107, 108, 109, 110,
+    121, 122, 123, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135,
+    136, 137, 138, 159, 160, 166, 167, 168, 169, 170, 408, 407, 371,
+    370, 369, 406, 368, 405, 367, 366, 365, 364, 358, 361, 362, 363,
+    377, 381, 386,  65,  62,  61,  60,  57,  56,  55,  54,  53,  52,
+    51,  50,  49,  48,  47,  46,  45,  44,  43,  42,  41,  35,  38,
+    39,  40, 125, 124,  98,  97, 103, 104, 116, 117, 118, 119, 120,
+    319, 318, 317, 316, 315, 314, 313, 312, 311, 310, 304, 303, 302,
+    301};
+
+    std::vector<std::string> objects{"car", "truck", "bus", "motorbike"};
+    for (auto gop : gops) {
+        PixelMetadataSpecification selection("labels", MetadataElementForObjects(objects, gop * 30, (gop+1) * 30));
+        auto retileOp = ScanAndRetile(
+                catalogName,
+                selection,
+                30,
+                CrackingStrategy::SmallTiles,
+                RetileStrategy::RetileAlways);
+        Coordinator().execute(retileOp);
     }
 }

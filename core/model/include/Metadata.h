@@ -18,13 +18,18 @@ namespace lightdb {
 
     class AllMetadataElement : public MetadataElement {
     public:
-        AllMetadataElement(const std::string &columnName = "label", unsigned int firstFrame = 0, unsigned int lastFrame = UINT32_MAX)
+        AllMetadataElement(int mod = -1, const std::string &columnName = "label", unsigned int firstFrame = 0, unsigned int lastFrame = UINT32_MAX)
             : columnName_(columnName),
+            mod_(mod),
             firstFrame_(firstFrame),
             lastFrame_(lastFrame) {}
 
         std::string whereClauseConstraints(bool includeFrameLimits) const override {
             std::string baseClause = columnName_ + " NOT LIKE 'YOLO%%' AND " + columnName_ + " NOT LIKE 'MOG%%' AND " + columnName_ + " != 'KNN'";
+
+            if (mod_ > 0)
+                baseClause += " AND frame % " + std::to_string(mod_) + " = 0";
+
             if (!includeFrameLimits)
                 return baseClause;
 
@@ -45,6 +50,7 @@ namespace lightdb {
 
     private:
         const std::string columnName_;
+        int mod_;
         unsigned int firstFrame_;
         unsigned int lastFrame_;
     };

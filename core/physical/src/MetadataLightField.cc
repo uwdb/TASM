@@ -13,15 +13,15 @@ namespace lightdb::associations {
 
     static const std::unordered_map<std::string, std::string> VideoPathToLabelsPath(
             {
-                    {"traffic-2k-001", "/home/maureen/visualroad_tiling/labels_yolo/traffic-2k-001_yolo.db"}, // traffic_2k_db
+                    {"traffic-2k-001", traffic_2k_db}, //  "/home/maureen/visualroad_tiling/labels_yolo/traffic-2k-001_yolo.db"
 
                     // 4k-002
-                    {"traffic-4k-002", "/home/maureen/visualroad_tiling/labels_yolo/traffic-4k-002_yolo.db"}, //"/home/maureen/visualroad/4k-short/traffic-4k-002.db"
+                    {"traffic-4k-002", "/home/maureen/visualroad/4k-short/traffic-4k-002.db"}, // "/home/maureen/visualroad_tiling/labels_yolo/traffic-4k-002_yolo.db"
                     {"traffic-4k-002-ds1k", "/home/maureen/visualroad/4k-short/traffic-4k-002-downsampled-to-1k.db"},
-                    {"traffic-4k-002-ds2k", "/home/maureen/visualroad_tiling/labels_yolo/traffic-4k-002-ds2k_yolo.db"}, //"/home/maureen/visualroad/4k-short/traffic-4k-002-downsampled-to-2k.db"
+                    {"traffic-4k-002-ds2k", "/home/maureen/visualroad/4k-short/traffic-4k-002-downsampled-to-2k.db"}, // "/home/maureen/visualroad_tiling/labels_yolo/traffic-4k-002-ds2k_yolo.db"
 
                     // 4k-000
-                    {"traffic-4k-000", "/home/maureen/visualroad_tiling/labels_yolo/traffic-4k-000_yolo.db"}, //"/home/maureen/visualroad/4k-short/traffic-4k-000.db"
+                    {"traffic-4k-000", "/home/maureen/visualroad/4k-short/traffic-4k-000.db"}, // "/home/maureen/visualroad_tiling/labels_yolo/traffic-4k-000_yolo.db"
 
                     // short-1k-2
                     {"traffic-1k-002", "/home/maureen/visualroad/1k-short-2/traffic-1k-002.db"},
@@ -30,10 +30,10 @@ namespace lightdb::associations {
                     {"car-pov-2k-000", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"},
 
                     // car-pov-2k-000-shortened
-                    {"car-pov-2k-000-shortened", "/home/maureen/visualroad_tiling/labels_yolo/car-pov-2k-000-shortened_yolo.db"}, //"/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"
+                    {"car-pov-2k-000-shortened", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-000.db"}, // "/home/maureen/visualroad_tiling/labels_yolo/car-pov-2k-000-shortened_yolo.db"
 
                     // car-pov-2k-001-shortened
-                    {"car-pov-2k-001-shortened", "/home/maureen/visualroad_tiling/labels_yolo/car-pov-2k-001-shortened_yolo.db"}, //"/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"
+                    {"car-pov-2k-001-shortened", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"}, // "/home/maureen/visualroad_tiling/labels_yolo/car-pov-2k-001-shortened_yolo.db"
 
                     // car-pov-2k-001
                     {"car-pov-2k-001", "/home/maureen/visualroad/car-pov-2k/car-pov-2k-001.db"},

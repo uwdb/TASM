@@ -184,12 +184,12 @@ namespace lightdb::logical {
                 uniformDimensionsRows);
     }
 
-    LightFieldReference Algebra::PrepareForCracking(const std::string &name) {
+    LightFieldReference Algebra::PrepareForCracking(const std::string &name, unsigned int layoutDuration) {
         return LightFieldReference::make<CrackedLightField>(this_, name, catalog::Catalog::instance(),
                 std::nullopt,
                 Codec::hevc(),
                 nullptr,
-                0,
+                layoutDuration,
                 CrackingStrategy::OneTile);
     }
 

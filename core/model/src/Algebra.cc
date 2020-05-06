@@ -20,7 +20,8 @@ namespace lightdb::logical {
                                   unsigned int layoutDuration,
                                   CrackingStrategy crackingStrategy,
                                   RetileStrategy retileOnlyIfDifferent,
-                                  std::shared_ptr<RegretAccumulator> regretAccumulator) {
+                                  std::shared_ptr<RegretAccumulator> regretAccumulator,
+                                  std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager) {
 
         // Transform metadataIdentifier.
         std::string metadataIdentifier;
@@ -41,6 +42,9 @@ namespace lightdb::logical {
 
         if (regretAccumulator)
             lightField.downcast<logical::MultiTiledLightFieldForRetiling>().setRegretAccumulator(regretAccumulator);
+
+        if (tileAroundMoreObjectsManager)
+            lightField.downcast<logical::MultiTiledLightFieldForRetiling>().setTileAroundMoreObjectsManager(tileAroundMoreObjectsManager);
 
         return lightField;
     }

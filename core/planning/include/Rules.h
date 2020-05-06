@@ -69,7 +69,7 @@ namespace lightdb::optimization {
 
                 int gopLength = node.entry()->sources()[0].configuration().framerate.fps();
 
-                if (node.retileStrategy() != logical::RetileStrategy::RetileBasedOnRegret) {
+                if (node.retileStrategy() == logical::RetileStrategy::RetileIfDifferent || node.retileStrategy() == logical::RetileStrategy::RetileAlways) {
                     auto configProvider = node.tileConfigurationProvider();
 
                     std::vector<int> framesWithDifferentLayout;
@@ -137,50 +137,6 @@ namespace lightdb::optimization {
                         plan().emplace<physical::Sink>(logical, scan);
                     }
                 } else {
-                    // Retiling based on regret.
-                    static const double pixelCostWeight = 1.608e-06;
-                    static const double tileCostWeight = 1.703e-01;
-                    assert(node.regretAccumulator());
-                    Workload workload(node.metadataManager()->metadataIdentifier(),
-                                      {node.metadataManager()->metadataSpecification()}, {1});
-                    int gopLength = node.entry()->sources()[0].configuration().framerate.fps();
-                    WorkloadCostEstimator currentLayoutEstimator(locationProvider, workload, gopLength, pixelCostWeight, tileCostWeight, 0);
-                    std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> currentCosts(
-                            new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
-
-                    unsigned int sawMultipleLayouts;
-                    currentLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, currentCosts.get());
-
-                    for (const auto &layoutId : node.regretAccumulator()->layoutIdentifiers()) {
-                        WorkloadCostEstimator proposedLayoutEstimator(node.regretAccumulator()->configurationProviderForIdentifier(layoutId),
-                                workload, gopLength, pixelCostWeight, tileCostWeight, 0);
-
-                        std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> proposedCosts(
-                                new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
-
-                        proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
-
-                        assert(currentCosts->size() == proposedCosts->size());
-
-                        for (auto curIt = currentCosts->begin(); curIt != currentCosts->end(); ++curIt) {
-                            auto curCosts = curIt->second;
-                            auto possibleCosts = proposedCosts->at(curIt->first);
-                            double regret = pixelCostWeight * (long long int)(curCosts.numPixels - possibleCosts.numPixels) + tileCostWeight * (int)(curCosts.numTiles - possibleCosts.numTiles);
-                            node.regretAccumulator()->addRegretToGOP(curIt->first, regret, layoutId);
-                        }
-                    }
-
-                    // Find the various layouts to retile to.
-                    std::unordered_map<unsigned int, std::string> gopToLayoutId;
-                    for (auto it = currentCosts->begin(); it != currentCosts->end(); ++it) {
-                        auto gopNum = it->first;
-                        std::string idForGOP;
-                        if (node.regretAccumulator()->shouldRetileGOP(gopNum, idForGOP)) {
-                            gopToLayoutId[gopNum] = idForGOP;
-                            node.regretAccumulator()->resetRegretForGOP(gopNum);
-                        }
-                    }
-
                     // Build a query plan for each retiling operation.
                     std::vector<PhysicalOperatorReference> crackOperators;
                     auto logical = plan().lookup(node);
@@ -189,15 +145,81 @@ namespace lightdb::optimization {
                     std::unique_ptr<std::unordered_map<unsigned int, std::shared_ptr<tiles::TileConfigurationProvider>>> gopToConfigProvider(new std::unordered_map<unsigned int, std::shared_ptr<tiles::TileConfigurationProvider>>());
                     std::vector<int> framesWithDifferentLayout;
 
-                    for (auto frame : framesToRetile) {
-                        auto gop = currentLayoutEstimator.gopForFrame(frame);
-                        if (gopToLayoutId.count(gop)) {
-                            if (!gopToConfigProvider->count(gop)) {
-                                gopToConfigProvider->emplace(gop,
-                                                               node.regretAccumulator()->configurationProviderForIdentifier(
-                                                                       gopToLayoutId.at(gop)));
+                    if (node.retileStrategy() == logical::RetileStrategy::RetileBasedOnRegret) {
+                        // Retiling based on regret.
+                        static const double pixelCostWeight = 1.608e-06;
+                        static const double tileCostWeight = 1.703e-01;
+                        assert(node.regretAccumulator());
+                        Workload workload(node.metadataManager()->metadataIdentifier(),
+                                          {node.metadataManager()->metadataSpecification()}, {1});
+                        int gopLength = node.entry()->sources()[0].configuration().framerate.fps();
+                        WorkloadCostEstimator currentLayoutEstimator(locationProvider, workload, gopLength,
+                                                                     pixelCostWeight, tileCostWeight, 0);
+                        std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> currentCosts(
+                                new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
+
+                        unsigned int sawMultipleLayouts;
+                        currentLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, currentCosts.get());
+
+                        for (const auto &layoutId : node.regretAccumulator()->layoutIdentifiers()) {
+                            WorkloadCostEstimator proposedLayoutEstimator(
+                                    node.regretAccumulator()->configurationProviderForIdentifier(layoutId),
+                                    workload, gopLength, pixelCostWeight, tileCostWeight, 0);
+
+                            std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> proposedCosts(
+                                    new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
+
+                            proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
+
+                            assert(currentCosts->size() == proposedCosts->size());
+
+                            for (auto curIt = currentCosts->begin(); curIt != currentCosts->end(); ++curIt) {
+                                auto curCosts = curIt->second;
+                                auto possibleCosts = proposedCosts->at(curIt->first);
+                                double regret = pixelCostWeight *
+                                                (long long int) (curCosts.numPixels - possibleCosts.numPixels) +
+                                                tileCostWeight * (int) (curCosts.numTiles - possibleCosts.numTiles);
+                                node.regretAccumulator()->addRegretToGOP(curIt->first, regret, layoutId);
                             }
-                            framesWithDifferentLayout.push_back(frame);
+                        }
+
+                        // Find the various layouts to retile to.
+                        std::unordered_map<unsigned int, std::string> gopToLayoutId;
+                        for (auto it = currentCosts->begin(); it != currentCosts->end(); ++it) {
+                            auto gopNum = it->first;
+                            std::string idForGOP;
+                            if (node.regretAccumulator()->shouldRetileGOP(gopNum, idForGOP)) {
+                                gopToLayoutId[gopNum] = idForGOP;
+                                node.regretAccumulator()->resetRegretForGOP(gopNum);
+                            }
+                        }
+
+                        for (auto frame : framesToRetile) {
+                            auto gop = currentLayoutEstimator.gopForFrame(frame);
+                            if (gopToLayoutId.count(gop)) {
+                                if (!gopToConfigProvider->count(gop)) {
+                                    gopToConfigProvider->emplace(gop,
+                                                                 node.regretAccumulator()->configurationProviderForIdentifier(
+                                                                         gopToLayoutId.at(gop)));
+                                }
+                                framesWithDifferentLayout.push_back(frame);
+                            }
+                        }
+                    } else if (node.retileStrategy() == logical::RetileStrategy::RetileAroundMoreObjects) {
+                        assert(node.tileAroundMoreObjectsManager());
+                        std::unordered_set<int> seenGOPs;
+                        for (auto frame : framesToRetile) {
+                            int gop = frame / gopLength;
+                            if (seenGOPs.count(gop) && gopToConfigProvider->count(gop))
+                                framesWithDifferentLayout.push_back(frame);
+                            else if (!seenGOPs.count(gop)) {
+                                seenGOPs.insert(gop);
+                                auto configProvider = node.tileAroundMoreObjectsManager()->configurationProviderForGOPWithQuery(gop, node.metadataManager()->metadataSpecification().objects());
+                                if (configProvider) {
+                                    gopToConfigProvider->emplace(gop, configProvider);
+                                    framesWithDifferentLayout.push_back(frame);
+                                }
+                            }
                         }
                     }
 

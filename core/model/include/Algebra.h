@@ -18,6 +18,7 @@ namespace lightdb {
 
     namespace logical {
         class RegretAccumulator;
+        class TileAroundMoreObjectsManager;
 
         LightFieldReference ScanTiled(const std::string &name);
         LightFieldReference ScanMultiTiled(const std::string &name, bool usesOnlyOneTile = false);
@@ -25,7 +26,8 @@ namespace lightdb {
         enum class RetileStrategy {
             RetileAlways,
             RetileIfDifferent,
-            RetileBasedOnRegret
+            RetileBasedOnRegret,
+            RetileAroundMoreObjects,
         };
 
         LightFieldReference ScanAndRetile(const std::string &name,
@@ -33,7 +35,8 @@ namespace lightdb {
                                           unsigned int layoutDuration,
                                           CrackingStrategy crackingStrategy,
                                           RetileStrategy retileOnlyIfDifferent = RetileStrategy::RetileAlways,
-                                          std::shared_ptr<RegretAccumulator> regretAccumulator = {});
+                                          std::shared_ptr<RegretAccumulator> regretAccumulator = {},
+                                          std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager = {});
 
         LightFieldReference ScanByGOP(const std::string &name);
         LightFieldReference Scan(const std::string &name);

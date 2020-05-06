@@ -1348,6 +1348,41 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadStartWithKNNTilesTileAroundQueryI
     }
 }
 
+class TestTileAroundMoreObjectsManager : public TileAroundMoreObjectsManager {
+public:
+    TestTileAroundMoreObjectsManager(const std::string &video, unsigned int width, unsigned int height, unsigned int gopLength)
+        : video_(video), width_(width), height_(height), gopLength_(gopLength) {}
+
+    std::shared_ptr<tiles::TileConfigurationProvider> configurationProviderForGOPWithQuery(unsigned int gop, const std::vector<std::string> &queryObjects) override {
+        bool layoutIsAroundAllQueryObjects = true;
+        std::unordered_set<std::string> missingObjects;
+        for (const auto &object : queryObjects) {
+            if (!gopToLayoutObjects_[gop].count(object)) {
+                layoutIsAroundAllQueryObjects = false;
+                missingObjects.insert(object);
+            }
+        }
+        if (layoutIsAroundAllQueryObjects)
+            return {};
+
+        gopToLayoutObjects_[gop].insert(missingObjects.begin(), missingObjects.end());
+        auto metadataElement = MetadataElementForObjects(std::vector<std::string>(gopToLayoutObjects_[gop].begin(), gopToLayoutObjects_[gop].end()));
+        auto metadataManager = std::make_shared<metadata::MetadataManager>(video_, MetadataSpecification("labels", metadataElement));
+        return std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                gopLength_,
+                metadataManager,
+                width_,
+                height_);
+    }
+
+private:
+    std::string video_;
+    unsigned int width_;
+    unsigned int height_;
+    unsigned int gopLength_;
+    std::unordered_map<unsigned int, std::unordered_set<std::string>> gopToLayoutObjects_;
+};
+
 class TestRegretAccumulator : public RegretAccumulator {
 public:
     TestRegretAccumulator(const std::string &video, unsigned int width, unsigned int height, unsigned int gopLength, const std::vector<std::vector<std::string>> &labelsList, double threshold)
@@ -1438,6 +1473,55 @@ private:
     std::unordered_map<unsigned int, std::unordered_map<std::string, double>> gopToRegret_;
 };
 
+TEST_F(UnknownWorkloadTestFixture, testTileAroundMoreObjects) {
+    std::string video("traffic-2k-001");
+    auto catalog = video + "-cracked";
+    DeleteTiles(catalog);
+    ResetTileNum(catalog, 0);
+
+    std::vector<std::vector<std::string>> objects{{"car", "truck"}, {"person"}};
+    unsigned int width = 1920;
+    unsigned int height = 1080;
+    unsigned int gopLength = 30;
+
+    auto tileManager = std::make_shared<TestTileAroundMoreObjectsManager>(video, width, height, gopLength);
+    {
+        PixelMetadataSpecification selection("labels", MetadataElementForObjects({"car", "truck"}, 0, 90));
+        auto retileOp = ScanAndRetile(
+                catalog,
+                selection,
+                30,
+                CrackingStrategy::SmallTiles,
+                RetileStrategy::RetileAroundMoreObjects,
+                {}, tileManager);
+        Coordinator().execute(retileOp);
+    }
+
+    {
+        PixelMetadataSpecification selection("labels", MetadataElementForObjects({"person"}, 0, 90));
+        auto retileOp = ScanAndRetile(
+                catalog,
+                selection,
+                30,
+                CrackingStrategy::SmallTiles,
+                RetileStrategy::RetileAroundMoreObjects,
+                {}, tileManager);
+        Coordinator().execute(retileOp);
+    }
+
+    {
+        PixelMetadataSpecification selection("labels", MetadataElementForObjects({"person"}, 0, 90));
+        auto retileOp = ScanAndRetile(
+                catalog,
+                selection,
+                30,
+                CrackingStrategy::SmallTiles,
+                RetileStrategy::RetileAroundMoreObjects,
+                {}, tileManager);
+        Coordinator().execute(retileOp);
+    }
+}
+
 TEST_F(UnknownWorkloadTestFixture, testRegretAccumulator) {
     std::string video("traffic-2k-001");
     auto catalog = video + "-cracked";
@@ -1453,6 +1537,18 @@ TEST_F(UnknownWorkloadTestFixture, testRegretAccumulator) {
 
     {
         PixelMetadataSpecification selection("labels", MetadataElementForObjects({"car", "truck"}, 0, 90));
+        auto retileOp = ScanAndRetile(
+                catalog,
+                selection,
+                30,
+                CrackingStrategy::SmallTiles,
+                RetileStrategy::RetileBasedOnRegret,
+                regretACcumulator);
+        Coordinator().execute(retileOp);
+    }
+
+    {
+        PixelMetadataSpecification selection("labels", MetadataElementForObjects({"person"}, 0, 90));
         auto retileOp = ScanAndRetile(
                 catalog,
                 selection,

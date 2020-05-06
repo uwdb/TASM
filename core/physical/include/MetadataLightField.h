@@ -236,6 +236,12 @@ public:
     virtual ~RegretAccumulator() {}
 };
 
+class TileAroundMoreObjectsManager {
+public:
+    virtual std::shared_ptr<tiles::TileConfigurationProvider> configurationProviderForGOPWithQuery(unsigned int gop, const std::vector<std::string> &queryObjects) = 0;
+    virtual ~TileAroundMoreObjectsManager() {}
+};
+
 } // namespace lightdb::logical
 
 

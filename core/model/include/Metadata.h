@@ -14,6 +14,7 @@ namespace lightdb {
         virtual void updateLastFrameConstraints(unsigned int lastFrame) = 0;
         virtual unsigned int firstFrame() const = 0;
         virtual unsigned int lastFrame() const = 0;
+        virtual const std::vector<std::string> &objects() const { static std::vector<std::string> empty; return empty; }
     };
 
     class AllMetadataElement : public MetadataElement {
@@ -87,12 +88,21 @@ namespace lightdb {
             return lastFrame_;
         }
 
+        const std::vector<std::string> &objects() const override {
+            if (objects_.size())
+                return objects_;
+
+            objects_ = std::vector<std::string>{expectedValue_.length() ? expectedValue_ : std::to_string(expectedIntValue_) };
+            return objects_;
+        };
+
     private:
         std::string columnName_;
         std::string expectedValue_;
         int expectedIntValue_;
         unsigned int firstFrame_;
         unsigned int lastFrame_;
+        mutable std::vector<std::string> objects_;
     };
 
     class AndMetadataElement : public MetadataElement {
@@ -125,6 +135,13 @@ namespace lightdb {
             std::vector<unsigned int> lastFrames(elements_.size());
             std::transform(elements_.begin(), elements_.end(), lastFrames.begin(), [](std::shared_ptr<MetadataElement> m) { return m->lastFrame(); });
             return *std::max_element(lastFrames.begin(), lastFrames.end());
+        }
+
+        const std::vector<std::string> &objects() const override {
+            // Not implemented.
+            assert(false);
+            static std::vector<std::string> empty;
+            return empty;
         }
 
     private:
@@ -173,10 +190,22 @@ namespace lightdb {
             return *std::max_element(lastFrames.begin(), lastFrames.end());
         }
 
+        const std::vector<std::string> &objects() const override {
+            if (objects_)
+                return *objects_;
+
+            objects_.reset(new std::vector<std::string>());
+            for (auto it = elements_.begin(); it != elements_.end(); ++it) {
+                objects_->insert(objects_->end(), (**it).objects().begin(), (**it).objects().end());
+            }
+            return *objects_;
+        }
+
     private:
         std::vector<std::shared_ptr<MetadataElement>> elements_;
         mutable std::string constraintWithLimits_;
         mutable std::string constraintWithoutLimits_;
+        mutable std::unique_ptr<std::vector<std::string>> objects_;
     };
 
     class MetadataSpecification {
@@ -193,6 +222,7 @@ namespace lightdb {
         const std::string &tableName() const { return tableName_; }
         unsigned int firstFrame() const { return metadataElement_->firstFrame(); }
         unsigned int lastFrame() const { return metadataElement_->lastFrame(); }
+        const std::vector<std::string> &objects() const { return metadataElement_->objects(); }
 
         std::string whereClauseConstraints(bool includeFrameLimits = false) const {
             return metadataElement_->whereClauseConstraints(includeFrameLimits);

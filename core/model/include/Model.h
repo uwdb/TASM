@@ -252,6 +252,11 @@ namespace lightdb::logical {
             regretAccumulator_ = regretAccumulator;
         }
 
+        void setTileAroundMoreObjectsManager(std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager) {
+            assert(retileStrategy_ == RetileStrategy::RetileAroundMoreObjects);
+            tileAroundMoreObjectsManager_ = tileAroundMoreObjectsManager;
+        }
+
         void setProperties(
                 std::shared_ptr<metadata::MetadataManager> metadataManager,
                 CrackingStrategy crackingStrategy,
@@ -289,6 +294,7 @@ namespace lightdb::logical {
         std::shared_ptr<catalog::Entry> entry() const { return entry_; }
         RetileStrategy retileStrategy() const { return retileStrategy_; }
         std::shared_ptr<RegretAccumulator> regretAccumulator() const { return regretAccumulator_; }
+        std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager() const { return tileAroundMoreObjectsManager_; }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MultiTiledLightFieldForRetiling>(visitor); }
 
@@ -299,6 +305,7 @@ namespace lightdb::logical {
         std::shared_ptr<catalog::Entry> entry_;
         RetileStrategy retileStrategy_;
         std::shared_ptr<RegretAccumulator> regretAccumulator_;
+        std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager_;
     };
 
     class ScannedTiledLightField : public LightField, public StreamBackedLightField {

@@ -35,6 +35,16 @@ protected:
     Catalog catalog;
 };
 
+static std::shared_ptr<MetadataElement> MetadataElementForObjects(const std::vector<std::string> &objects, unsigned int firstFrame = 0, unsigned int lastFrame = UINT32_MAX) {
+    std::vector<std::shared_ptr<MetadataElement>> componentElements(objects.size());
+    std::transform(objects.begin(), objects.end(), componentElements.begin(),
+                   [&](auto obj) {
+                       return std::make_shared<SingleMetadataElement>("label", obj, firstFrame, lastFrame);
+                   });
+    return componentElements.size() == 1 ? componentElements.front() : std::make_shared<OrMetadataElement>(componentElements);
+}
+
+
 static std::unordered_map<std::string, std::vector<std::string>> videoToObjectsToCrackOn({
       {"aerial", {"car"}},
       {"busy", {"person", "car", "bus"}},
@@ -294,54 +304,60 @@ TEST_F(VisitorTestFixture, testGetNumFramesForNoTiles) {
             "car-pov-2k-001-shortened",
             "car-pov-2k-000-shortened",
             "traffic-4k-002-ds2k",
-            "traffic-4k-002",
-            "traffic-4k-000",
-            "birdsincage",
-            "crowdrun",
-            "elfuente1",
-            "elfuente2",
-            "oldtown",
-            "seeking",
-            "tennis",
-            "red_kayak",
-            "touchdown_pass",
-            "park_joy_2k",
-            "park_joy_4k",
-            "Netflix_ToddlerFountain",
-            "Netflix_Narrator",
-            "Netflix_FoodMarket",
-            "Netflix_FoodMarket2",
-            "Netflix_DrivingPOV",
-            "Netflix_BoxingPractice",
-            "MOT16-01",
-            "MOT16-02",
-            "MOT16-03",
-            "MOT16-04",
-            "MOT16-07",
-            "MOT16-08",
-            "MOT16-09",
-            "MOT16-10",
-            "MOT16-11",
-            "MOT16-12",
-            "MOT16-13",
-            "MOT16-14",
-            "meridian",
-            "cosmos",
-            "elfuente_full",
-            "market_all",
-            "narrator",
-            "river_boat",
-            "square_with_fountain",
-            "street_night_view",
-            "oldtown",
+//            "traffic-4k-002",
+//            "traffic-4k-000",
+//            "birdsincage",
+//            "crowdrun",
+//            "elfuente1",
+//            "elfuente2",
+//            "oldtown",
+//            "seeking",
+//            "tennis",
+//            "red_kayak",
+//            "touchdown_pass",
+//            "park_joy_2k",
+//            "park_joy_4k",
+//            "Netflix_ToddlerFountain",
+//            "Netflix_Narrator",
+//            "Netflix_FoodMarket",
+//            "Netflix_FoodMarket2",
+//            "Netflix_DrivingPOV",
+//            "Netflix_BoxingPractice",
+//            "MOT16-01",
+//            "MOT16-02",
+//            "MOT16-03",
+//            "MOT16-04",
+//            "MOT16-07",
+//            "MOT16-08",
+//            "MOT16-09",
+//            "MOT16-10",
+//            "MOT16-11",
+//            "MOT16-12",
+//            "MOT16-13",
+//            "MOT16-14",
+//            "meridian",
+//            "cosmos",
+//            "elfuente_full",
+//            "market_all",
+//            "narrator",
+//            "river_boat",
+//            "square_with_fountain",
+//            "street_night_view",
+//            "oldtown",
+    };
+
+    std::vector<std::vector<std::string>> queryObjectsList {
+            {"car", "truck", "bus", "motorbike"},
+            {"person"},
+//        {"traffic light"},
     };
 
     std::cout << std::endl;
     for (const auto &video : videos) {
         auto gopLength = videoToFramerate.at(video);
         auto dimensions = videoToDimensions.at(video);
-        for (const auto &object : videoToObjectsToCrackOn.at(video)) {
-            PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", object));
+        for (const auto &objects : queryObjectsList) {
+            PixelMetadataSpecification selection("labels", MetadataElementForObjects(objects));
             Workload workload(video, {selection}, {1});
 
             auto singleTileConfiguration = std::make_shared<tiles::SingleTileConfigurationProvider>(dimensions.first, dimensions.second);
@@ -350,7 +366,7 @@ TEST_F(VisitorTestFixture, testGetNumFramesForNoTiles) {
             unsigned int sawMultipleLayouts = 0;
             auto costElements = costEstimator.estimateCostForQuery(0, sawMultipleLayouts);
             std::cout << "Video " << video
-                    << "\nquery-object " << object
+                    << "\nquery-object " << combineStrings(objects)
                     << "\nnum-frames " << costElements.numTiles
                     << "\nnum-pixels " << costElements.numPixels << std::endl;
         }
@@ -870,25 +886,25 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
         "car-pov-2k-000-shortened",
         "car-pov-2k-001-shortened",
         "traffic-4k-002-ds2k",
-        "traffic-4k-000",
-        "traffic-4k-002",
-        "Netflix_BoxingPractice",
-        "Netflix_DrivingPOV",
-        "Netflix_FoodMarket",
-        "Netflix_FoodMarket2",
-        "Netflix_ToddlerFountain",
-        "park_joy_2k",
-        "park_joy_4k",
-        "red_kayak",
-        "touchdown_pass",
-        "market_all",
-        "narrator",
-        "river_boat",
-        "square_with_fountain",
-        "street_night_view",
+//        "traffic-4k-000",
+//        "traffic-4k-002",
+//        "Netflix_BoxingPractice",
+//        "Netflix_DrivingPOV",
+//        "Netflix_FoodMarket",
+//        "Netflix_FoodMarket2",
+//        "Netflix_ToddlerFountain",
+//        "park_joy_2k",
+//        "park_joy_4k",
+//        "red_kayak",
+//        "touchdown_pass",
+//        "market_all",
+//        "narrator",
+//        "river_boat",
+//        "square_with_fountain",
+//        "street_night_view",
     };
 
-    std::vector<std::vector<std::string>> objectsToTileAround{{"YOLOv3-tiny-0.5"}};
+    std::vector<std::vector<std::string>> objectsToTileAround{{"car", "truck", "bus", "motorbike", "person", "traffic light"}};
 
     for (const auto &video : videos) {
         for (const auto &crackingObjects : objectsToTileAround) {
@@ -1263,18 +1279,19 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
 //            {"all_objects"}
 //    };
 //
-//    std::vector<std::vector<std::string>> queryObjectsList {
-//        {"car", "truck", "bus", "motorbike"},
-//        {"person"},
-//    };
+    std::vector<std::vector<std::string>> queryObjectsList {
+        {"car", "truck", "bus", "motorbike"},
+        {"person"},
+//        {"traffic light"},
+    };
 
     std::vector<std::string> videos {
             "traffic-2k-001",
             "car-pov-2k-000-shortened",
             "car-pov-2k-001-shortened",
             "traffic-4k-002-ds2k",
-            "traffic-4k-000",
-            "traffic-4k-002",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
 //            "Netflix_BoxingPractice",
 //            "Netflix_DrivingPOV",
 //            "Netflix_FoodMarket",
@@ -1303,8 +1320,9 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
 //    std::vector<std::string> uniformTileSuffixes{"-2x2", "-3x3", "-4x4", "-5x5", "-6x6", "-7x7", "-7x8", "-7x9", "-7x10"};
 
     for (const auto& video : videos) {
-        for (const auto &queryObject : videoToObjectsToCrackOn.at(video)) {
-            std::shared_ptr<MetadataElement> metadataElement = std::make_shared<SingleMetadataElement>("label", queryObject);
+        for (const auto &queryObjects : queryObjectsList) {
+            std::shared_ptr<MetadataElement> metadataElement = MetadataElementForObjects(queryObjects);
+            auto queryObject = combineStrings(queryObjects);
 //            std::vector<std::shared_ptr<MetadataElement>> componentElements(queryObjects.size());
 //            std::transform(queryObjects.begin(), queryObjects.end(), componentElements.begin(),
 //                           [](auto obj) {
@@ -1312,7 +1330,7 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
 //                           });
 //            metadataElement = componentElements.size() == 1 ? componentElements.front() : std::make_shared<OrMetadataElement>(componentElements);
             PixelMetadataSpecification selection("labels", metadataElement);
-            PixelMetadataSpecification tileSelection("labels", std::make_shared<AllMetadataElement>(5));
+            PixelMetadataSpecification tileSelection("labels", MetadataElementForObjects({"car", "truck", "bus", "motorbike", "person", "traffic light"}));
 //            auto queryObject = combineStrings(queryObjects);
             std::cout << "\n***object," << queryObject << std::endl;
 
@@ -1395,7 +1413,7 @@ TEST_F(VisitorTestFixture, testMeasureTiles) {
 //                runQuery(video, suffix, usesOnlyOneTile);
 //            }
 
-            std::vector<std::string> crackingObjects{"all_objects_every5"}; //, "YOLOv3-tiny-0.02"
+            std::vector<std::string> crackingObjects{combineStrings({"car", "truck", "bus", "motorbike", "person", "traffic light"})}; //, "YOLOv3-tiny-0.02"
             for (const auto &crackingObject : crackingObjects) {
                 std::cout << "***cracking_object," << crackingObject << std::endl;
                 std::vector<int> smallLayoutDurationMultipliers{1};

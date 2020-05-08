@@ -28,6 +28,8 @@ using namespace lightdb::execution;
 static unsigned int NUM_QUERIES = 60;
 static unsigned int WORKLOAD_NUM = 3;
 
+static float WINDOW_FRACTION = 0.5;
+
 static std::unordered_map<std::string, std::pair<unsigned int, unsigned int>> videoToDimensions{
 //        {"traffic-2k-001", {1920, 1080}},
 //        {"car-pov-2k-001-shortened", {1920, 1080}},
@@ -283,7 +285,7 @@ private:
 
 class VRWorkload2Generator : public WorkloadGenerator {
 public:
-    VRWorkload2Generator(const std::string &video, const std::vector<std::string> &objects, unsigned int numberOfQueries, unsigned int duration,
+    VRWorkload2Generator(const std::string &video, const std::vector<std::vector<std::string>> &objects, unsigned int numberOfQueries, unsigned int duration,
             std::default_random_engine *generator, std::unique_ptr<FrameGenerator> startingFrameDistribution)
             : video_(video), objects_(objects), totalNumberOfQueries_(numberOfQueries), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
               generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))
@@ -292,9 +294,16 @@ public:
     }
 
     std::shared_ptr<PixelMetadataSpecification> getNextQuery(unsigned int queryNum, std::string *outQueryObject) override {
-        std::string object = queryNum < totalNumberOfQueries_ / 2 ? objects_[0] : objects_[1];
+        unsigned int index;
+        if (queryNum < totalNumberOfQueries_ / 3)
+            index = 0;
+        else if (queryNum < 2 * totalNumberOfQueries_ / 3)
+            index = 1;
+        else
+            index = 0;
+        std::vector<std::string> objects = objects_[index];
         if (outQueryObject)
-            *outQueryObject = object;
+            *outQueryObject = combineStrings(objects);
 
         int firstFrame, lastFrame;
         std::shared_ptr<PixelMetadataSpecification> selection;
@@ -304,7 +313,7 @@ public:
             lastFrame = firstFrame + numberOfFramesInDuration_;
             selection = std::make_shared<PixelMetadataSpecification>(
                     "labels",
-                    std::make_shared<SingleMetadataElement>("label", object, firstFrame, lastFrame));
+                    MetadataElementForObjects(objects, firstFrame, lastFrame));
             auto metadataManager = std::make_unique<metadata::MetadataManager>(video_, *selection);
             hasObjects = metadataManager->framesForMetadata().size();
         }
@@ -313,7 +322,7 @@ public:
 
 private:
     std::string video_;
-    std::vector<std::string> objects_;
+    std::vector<std::vector<std::string>> objects_;
     unsigned int totalNumberOfQueries_;
     unsigned int numberOfFramesInDuration_;
     std::default_random_engine *generator_;
@@ -422,6 +431,51 @@ private:
     std::uniform_real_distribution<float> probabilityDistribution_;
 };
 
+class VRWorkload6Generator : public WorkloadGenerator {
+public:
+    VRWorkload6Generator(const std::string &video, const std::vector<std::vector<std::string>> &objects, unsigned int duration, std::default_random_engine *generator,
+                         std::unique_ptr<FrameGenerator> startingFrameDistribution)
+            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
+              generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))  //startingFrameDistribution_(0, videoToNumFrames.at(video_) - numberOfFramesInDuration_ - 1)
+    {
+        assert(objects_.size() == 2);
+    }
+
+    std::shared_ptr<PixelMetadataSpecification> getNextQuery(unsigned int queryNum, std::string *outQueryObject = nullptr) override {
+        int firstFrame, lastFrame;
+        std::shared_ptr<PixelMetadataSpecification> selection;
+        bool hasObjects = false;
+        while (!hasObjects) {
+            firstFrame = startingFrameDistribution_->nextFrame(*generator_);
+            lastFrame = firstFrame + numberOfFramesInDuration_;
+
+            // A little less than 50% because queries in the middle are favored towards object 0.
+            auto objects = firstFrame < 0.44 * WINDOW_FRACTION * videoToNumFrames.at(video_) ? objects_[0] : objects_[1];
+
+            auto metadataElement = MetadataElementForObjects(objects, firstFrame, lastFrame);
+
+            selection = std::make_shared<PixelMetadataSpecification>(
+                    "labels",
+                    metadataElement);
+            auto metadataManager = std::make_unique<metadata::MetadataManager>(video_, *selection);
+            hasObjects = metadataManager->framesForMetadata().size();
+
+            if (outQueryObject)
+                *outQueryObject = combineStrings(objects);
+        }
+
+        return selection;
+    }
+
+private:
+    std::string video_;
+    std::vector<std::vector<std::string>> objects_;
+    unsigned int numberOfFramesInDuration_;
+    std::default_random_engine *generator_;
+//    std::uniform_int_distribution<int> startingFrameDistribution_;
+    std::unique_ptr<FrameGenerator> startingFrameDistribution_;
+};
+
 class VRWorkload4Generator : public WorkloadGenerator {
     // objects[0] is the primary query object.
     // objects[1] is the alternate query object.
@@ -473,9 +527,6 @@ enum class Distribution {
     Window,
 };
 
-static Distribution WORKLOAD_DISTRIBUTION = Distribution::Window;
-static float WINDOW_FRACTION = 0.25;
-
 static std::unordered_map<std::string, std::unordered_map<int, std::vector<std::vector<std::string>>>> VideoToWorkloadToObjects {
         {"narrator", {{1, {{"person"}}}, {3, {{"person"}, {"car"}}}}},
         {"market_all", {{1, {{"person"}}}, {3, {{"person"}, {"car"}}}}},
@@ -488,10 +539,10 @@ static std::vector<std::string> GetObjectsForWorkload(unsigned int workloadNum, 
     if (!VideoToWorkloadToObjects.count(video)) {
         if (workloadNum == 1)
             return {"car", "truck", "bus", "motorbike"};
-        else if (workloadNum == 3)
+        else if (workloadNum == 3 || workloadNum == 2 || workloadNum == 6)
             return {"car", "truck", "bus", "motorbike", "person"};
         else if (workloadNum == 5)
-            return {"car", "truck", "bus", "motorbike", "person", "traffic light"};
+            return {"car", "truck", "bus", "motorbike", "person", "traffic_light"};
 
         assert(false);
     }
@@ -510,8 +561,10 @@ static std::vector<std::vector<std::string>> GetObjectSetsForWorkload(unsigned i
     else if (workloadNum == 3)
         return std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"}, {"person"}};
     else if (workloadNum == 5)
-        return std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"}, {"person"}, {"traffic light"}};
+        return std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"}, {"person"}, {"traffic_light"}};
 }
+
+static Distribution WORKLOAD_DISTRIBUTION = Distribution::Window;
 
 static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum, const std::string &video, unsigned int duration,
         std::default_random_engine *generator, Distribution distribution = Distribution::Uniform) {
@@ -521,11 +574,14 @@ static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum,
     std::vector<std::vector<std::string>> workloadObjects;
     if (!VideoToWorkloadToObjects.count(video)) {
         if (workloadNum == 1)
-            workloadObjects = std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"}}
-        else if (workloadNum == 3)
-            workloadObjects = std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"}, {"person"}};
+            workloadObjects = std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"}};
+        else if (workloadNum == 3 || workloadNum == 2 || workloadNum == 6)
+            workloadObjects = std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"},
+                                                                    {"person"}};
         else if (workloadNum == 5)
-            workloadObjects = std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"}, {"person"}, {"traffic light"}};
+            workloadObjects = std::vector<std::vector<std::string>>{{"car", "truck", "bus", "motorbike"},
+                                                                    {"person"},
+                                                                    {"traffic_light"}};
     } else {
         workloadObjects = VideoToWorkloadToObjects.at(video).at(workloadNum);
     }
@@ -549,15 +605,23 @@ static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum,
 
     if (workloadNum == 1) {
         assert(workloadObjects.size() == 1);
-        return std::make_unique<VRWorkload1Generator>(video, workloadObjects.front(), duration, generator, std::move(frameGenerator));
+        return std::make_unique<VRWorkload1Generator>(video, workloadObjects.front(), duration, generator,
+                                                      std::move(frameGenerator));
     } else if (workloadNum == 2) {
-        assert(false);
-//        return std::make_unique<VRWorkload2Generator>(video, objects, NUM_QUERIES, duration, generator, std::move(frameGenerator));
+        return std::make_unique<VRWorkload2Generator>(video, workloadObjects, NUM_QUERIES, duration, generator, std::move(frameGenerator));
     } else if (workloadNum == 3) {
-        return std::make_unique<VRWorkload3Generator>(video, workloadObjects, duration, generator, std::move(frameGenerator));
+        return std::make_unique<VRWorkload3Generator>(video, workloadObjects, duration, generator,
+                                                      std::move(frameGenerator));
     } else if (workloadNum == 4) {
         assert(false);
 //        return std::make_unique<VRWorkload4Generator>(video, objects, NUM_QUERIES, duration, generator, std::move(frameGenerator));
+    } else if (workloadNum == 5) {
+        assert(workloadObjects.size() == 3);
+        return std::make_unique<VRWorkload5Generator>(video, workloadObjects, duration, generator,
+                                                      std::move(frameGenerator));
+    } else if (workloadNum == 6) {
+        assert(workloadObjects.size() == 2);
+        return std::make_unique<VRWorkload6Generator>(video, workloadObjects, duration, generator, std::move(frameGenerator));
     } else {
         assert(false);
     }
@@ -624,8 +688,8 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadNoTiles) {
 //        "river_boat",
     };
 
-    std::vector<int> workloads{3};
-    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf, Distribution::Window}; //
+    std::vector<int> workloads{6};
+    std::vector<Distribution> distributions{Distribution::Window}; // Distribution::Uniform, Distribution::Zipf,
 
 //    std::string object("car");
 
@@ -747,8 +811,8 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundAllDetectedObjects) {
 //            "river_boat",
     };
 
-    std::vector<int> workloads{3}; // 1,
-    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf, Distribution::Window}; //
+    std::vector<int> workloads{6}; // 1,
+    std::vector<Distribution> distributions{Distribution::Window}; // Distribution::Uniform, Distribution::Zipf,
 
 //    unsigned int framerate = 30;
 //    std::string object("car");
@@ -1450,44 +1514,62 @@ private:
 
 class TestRegretAccumulator : public RegretAccumulator {
 public:
-    TestRegretAccumulator(const std::string &video, unsigned int width, unsigned int height, unsigned int gopLength, const std::vector<std::vector<std::string>> &labelsList, double threshold)
-        : threshold_(threshold){
+    TestRegretAccumulator(const std::string &video, unsigned int width, unsigned int height, unsigned int gopLength, double threshold)
+        : video_(video),
+        width_(width),
+        height_(height),
+        gopLength_(gopLength),
+        threshold_(threshold),
+        queryIteration_(0) {
         gopSizeInPixels_ = width * height * gopLength;
         gopTilingCost_ = estimateCostToEncodeGOP(gopSizeInPixels_);
 
-        std::vector<std::string> individualLabels;
-        for (const auto & labels : labelsList) {
-            individualLabels.insert(individualLabels.end(), labels.begin(), labels.end());
-
-            auto metadataElement = MetadataElementForObjects(labels);
-            auto metadataManager = std::make_shared<metadata::MetadataManager>(video,
-                                                                               MetadataSpecification("labels", metadataElement));
-            auto id = combineStrings(labels);
-            labels_.push_back(id);
-            idToConfig_[id] = std::make_shared<tiles::GroupingTileConfigurationProvider>(
-                    gopLength,
-                    metadataManager,
-                    width,
-                    height);
-        }
-        if (labelsList.size() > 1) {
-            auto combinedLabels = combineStrings(individualLabels);
-            auto metadataManager = std::make_shared<metadata::MetadataManager>(video, MetadataSpecification("labels",
-                                                                                                            MetadataElementForObjects(individualLabels)));
-            idToConfig_[combinedLabels] = std::make_shared<tiles::GroupingTileConfigurationProvider>(
-                    gopLength,
-                    metadataManager,
-                    width,
-                    height);
-            labels_.push_back(combinedLabels);
-        }
+//        std::vector<std::string> individualLabels;
+//        for (const auto & labels : labelsList) {
+//            individualLabels.insert(individualLabels.end(), labels.begin(), labels.end());
+//
+//            auto metadataElement = MetadataElementForObjects(labels);
+//            auto metadataManager = std::make_shared<metadata::MetadataManager>(video,
+//                                                                               MetadataSpecification("labels", metadataElement));
+//            auto id = combineStrings(labels);
+//            labels_.push_back(id);
+//            idToConfig_[id] = std::make_shared<tiles::GroupingTileConfigurationProvider>(
+//                    gopLength,
+//                    metadataManager,
+//                    width,
+//                    height);
+//        }
+//        if (labelsList.size() > 1) {
+//            auto combinedLabels = combineStrings(individualLabels);
+//            auto metadataManager = std::make_shared<metadata::MetadataManager>(video, MetadataSpecification("labels",
+//                                                                                                            MetadataElementForObjects(individualLabels)));
+//            idToConfig_[combinedLabels] = std::make_shared<tiles::GroupingTileConfigurationProvider>(
+//                    gopLength,
+//                    metadataManager,
+//                    width,
+//                    height);
+//            labels_.push_back(combinedLabels);
+//        }
     }
 
     void addRegretToGOP(unsigned int gop, double regret, const std::string &layoutIdentifier) override {
-        if (!gopToRegret_[gop][layoutIdentifier])
+        if (!gopToRegret_[gop].count(layoutIdentifier))
             gopToRegret_[gop][layoutIdentifier] = 0;
 
         gopToRegret_[gop][layoutIdentifier] += regret;
+    }
+
+    void addRegretForQuery(std::shared_ptr<Workload> workload,
+            std::shared_ptr<std::unordered_map<unsigned int, CostElements>> baselineCosts) override {
+        queryIteration_ += 1;
+        auto queryObjects = workload->metadataManagerForQuery(0)->metadataSpecification().objects();
+
+        addRegretForHistoricalQueries(queryObjects);
+
+        addRegretForWorkload(queryIteration_, workload, baselineCosts, labels_);
+
+        iterationToWorkload_[queryIteration_] = workload;
+        iterationToBaselineCosts_[queryIteration_] = baselineCosts;
     }
 
     bool shouldRetileGOP(unsigned int gop, std::string &layoutIdentifier) override {
@@ -1512,6 +1594,8 @@ public:
     void resetRegretForGOP(unsigned int gop) override {
         for (auto it = gopToRegret_[gop].begin(); it != gopToRegret_[gop].end(); ++it)
             it->second = 0;
+
+        gopToClearedIteration_[gop] = queryIteration_;
     }
 
     std::shared_ptr<tiles::TileConfigurationProvider> configurationProviderForIdentifier(const std::string &identifier)  override {
@@ -1530,12 +1614,110 @@ private:
         return pixelCoef * gopSizeInPixels_ + pixelIntercept;
     }
 
+    std::shared_ptr<tiles::GroupingTileConfigurationProvider> tileLayoutForObjects(const std::vector<std::string> & objects) {
+        auto metadataManager = std::make_shared<metadata::MetadataManager>(video_,
+                MetadataSpecification("labels", MetadataElementForObjects(objects)));
+        return std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                gopLength_, metadataManager, width_, height_);
+    }
+
+    bool costsAreForGOPsThatHaveNotBeenRetiled(unsigned int iteration, std::shared_ptr<std::unordered_map<unsigned int, CostElements>> baselineCosts) {
+        for (auto it = baselineCosts->begin(); it != baselineCosts->end(); ++it) {
+            auto gop = it->first;
+            // If a GOP hasn't been cleared, it's still relevant.
+            if (!gopToClearedIteration_.count(gop))
+                return true;
+
+            // If a GOP was cleared before this query, it's still relevant.
+            if (gopToClearedIteration_.at(gop) < iteration)
+                return true;
+        }
+        return false;
+    }
+
+    void addRegretForWorkload(unsigned int iteration, std::shared_ptr<Workload> workload, std::shared_ptr<std::unordered_map<unsigned int, CostElements>> baselineCosts, const std::vector<std::string> layouts) {
+        static const double pixelCostWeight = 1.608e-06;
+        static const double tileCostWeight = 1.703e-01;
+        for (const auto &layoutId : layouts) {
+            WorkloadCostEstimator proposedLayoutEstimator(configurationProviderForIdentifier(layoutId), *workload, gopLength_, 0, 0, 0);
+            std::unique_ptr<std::unordered_map<unsigned int, CostElements>> proposedCosts(
+                    new std::unordered_map<unsigned int, CostElements>());
+
+            unsigned int sawMultipleLayouts;
+            proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
+
+            assert(baselineCosts->size() == proposedCosts->size());
+
+            for (auto curIt = baselineCosts->begin(); curIt != baselineCosts->end(); ++curIt) {
+                auto gop = curIt->first;
+                if (gopToClearedIteration_.count(gop) && gopToClearedIteration_.at(gop) >= iteration)
+                    continue;
+
+                auto curCosts = curIt->second;
+                auto possibleCosts = proposedCosts->at(gop);
+                double regret = pixelCostWeight *
+                                (long long int) (curCosts.numPixels - possibleCosts.numPixels) +
+                                tileCostWeight * (int) (curCosts.numTiles - possibleCosts.numTiles);
+                addRegretToGOP(gop, regret, layoutId);
+            }
+        }
+    }
+
+    void addRegretForHistoricalQueries(const std::vector<std::string> &objects) {
+        auto combinedObjects = combineStrings(objects);
+        if (allObjects_.count(combinedObjects))
+            return;
+
+        allObjects_.insert(combinedObjects);
+        singleObjects_.insert(objects.begin(), objects.end());
+
+        // Add a layout for new objects and new combined objects.
+        labels_.push_back(combinedObjects);
+        idToConfig_[combinedObjects] = tileLayoutForObjects(objects);
+        std::vector<std::string> newLayouts{combinedObjects};
+
+        if (labels_.size() > 1) {
+            std::vector<std::string> newAllObjects(singleObjects_.begin(), singleObjects_.end());
+            auto newAllObjectsLabel = combineStrings(newAllObjects);
+            labels_.push_back(newAllObjectsLabel);
+            idToConfig_[newAllObjectsLabel] = tileLayoutForObjects(newAllObjects);
+            newLayouts.push_back(newAllObjectsLabel);
+        }
+
+        // Go through historical queries.
+        // If all GOPs affected by a query have been re-tiled, remove those costs from the dictionary.
+        for (auto i = 1u; i < queryIteration_; ++i) {
+            if (!iterationToWorkload_.count(i))
+                continue;
+
+            if (!costsAreForGOPsThatHaveNotBeenRetiled(i, iterationToBaselineCosts_.at(i))) {
+                iterationToWorkload_.erase(i);
+                iterationToBaselineCosts_.erase(i);
+                continue;
+            }
+
+            auto workload = iterationToWorkload_.at(i);
+            addRegretForWorkload(i, workload, iterationToBaselineCosts_.at(i), newLayouts);
+        }
+    }
+    std::string video_;
+    unsigned int width_;
+    unsigned int height_;
+    unsigned int gopLength_;
+
     double threshold_;
     std::vector<std::string> labels_;
     std::unordered_map<std::string, std::shared_ptr<tiles::TileConfigurationProvider>> idToConfig_;
     long long int gopSizeInPixels_;
     double gopTilingCost_;
     std::unordered_map<unsigned int, std::unordered_map<std::string, double>> gopToRegret_;
+
+    unsigned int queryIteration_;
+    std::unordered_map<unsigned int, unsigned int> gopToClearedIteration_;
+    std::unordered_map<unsigned int, std::shared_ptr<Workload>> iterationToWorkload_;
+    std::unordered_map<unsigned int, std::shared_ptr<std::unordered_map<unsigned int, CostElements>>> iterationToBaselineCosts_;
+    std::unordered_set<std::string> allObjects_;
+    std::unordered_set<std::string> singleObjects_;
 };
 
 TEST_F(UnknownWorkloadTestFixture, testTileAroundMoreObjects) {
@@ -1598,7 +1780,7 @@ TEST_F(UnknownWorkloadTestFixture, testRegretAccumulator) {
     unsigned int height = 1080;
     unsigned int gopLength = 30;
 
-    auto regretACcumulator = std::make_shared<TestRegretAccumulator>(video, width, height, gopLength, objects, 0);
+    auto regretACcumulator = std::make_shared<TestRegretAccumulator>(video, width, height, gopLength, 1);
 
     {
         PixelMetadataSpecification selection("labels", MetadataElementForObjects({"car", "truck"}, 0, 90));
@@ -1624,17 +1806,17 @@ TEST_F(UnknownWorkloadTestFixture, testRegretAccumulator) {
         Coordinator().execute(retileOp);
     }
 
-    {
-        PixelMetadataSpecification selection("labels", MetadataElementForObjects({"person"}, 0, 90));
-        auto retileOp = ScanAndRetile(
-                catalog,
-                selection,
-                30,
-                CrackingStrategy::SmallTiles,
-                RetileStrategy::RetileBasedOnRegret,
-                regretACcumulator);
-        Coordinator().execute(retileOp);
-    }
+//    {
+//        PixelMetadataSpecification selection("labels", MetadataElementForObjects({"person"}, 0, 90));
+//        auto retileOp = ScanAndRetile(
+//                catalog,
+//                selection,
+//                30,
+//                CrackingStrategy::SmallTiles,
+//                RetileStrategy::RetileBasedOnRegret,
+//                regretACcumulator);
+//        Coordinator().execute(retileOp);
+//    }
 }
 
 TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingRegret) {
@@ -1649,9 +1831,9 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
             "traffic-4k-002",
     };
 
-    std::vector<int> workloads{3};
-    std::vector<Distribution> distributions{Distribution::Uniform, Distribution::Zipf, Distribution::Window}; // ,
-    std::vector<double> thresholds = {0, 1};
+    std::vector<int> workloads{6};
+    std::vector<Distribution> distributions{Distribution::Window}; // ,Distribution::Uniform, Distribution::Zipf,
+    std::vector<double> thresholds = {1};
     for (auto threshold : thresholds) {
         std::cout << "Threshold: " << threshold << std::endl;
 
@@ -1668,7 +1850,6 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
                         auto regretAccumulator = std::make_shared<TestRegretAccumulator>(
                                 video,
                                 videoDimensions.first, videoDimensions.second, videoToFramerate.at(video),
-                                GetObjectSetsForWorkload(workloadNum),
                                 threshold);
 
                         std::default_random_engine generator(videoToProbabilitySeed.at(video));
@@ -1714,6 +1895,10 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
                                 Coordinator().execute(retileOp);
                             }
                         }
+
+                        // Delete tiles from previous runs.
+                        DeleteTiles(catalogName);
+                        ResetTileNum(catalogName, 0);
                     }
                 }
             }
@@ -1733,16 +1918,13 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAroundMoreObjects)
             "traffic-4k-002",
     };
 
-    std::unordered_map<int, std::vector<Distribution>> workloadToDistributions{
-            {1, {Distribution::Uniform}},
-            {3, {Distribution::Zipf, Distribution::Window}},
-    };
+    std::vector<int> workloads{6};
+    std::vector<Distribution> distributions{Distribution::Window}; // ,Distribution::Uniform, Distribution::Zipf,
 
-    for (auto it = workloadToDistributions.begin(); it != workloadToDistributions.end(); ++it) {
-        auto workloadNum = it->first;
+    for (auto workloadNum : workloads) {
         std::cout << "Workload " << workloadNum << std::endl;
 
-        for (auto distribution : it->second) {
+        for (auto distribution : distributions) {
             std::cout << "Distribution: " << (int) distribution << std::endl;
             for (const auto &video : videos) {
                 auto videoDimensions = videoToDimensions.at(video);

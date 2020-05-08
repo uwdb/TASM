@@ -23,6 +23,11 @@ namespace lightdb::tiles {
 class TileConfigurationProvider;
 }
 
+namespace lightdb {
+class Workload;
+struct CostElements;
+}
+
 namespace lightdb::physical {
     class MetadataLightField;
     using MetadataLightFieldReference = shared_reference<MetadataLightField, pool::BufferPoolEntry<MetadataLightField>>;
@@ -226,9 +231,12 @@ namespace lightdb::logical {
         std::shared_ptr<const FrameSpecification> frameSpecification_;
     };
 
+
 class RegretAccumulator {
 public:
     virtual void addRegretToGOP(unsigned int gop, double regret, const std::string &layoutIdentifier) = 0;
+    virtual void addRegretForQuery(std::shared_ptr<Workload> workload,
+                                   std::shared_ptr<std::unordered_map<unsigned int, CostElements>> baselineCosts) = 0;
     virtual bool shouldRetileGOP(unsigned int gop, std::string &layoutIdentifier) = 0;
     virtual void resetRegretForGOP(unsigned int gop) = 0;
     virtual std::shared_ptr<tiles::TileConfigurationProvider> configurationProviderForIdentifier(const std::string &identifier) = 0;

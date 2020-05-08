@@ -2,7 +2,7 @@
 
 namespace lightdb{
 
-WorkloadCostEstimator::CostElements WorkloadCostEstimator::estimateCostForQuery(unsigned int queryNum, unsigned int &sawMultipleLayouts, std::unordered_map<unsigned int, CostElements> *costByGOP) {
+CostElements WorkloadCostEstimator::estimateCostForQuery(unsigned int queryNum, unsigned int &sawMultipleLayouts, std::unordered_map<unsigned int, CostElements> *costByGOP) {
     auto metadataManager = workload_.metadataManagerForQuery(queryNum);
     auto start = metadataManager->orderedFramesForMetadata().begin();
     // FIXME: prev() is necessary due to a bug in Select() that caused the last frame to be skipped.
@@ -21,10 +21,10 @@ WorkloadCostEstimator::CostElements WorkloadCostEstimator::estimateCostForQuery(
             costByGOP->emplace(costElements);
     }
 
-    return WorkloadCostEstimator::CostElements(totalNumberOfPixels, totalNumberOfTiles);
+    return CostElements(totalNumberOfPixels, totalNumberOfTiles);
 }
 
-std::pair<int, WorkloadCostEstimator::CostElements> WorkloadCostEstimator::estimateCostForNextGOP(std::vector<int>::const_iterator &currentFrame,
+std::pair<int, CostElements> WorkloadCostEstimator::estimateCostForNextGOP(std::vector<int>::const_iterator &currentFrame,
                                                            std::vector<int>::const_iterator end,
                                                            std::shared_ptr<metadata::MetadataManager> metadataManager,
                                                            unsigned int &sawMultipleLayouts) {

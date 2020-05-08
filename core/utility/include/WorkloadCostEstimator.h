@@ -10,6 +10,11 @@ namespace lightdb {
 
 class Workload {
 public:
+    Workload(const std::string &metadataIdentifier, MetadataSpecification selection)
+        : metadataIdentifier_(metadataIdentifier),
+        selections_{selection},
+        queryCounts_{1} {}
+
     Workload(const std::string &metadataIdentifier,
             const std::vector<MetadataSpecification> &selections,
             const std::vector<unsigned int> &queryCounts):
@@ -35,17 +40,17 @@ private:
     std::vector<unsigned int> queryCounts_;
 };
 
+struct CostElements {
+    CostElements(unsigned long long numPixels, unsigned long long numTiles):
+            numPixels(numPixels),
+            numTiles(numTiles) {}
+
+    unsigned long long numPixels;
+    unsigned long long numTiles;
+};
+
 class WorkloadCostEstimator {
 public:
-    struct CostElements {
-        CostElements(unsigned long long numPixels, unsigned long long numTiles):
-                numPixels(numPixels),
-                numTiles(numTiles) {}
-
-        unsigned long long numPixels;
-        unsigned long long numTiles;
-    };
-
     WorkloadCostEstimator(std::shared_ptr<tiles::TileLayoutProvider> tileLayoutProvider,
         Workload workload,
         unsigned int gopLength,

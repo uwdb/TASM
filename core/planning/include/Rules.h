@@ -80,10 +80,10 @@ namespace lightdb::optimization {
                         WorkloadCostEstimator currentLayoutEstimator(locationProvider, workload, gopLength, 1, 0, 0);
                         WorkloadCostEstimator proposedLayoutEstimator(configProvider, workload, gopLength, 1, 0, 0);
 
-                        std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> currentCosts(
-                                new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
-                        std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> proposedCosts(
-                                new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
+                        std::unique_ptr<std::unordered_map<unsigned int, CostElements>> currentCosts(
+                                new std::unordered_map<unsigned int, CostElements>());
+                        std::unique_ptr<std::unordered_map<unsigned int, CostElements>> proposedCosts(
+                                new std::unordered_map<unsigned int, CostElements>());
 
                         unsigned int sawMultipleLayouts;
                         currentLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, currentCosts.get());
@@ -150,38 +150,39 @@ namespace lightdb::optimization {
                         static const double pixelCostWeight = 1.608e-06;
                         static const double tileCostWeight = 1.703e-01;
                         assert(node.regretAccumulator());
-                        Workload workload(node.metadataManager()->metadataIdentifier(),
-                                          {node.metadataManager()->metadataSpecification()}, {1});
+                        auto workload = std::make_shared<Workload>(node.metadataManager()->metadataIdentifier(),
+                                          node.metadataManager()->metadataSpecification());
                         int gopLength = node.entry()->sources()[0].configuration().framerate.fps();
-                        WorkloadCostEstimator currentLayoutEstimator(locationProvider, workload, gopLength,
+                        WorkloadCostEstimator currentLayoutEstimator(locationProvider, *workload, gopLength,
                                                                      pixelCostWeight, tileCostWeight, 0);
-                        std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> currentCosts(
-                                new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
+                        std::shared_ptr<std::unordered_map<unsigned int, CostElements>> currentCosts(
+                                new std::unordered_map<unsigned int, CostElements>());
 
                         unsigned int sawMultipleLayouts;
                         currentLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, currentCosts.get());
+                        node.regretAccumulator()->addRegretForQuery(workload, currentCosts);
 
-                        for (const auto &layoutId : node.regretAccumulator()->layoutIdentifiers()) {
-                            WorkloadCostEstimator proposedLayoutEstimator(
-                                    node.regretAccumulator()->configurationProviderForIdentifier(layoutId),
-                                    workload, gopLength, pixelCostWeight, tileCostWeight, 0);
-
-                            std::unique_ptr<std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>> proposedCosts(
-                                    new std::unordered_map<unsigned int, WorkloadCostEstimator::CostElements>());
-
-                            proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
-
-                            assert(currentCosts->size() == proposedCosts->size());
-
-                            for (auto curIt = currentCosts->begin(); curIt != currentCosts->end(); ++curIt) {
-                                auto curCosts = curIt->second;
-                                auto possibleCosts = proposedCosts->at(curIt->first);
-                                double regret = pixelCostWeight *
-                                                (long long int) (curCosts.numPixels - possibleCosts.numPixels) +
-                                                tileCostWeight * (int) (curCosts.numTiles - possibleCosts.numTiles);
-                                node.regretAccumulator()->addRegretToGOP(curIt->first, regret, layoutId);
-                            }
-                        }
+//                        for (const auto &layoutId : node.regretAccumulator()->layoutIdentifiers()) {
+//                            WorkloadCostEstimator proposedLayoutEstimator(
+//                                    node.regretAccumulator()->configurationProviderForIdentifier(layoutId),
+//                                    *workload, gopLength, pixelCostWeight, tileCostWeight, 0);
+//
+//                            std::unique_ptr<std::unordered_map<unsigned int, CostElements>> proposedCosts(
+//                                    new std::unordered_map<unsigned int, CostElements>());
+//
+//                            proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
+//
+//                            assert(currentCosts->size() == proposedCosts->size());
+//
+//                            for (auto curIt = currentCosts->begin(); curIt != currentCosts->end(); ++curIt) {
+//                                auto curCosts = curIt->second;
+//                                auto possibleCosts = proposedCosts->at(curIt->first);
+//                                double regret = pixelCostWeight *
+//                                                (long long int) (curCosts.numPixels - possibleCosts.numPixels) +
+//                                                tileCostWeight * (int) (curCosts.numTiles - possibleCosts.numTiles);
+//                                node.regretAccumulator()->addRegretToGOP(curIt->first, regret, layoutId);
+//                            }
+//                        }
 
                         // Find the various layouts to retile to.
                         std::unordered_map<unsigned int, std::string> gopToLayoutId;

@@ -179,7 +179,6 @@ private:
             preprocess();
             timer.endSection("preprocess");
             timer.printAllTimes();
-            sqlTimer_.printAllTimes();
             std::cout << "done" << std::endl;
         }
 
@@ -385,13 +384,16 @@ private:
             // For each tile, find the maximum frame where any object intersects.
             // This could be more efficient by passing that maximum frame to the encoded file reader.
 
+            if (currentTileLayout_->numberOfTiles() == 1) {
+                tileNumberForCurrentLayoutToFrames_[0] = possibleFrames;
+                return possibleFrames.begin();
+            }
+
             for (auto i = 0u; i < currentTileLayout_->numberOfTiles(); ++i) {
                 auto tileRect = currentTileLayout_->rectangleForTile(i);
                 tileNumberForCurrentLayoutToFrames_[i].reserve(possibleFrames.size());
                 for (auto frame = possibleFrames.begin(); frame != possibleFrames.end(); ++frame) {
-                    sqlTimer_.startSection("getframes");
                     auto &rectanglesForFrame = physical().metadataManager()->rectanglesForFrame(*frame);
-                    sqlTimer_.endSection("getframes");
                     bool anyIntersect = std::any_of(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](auto &rectangle) {
                         return tileRect.intersects(rectangle);
                     });
@@ -403,7 +405,7 @@ private:
             return possibleFrames.begin();
         }
 
-        Timer sqlTimer_;
+//        Timer sqlTimer_;
 
         unsigned int tileNumberForCurrentLayout_;
         const std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;

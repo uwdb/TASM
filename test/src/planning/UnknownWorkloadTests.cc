@@ -13,6 +13,7 @@
 #include <climits>
 #include <iostream>
 #include <fstream>
+#include <limits>
 #include <random>
 #include <regex>
 
@@ -25,10 +26,10 @@ using namespace lightdb::optimization;
 using namespace lightdb::catalog;
 using namespace lightdb::execution;
 
-static unsigned int NUM_QUERIES = 60;
+static unsigned int NUM_QUERIES = 200;
 static unsigned int WORKLOAD_NUM = 3;
 
-static float WINDOW_FRACTION = 0.5;
+static float WINDOW_FRACTION = 0.25;
 
 static std::unordered_map<std::string, std::pair<unsigned int, unsigned int>> videoToDimensions{
 //        {"traffic-2k-001", {1920, 1080}},
@@ -46,6 +47,14 @@ static std::unordered_map<std::string, std::pair<unsigned int, unsigned int>> vi
         {"square_with_fountain", {4096, 2160}},
         {"street_night_view", {4096, 2160}},
         {"river_boat", {4096, 2160}},
+        {"Netflix_BoxingPractice", {4096, 2160}},
+        {"Netflix_FoodMarket2", {4096, 2160}},
+        {"seeking", {1920, 1080}},
+        {"tennis", {1920, 1080}},
+        {"birdsincage", {1920, 1080}},
+        {"crowdrun", {1920, 1080}},
+        {"elfuente1", {1920, 1080}},
+        {"elfuente2", {1920, 1080}},
 };
 
 static std::unordered_map<std::string, unsigned int> videoToProbabilitySeed {
@@ -64,6 +73,14 @@ static std::unordered_map<std::string, unsigned int> videoToProbabilitySeed {
         {"square_with_fountain", 3},
         {"street_night_view", 2},
         {"river_boat", 1},
+        {"Netflix_BoxingPractice", 3},
+        {"Netflix_FoodMarket2", 4},
+        {"seeking", 6},
+        {"tennis", 5},
+        {"birdsincage", 3},
+        {"crowdrun", 7},
+        {"elfuente1", 9},
+        {"elfuente2", 9},
 };
 
 static std::unordered_map<std::string, unsigned int> videoToMaxKNNTile {
@@ -97,12 +114,21 @@ std::unordered_map<std::string, std::vector<unsigned int>> videoToQueryDurations
         {"traffic-4k-002-ds2k", {60}},
         {"traffic-4k-000", {60}},
         {"traffic-4k-002", {60}},
-        {"narrator", {2}},
-        {"market_all", {3}},
+        {"narrator", {1}},
+        {"market_all", {1}},
         {"square_with_fountain", {1}},
-        {"street_night_view", {2}},
-        {"river_boat", {3}},
+        {"street_night_view", {1}},
+        {"river_boat", {1}},
+        {"Netflix_BoxingPractice", {1}},
+        {"Netflix_FoodMarket2", {1}},
+        {"seeking", {1}},
+        {"tennis", {1}},
+        {"birdsincage", {1}},
+        {"crowdrun", {1}},
+        {"elfuente1", {1}},
+        {"elfuente2", {1}},
 };
+
 
 std::unordered_map<std::string, unsigned int> videoToNumFrames{
 //        {"traffic-2k-001", 27001},
@@ -120,6 +146,14 @@ std::unordered_map<std::string, unsigned int> videoToNumFrames{
         {"square_with_fountain", 840},
         {"street_night_view", 1380},
         {"river_boat", 2817},
+        {"Netflix_BoxingPractice", 254},
+        {"Netflix_FoodMarket2", 300},
+        {"seeking", 150},
+        {"tennis", 120},
+        {"birdsincage", 180},
+        {"crowdrun", 150},
+        {"elfuente1", 180},
+        {"elfuente2", 180},
 };
 
 std::unordered_map<std::string, unsigned int> videoToFramerate{
@@ -138,6 +172,14 @@ std::unordered_map<std::string, unsigned int> videoToFramerate{
         {"square_with_fountain", 60},
         {"street_night_view", 60},
         {"river_boat", 60},
+        {"Netflix_BoxingPractice", 60},
+        {"Netflix_FoodMarket2", 60},
+        {"seeking", 25},
+        {"tennis", 24},
+        {"birdsincage", 30},
+        {"crowdrun", 25},
+        {"elfuente1", 30},
+        {"elfuente2", 30}
 };
 
 std::unordered_map<std::string, unsigned int> videoToStartForWindow{
@@ -338,11 +380,30 @@ public:
               generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution)),
               probabilityGenerator_(42), probabilityDistribution_(0.0, 1.0)
     {
-        assert(objects_.size() == 2);
+        assert(objects_.size() > 0 && objects_.size() <= 3);
     }
 
     std::shared_ptr<PixelMetadataSpecification> getNextQuery(unsigned int queryNum, std::string *outQueryObject) override {
-        const std::vector<std::string> &objects = probabilityDistribution_(probabilityGenerator_) < 0.5 ? objects_[0] : objects_[1];
+        auto prob = probabilityDistribution_(probabilityGenerator_);
+        unsigned int index;
+
+        if (objects_.size() == 1)
+            index = 0;
+        else if (objects_.size() == 2)
+            index = prob < 0.5 ? 0 : 1;
+        else if (objects_.size() == 3) {
+            if (prob <= 0.33)
+                index = 0;
+            else if (prob >= 0.67)
+                index = 2;
+            else
+                index = 1;
+        } else {
+            assert(false);
+        }
+
+        const std::vector<std::string> &objects = objects_[index];
+
         if (outQueryObject)
             *outQueryObject = combineStrings(objects);
 
@@ -528,12 +589,32 @@ enum class Distribution {
 };
 
 static std::unordered_map<std::string, std::unordered_map<int, std::vector<std::vector<std::string>>>> VideoToWorkloadToObjects {
-        {"narrator", {{1, {{"person"}}}, {3, {{"person"}, {"car"}}}}},
-        {"market_all", {{1, {{"person"}}}, {3, {{"person"}, {"car"}}}}},
-        {"square_with_fountain", {{1, {{"person"}}}, {3, {{"person"}, {"bicycle"}}}}},
-        {"street_night_view", {{1, {{"person"}}}, {3, {{"person"}, {"car"}}}}},
-        {"river_boat", {{1, {{"person"}}}, {3, {{"person"}, {"boat"}}}}}
+        {"narrator", {{1, {{"person"}}}, {3, {{"person"}, {"car"}}},
+                             {7, {{"person"}}},
+                             {8, {{"car"}}}}},
+        {"square_with_fountain", {{1, {{"person"}}}, {3, {{"person"}, {"bicycle"}}},
+                                         {7, {{"person"}}},
+                                         {8, {{"bicycle"}}}}},
+        {"street_night_view", {{1, {{"person"}}}, {3, {{"person"}, {"car"}}},
+                                      {7, {{"person"}}},
+                                      {8, {{"car"}}}}},
+        {"river_boat", {{1, {{"person"}}}, {3, {{"person"}, {"boat"}}}}},
+        {"market_all", {{3, {{"person"}, {"car"}}},
+                               {7, {{"person"}}},
+                               {8, {{"car"}}}}},
+        {"Netflix_BoxingPractice", {{3, {{"person"}}}}},
+        {"Netflix_FoodMarket2", {{3, {{"person"}}}}},
+        {"seeking", {{3, {{"person"}}}}},
+        {"tennis", {{3, {{"person"}, {"sports_ball"}, {"tennis_racket"}}},
+                           {7, {{"person"}}},
+                           {8, {{"sports_ball"}}},
+                           {9, {{"tennis_racket"}}}}},
+        {"birdsincage", {{3, {{"bird"}}}}},
+        {"crowdrun", {{3, {{"person"}}}}},
+        {"elfuente1", {{3, {{"person"}}}}},
+        {"elfuente2", {{3, {{"person"}}}}},
 };
+
 
 static std::vector<std::string> GetObjectsForWorkload(unsigned int workloadNum, const std::string &video) {
     if (!VideoToWorkloadToObjects.count(video)) {
@@ -586,6 +667,7 @@ static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum,
         workloadObjects = VideoToWorkloadToObjects.at(video).at(workloadNum);
     }
 
+    WINDOW_FRACTION = workloadNum == 6 ? 0.5 : 0.25;
 
     std::unique_ptr<FrameGenerator> frameGenerator;
     switch (distribution) {
@@ -622,8 +704,12 @@ static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum,
     } else if (workloadNum == 6) {
         assert(workloadObjects.size() == 2);
         return std::make_unique<VRWorkload6Generator>(video, workloadObjects, duration, generator, std::move(frameGenerator));
+    } else if (workloadNum >= 7 && workloadNum <= 9) {
+        assert(workloadObjects.size() == 1);
+        return std::make_unique<VRWorkload1Generator>(video, workloadObjects.front(), duration, generator,
+                                                      std::move(frameGenerator));
     } else {
-        assert(false);
+            assert(false);
     }
 }
 
@@ -675,31 +761,56 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadNoTiles) {
     std::cout << "\nWorkload-strategy no-tiles" << std::endl;
 
     std::vector<std::string> videos{
-        "traffic-2k-001",
-        "car-pov-2k-000-shortened",
-        "car-pov-2k-001-shortened",
-        "traffic-4k-002-ds2k",
-        "traffic-4k-000",
-        "traffic-4k-002",
-//        "narrator",
-//        "market_all",
+//        "traffic-2k-001",
+//        "car-pov-2k-000-shortened",
+//        "car-pov-2k-001-shortened",
+//        "traffic-4k-002-ds2k",
+//        "traffic-4k-000",
+//        "traffic-4k-002",
 //        "square_with_fountain",
-//        "street_night_view",
 //        "river_boat",
+//        "tennis",
+//        "seeking",
+        "narrator",
+        "market_all",
+        "street_night_view",
+//        "Netflix_BoxingPractice",
+//        "Netflix_FoodMarket2",
+//        "birdsincage",
+//        "crowdrun",
+//        "elfuente1",
+//        "elfuente2",
+//        "square_with_fountain"
     };
 
-    std::vector<int> workloads{6};
-    std::vector<Distribution> distributions{Distribution::Window}; // Distribution::Uniform, Distribution::Zipf,
+//    std::vector<int> workloads{3};
+//    std::vector<Distribution> distributions{Distribution::Uniform}; // , Distribution::Zipf, Distribution::Window
+
+    std::unordered_map<int, std::vector<Distribution>> workloadToDistributions{
+//            {1, {Distribution::Uniform}},
+//            {2, {Distribution::Zipf}},
+//            {3, {Distribution::Zipf, Distribution::Window}},
+//            {5, {Distribution::Zipf}},
+//            {6, {Distribution::Window}},
+            {3, {Distribution::Uniform}},
+            {7, {Distribution::Uniform}},
+            {8, {Distribution::Uniform}},
+//            {9, {Distribution::Uniform}},
+    };
 
 //    std::string object("car");
 
 //    std::default_random_engine generator(7);
-    for (auto workloadNum : workloads) {
+    for (auto it = workloadToDistributions.begin(); it != workloadToDistributions.end(); ++it) {
+        auto workloadNum = it->first;
         std::cout << "Workload " << workloadNum << std::endl;
 
-        for (auto distribution : distributions) {
+        for (auto distribution : it->second) {
             std::cout << "Distribution: " << (int) distribution << std::endl;
             for (const auto &video : videos) {
+                if (workloadNum == 5 && video == "traffic-4k-000")
+                    continue;
+
                 auto workloadObjects = GetObjectsForWorkload(workloadNum, video);
                 std::cout << "Workload-objects " << combineStrings(workloadObjects) << std::endl;
 
@@ -798,39 +909,68 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundAllDetectedObjects) {
     std::cout << "\nWorkload-strategy pre-tile-around-all-objects" << std::endl;
 
     std::vector<std::string> videos{
-            "traffic-2k-001",
-            "car-pov-2k-000-shortened",
-            "car-pov-2k-001-shortened",
-            "traffic-4k-002-ds2k",
-            "traffic-4k-000",
-            "traffic-4k-002",
+//            "traffic-2k-001",
+//            "car-pov-2k-000-shortened",
+//            "car-pov-2k-001-shortened",
+//            "traffic-4k-002-ds2k",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
 //            "narrator",
 //            "market_all",
 //            "square_with_fountain",
 //            "street_night_view",
 //            "river_boat",
+//            "square_with_fountain",
+//            "tennis",
+//            "seeking",
+            "narrator",
+            "market_all",
+            "street_night_view",
+//            "Netflix_BoxingPractice",
+//            "Netflix_FoodMarket2",
+//            "birdsincage",
+//            "crowdrun",
+//            "elfuente1",
+//            "elfuente2",
+//            "square_with_fountain"
     };
 
-    std::vector<int> workloads{6}; // 1,
-    std::vector<Distribution> distributions{Distribution::Window}; // Distribution::Uniform, Distribution::Zipf,
+//    std::vector<int> workloads{3}; // 1,
+//    std::vector<Distribution> distributions{Distribution::Uniform}; // Distribution::Uniform, Distribution::Zipf,
+
+    std::unordered_map<int, std::vector<Distribution>> workloadToDistributions{
+//            {1, {Distribution::Uniform}},
+//            {2, {Distribution::Zipf}},
+//            {3, {Distribution::Zipf, Distribution::Window}},
+//            {5, {Distribution::Zipf}},
+//            {6, {Distribution::Window}},
+            {3, {Distribution::Uniform}},
+            {7, {Distribution::Uniform}},
+            {8, {Distribution::Uniform}},
+//            {9, {Distribution::Uniform}},
+    };
 
 //    unsigned int framerate = 30;
 //    std::string object("car");
 
 //    std::default_random_engine generator(7);
-    for (auto workloadNum : workloads) {
+    for (auto it = workloadToDistributions.begin(); it != workloadToDistributions.end(); ++it) {
+        auto workloadNum = it->first;
         std::cout << "Workload " << workloadNum << std::endl;
 
-        for (auto distribution : distributions) {
+        for (auto distribution : it->second) {
             std::cout << "Distribution: " << (int) distribution << std::endl;
 
             for (const auto &video : videos) {
+                if (workloadNum == 5 && video == "traffic-4k-000")
+                    continue;
+
                 auto workloadObjects = combineStrings(GetObjectsForWorkload(workloadNum, video));
                 std::cout << "Workload-objects " << workloadObjects << std::endl;
 
                 // First, tile around all of the objects in the video.
 //        auto catalogName = tileAroundAllObjects(video);
-                auto catalogName = video + "-cracked-" + "all_objects" + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video)) + "-yolo";
+                auto catalogName = video + "-cracked-" + "all_objects" + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video)); // + "-yolo";
 
                 for (auto duration : videoToQueryDurations.at(video)) {
                     std::default_random_engine generator(videoToProbabilitySeed.at(video));
@@ -942,18 +1082,26 @@ TEST_F(UnknownWorkloadTestFixture, testRetile4k) {
 
 TEST_F(UnknownWorkloadTestFixture, testPrepareForRetiling) {
     std::vector<std::string> videos{
-            "traffic-2k-001",
-            "car-pov-2k-001-shortened",
-            "traffic-4k-000",
-            "traffic-4k-002",
+//            "traffic-2k-001",
+//            "car-pov-2k-001-shortened",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
 //        "car-pov-2k-000-shortened",
-        "traffic-4k-002-ds2k",
+//        "traffic-4k-002-ds2k",
 //        "narrator",
 //        "market_all",
 //        "square_with_fountain",
 //        "street_night_view",
 //        "river_boat",
 //        "birdsincage"
+//        "Netflix_BoxingPractice",
+//        "Netflix_FoodMarket2",
+//        "seeking",
+//        "tennis",
+        "birdsincage",
+        "crowdrun",
+        "elfuente1",
+        "elfuente2"
     };
 
     for (const auto &video : videos) {
@@ -1206,20 +1354,26 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryObjectInEntireVide
 }
 
 TEST_F(UnknownWorkloadTestFixture, testFailureCase) {
-    std::string video("traffic-4k-000");
+    std::string video("Netflix_BoxingPractice");
     std::string catalogName = video + "-cracked";
     DeleteTiles(catalogName);
+    ResetTileNum(catalogName, 0);
 
-    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", "car", 12880, 14680));
-    unsigned int framerate = 30;
-    auto retileStrategy = logical::RetileStrategy::RetileIfDifferent;
-    auto retileOp = ScanAndRetile(
-            catalogName,
-            selection,
-            framerate,
-            CrackingStrategy::SmallTiles,
-            retileStrategy);
-    Coordinator().execute(retileOp);
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", "person", 155, 215));
+
+    std::cout << "Select from tiled" << std::endl;
+    for (int i = 0; i < 3; ++i){
+        auto input = ScanMultiTiled(catalogName, false);
+        Coordinator().execute(input.Select(selection));
+    }
+
+    std::cout << "Select from not tiled" << std::endl;
+    for (int i = 0; i < 3; ++i) {
+        auto input = Scan(video);
+        input.downcast<ScannedLightField>().setWillReadEntireEntry(false);
+        Coordinator().execute(input.Select(selection));
+    }
+
 }
 
 TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryIfLayoutIsVeryDifferent) {
@@ -1524,32 +1678,7 @@ public:
         gopSizeInPixels_ = width * height * gopLength;
         gopTilingCost_ = estimateCostToEncodeGOP(gopSizeInPixels_);
 
-//        std::vector<std::string> individualLabels;
-//        for (const auto & labels : labelsList) {
-//            individualLabels.insert(individualLabels.end(), labels.begin(), labels.end());
-//
-//            auto metadataElement = MetadataElementForObjects(labels);
-//            auto metadataManager = std::make_shared<metadata::MetadataManager>(video,
-//                                                                               MetadataSpecification("labels", metadataElement));
-//            auto id = combineStrings(labels);
-//            labels_.push_back(id);
-//            idToConfig_[id] = std::make_shared<tiles::GroupingTileConfigurationProvider>(
-//                    gopLength,
-//                    metadataManager,
-//                    width,
-//                    height);
-//        }
-//        if (labelsList.size() > 1) {
-//            auto combinedLabels = combineStrings(individualLabels);
-//            auto metadataManager = std::make_shared<metadata::MetadataManager>(video, MetadataSpecification("labels",
-//                                                                                                            MetadataElementForObjects(individualLabels)));
-//            idToConfig_[combinedLabels] = std::make_shared<tiles::GroupingTileConfigurationProvider>(
-//                    gopLength,
-//                    metadataManager,
-//                    width,
-//                    height);
-//            labels_.push_back(combinedLabels);
-//        }
+        noTilesConfiguration_.reset(new tiles::SingleTileConfigurationProvider(width_, height_));
     }
 
     void addRegretToGOP(unsigned int gop, double regret, const std::string &layoutIdentifier) override {
@@ -1584,7 +1713,7 @@ public:
         }
         if (maxRegret > threshold_ * gopTilingCost_) {
             layoutIdentifier = labelWithMaxRegret;
-//            std::cout << "Retile GOP " << gop << " to " << layoutIdentifier << std::endl;
+            std::cout << video_ << ": Retile GOP " << gop << " to " << layoutIdentifier << std::endl;
             return true;
         } else {
             return false;
@@ -1638,12 +1767,18 @@ private:
     void addRegretForWorkload(unsigned int iteration, std::shared_ptr<Workload> workload, std::shared_ptr<std::unordered_map<unsigned int, CostElements>> baselineCosts, const std::vector<std::string> layouts) {
         static const double pixelCostWeight = 1.608e-06;
         static const double tileCostWeight = 1.703e-01;
+
+        unsigned int sawMultipleLayouts;
+
+        WorkloadCostEstimator noTilesLayoutEstimator(noTilesConfiguration_, *workload, gopLength_, 0, 0, 0);
+        std::unique_ptr<std::unordered_map<unsigned int, CostElements>> noTilesCosts(
+                new std::unordered_map<unsigned int, CostElements>());
+        noTilesLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, noTilesCosts.get());
+
         for (const auto &layoutId : layouts) {
-            WorkloadCostEstimator proposedLayoutEstimator(configurationProviderForIdentifier(layoutId), *workload, gopLength_, 0, 0, 0);
+            WorkloadCostEstimator proposedLayoutEstimator(idToConfig_.at(layoutId), *workload, gopLength_, 0, 0, 0);
             std::unique_ptr<std::unordered_map<unsigned int, CostElements>> proposedCosts(
                     new std::unordered_map<unsigned int, CostElements>());
-
-            unsigned int sawMultipleLayouts;
             proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
 
             assert(baselineCosts->size() == proposedCosts->size());
@@ -1658,6 +1793,11 @@ private:
                 double regret = pixelCostWeight *
                                 (long long int) (curCosts.numPixels - possibleCosts.numPixels) +
                                 tileCostWeight * (int) (curCosts.numTiles - possibleCosts.numTiles);
+                if (possibleCosts.numPixels >= 0.8 * noTilesCosts->at(gop).numPixels) {
+                    std::cout << "ALERT: pixel threshold crossed for " << layoutId << std::endl;
+                    regret = std::numeric_limits<double>::lowest();
+                }
+
                 addRegretToGOP(gop, regret, layoutId);
             }
         }
@@ -1718,6 +1858,8 @@ private:
     std::unordered_map<unsigned int, std::shared_ptr<std::unordered_map<unsigned int, CostElements>>> iterationToBaselineCosts_;
     std::unordered_set<std::string> allObjects_;
     std::unordered_set<std::string> singleObjects_;
+
+    std::shared_ptr<tiles::SingleTileConfigurationProvider> noTilesConfiguration_;
 };
 
 TEST_F(UnknownWorkloadTestFixture, testTileAroundMoreObjects) {
@@ -1823,26 +1965,58 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
     std::cout << "\nWorkload-strategy tile-query-duration-if-regret-accumulates" << std::endl;
 
     std::vector<std::string> videos{
-            "traffic-2k-001",
-            "car-pov-2k-000-shortened",
-            "car-pov-2k-001-shortened",
-            "traffic-4k-002-ds2k",
-            "traffic-4k-000",
-            "traffic-4k-002",
+//            "traffic-2k-001",
+//            "car-pov-2k-000-shortened",
+//            "car-pov-2k-001-shortened",
+//            "traffic-4k-002-ds2k",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
+//        "square_with_fountain",
+//        "river_boat",
+
+//            "tennis",
+//            "seeking",
+            "narrator",
+            "market_all",
+            "street_night_view",
+//            "Netflix_BoxingPractice",
+//            "Netflix_FoodMarket2",
+//
+//            "birdsincage",
+//            "crowdrun",
+//            "elfuente1",
+//            "elfuente2",
+//            "square_with_fountain"
     };
 
-    std::vector<int> workloads{6};
-    std::vector<Distribution> distributions{Distribution::Window}; // ,Distribution::Uniform, Distribution::Zipf,
+//    std::vector<int> workloads{3};
+//    std::vector<Distribution> distributions{Distribution::Uniform}; // ,, Distribution::Zipf, Distribution::Window
+    std::unordered_map<int, std::vector<Distribution>> workloadToDistributions{
+//            {1, {Distribution::Uniform}},
+//            {2, {Distribution::Zipf}},
+//            {3, {Distribution::Zipf, Distribution::Window}},
+//            {5, {Distribution::Zipf}},
+//            {6, {Distribution::Window}},
+            {3, {Distribution::Uniform}},
+            {7, {Distribution::Uniform}},
+            {8, {Distribution::Uniform}},
+//            {9, {Distribution::Uniform}},
+    };
+
     std::vector<double> thresholds = {1};
     for (auto threshold : thresholds) {
         std::cout << "Threshold: " << threshold << std::endl;
 
-        for (auto workloadNum : workloads) {
+        for (auto it = workloadToDistributions.begin(); it != workloadToDistributions.end(); ++it) {
+            auto workloadNum = it->first;
             std::cout << "Workload " << workloadNum << std::endl;
 
-            for (auto distribution : distributions) {
+            for (auto distribution : it->second) {
                 std::cout << "Distribution: " << (int) distribution << std::endl;
                 for (const auto &video : videos) {
+                    if (workloadNum == 5 && video == "traffic-4k-000")
+                        continue;
+
                     auto videoDimensions = videoToDimensions.at(video);
                     std::string catalogName = video + "-cracked";
                     for (auto duration : videoToQueryDurations.at(video)) {
@@ -1910,23 +2084,55 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAroundMoreObjects)
     std::cout << "\nWorkload-strategy tile-query-duration-around-more-objects" << std::endl;
 
     std::vector<std::string> videos{
-            "traffic-2k-001",
-            "car-pov-2k-000-shortened",
-            "car-pov-2k-001-shortened",
-            "traffic-4k-002-ds2k",
-            "traffic-4k-000",
-            "traffic-4k-002",
+//            "traffic-2k-001",
+//            "car-pov-2k-000-shortened",
+//            "car-pov-2k-001-shortened",
+//            "traffic-4k-002-ds2k",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
+//        "square_with_fountain",
+//        "river_boat",
+
+//            "tennis",
+//            "seeking",
+            "narrator",
+            "market_all",
+            "street_night_view",
+//            "Netflix_BoxingPractice",
+//            "Netflix_FoodMarket2",
+//
+//            "birdsincage",
+//            "crowdrun",
+//            "elfuente1",
+//            "elfuente2",
+//            "square_with_fountain"
     };
 
-    std::vector<int> workloads{6};
-    std::vector<Distribution> distributions{Distribution::Window}; // ,Distribution::Uniform, Distribution::Zipf,
+//    std::vector<int> workloads{3};
+//    std::vector<Distribution> distributions{Distribution::Uniform}; // ,Distribution::Uniform, Distribution::Zipf,
 
-    for (auto workloadNum : workloads) {
+    std::unordered_map<int, std::vector<Distribution>> workloadToDistributions{
+//            {1, {Distribution::Uniform}},
+//            {2, {Distribution::Zipf}},
+//            {3, {Distribution::Zipf, Distribution::Window}},
+//            {5, {Distribution::Zipf}},
+//            {6, {Distribution::Window}},
+            {3, {Distribution::Uniform}},
+            {7, {Distribution::Uniform}},
+            {8, {Distribution::Uniform}},
+//            {9, {Distribution::Uniform}},
+    };
+
+    for (auto it = workloadToDistributions.begin(); it != workloadToDistributions.end(); ++it) {
+        auto workloadNum = it->first;
         std::cout << "Workload " << workloadNum << std::endl;
 
-        for (auto distribution : distributions) {
+        for (auto distribution : it->second) {
             std::cout << "Distribution: " << (int) distribution << std::endl;
             for (const auto &video : videos) {
+                if (workloadNum == 5 && video == "traffic-4k-000")
+                    continue;
+
                 auto videoDimensions = videoToDimensions.at(video);
                 std::string catalogName = video + "-cracked";
                 for (auto duration : videoToQueryDurations.at(video)) {

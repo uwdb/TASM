@@ -634,34 +634,37 @@ TEST_F(VisitorTestFixture, testScanAndSaveMultiple) {
 //        "street_night_view",
 //        "traffic-2k-001",
 //        "traffic-4k-002"
-            "birdsincage",
+//            "birdsincage",
             "crowdrun",
-            "elfuente1",
-            "elfuente2",
-            "oldtown",
-            "seeking",
-            "tennis",
-            "red_kayak",
-            "touchdown_pass",
-            "park_joy_2k",
-            "park_joy_4k",
-            "Netflix_ToddlerFountain",
-            "Netflix_Narrator",
-            "Netflix_FoodMarket",
-            "Netflix_FoodMarket2",
-            "Netflix_DrivingPOV",
-            "Netflix_BoxingPractice",
+//            "elfuente1",
+//            "elfuente2",
+//            "oldtown",
+//            "seeking",
+//            "tennis",
+//            "red_kayak",
+//            "touchdown_pass",
+//            "park_joy_2k",
+//            "park_joy_4k",
+//            "Netflix_ToddlerFountain",
+//            "Netflix_Narrator",
+//            "Netflix_FoodMarket",
+//            "Netflix_FoodMarket2",
+//            "Netflix_DrivingPOV",
+//            "Netflix_BoxingPractice",
     };
+
 
     for (auto i = 0u; i < videos.size(); ++i)
     {
         std::string &video = videos[i];
         std::cout << "\nVideo " << video << std::endl;
-        auto videoPath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/" + video + "/1-0-stream.mp4";
+        auto videoPath = "/home/maureen/NFLX_dataset/CrowdRun_hevc.mp4";
         auto input = Load(
                 videoPath,
                 Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-        Coordinator().execute(input.Store(video + "_2"));
+        Coordinator().execute(input.Encode(
+            Codec::hevc(), {{EncodeOptions::GOPSize, videoToFramerate.at(video)}}
+        ).Store(video));
     }
 }
 
@@ -792,10 +795,10 @@ TEST_F(VisitorTestFixture, testCrackBasedOnAllDetections) {
 
 TEST_F(VisitorTestFixture, testCrackAroundAllObjects) {
     std::vector<std::string> videos{
-//        "birdsincage",
-//        "crowdrun",
-//        "elfuente1",
-//        "elfuente2",
+        "birdsincage",
+        "crowdrun",
+        "elfuente1",
+        "elfuente2",
 //        "oldtown",
 //        "seeking",
 //        "tennis",
@@ -816,17 +819,25 @@ TEST_F(VisitorTestFixture, testCrackAroundAllObjects) {
 //        "Netflix_DrivingPOV",
 //        "Netflix_BoxingPractice",
 //        "traffic-2k-001",
-        "car-pov-2k-000-shortened",
-        "car-pov-2k-001-shortened",
-        "traffic-4k-002-ds2k",
-        "traffic-4k-000",
-        "traffic-4k-002",
+//        "car-pov-2k-000-shortened",
+//        "car-pov-2k-001-shortened",
+//        "traffic-4k-002-ds2k",
+//        "traffic-4k-000",
+//        "traffic-4k-002",
+//            "tennis",
+//            "seeking",
+//            "narrator",
+//            "market_all",
+        "square_with_fountain",
+//            "street_night_view",
+//            "Netflix_BoxingPractice",
+//            "Netflix_FoodMarket2",
     };
 
-    std::string crackingObject("all_objects_every5");
+    std::string crackingObject("all_objects");
     for (const auto &video : videos) {
         unsigned int baseFramerate = videoToFramerate.at(video);
-        auto metadataElement = std::make_shared<AllMetadataElement>(5);
+        auto metadataElement = std::make_shared<AllMetadataElement>();
         MetadataSpecification metadataSpecification("labels", metadataElement);
         std::vector<int> smallTileDurations{1};
         for (const auto &durationMultiplier : smallTileDurations) {

@@ -678,7 +678,7 @@ namespace lightdb::optimization {
                         metadataManager,
                         tileLocationProvider,
                         node.shouldReadEntireGOPs());
-                bool isDecodingDifferentSizes = !multiTiledLightField.usesOnlyOneTile();
+                bool isDecodingDifferentSizes = !multiTiledLightField.usesOnlyOneTile() && !tileLayoutsManager->hasASingleTile();
                 auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, isDecodingDifferentSizes, tileLayoutsManager->largestWidth(), tileLayoutsManager->largestHeight());
 
                 // TODO: Should we place the cracking operator in between decode and merge?

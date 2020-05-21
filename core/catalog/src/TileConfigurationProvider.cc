@@ -16,6 +16,8 @@ void TileLayoutsManager::loadAllTileConfigurations() {
     std::vector<IntervalEntry<unsigned int>> directoryIntervals;
     unsigned int lowerBound = INT32_MAX;
     unsigned int upperBound = 0;
+
+    hasASingleTile_ = true;
     for (auto &dir : std::filesystem::directory_iterator(catalogEntryPath)) {
         if (!dir.is_directory())
             continue;
@@ -26,6 +28,9 @@ void TileLayoutsManager::loadAllTileConfigurations() {
         auto firstAndLastFrame = catalog::TileFiles::firstAndLastFramesFromPath(tileDirectoryPath);
         auto tileVersion = catalog::TileFiles::tileVersionFromPath(tileDirectoryPath);
         dirId = tileVersion;
+        if (hasASingleTile_ && dirId)
+            hasASingleTile_ = false;
+
         directoryIntervals.emplace_back(firstAndLastFrame.first, firstAndLastFrame.second, dirId);
         if (firstAndLastFrame.second > maximumFrame_)
             maximumFrame_ = firstAndLastFrame.second;
@@ -35,6 +40,9 @@ void TileLayoutsManager::loadAllTileConfigurations() {
 
         // Find the tile-metadata file in this directory, and load the tile layout from it.
         TileLayout tileLayout = video::gpac::load_tile_configuration(catalog::TileFiles::tileMetadataFilename(tileDirectoryPath));
+
+        if (hasASingleTile_ && tileLayout.numberOfTiles() > 1)
+            hasASingleTile_ = false;
 
         // All of the layouts should have the same total width and total height.
         if (!totalWidth_) {

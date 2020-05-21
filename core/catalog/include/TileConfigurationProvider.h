@@ -314,7 +314,8 @@ public:
         totalHeight_(0),
         largestWidth_(0),
         largestHeight_(0),
-        maximumFrame_(0)
+        maximumFrame_(0),
+        hasASingleTile_(false)
     {
         loadAllTileConfigurations();
     }
@@ -334,6 +335,8 @@ public:
     unsigned int largestHeight() const { return largestHeight_; }
 
     unsigned int maximumFrame() const { return maximumFrame_; }
+
+    bool hasASingleTile() const { return hasASingleTile_; }
 
 private:
     void loadAllTileConfigurations();
@@ -360,6 +363,7 @@ private:
     unsigned int largestWidth_;
     unsigned int largestHeight_;
     unsigned int maximumFrame_;
+    bool hasASingleTile_;
 };
 
 class TileLocationProvider : public TileLayoutProvider {

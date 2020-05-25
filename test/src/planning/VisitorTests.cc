@@ -635,10 +635,10 @@ TEST_F(VisitorTestFixture, testScanAndSaveMultiple) {
 //        "traffic-2k-001",
 //        "traffic-4k-002"
 //            "birdsincage",
-            "crowdrun",
+//            "crowdrun",
 //            "elfuente1",
 //            "elfuente2",
-//            "oldtown",
+            "oldtown",
 //            "seeking",
 //            "tennis",
 //            "red_kayak",
@@ -658,7 +658,7 @@ TEST_F(VisitorTestFixture, testScanAndSaveMultiple) {
     {
         std::string &video = videos[i];
         std::cout << "\nVideo " << video << std::endl;
-        auto videoPath = "/home/maureen/NFLX_dataset/CrowdRun_hevc.mp4";
+        auto videoPath = "/home/maureen/NFLX_dataset/OldTownCross_hevc.mp4";
         auto input = Load(
                 videoPath,
                 Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
@@ -794,29 +794,33 @@ TEST_F(VisitorTestFixture, testCrackBasedOnAllDetections) {
 }
 
 TEST_F(VisitorTestFixture, testCrackAroundAllObjects) {
+//    river_boat, oldtown, red_kayak, touchdown_pass, park_joy_2k, park_joy_4k,
+//            Netflix_ToddlerFountain, Netflix_Narrator, Netflix_FoodMarket, Netflix_DrivingPOV
+
+
     std::vector<std::string> videos{
-        "birdsincage",
-        "crowdrun",
-        "elfuente1",
-        "elfuente2",
-//        "oldtown",
+//        "birdsincage",
+//        "crowdrun",
+//        "elfuente1",
+//        "elfuente2",
+        "oldtown",
 //        "seeking",
 //        "tennis",
 //        "narrator",
 //        "market_all",
 //        "square_with_fountain",
-//        "river_boat",
+        "river_boat",
 //        "street_night_view",
 ////        "elfuente_full",
-//        "red_kayak",
-//        "touchdown_pass",
-//        "park_joy_2k",
-//        "park_joy_4k",
-//        "Netflix_ToddlerFountain",
-//        "Netflix_Narrator",
-//        "Netflix_FoodMarket",
+        "red_kayak",
+        "touchdown_pass",
+        "park_joy_2k",
+        "park_joy_4k",
+        "Netflix_ToddlerFountain",
+        "Netflix_Narrator",
+        "Netflix_FoodMarket",
 //        "Netflix_FoodMarket2",
-//        "Netflix_DrivingPOV",
+        "Netflix_DrivingPOV",
 //        "Netflix_BoxingPractice",
 //        "traffic-2k-001",
 //        "car-pov-2k-000-shortened",
@@ -828,7 +832,7 @@ TEST_F(VisitorTestFixture, testCrackAroundAllObjects) {
 //            "seeking",
 //            "narrator",
 //            "market_all",
-        "square_with_fountain",
+//        "square_with_fountain",
 //            "street_night_view",
 //            "Netflix_BoxingPractice",
 //            "Netflix_FoodMarket2",
@@ -844,7 +848,7 @@ TEST_F(VisitorTestFixture, testCrackAroundAllObjects) {
             int duration = baseFramerate * durationMultiplier;
             auto input = Scan(video);
             std::string savedName =
-                    video + "-cracked-" + crackingObject + "-smalltiles-duration" + std::to_string(duration);
+                    video + "-cracked-" + crackingObject + "-smalltiles-duration" + std::to_string(duration) + "_2";
             std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
             std::cout << "Video " << video << "\nCracking-object " << crackingObject << std::endl;
             std::cout << "Tile-strategy small-dur-" << duration << std::endl;
@@ -893,29 +897,37 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
 //    };
 
     std::vector<std::string> videos {
-        "traffic-2k-001",
-        "car-pov-2k-000-shortened",
-        "car-pov-2k-001-shortened",
-        "traffic-4k-002-ds2k",
+//        "traffic-2k-001",
+//        "car-pov-2k-000-shortened",
+//        "car-pov-2k-001-shortened",
+//        "traffic-4k-002-ds2k",
 //        "traffic-4k-000",
 //        "traffic-4k-002",
-//        "Netflix_BoxingPractice",
-//        "Netflix_DrivingPOV",
-//        "Netflix_FoodMarket",
-//        "Netflix_FoodMarket2",
-//        "Netflix_ToddlerFountain",
-//        "park_joy_2k",
-//        "park_joy_4k",
-//        "red_kayak",
-//        "touchdown_pass",
-//        "market_all",
-//        "narrator",
-//        "river_boat",
-//        "square_with_fountain",
-//        "street_night_view",
+        "Netflix_BoxingPractice",
+        "Netflix_DrivingPOV",
+        "Netflix_FoodMarket",
+        "Netflix_FoodMarket2",
+        "Netflix_Narrator",
+        "Netflix_ToddlerFountain",
+        "park_joy_2k",
+        "park_joy_4k",
+        "red_kayak",
+        "touchdown_pass",
+        "market_all",
+        "narrator",
+        "river_boat",
+        "square_with_fountain",
+        "street_night_view",
+        "birdsincage",
+        "crowdrun",
+        "elfuente1",
+        "elfuente2",
+        "oldtown",
+        "seeking",
+        "tennis",
     };
 
-    std::vector<std::vector<std::string>> objectsToTileAround{{"car", "truck", "bus", "motorbike", "person", "traffic light"}};
+    std::vector<std::vector<std::string>> objectsToTileAround{{"KNN"}};
 
     for (const auto &video : videos) {
         for (const auto &crackingObjects : objectsToTileAround) {
@@ -944,7 +956,7 @@ TEST_F(VisitorTestFixture, testCrackManyBasedOnMetadata) {
                                    : "grouping-extent";
 
             std::string savedName =
-                    video + "-cracked-" + crackingObject + "-" + tileSize + "-duration" + std::to_string(duration);
+                    video + "-cracked-" + crackingObject + "-" + tileSize + "-duration" + std::to_string(duration) + "_2";
             std::cout << "*** Cracking " << video << ", " << duration << " to " << savedName << std::endl;
             std::cout << "Video " << video << "\nCracking-object " << crackingObject << std::endl;
             std::cout << "Tile-strategy small-dur-" << duration << std::endl;

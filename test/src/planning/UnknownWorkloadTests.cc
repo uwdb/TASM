@@ -55,6 +55,15 @@ static std::unordered_map<std::string, std::pair<unsigned int, unsigned int>> vi
         {"crowdrun", {1920, 1080}},
         {"elfuente1", {1920, 1080}},
         {"elfuente2", {1920, 1080}},
+        {"oldtown", {1920, 1080}},
+        {"red_kayak", {1920, 1080}},
+        {"touchdown_pass", {1920, 1080}},
+        {"park_joy_2k", {1920, 1080}},
+        {"park_joy_4k", {3840, 2160}},
+        {"Netflix_ToddlerFountain", {4096, 2160}},
+        {"Netflix_Narrator", {4096, 2160}},
+        {"Netflix_FoodMarket", {4096, 2160}},
+        {"Netflix_DrivingPOV", {4096, 2160}},
 };
 
 static std::unordered_map<std::string, unsigned int> videoToProbabilitySeed {
@@ -81,6 +90,15 @@ static std::unordered_map<std::string, unsigned int> videoToProbabilitySeed {
         {"crowdrun", 7},
         {"elfuente1", 9},
         {"elfuente2", 9},
+        {"oldtown", 1},
+        {"red_kayak", 1},
+        {"touchdown_pass", 1},
+        {"park_joy_2k", 1},
+        {"park_joy_4k", 1},
+        {"Netflix_ToddlerFountain", 1},
+        {"Netflix_Narrator", 1},
+        {"Netflix_FoodMarket", 1},
+        {"Netflix_DrivingPOV", 1},
 };
 
 static std::unordered_map<std::string, unsigned int> videoToMaxKNNTile {
@@ -88,6 +106,57 @@ static std::unordered_map<std::string, unsigned int> videoToMaxKNNTile {
         {"car-pov-2k-001-shortened", 283},
         {"traffic-4k-000", 683},
         {"traffic-4k-002", 883},
+        {"street_night_view", 7},
+        {"square_with_fountain", 5},
+        {"river_boat", 4},
+        {"market_all", 6},
+        {"narrator", 0},
+        {"birdsincage", 5},
+        {"crowdrun", 2},
+        {"elfuente1", 2},
+        {"elfuente2", 2},
+        {"oldtown", 4},
+        {"tennis", 2},
+        {"seeking", 0},
+        {"red_kayak", 0},
+        {"touchdown_pass", 3},
+        {"park_joy_2k", 0},
+        {"park_joy_4k", 0},
+        {"Netflix_ToddlerFountain", 0},
+        {"Netflix_Narrator", 2},
+        {"Netflix_FoodMarket", 0},
+        {"Netflix_FoodMarket2", 2},
+        {"Netflix_DrivingPOV", 2},
+        {"Netflix_BoxingPractice", 2},
+};
+
+static std::unordered_map<std::string, unsigned int> videoToMaxAllObjTile {
+        {"traffic-2k-001", 0},
+        {"car-pov-2k-001-shortened", 0},
+        {"traffic-4k-000", 0},
+        {"traffic-4k-002", 0},
+        {"street_night_view", 19},
+        {"square_with_fountain", 8},
+        {"river_boat", 28},
+        {"market_all", 37},
+        {"narrator", 20},
+        {"birdsincage", 2},
+        {"crowdrun", 1},
+        {"elfuente1", 0},
+        {"elfuente2", 5},
+        {"oldtown", 5},
+        {"tennis", 3},
+        {"seeking", 2},
+        {"red_kayak", 16},
+        {"touchdown_pass", 18},
+        {"park_joy_2k", 8},
+        {"park_joy_4k", 9},
+        {"Netflix_ToddlerFountain", 19},
+        {"Netflix_Narrator", 4},
+        {"Netflix_FoodMarket", 9},
+        {"Netflix_FoodMarket2", 4},
+        {"Netflix_DrivingPOV", 18},
+        {"Netflix_BoxingPractice", 4},
 };
 
 class UnknownWorkloadTestFixture : public testing::Test {
@@ -127,6 +196,15 @@ std::unordered_map<std::string, std::vector<unsigned int>> videoToQueryDurations
         {"crowdrun", {1}},
         {"elfuente1", {1}},
         {"elfuente2", {1}},
+        {"oldtown", {1}},
+        {"red_kayak", {1}},
+        {"touchdown_pass", {1}},
+        {"park_joy_2k", {1}},
+        {"park_joy_4k", {1}},
+        {"Netflix_ToddlerFountain", {1}},
+        {"Netflix_Narrator", {1}},
+        {"Netflix_FoodMarket", {1}},
+        {"Netflix_DrivingPOV", {1}}
 };
 
 
@@ -154,6 +232,15 @@ std::unordered_map<std::string, unsigned int> videoToNumFrames{
         {"crowdrun", 150},
         {"elfuente1", 180},
         {"elfuente2", 180},
+        {"oldtown", 150},
+        {"red_kayak", 571},
+        {"touchdown_pass", 571},
+        {"park_joy_2k", 500},
+        {"park_joy_4k", 500},
+        {"Netflix_ToddlerFountain", 1199},
+        {"Netflix_Narrator", 300},
+        {"Netflix_FoodMarket", 600},
+        {"Netflix_DrivingPOV", 1199},
 };
 
 std::unordered_map<std::string, unsigned int> videoToFramerate{
@@ -179,7 +266,16 @@ std::unordered_map<std::string, unsigned int> videoToFramerate{
         {"birdsincage", 30},
         {"crowdrun", 25},
         {"elfuente1", 30},
-        {"elfuente2", 30}
+        {"elfuente2", 30},
+        {"oldtown", 25},
+        {"red_kayak", 30},
+        {"touchdown_pass", 30},
+        {"park_joy_2k", 50},
+        {"park_joy_4k", 50},
+        {"Netflix_ToddlerFountain", 60},
+        {"Netflix_Narrator", 60},
+        {"Netflix_FoodMarket", 60},
+        {"Netflix_DrivingPOV", 60},
 };
 
 std::unordered_map<std::string, unsigned int> videoToStartForWindow{
@@ -613,6 +709,15 @@ static std::unordered_map<std::string, std::unordered_map<int, std::vector<std::
         {"crowdrun", {{3, {{"person"}}}}},
         {"elfuente1", {{3, {{"person"}}}}},
         {"elfuente2", {{3, {{"person"}}}}},
+        {"oldtown", {{3, {{"car"}}}}},
+        {"red_kayak", {{3, {{"boat", "surfboard"}}}}},
+        {"touchdown_pass", {{3, {{"person"}}}}},
+        {"park_joy_2k", {{3, {{"person"}}}}},
+        {"park_joy_4k", {{3, {{"person"}}}}},
+        {"Netflix_ToddlerFountain", {{3, {{"person"}}}}},
+        {"Netflix_Narrator", {{3, {{"person"}}}}},
+        {"Netflix_FoodMarket", {{3, {{"person"}}}}},
+        {"Netflix_DrivingPOV", {{3, {{"car", "truck"}}}}},
 };
 
 
@@ -767,20 +872,28 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadNoTiles) {
 //        "traffic-4k-002-ds2k",
 //        "traffic-4k-000",
 //        "traffic-4k-002",
-//        "square_with_fountain",
-//        "river_boat",
-//        "tennis",
-//        "seeking",
-        "narrator",
-        "market_all",
         "street_night_view",
-//        "Netflix_BoxingPractice",
-//        "Netflix_FoodMarket2",
-//        "birdsincage",
-//        "crowdrun",
-//        "elfuente1",
-//        "elfuente2",
-//        "square_with_fountain"
+        "square_with_fountain",
+        "river_boat",
+        "market_all",
+        "narrator",
+        "birdsincage",
+        "crowdrun",
+        "elfuente1",
+        "elfuente2",
+        "oldtown",
+        "tennis",
+        "seeking",
+        "red_kayak",
+        "touchdown_pass",
+        "park_joy_2k",
+        "park_joy_4k",
+        "Netflix_ToddlerFountain",
+        "Netflix_Narrator",
+        "Netflix_FoodMarket",
+        "Netflix_FoodMarket2",
+        "Netflix_DrivingPOV",
+        "Netflix_BoxingPractice",
     };
 
 //    std::vector<int> workloads{3};
@@ -793,8 +906,8 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadNoTiles) {
 //            {5, {Distribution::Zipf}},
 //            {6, {Distribution::Window}},
             {3, {Distribution::Uniform}},
-            {7, {Distribution::Uniform}},
-            {8, {Distribution::Uniform}},
+//            {7, {Distribution::Uniform}},
+//            {8, {Distribution::Uniform}},
 //            {9, {Distribution::Uniform}},
     };
 
@@ -923,9 +1036,9 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundAllDetectedObjects) {
 //            "square_with_fountain",
 //            "tennis",
 //            "seeking",
-            "narrator",
-            "market_all",
-            "street_night_view",
+//            "narrator",
+//            "market_all",
+//            "street_night_view",
 //            "Netflix_BoxingPractice",
 //            "Netflix_FoodMarket2",
 //            "birdsincage",
@@ -933,6 +1046,29 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundAllDetectedObjects) {
 //            "elfuente1",
 //            "elfuente2",
 //            "square_with_fountain"
+
+//            "street_night_view",
+//            "square_with_fountain",
+//            "river_boat",
+//            "market_all",
+//            "narrator",
+//            "birdsincage",
+//            "crowdrun",
+//            "elfuente1",
+//            "elfuente2",
+            "oldtown",
+            "tennis",
+            "seeking",
+            "red_kayak",
+            "touchdown_pass",
+            "park_joy_2k",
+            "park_joy_4k",
+            "Netflix_ToddlerFountain",
+            "Netflix_Narrator",
+            "Netflix_FoodMarket",
+            "Netflix_FoodMarket2",
+            "Netflix_DrivingPOV",
+            "Netflix_BoxingPractice",
     };
 
 //    std::vector<int> workloads{3}; // 1,
@@ -945,8 +1081,8 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundAllDetectedObjects) {
 //            {5, {Distribution::Zipf}},
 //            {6, {Distribution::Window}},
             {3, {Distribution::Uniform}},
-            {7, {Distribution::Uniform}},
-            {8, {Distribution::Uniform}},
+//            {7, {Distribution::Uniform}},
+//            {8, {Distribution::Uniform}},
 //            {9, {Distribution::Uniform}},
     };
 
@@ -971,6 +1107,123 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundAllDetectedObjects) {
                 // First, tile around all of the objects in the video.
 //        auto catalogName = tileAroundAllObjects(video);
                 auto catalogName = video + "-cracked-" + "all_objects" + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video)); // + "-yolo";
+
+                for (auto duration : videoToQueryDurations.at(video)) {
+                    std::default_random_engine generator(videoToProbabilitySeed.at(video));
+//            VRWorkload4Generator queryGenerator(video, {"car", "pedestrian"}, NUM_QUERIES, duration, &generator);
+                    auto queryGenerator = GetGenerator(workloadNum, video, duration, &generator, distribution);
+
+                    for (auto i = 0u; i < NUM_QUERIES; ++i) {
+                        std::string object;
+                        auto selection = queryGenerator->getNextQuery(i, &object);
+
+                        std::cout << "Video " << video << std::endl;
+                        std::cout << "Cracking-object " << "all_objects" << std::endl;
+                        std::cout << "Tile-strategy small-dur-30" << std::endl;
+                        std::cout << "Query-object " << object << std::endl;
+                        std::cout << "Uses-only-one-tile 0" << std::endl;
+                        std::cout << "Selection-duration " << duration << std::endl;
+                        std::cout << "Iteration " << i << std::endl;
+                        std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                        std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                        auto input = ScanMultiTiled(catalogName, false);
+                        Coordinator().execute(input.Select(*selection));
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundKNNDetections) {
+    std::cout << "\nWorkload-strategy pre-tile-around-KNN-detections" << std::endl;
+
+    std::vector<std::string> videos{
+//            "traffic-2k-001",
+//            "car-pov-2k-000-shortened",
+//            "car-pov-2k-001-shortened",
+//            "traffic-4k-002-ds2k",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
+//            "narrator",
+//            "market_all",
+//            "square_with_fountain",
+//            "street_night_view",
+//            "river_boat",
+//            "square_with_fountain",
+//            "tennis",
+//            "seeking",
+//            "narrator",
+//            "market_all",
+//            "street_night_view",
+//            "Netflix_BoxingPractice",
+//            "Netflix_FoodMarket2",
+//            "birdsincage",
+//            "crowdrun",
+//            "elfuente1",
+//            "elfuente2",
+//            "square_with_fountain"
+//
+//            "street_night_view",
+//            "square_with_fountain",
+//            "river_boat",
+//            "market_all",
+//            "narrator",
+//            "birdsincage",
+//            "crowdrun",
+//            "elfuente1",
+//            "elfuente2",
+//            "oldtown",
+//            "tennis",
+//            "seeking",
+//            "red_kayak",
+//            "touchdown_pass",
+//            "park_joy_2k",
+//            "park_joy_4k",
+//            "Netflix_ToddlerFountain",
+            "Netflix_Narrator",
+            "Netflix_FoodMarket",
+            "Netflix_FoodMarket2",
+            "Netflix_DrivingPOV",
+            "Netflix_BoxingPractice",
+    };
+
+//    std::vector<int> workloads{3}; // 1,
+//    std::vector<Distribution> distributions{Distribution::Uniform}; // Distribution::Uniform, Distribution::Zipf,
+
+    std::unordered_map<int, std::vector<Distribution>> workloadToDistributions{
+//            {1, {Distribution::Uniform}},
+//            {2, {Distribution::Zipf}},
+//            {3, {Distribution::Zipf, Distribution::Window}},
+//            {5, {Distribution::Zipf}},
+//            {6, {Distribution::Window}},
+            {3, {Distribution::Uniform}},
+//            {7, {Distribution::Uniform}},
+//            {8, {Distribution::Uniform}},
+//            {9, {Distribution::Uniform}},
+    };
+
+//    unsigned int framerate = 30;
+//    std::string object("car");
+
+//    std::default_random_engine generator(7);
+    for (auto it = workloadToDistributions.begin(); it != workloadToDistributions.end(); ++it) {
+        auto workloadNum = it->first;
+        std::cout << "Workload " << workloadNum << std::endl;
+
+        for (auto distribution : it->second) {
+            std::cout << "Distribution: " << (int) distribution << std::endl;
+
+            for (const auto &video : videos) {
+                if (workloadNum == 5 && video == "traffic-4k-000")
+                    continue;
+
+                auto workloadObjects = combineStrings(GetObjectsForWorkload(workloadNum, video));
+                std::cout << "Workload-objects " << workloadObjects << std::endl;
+
+                // First, tile around all of the objects in the video.
+//        auto catalogName = tileAroundAllObjects(video);
+                auto catalogName = video + "-cracked-" + "KNN" + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video)); // + "-yolo";
 
                 for (auto duration : videoToQueryDurations.at(video)) {
                     std::default_random_engine generator(videoToProbabilitySeed.at(video));
@@ -2073,6 +2326,292 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
                         // Delete tiles from previous runs.
                         DeleteTiles(catalogName);
                         ResetTileNum(catalogName, 0);
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingRegretStartWithKNN) {
+    std::cout << "\nWorkload-strategy start-with-KNN-tile-query-duration-if-regret-accumulates" << std::endl;
+
+    std::vector<std::string> videos{
+//            "traffic-2k-001",
+//            "car-pov-2k-000-shortened",
+//            "car-pov-2k-001-shortened",
+//            "traffic-4k-002-ds2k",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
+//        "square_with_fountain",
+//        "river_boat",
+
+//            "tennis",
+//            "seeking",
+//            "narrator",
+//            "market_all",
+//            "street_night_view",
+//            "Netflix_BoxingPractice",
+//            "Netflix_FoodMarket2",
+//
+//            "birdsincage",
+//            "crowdrun",
+//            "elfuente1",
+//            "elfuente2",
+//            "square_with_fountain"
+
+//            "street_night_view",
+//            "square_with_fountain",
+//            "river_boat",
+//            "market_all",
+//            "narrator",
+//            "birdsincage",
+//            "crowdrun",
+//            "elfuente1",
+//            "elfuente2",
+//            "oldtown",
+//            "tennis",
+//            "seeking",
+//            "red_kayak",
+//            "touchdown_pass",
+//            "park_joy_2k",
+//            "park_joy_4k",
+            "Netflix_ToddlerFountain",
+            "Netflix_Narrator",
+            "Netflix_FoodMarket",
+            "Netflix_FoodMarket2",
+            "Netflix_DrivingPOV",
+            "Netflix_BoxingPractice",
+    };
+
+//    std::vector<int> workloads{3};
+//    std::vector<Distribution> distributions{Distribution::Uniform}; // ,, Distribution::Zipf, Distribution::Window
+    std::unordered_map<int, std::vector<Distribution>> workloadToDistributions{
+//            {1, {Distribution::Uniform}},
+//            {2, {Distribution::Zipf}},
+//            {3, {Distribution::Zipf, Distribution::Window}},
+//            {5, {Distribution::Zipf}},
+//            {6, {Distribution::Window}},
+            {3, {Distribution::Uniform}},
+//            {7, {Distribution::Uniform}},
+//            {8, {Distribution::Uniform}},
+//            {9, {Distribution::Uniform}},
+    };
+
+    std::vector<double> thresholds = {1};
+    for (auto threshold : thresholds) {
+        std::cout << "Threshold: " << threshold << std::endl;
+
+        for (auto it = workloadToDistributions.begin(); it != workloadToDistributions.end(); ++it) {
+            auto workloadNum = it->first;
+            std::cout << "Workload " << workloadNum << std::endl;
+
+            for (auto distribution : it->second) {
+                std::cout << "Distribution: " << (int) distribution << std::endl;
+                for (const auto &video : videos) {
+                    if (workloadNum == 5 && video == "traffic-4k-000")
+                        continue;
+
+                    auto videoDimensions = videoToDimensions.at(video);
+//                    std::string catalogName = video + "-cracked";
+                    auto catalogName = video + "-cracked-" + "KNN" + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video));
+                    for (auto duration : videoToQueryDurations.at(video)) {
+
+                        auto regretAccumulator = std::make_shared<TestRegretAccumulator>(
+                                video,
+                                videoDimensions.first, videoDimensions.second, videoToFramerate.at(video),
+                                threshold);
+
+                        std::default_random_engine generator(videoToProbabilitySeed.at(video));
+
+                        // Delete tiles from previous runs.
+                        DeleteTilesPastNum(catalogName, videoToMaxKNNTile.at(video));
+                        ResetTileNum(catalogName, videoToMaxKNNTile.at(video));
+
+                        auto queryGenerator = GetGenerator(workloadNum, video, duration, &generator, distribution);
+                        for (auto i = 0u; i < NUM_QUERIES; ++i) {
+                            std::string object;
+                            auto selection = queryGenerator->getNextQuery(i, &object);
+
+                            // Step 1: Run query.
+                            std::cout << "Video " << video << std::endl;
+                            std::cout << "Query-object " << object << std::endl;
+                            std::cout << "Uses-only-one-tile 0" << std::endl;
+                            std::cout << "Selection-duration " << duration << std::endl;
+                            std::cout << "Iteration " << i << std::endl;
+                            std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                            std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                            {
+                                auto input = ScanMultiTiled(catalogName, false);
+                                Coordinator().execute(input.Select(*selection));
+                            }
+
+                            // Step 2: Crack around objects in query.
+                            std::cout << "Video " << video << std::endl;
+                            std::cout << "Cracking-around-object " << object << std::endl;
+                            std::cout << "Cracking-duration " << duration << std::endl;
+                            std::cout << "Iteration " << i << std::endl;
+                            std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                            std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+
+                            {
+                                auto retileOp = ScanAndRetile(
+                                        catalogName,
+                                        *selection,
+                                        videoToFramerate.at(video),
+                                        CrackingStrategy::SmallTiles,
+                                        RetileStrategy::RetileBasedOnRegret,
+                                        regretAccumulator);
+                                Coordinator().execute(retileOp);
+                            }
+                        }
+
+                        // Delete tiles from previous runs.
+                        DeleteTilesPastNum(catalogName, videoToMaxKNNTile.at(video));
+                        ResetTileNum(catalogName, videoToMaxKNNTile.at(video));
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingRegretStartWithAllObj) {
+    std::cout << "\nWorkload-strategy start-with-all-obj-tile-query-duration-if-regret-accumulates" << std::endl;
+
+    std::vector<std::string> videos{
+//            "traffic-2k-001",
+//            "car-pov-2k-000-shortened",
+//            "car-pov-2k-001-shortened",
+//            "traffic-4k-002-ds2k",
+//            "traffic-4k-000",
+//            "traffic-4k-002",
+//        "square_with_fountain",
+//        "river_boat",
+
+//            "tennis",
+//            "seeking",
+//            "narrator",
+//            "market_all",
+//            "street_night_view",
+//            "Netflix_BoxingPractice",
+//            "Netflix_FoodMarket2",
+//
+//            "birdsincage",
+//            "crowdrun",
+//            "elfuente1",
+//            "elfuente2",
+//            "square_with_fountain"
+
+            "street_night_view",
+            "square_with_fountain",
+            "river_boat",
+            "market_all",
+            "narrator",
+            "birdsincage",
+            "crowdrun",
+            "elfuente1",
+            "elfuente2",
+            "oldtown",
+            "tennis",
+            "seeking",
+            "red_kayak",
+            "touchdown_pass",
+            "park_joy_2k",
+            "park_joy_4k",
+            "Netflix_ToddlerFountain",
+            "Netflix_Narrator",
+            "Netflix_FoodMarket",
+            "Netflix_FoodMarket2",
+            "Netflix_DrivingPOV",
+            "Netflix_BoxingPractice",
+    };
+
+//    std::vector<int> workloads{3};
+//    std::vector<Distribution> distributions{Distribution::Uniform}; // ,, Distribution::Zipf, Distribution::Window
+    std::unordered_map<int, std::vector<Distribution>> workloadToDistributions{
+//            {1, {Distribution::Uniform}},
+//            {2, {Distribution::Zipf}},
+//            {3, {Distribution::Zipf, Distribution::Window}},
+//            {5, {Distribution::Zipf}},
+//            {6, {Distribution::Window}},
+            {3, {Distribution::Uniform}},
+//            {7, {Distribution::Uniform}},
+//            {8, {Distribution::Uniform}},
+//            {9, {Distribution::Uniform}},
+    };
+
+    std::vector<double> thresholds = {1};
+    for (auto threshold : thresholds) {
+        std::cout << "Threshold: " << threshold << std::endl;
+
+        for (auto it = workloadToDistributions.begin(); it != workloadToDistributions.end(); ++it) {
+            auto workloadNum = it->first;
+            std::cout << "Workload " << workloadNum << std::endl;
+
+            for (auto distribution : it->second) {
+                std::cout << "Distribution: " << (int) distribution << std::endl;
+                for (const auto &video : videos) {
+                    if (workloadNum == 5 && video == "traffic-4k-000")
+                        continue;
+
+                    auto videoDimensions = videoToDimensions.at(video);
+//                    std::string catalogName = video + "-cracked";
+                    auto catalogName = video + "-cracked-" + "all_objects" + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video));
+                    for (auto duration : videoToQueryDurations.at(video)) {
+
+                        auto regretAccumulator = std::make_shared<TestRegretAccumulator>(
+                                video,
+                                videoDimensions.first, videoDimensions.second, videoToFramerate.at(video),
+                                threshold);
+
+                        std::default_random_engine generator(videoToProbabilitySeed.at(video));
+
+                        // Delete tiles from previous runs.
+                        DeleteTilesPastNum(catalogName, videoToMaxAllObjTile.at(video));
+                        ResetTileNum(catalogName, videoToMaxAllObjTile.at(video));
+
+                        auto queryGenerator = GetGenerator(workloadNum, video, duration, &generator, distribution);
+                        for (auto i = 0u; i < NUM_QUERIES; ++i) {
+                            std::string object;
+                            auto selection = queryGenerator->getNextQuery(i, &object);
+
+                            // Step 1: Run query.
+                            std::cout << "Video " << video << std::endl;
+                            std::cout << "Query-object " << object << std::endl;
+                            std::cout << "Uses-only-one-tile 0" << std::endl;
+                            std::cout << "Selection-duration " << duration << std::endl;
+                            std::cout << "Iteration " << i << std::endl;
+                            std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                            std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+                            {
+                                auto input = ScanMultiTiled(catalogName, false);
+                                Coordinator().execute(input.Select(*selection));
+                            }
+
+                            // Step 2: Crack around objects in query.
+                            std::cout << "Video " << video << std::endl;
+                            std::cout << "Cracking-around-object " << object << std::endl;
+                            std::cout << "Cracking-duration " << duration << std::endl;
+                            std::cout << "Iteration " << i << std::endl;
+                            std::cout << "First-frame " << selection->firstFrame() << std::endl;
+                            std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+
+                            {
+                                auto retileOp = ScanAndRetile(
+                                        catalogName,
+                                        *selection,
+                                        videoToFramerate.at(video),
+                                        CrackingStrategy::SmallTiles,
+                                        RetileStrategy::RetileBasedOnRegret,
+                                        regretAccumulator);
+                                Coordinator().execute(retileOp);
+                            }
+                        }
+
+                        // Delete tiles from previous runs.
+                        DeleteTilesPastNum(catalogName, videoToMaxAllObjTile.at(video));
+                        ResetTileNum(catalogName, videoToMaxAllObjTile.at(video));
                     }
                 }
             }

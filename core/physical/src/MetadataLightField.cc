@@ -5,6 +5,7 @@
 #include "MetadataLightField.h"
 
 #define ASSERT_SQLITE_OK(i) (assert(i == SQLITE_OK))
+#define ASSERT_SQLITE_DONE(i) (assert(i == SQLITE_DONE))
 
 namespace lightdb::associations {
     static const std::string traffic_2k_tracking_db = "/home/maureen/visualroad/2k-short/traffic-001-with-tracking-info-corrected.db";
@@ -129,15 +130,54 @@ std::vector<Rectangle> MetadataLightField::allRectangles() {
 } // namespace lightdb::physical
 
 namespace lightdb::metadata {
+    void MetadataManager::createDatabase() {
+        sqlite3 *db;
+        int result = sqlite3_open_v2(dbPath_.c_str(), &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+        assert(result == SQLITE_OK);
+
+        // Create table called "labels".
+        const char *createTable = "CREATE TABLE LABELS(" \
+                        "LABEL  TEXT    NOT NULL," \
+                        "FRAME INT NOT NULL," \
+                        "X INT NULL," \
+                        "Y INT NULL," \
+                        "WIDTH INT NOT NULL," \
+                        "HEIGHT INT NOT NULL," \
+                        "PRIMARY KEY (LABEL, FRAME, X, Y, WIDTH, HEIGHT));";
+
+
+        char *error = nullptr;
+        result = sqlite3_exec(db, createTable, NULL, NULL, &error);
+        if (result != SQLITE_OK) {
+            std::cout << "Error\n";
+            sqlite3_free(error);
+        }
+        ASSERT_SQLITE_OK(sqlite3_close(db));
+    }
 
     void MetadataManager::openDatabase() {
+        dbPath_ = lightdb::associations::VideoPathToLabelsPath.count(videoIdentifier_)
+                ? lightdb::associations::VideoPathToLabelsPath.at(videoIdentifier_)
+                : "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/" + videoIdentifier_ + ".db";
+
+        if (!std::filesystem::exists(dbPath_))
+            createDatabase();
+
         std::scoped_lock lock(mutex_);
-        int openResult = sqlite3_open_v2(lightdb::associations::VideoPathToLabelsPath.at(videoIdentifier_).c_str(), &db_, SQLITE_OPEN_READONLY, NULL);
+        int openResult = sqlite3_open_v2(dbPath_.c_str(), &db_, SQLITE_OPEN_READWRITE, NULL);
         assert(openResult == SQLITE_OK);
+
+        // Prepare insert statement.
+        std::string query = "INSERT INTO labels (label, frame, x, y, width, height) VALUES (?, ?, ?, ?, ?, ?)";
+        auto result = sqlite3_prepare_v2(db_, query.c_str(), query.length(), &insertStmt_, nullptr);
+        ASSERT_SQLITE_OK(result);
     }
 
     void MetadataManager::closeDatabase() {
         std::scoped_lock lock(mutex_);
+
+        ASSERT_SQLITE_OK(sqlite3_finalize(insertStmt_));
+
         int closeResult = sqlite3_close(db_);
         assert(closeResult == SQLITE_OK);
     }
@@ -231,6 +271,19 @@ const std::vector<int> &MetadataManager::framesForMetadataOrderedByNumObjects() 
 
     didSetFramesForMetadataOrderedByNumObjects_ = true;
     return framesForMetadataOrderedByNumObjects_;
+}
+
+void MetadataManager::addMetadata(const std::string &label, int frame, int x1, int y1, int width, int height) {
+    std::scoped_lock lock(mutex_);
+
+    ASSERT_SQLITE_OK(sqlite3_bind_text(insertStmt_, 1, label.c_str(), -1, SQLITE_STATIC ));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(insertStmt_, 2, frame));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(insertStmt_, 3, x1));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(insertStmt_, 4, y1));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(insertStmt_, 5, width));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(insertStmt_, 6, height));
+
+    ASSERT_SQLITE_DONE(sqlite3_step(insertStmt_));
 }
 
 const std::vector<int> &MetadataManager::orderedFramesForMetadata() const {

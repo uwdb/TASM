@@ -97,10 +97,14 @@ namespace lightdb::metadata {
         std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
         std::unique_ptr<std::list<Rectangle>> rectanglesForAllObjectsForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
 
+        void addMetadata(const std::string &label, int frame, int x1, int y1, int width, int height);
+
         static std::unordered_set<int> idealKeyframesForFrames(const std::vector<int> &orderedFrames);
 
         std::unordered_set<int> idealKeyframesForMetadataAndTiles(const tiles::TileLayout &tileLayout) const;
         std::vector<int> framesForTileAndMetadata(unsigned int tile, const tiles::TileLayout &tileLayout) const;
+
+        const std::string &dbPath() const { return  dbPath_; }
 
     private:
         void selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn = nullptr) const;
@@ -109,6 +113,9 @@ namespace lightdb::metadata {
         void openDatabase();
         void closeDatabase();
 
+        void createDatabase();
+
+        std::string dbPath_;
         const std::string videoIdentifier_;
         const MetadataSpecification metadataSpecification_;
         mutable bool didSetFramesForMetadata_;
@@ -123,6 +130,8 @@ namespace lightdb::metadata {
 
         mutable bool didSetFramesForMetadataOrderedByNumObjects_;
         mutable std::vector<int> framesForMetadataOrderedByNumObjects_;
+
+        sqlite3_stmt *insertStmt_;
     };
 } // namespace lightdb::metadata
 

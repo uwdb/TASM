@@ -12,15 +12,16 @@ namespace lightdb::physical {
 
 class SaveBoxes: public PhysicalOperator {
 public:
-    explicit SaveBoxes(const LightFieldReference &logical, PhysicalOperatorReference &parent)
-            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "SaveBoxes-init"))
+    explicit SaveBoxes(std::shared_ptr<metadata::MetadataManager> metadataManager, const LightFieldReference &logical, PhysicalOperatorReference &parent)
+            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "SaveBoxes-init", metadataManager))
     { }
 
 private:
     class Runtime: public runtime::Runtime<> {
     public:
-        explicit Runtime(PhysicalOperator &physical)
-                : runtime::Runtime<>(physical)
+        explicit Runtime(PhysicalOperator &physical, std::shared_ptr<metadata::MetadataManager> metadataManager)
+                : runtime::Runtime<>(physical),
+                        metadataManager_(metadataManager)
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -32,66 +33,71 @@ private:
 
                 Metadata lfMetadata = metadataLightField.metadata();
                 std::for_each(lfMetadata.begin(), lfMetadata.end(), [&](auto labelAndRectangles) {
-                    std::vector<Rectangle> &rectanglesForLabel = metadata_[labelAndRectangles.first];
-                    rectanglesForLabel.insert(rectanglesForLabel.end(), labelAndRectangles.second.begin(), labelAndRectangles.second.end());
+                    std::for_each(labelAndRectangles.second.begin(), labelAndRectangles.second.end(), [&](const Rectangle &rectangle) {
+                        metadataManager_->addMetadata(labelAndRectangles.first, rectangle.id, rectangle.x, rectangle.y, rectangle.width, rectangle.height);
+                    });
+//                    std::vector<Rectangle> &rectanglesForLabel = metadata_[labelAndRectangles.first];
+//                    rectanglesForLabel.insert(rectanglesForLabel.end(), labelAndRectangles.second.begin(), labelAndRectangles.second.end());
                 });
 
                 return iterators().front()++;
             } else {
                 // Write rectangles to database;
-                sqlite3 *db;
-                std::filesystem::path outputFile = physical().logical().downcast<logical::SavedLightField>().filename();
-                std::filesystem::remove(outputFile);
+//                if ())
+//                sqlite3 *db;
+//                std::filesystem::path outputFile = physical().logical().downcast<logical::SavedLightField>().filename();
+//                std::filesystem::remove(outputFile);
+//
+//                int result = sqlite3_open_v2(outputFile.c_str(), &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+//                assert(result == SQLITE_OK);
+//
+//
+//                // Create table called "labels".
+//                const char *createTable = "CREATE TABLE LABELS(" \
+//                        "LABEL  TEXT    NOT NULL," \
+//                        "FRAME INT NOT NULL," \
+//                        "X INT NULL," \
+//                        "Y INT NULL," \
+//                        "WIDTH INT NOT NULL," \
+//                        "HEIGHT INT NOT NULL," \
+//                        "PRIMARY KEY (LABEL, FRAME, X, Y, WIDTH, HEIGHT));";
+//
+//
+//                char *error = nullptr;
+//                result = sqlite3_exec(db, createTable, NULL, NULL, &error);
+//                if (result != SQLITE_OK) {
+//                    std::cout << "Error\n";
+//                    sqlite3_free(error);
+//                }
 
-                int result = sqlite3_open_v2(outputFile.c_str(), &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
-                assert(result == SQLITE_OK);
-
-
-                // Create table called "labels".
-                const char *createTable = "CREATE TABLE LABELS(" \
-                        "LABEL  TEXT    NOT NULL," \
-                        "FRAME INT NOT NULL," \
-                        "X INT NULL," \
-                        "Y INT NULL," \
-                        "WIDTH INT NOT NULL," \
-                        "HEIGHT INT NOT NULL," \
-                        "PRIMARY KEY (LABEL, FRAME, X, Y, WIDTH, HEIGHT));";
-
-
-                char *error = nullptr;
-                result = sqlite3_exec(db, createTable, NULL, NULL, &error);
-                if (result != SQLITE_OK) {
-                    std::cout << "Error\n";
-                    sqlite3_free(error);
-                }
-
-                sqlite3_stmt *insert;
-                const char *insertStatement = "INSERT INTO LABELS VALUES( ?, ?, ?, ?, ?, ?);";
-                result = sqlite3_prepare_v2(db, insertStatement, strlen(insertStatement), &insert, nullptr);
-                assert(result == SQLITE_OK);
+//                sqlite3_stmt *insert;
+//                const char *insertStatement = "INSERT INTO LABELS VALUES( ?, ?, ?, ?, ?, ?);";
+//                result = sqlite3_prepare_v2(db, insertStatement, strlen(insertStatement), &insert, nullptr);
+//                assert(result == SQLITE_OK);
 
                 // Insert the boxes into the table.
-                for (const auto &labelAndRectangles : metadata_) {
-                    for (const Rectangle &rectangle : labelAndRectangles.second) {
-                        assert(sqlite3_reset(insert) == SQLITE_OK);
-                        result = sqlite3_bind_text(insert, 1, labelAndRectangles.first.c_str(), labelAndRectangles.first.length(),
-                                                   nullptr);
-                        assert(result == SQLITE_OK);
+//                for (const auto &labelAndRectangles : metadata_) {
+//                    for (const Rectangle &rectangle : labelAndRectangles.second) {
 
-                        result = sqlite3_bind_int(insert, 2, rectangle.id);
-                        assert(result == SQLITE_OK);
-
-                        assert(sqlite3_bind_int(insert, 3, rectangle.x) == SQLITE_OK);
-                        assert(sqlite3_bind_int(insert, 4, rectangle.y) == SQLITE_OK);
-                        assert(sqlite3_bind_int(insert, 5, rectangle.width) == SQLITE_OK);
-                        assert(sqlite3_bind_int(insert, 6, rectangle.height) == SQLITE_OK);
-
-                        assert(sqlite3_step(insert) == SQLITE_DONE);
-                    }
-                }
-                assert(sqlite3_finalize(insert) == SQLITE_OK);
-                result = sqlite3_close(db);
-                assert(result == SQLITE_OK);
+//                        assert(sqlite3_reset(insert) == SQLITE_OK);
+//                        result = sqlite3_bind_text(insert, 1, labelAndRectangles.first.c_str(), labelAndRectangles.first.length(),
+//                                                   nullptr);
+//                        assert(result == SQLITE_OK);
+//
+//                        result = sqlite3_bind_int(insert, 2, rectangle.id);
+//                        assert(result == SQLITE_OK);
+//
+//                        assert(sqlite3_bind_int(insert, 3, rectangle.x) == SQLITE_OK);
+//                        assert(sqlite3_bind_int(insert, 4, rectangle.y) == SQLITE_OK);
+//                        assert(sqlite3_bind_int(insert, 5, rectangle.width) == SQLITE_OK);
+//                        assert(sqlite3_bind_int(insert, 6, rectangle.height) == SQLITE_OK);
+//
+//                        assert(sqlite3_step(insert) == SQLITE_DONE);
+//                    }
+//                }
+//                assert(sqlite3_finalize(insert) == SQLITE_OK);
+//                result = sqlite3_close(db);
+//                assert(result == SQLITE_OK);
 
 
                 // Write rectangles to file.
@@ -115,9 +121,11 @@ private:
         }
 
     private:
+        std::shared_ptr<metadata::MetadataManager> metadataManager_;
         Metadata metadata_;
 //        std::vector<Rectangle> rectangles_;
     };
+private:
 };
 
 class SaveToFile: public PhysicalOperator {

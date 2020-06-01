@@ -606,6 +606,19 @@ namespace lightdb::optimization {
                                 throw InvalidArgumentError("No rule support for device type.", "node");
                         }
                     }
+
+                    auto scan = physical_parents[0];
+                    while (scan->parents().size())
+                        scan = scan->parents()[0];
+
+                    auto sourcePath = scan.downcast<physical::ScanSingleFileDecodeReader>().source().filename();
+                    auto catalogEntry = std::prev(sourcePath.end(), 2);
+                    // Create metadata manager.
+                    // Add operator to plan that adds boxes to database.
+                    auto metadataManager = std::make_shared<metadata::MetadataManager>(catalogEntry->string(),
+                                                                                       MetadataSpecification("labels", std::make_shared<AllMetadataElement>()));
+                    auto saveBoxes = plan().emplace<physical::SaveBoxes>(metadataManager, plan().lookup(node), mapped);
+
                     return true;
                 }
             }
@@ -1513,7 +1526,7 @@ namespace lightdb::optimization {
                 }
 
                if (physical_parents.front().is<physical::CPUMap>() && node.filename().extension() == ".boxes") {
-                   plan().emplace<physical::SaveBoxes>(plan().lookup(node), encode);
+                   plan().emplace<physical::SaveBoxes>(std::shared_ptr<metadata::MetadataManager>(),plan().lookup(node), encode);
                } else {
                    plan().emplace<physical::SaveToFile>(plan().lookup(node), encode);
                }

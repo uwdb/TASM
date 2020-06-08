@@ -39,6 +39,7 @@ set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG --coverage -g3 -Wall -Wextra -Wno-unused-p
 
 # Find required library dependencies
 set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} nvcuvid dl pthread glog gflags stdc++fs)
+set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} pthread stdc++fs)
 
 include(cmake/nvenc.cmake)
 
@@ -99,16 +100,25 @@ set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${GPAC_LIBRARIES})
 find_library(SQLITE3_LIBRARY sqlite3)
 message("INCLUDES: ${SQLITE3_LIBRARY}")
 set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${SQLITE3_LIBRARY})
+set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${SQLITE3_LIBRARY})
 
 # Build LightDB library
-add_subdirectory(core)
-
+#add_subdirectory(core)
+#
 # Enable testing
-option(ENABLE_TESTS "Enable tests" ON)
-if (${ENABLE_TESTS})
-  enable_testing()
-  add_subdirectory(test)
-endif()
+#option(ENABLE_TESTS "Enable tests" ON)
+#if (${ENABLE_TESTS})
+#  enable_testing()
+#  add_subdirectory(test)
+#endif()
+
+
+
+file(GLOB TASM_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/tasm/*/include")
+
+add_subdirectory(tasm)
+enable_testing()
+add_subdirectory(tasm-test)
 
 # Add clang-format target
 file(GLOB_RECURSE FORMATTED_SOURCE_FILES *.cc *.h)

@@ -117,6 +117,7 @@ set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${SQLITE3_LIBRARY})
 file(GLOB TASM_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/tasm/*/include")
 
 add_subdirectory(tasm)
+add_subdirectory(python)
 enable_testing()
 add_subdirectory(tasm-test)
 

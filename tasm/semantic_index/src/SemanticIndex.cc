@@ -77,6 +77,7 @@ void SemanticIndexSQLite::addMetadata(
     ASSERT_SQLITE_OK(sqlite3_bind_int(addMetadataStmt_, 7, y2));
 
     ASSERT_SQLITE_DONE(sqlite3_step(addMetadataStmt_));
+    ASSERT_SQLITE_OK(sqlite3_reset(addMetadataStmt_));
 }
 
 } // namespace tasm

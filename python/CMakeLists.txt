@@ -8,7 +8,7 @@ include_directories(${Boost_INCLUDE_DIR})
 
 include_directories(${TASM_INCLUDE_DIRS})
 
-target_link_libraries(pyTasm ${Boost_LIBRARIES} ${Python2_LIBRARIES} tasm)
+target_link_libraries(pyTasm ${Boost_LIBRARIES} ${Python2_LIBRARIES} ${TASM_LIB_DEPENDENCIES} tasm)
 
 # Suppress prefix "lib" because Python does not allow this prefix
 set_target_properties(pyTasm PROPERTIES PREFIX "")

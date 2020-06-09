@@ -4,6 +4,6 @@
 
 BOOST_PYTHON_MODULE(pyTasm) {
     using namespace boost::python;
-    class_<tasm::TASM>("TASM")
+    class_<tasm::TASM, boost::noncopyable>("TASM")
         .def("addMetadata", &tasm::TASM::addMetadata);
 }

@@ -1,7 +1,5 @@
 #include "Tasm.h"
 
-#include <cassert>
-
 namespace tasm {
 
 void TASM::addMetadata(const std::string &video,
@@ -11,8 +9,7 @@ void TASM::addMetadata(const std::string &video,
                        unsigned int y1,
                        unsigned int x2,
                        unsigned int y2) {
-    // TODO: Implement this.
-    assert(false);
+    semanticIndex_->addMetadata(video, label, frame, x1, y1, x2, y2);
 }
 
 } // namespace tasm

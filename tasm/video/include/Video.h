@@ -1,5 +1,5 @@
-#ifndef LIGHTDB_VIDEO_H
-#define LIGHTDB_VIDEO_H
+#ifndef TASM_VIDEO_H
+#define TASM_VIDEO_H
 
 #include "Configuration.h"
 #include "VideoConfiguration.h"
@@ -24,4 +24,4 @@ private:
 
 } // namespace tasm
 
-#endif //LIGHTDB_VIDEO_H
+#endif //TASM_VIDEO_H

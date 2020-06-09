@@ -1,5 +1,5 @@
-#ifndef LIGHTDB_VIDEOMANAGER_H
-#define LIGHTDB_VIDEOMANAGER_H
+#ifndef TASM_VIDEOMANAGER_H
+#define TASM_VIDEOMANAGER_H
 
 #include <filesystem>
 
@@ -12,4 +12,4 @@ public:
 
 } // namespace tasm
 
-#endif //LIGHTDB_VIDEOMANAGER_H
+#endif //TASM_VIDEOMANAGER_H

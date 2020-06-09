@@ -11,9 +11,9 @@ namespace tasm::video {
 
 Codec CodecFromAVCodec(AVCodecID codecId) {
     switch (codecId) {
-        case(AV_CODEC_ID_H264):
+        case AV_CODEC_ID_H264:
             return Codec::H264;
-        case(AV_CODEC_ID_HEVC):
+        case AV_CODEC_ID_HEVC:
             return Codec::HEVC;
         default:
             assert(false);
@@ -50,6 +50,7 @@ std::unique_ptr<const Configuration> GetConfiguration(const std::filesystem::pat
         auto framerate = stream->r_frame_rate.num;
         configuration.reset(new Configuration(
                 displayWidth, displayHeight,
+                codedWidth, codedHeight,
                 codedWidth, codedHeight,
                 framerate, codec));
 

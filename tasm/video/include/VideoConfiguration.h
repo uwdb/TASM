@@ -1,5 +1,5 @@
-#ifndef LIGHTDB_VIDEOCONFIGURATION_H
-#define LIGHTDB_VIDEOCONFIGURATION_H
+#ifndef TASM_VIDEOCONFIGURATION_H
+#define TASM_VIDEOCONFIGURATION_H
 
 #include "Configuration.h"
 
@@ -11,4 +11,4 @@ std::unique_ptr<const Configuration> GetConfiguration(const std::filesystem::pat
 
 } // namespace tasm::video
 
-#endif //LIGHTDB_VIDEOCONFIGURATION_H
+#endif //TASM_VIDEOCONFIGURATION_H

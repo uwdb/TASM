@@ -1,5 +1,5 @@
-#ifndef LIGHTDB_SEMANTICINDEX_H
-#define LIGHTDB_SEMANTICINDEX_H
+#ifndef TASM_SEMANTICINDEX_H
+#define TASM_SEMANTICINDEX_H
 
 #include "sqlite3.h"
 #include <filesystem>
@@ -55,4 +55,4 @@ private:
 
 } // namespace tasm
 
-#endif //LIGHTDB_SEMANTICINDEX_H
+#endif //TASM_SEMANTICINDEX_H

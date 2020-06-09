@@ -1,5 +1,5 @@
-#ifndef LIGHTDB_TASM_H
-#define LIGHTDB_TASM_H
+#ifndef TASM_TASM_H
+#define TASM_TASM_H
 
 #include "SemanticIndex.h"
 
@@ -34,4 +34,4 @@ private:
 
 } // namespace tasm
 
-#endif //LIGHTDB_TASM_H
+#endif //TASM_TASM_H

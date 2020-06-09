@@ -1,5 +1,6 @@
 #include "VideoManager.h"
 
+#include "VideoDecoder.h"
 #include <cassert>
 
 namespace tasm {

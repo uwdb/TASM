@@ -134,10 +134,6 @@ bool VideoDecoder::reconfigureDecoderIfNecessary(CUVIDEOFORMAT *newFormat) {
         && currentFormat_.display_area.bottom == newFormat->display_area.bottom)
         return false;
 
-    auto oldDisplayWidth = currentFormat_.display_area.right - currentFormat_.display_area.left;
-    auto oldDisplayHeight = currentFormat_.display_area.bottom - currentFormat_.display_area.top;
-
-
     memcpy(&currentFormat_, newFormat, sizeof(currentFormat_));
 
     CUVIDRECONFIGUREDECODERINFO reconfigParams;
@@ -154,10 +150,6 @@ bool VideoDecoder::reconfigureDecoderIfNecessary(CUVIDEOFORMAT *newFormat) {
     reconfigParams.ulTargetHeight = newFormat->coded_height;
 
     reconfigParams.ulNumDecodeSurfaces = newFormat->min_num_decode_surfaces;
-
-    // Include old width/new width old, height/new height in message.
-    unsigned int newDisplayWidth = newFormat->display_area.right - newFormat->display_area.left;
-    unsigned int newDisplayHeight = newFormat->display_area.bottom - newFormat->display_area.top;
 
     lock_->lock();
     CUresult result;

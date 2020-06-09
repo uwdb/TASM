@@ -64,6 +64,12 @@ public:
     void mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format);
     void unmapFrame(unsigned int picIndex);
 
+    std::shared_ptr<spsc_queue<int>> frameNumberQueue() const { return frameNumberQueue_; }
+    std::shared_ptr<spsc_queue<int>> tileNumberQueue() const { return tileNumberQueue_; }
+    CUVIDDECODECREATEINFO createInfo() const { return creationInfo_; }
+    CUvideodecoder handle() const { return handle_; }
+    CUVIDEOFORMAT currentFormat() const { return currentFormat_; }
+
 private:
     static CUVIDDECODECREATEINFO CreateInfoFromConfiguration(const Configuration &configuration, CUvideoctxlock lock);
     static CUVIDEOFORMAT FormatFromCreateInfo(CUVIDDECODECREATEINFO createInfo);

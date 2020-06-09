@@ -1330,7 +1330,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundAll) {
 }
 
 TEST_F(UnknownWorkloadTestFixture, testRetile4k) {
-    Coordinator().execute(Scan("car-pov-2k-000-shortened").PrepareForCracking("car-pov-2k-000-shortened-cracked-2", 30));
+    Coordinator().execute(Scan("red10").PrepareForCracking("car-pov-2k-000-shortened-cracked-2", 30));
 }
 
 TEST_F(UnknownWorkloadTestFixture, testPrepareForRetiling) {

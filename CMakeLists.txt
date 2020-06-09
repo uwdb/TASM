@@ -78,6 +78,7 @@ set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${Boost_LIBRARIES})
 find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVFORMAT AVUTIL SWSCALE)
 include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
 set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${FFMPEG_LIBRARIES})
+set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${FFMPEG_LIBRARIES})
 
 # Protobufs
 find_package(Protobuf REQUIRED)
@@ -103,16 +104,14 @@ set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${SQLITE3_LIBRARY})
 set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${SQLITE3_LIBRARY})
 
 # Build LightDB library
-#add_subdirectory(core)
-#
+add_subdirectory(core)
+
 # Enable testing
-#option(ENABLE_TESTS "Enable tests" ON)
-#if (${ENABLE_TESTS})
-#  enable_testing()
-#  add_subdirectory(test)
-#endif()
-
-
+option(ENABLE_TESTS "Enable tests" ON)
+if (${ENABLE_TESTS})
+  enable_testing()
+  add_subdirectory(test)
+endif()
 
 file(GLOB TASM_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/tasm/*/include")
 

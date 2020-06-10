@@ -7,6 +7,11 @@
 
 namespace tasm {
 
+void VideoManager::createCatalogIfNecessary() {
+    if (!std::filesystem::exists(CatalogPath))
+        std::filesystem::create_directory(CatalogPath);
+}
+
 void VideoManager::store(const std::filesystem::path &path, const std::string &name) {
     std::shared_ptr<Video> video(new Video(path));
 
@@ -19,6 +24,7 @@ void VideoManager::store(const std::filesystem::path &path, const std::string &n
     auto tileConfigurationProvider = std::make_shared<SingleTileConfigurationProvider>(
             video->configuration().displayWidth,
             video->configuration().displayHeight);
+
     TileOperator tile(video, decode, tileConfigurationProvider, name, video->configuration().frameRate, gpuContext, lock);
     while (!tile.isComplete()) {
         tile.next();

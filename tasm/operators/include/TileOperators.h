@@ -23,7 +23,7 @@ public:
             video_(video),
             parent_(parent),
             tileConfigurationProvider_(tileConfigurationProvider),
-          outputEntry_(new CrackedEntry(std::filesystem::path("resources") / outputEntryName)),
+          outputEntry_(new CrackedEntry(CatalogPath / outputEntryName)),
           layoutDuration_(layoutDuration),
           tileEncodersManager_(EncodeConfiguration(parent->configuration(), NV_ENC_HEVC, layoutDuration), *context, *lock),
           firstFrameInGroup_(-1),

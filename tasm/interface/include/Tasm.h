@@ -2,6 +2,7 @@
 #define TASM_TASM_H
 
 #include "SemanticIndex.h"
+#include "VideoManager.h"
 
 #include <memory>
 #include <string>
@@ -28,8 +29,13 @@ public:
             unsigned int x2,
             unsigned int y2);
 
+    void store(const std::string &videoPath, const std::string &savedName) {
+        videoManager_.store(videoPath, savedName);
+    }
+
 private:
     std::unique_ptr<SemanticIndex> semanticIndex_;
+    VideoManager videoManager_;
 };
 
 } // namespace tasm

@@ -5,7 +5,6 @@
 
 void TileCrackingTransaction::prepareTileDirectory() {
     auto directory = tasm::TileFiles::directoryForTilesInFrames(*entry_, firstFrame_, lastFrame_);
-    bool isRelative = directory.is_relative();
     std::error_code error;
     if (!std::filesystem::create_directory(directory, error))
         std::cerr << "Failed to create tile directory: " << error.message() << std::endl;

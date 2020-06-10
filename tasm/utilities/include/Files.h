@@ -5,6 +5,8 @@
 
 namespace tasm {
 
+static const std::filesystem::path CatalogPath = "resources";
+
 class TileFiles {
 public:
     static std::filesystem::path tileVersionFilename(const std::filesystem::path &path) {

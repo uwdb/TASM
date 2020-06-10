@@ -1,0 +1,8 @@
+//
+// Created by Maureen Daum on 6/10/20.
+//
+
+#ifndef LIGHTDB_DECODEOPERATORS_H
+#define LIGHTDB_DECODEOPERATORS_H
+
+#endif //LIGHTDB_DECODEOPERATORS_H

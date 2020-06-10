@@ -21,3 +21,11 @@ TEST_F(VideoManagerTestFixture, testLoadVideoConfiguration) {
     assert(vid.configuration().frameRate == 25);
     assert(vid.configuration().codec == Codec::HEVC);
 }
+
+TEST_F(VideoManagerTestFixture, testScan) {
+//    Video vid("/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/red10/1-0-stream.mp4");
+
+    VideoManager manager;
+    manager.store("/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/red10/1-0-stream.mp4", "red10");
+}
+

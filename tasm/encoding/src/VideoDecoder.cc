@@ -242,3 +242,19 @@ void VideoDecoder::unmapFrame(unsigned int picIndex) {
         availableFrameArrays_.push(frameHandle);
     }
 }
+
+std::pair<CUdeviceptr, unsigned int> VideoDecoder::frameInfoForPicIndex(unsigned int picIndex) const {
+    std::scoped_lock lock(picIndexMutex_);
+    auto &decodedInfo = picIndexToMappedFrameInfo_.at(picIndex);
+    return std::make_pair(decodedInfo.handle, decodedInfo.pitch);
+}
+
+VideoDecoder::DecodedDimensions VideoDecoder::decodedDimensionsForPicIndex(unsigned int picIndex) const {
+    std::scoped_lock lock(picIndexMutex_);
+    auto &format = picIndexToMappedFrameInfo_.at(picIndex).format;
+
+    return {static_cast<unsigned int>(format.display_area.right - format.display_area.left),
+            static_cast<unsigned int>(format.display_area.bottom - format.display_area.top),
+            format.coded_width,
+            format.coded_height};
+}

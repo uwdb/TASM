@@ -1,9 +1,15 @@
 #ifndef TASM_DECODEREADER_H
 #define TASM_DECODEREADER_H
 
+#include "GPUContext.h"
+#include "spsc_queue.h"
+
 #include "nvcuvid.h"
+#include <filesystem>
+#include <iostream>
 #include <memory>
 #include <optional>
+#include <thread>
 #include <vector>
 
 struct DecodeReaderPacket: public CUVIDSOURCEDATAPACKET {
@@ -83,6 +89,126 @@ public:
     virtual std::optional<DecodeReaderPacket> read() = 0;
     virtual CUVIDEOFORMAT format() const = 0;
     virtual bool isComplete() const = 0;
+};
+
+class FileDecodeReader: public DecodeReader {
+public:
+    explicit FileDecodeReader(const std::string &filename)
+            : FileDecodeReader(filename.c_str()) { }
+
+    explicit FileDecodeReader(const char *filename)
+            : filename_(filename),
+              packets_(std::make_unique<tasm::spsc_queue<DecodeReaderPacket>>(4096)), // Must be initialized before source
+    source_(CreateVideoSource(filename)),
+            format_(GetVideoSourceFormat(source_)),
+            decoded_bytes_(0) {
+        if(format().codec != cudaVideoCodec_H264 && format().codec != cudaVideoCodec_HEVC)
+            throw std::runtime_error("FileDecodeReader only supports H264/HEVC input video");
+        else if(format().chroma_format != cudaVideoChromaFormat_420)
+            throw std::runtime_error("FileDecodeReader only supports 4:2:0 chroma");
+    }
+
+    FileDecodeReader(const FileDecodeReader&) = delete;
+    FileDecodeReader(FileDecodeReader&& other) noexcept
+            : filename_(std::move(other.filename_)),
+              packets_(std::move(other.packets_)),
+              source_(other.source_),
+              format_(other.format_),
+              decoded_bytes_(other.decoded_bytes_) {
+        other.source_ = nullptr;
+    }
+
+    ~FileDecodeReader() {
+        CUresult status;
+
+        if(source_ == nullptr)
+            ;
+        else if(!CompleteVideo())
+            std::cerr << "Swallowed CompleteVideo failure" << std::endl;
+        else if((status = cuvidSetVideoSourceState(source_, cudaVideoState_Stopped)) != CUDA_SUCCESS)
+            std::cerr << "Swallowed cuvidSetVideoSourceState failure (" << status << ')' << std::endl;
+        else if((status = cuvidDestroyVideoSource(source_)) != CUDA_SUCCESS)
+            std::cerr << "Swallowed cuvidDestroyVideoSource failure (" << status << ')' << std::endl;
+        else
+            source_ = nullptr;
+    }
+
+    inline CUVIDEOFORMAT format() const override { return format_; }
+    inline const std::string &filename() const { return filename_; }
+
+    std::optional<DecodeReaderPacket> read() override {
+        DecodeReaderPacket packet;
+
+        while (cuvidGetVideoSourceState(source_) == cudaVideoState_Started &&
+               !packets_->read_available())
+            std::this_thread::yield();
+
+        if(packets_->pop(packet)) {
+            decoded_bytes_ += packet.payload_size;
+            return {packet};
+        } else {
+            std::cout << "Decoded " << decoded_bytes_ << " bytes from " << filename() << std::endl;
+            return {};
+        }
+    }
+
+    inline bool isComplete() const override {
+        return !packets_->read_available() && cuvidGetVideoSourceState(source_) != cudaVideoState_Started;
+    }
+
+private:
+    static int CUDAAPI HandleVideoData(void *userData, CUVIDSOURCEDATAPACKET *packet) {
+        auto *packets = static_cast<tasm::spsc_queue<DecodeReaderPacket>*>(userData);
+
+        while(!packets->push(DecodeReaderPacket(*packet)))
+            std::this_thread::yield();
+
+        return 1;
+    }
+
+    CUvideosource CreateVideoSource(const char *filename) {
+        CUresult status;
+        CUvideosource source;
+        CUVIDSOURCEPARAMS videoSourceParameters = {
+                .ulClockRate = 0,
+                .uReserved1 = {},
+                .pUserData = packets_.get(),
+                .pfnVideoDataHandler = HandleVideoData,
+                .pfnAudioDataHandler = nullptr,
+                {nullptr}
+        };
+
+        if(!std::filesystem::exists(filename))
+            throw std::runtime_error("File does not exist: " + std::string(filename));
+        else if(GPUContext::device_count() == 0)
+            throw std::runtime_error("No CUDA device was found");
+        if((status = cuvidCreateVideoSource(&source, filename, &videoSourceParameters)) != CUDA_SUCCESS)
+            throw std::runtime_error("Call to cuvidCreateVideoSource failed: " + std::to_string(status));
+        else if((status = cuvidSetVideoSourceState(source, cudaVideoState_Started)) != CUDA_SUCCESS)
+            throw std::runtime_error("Call to cuvidSetVideoSourceState failed: " + std::to_string(status));
+
+        return source;
+    }
+
+    CUVIDEOFORMAT GetVideoSourceFormat(CUvideosource source) {
+        CUresult status;
+        CUVIDEOFORMAT format;
+
+        if((status = cuvidGetSourceVideoFormat(source, &format, 0)) != CUDA_SUCCESS)
+            throw std::runtime_error("Call to cuvidGetSourceVideoFormat failed: " + std::to_string(status));
+        return format;
+    }
+
+    bool CompleteVideo() {
+        packets_->reset();
+        return true;
+    }
+
+    std::string filename_;
+    std::unique_ptr<tasm::spsc_queue<DecodeReaderPacket>> packets_;
+    CUvideosource source_;
+    CUVIDEOFORMAT format_;
+    size_t decoded_bytes_;
 };
 
 

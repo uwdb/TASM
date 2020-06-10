@@ -1,8 +1,5 @@
 package lightdb.serialization;
 
-// Should this also include the first and last frames?
-// I guess that could go in a different structure.
-
 message TileConfiguration {
     required uint32 version = 1;
 

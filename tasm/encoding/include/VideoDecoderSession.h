@@ -1,28 +1,34 @@
 #ifndef TASM_VIDEODECODERSESSION_H
 #define TASM_VIDEODECODERSESSION_H
 
+#include "EncodedData.h"
 #include "DecodeReader.h"
+#include "Frame.h"
+#include "Operator.h"
 #include "VideoDecoder.h"
 
 #include <cstring>
 #include <thread>
 
-using DataQueue = spsc_queue<std::pair<std::shared_ptr<std::vector<unsigned char>>, unsigned int>>;
+namespace tasm {
+using DataQueue = tasm::spsc_queue<std::pair<std::shared_ptr<std::vector<unsigned char>>, unsigned int>>;
+using EncodedReader = std::shared_ptr<Operator<CPUEncodedFrameDataPtr>>;
 
-template<typename Input = DecodeReader::iterator>
 class VideoDecoderSession {
 public:
-    VideoDecoderSession(std::shared_ptr<VideoDecoder> decoder, Input reader, const Input end)
+    VideoDecoderSession(VideoDecoder &decoder, EncodedReader reader)
             : decoder_(decoder),
               nextDataQueue_(1000),
-              isDoneReading_(false) {
-        reader_ = std::make_unique<std::thread>(&VideoDecoderSession::ReadNext, decoder, reader, end,
+              isDoneReading_(false),
+              isComplete_(false) {
+        reader_ = std::make_unique<std::thread>(&VideoDecoderSession::ReadNext, std::ref(decoder_), reader,
                                                 std::ref(nextDataQueue_), &isDoneReading_);
-        worker_ = std::make_unique<std::thread>(&VideoDecoderSession::DecodeAll, decoder, reader, end, std::ref(nextDataQueue_), &isDoneReading_);
+        worker_ = std::make_unique<std::thread>(&VideoDecoderSession::DecodeAll, std::ref(decoder_), std::ref(nextDataQueue_),
+                                                &isDoneReading_, &isComplete_);
     }
 
-    VideoDecoderSession(const VideoDecoderSession&) = delete;
-    VideoDecoderSession(const VideoDecoderSession&&) = delete;
+    VideoDecoderSession(const VideoDecoderSession &) = delete;
+    VideoDecoderSession(const VideoDecoderSession &&) = delete;
 
     ~VideoDecoderSession() {
         worker_->join();
@@ -32,19 +38,50 @@ public:
         assert(isDoneReading_);
     }
 
+    bool isComplete() { return isComplete_; }
+
+    template<typename Rep, typename Period, size_t interval=4>
+    std::shared_ptr<DecodedFrame> decode(std::chrono::duration<Rep, Period> duration) {
+        std::shared_ptr<CUVIDPARSERDISPINFO> packet;
+
+        for(auto begin = std::chrono::system_clock::now();
+            std::chrono::system_clock::now() - begin < duration;
+            std::this_thread::sleep_for(duration / interval)) {
+            bool gotFrame = false;
+            if (decoder_.decodedPictureQueue().read_available()) {
+                packet = decoder_.decodedPictureQueue().front();
+                decoder_.decodedPictureQueue().pop();
+                gotFrame = true;
+            }
+
+            if (gotFrame) {
+                auto frameNumber = -1;
+                auto tileNumber = -1;
+                if (decoder_.frameNumberQueue()->pop(frameNumber)) {
+                    decoder_.tileNumberQueue()->pop(tileNumber);
+                    return std::make_shared<DecodedFrame>(decoder_, packet, frameNumber, tileNumber);
+                } else
+                    return std::make_shared<DecodedFrame>(decoder_, packet);
+            }
+        }
+
+        return nullptr;
+    }
+
 private:
-    std::shared_ptr<VideoDecoder> decoder_;
+    VideoDecoder &decoder_;
     std::unique_ptr<std::thread> reader_;
     std::unique_ptr<std::thread> worker_;
     DataQueue nextDataQueue_;
     std::atomic_bool isDoneReading_;
+    std::atomic_bool isComplete_;
 
-    static CUvideoparser CreateParser(std::shared_ptr<VideoDecoder> decoder) {
+    static CUvideoparser CreateParser(VideoDecoder &decoder) {
         CUresult status;
         CUvideoparser parser = nullptr;
         CUVIDPARSERPARAMS parameters = {
-                .CodecType = decoder->createInfo().CodecType,
-                .ulMaxNumDecodeSurfaces = static_cast<unsigned int>(decoder->createInfo().ulNumDecodeSurfaces),
+                .CodecType = decoder.createInfo().CodecType,
+                .ulMaxNumDecodeSurfaces = static_cast<unsigned int>(decoder.createInfo().ulNumDecodeSurfaces),
                 .ulClockRate = 0,
                 .ulErrorThreshold = 0,
                 .ulMaxDisplayDelay = 1,
@@ -63,12 +100,12 @@ private:
     }
 
     static int CUDAAPI HandleVideoSequence(void *userData, CUVIDEOFORMAT *format) {
-        auto* decoder = static_cast<VideoDecoder*>(userData);
+        auto *decoder = static_cast<VideoDecoder *>(userData);
 
         assert(format->display_area.bottom - format->display_area.top >= 0);
         assert(format->display_area.right - format->display_area.left >= 0);
 
-        if(decoder == nullptr)
+        if (decoder == nullptr)
             std::cerr << "Unexpected null decoder during video decode (HandleVideoSequence)" << std::endl;
         else if (decoder->reconfigureDecoderIfNecessary(format)) {
             // Pass to skip the check below. Do the check if the decoder was not reconfigured because those are cases
@@ -83,12 +120,12 @@ private:
 
     static int CUDAAPI HandlePictureDecode(void *userData, CUVIDPICPARAMS *parameters) {
         CUresult status;
-        auto* decoder = static_cast<VideoDecoder*>(userData);
+        auto *decoder = static_cast<VideoDecoder *>(userData);
 
-        if(decoder == nullptr)
+        if (decoder == nullptr)
             std::cerr << "Unexpected null decoder during video decode (HandlePictureDecode)" << std::endl;
         else {
-            if((status = cuvidDecodePicture(decoder->handle(), parameters)) != CUDA_SUCCESS)
+            if ((status = cuvidDecodePicture(decoder->handle(), parameters)) != CUDA_SUCCESS)
                 std::cerr << "cuvidDecodePicture failed (" << status << ")" << std::endl;
         }
 
@@ -96,9 +133,9 @@ private:
     }
 
     static int CUDAAPI HandlePictureDisplay(void *userData, CUVIDPARSERDISPINFO *frame) {
-        auto* decoder = static_cast<VideoDecoder*>(userData);
+        auto *decoder = static_cast<VideoDecoder *>(userData);
 
-        if(decoder == nullptr)
+        if (decoder == nullptr)
             std::cerr << "Unexpected null decoder during video decode (HandlePictureDisplay)" << std::endl;
         else {
             // TODO: This should happen on a separate thread than cuvidDecodePicture() for performance.
@@ -108,57 +145,59 @@ private:
         return 1;
     }
 
-    static void ReadNext(std::shared_ptr<VideoDecoder> decoder, Input reader, Input end, DataQueue &nextDataQueue,
+    static void ReadNext(VideoDecoder &decoder, EncodedReader reader, DataQueue &nextDataQueue,
                          std::atomic_bool *isDoneReading) {
         do {
             std::shared_ptr<std::vector<unsigned char>> combinedData(new std::vector<unsigned char>());
             unsigned long flags = 0;
-            if (reader != end) {
+            if (!reader->isComplete()) {
                 for (auto i = 0u; i < 20; ++i) {
-                    if (reader != end) {
-                        int firstFrameIndex = -1;
-                        int numberOfFrames = -1;
-                        int tileNumber = -1;
-                        bool gotFirstFrameIndex = (*reader).getFirstFrameIndexIfSet(firstFrameIndex);
-                        bool gotNumberOfFrames = (*reader).getNumberOfFramesIfSet(numberOfFrames);
-                        bool gotTileNumber = (*reader).getTileNumberIfSet(tileNumber);
+                    auto encodedData = reader->next();
+                    if (!encodedData.has_value())
+                        break;
 
-                        if (gotFirstFrameIndex && gotNumberOfFrames) {
-                            if (decoder->frameNumberQueue()->write_available() <
-                                static_cast<unsigned int>(numberOfFrames)) {
-                                if (!nextDataQueue.read_available()) {
-                                    // There should be at least some data to decode.
-                                    assert(i);
-                                    break;
-                                } else {
-                                    while (decoder->frameNumberQueue()->write_available() <
-                                           (long unsigned int) numberOfFrames)
-                                        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                                }
-                            }
+                    int firstFrameIndex = -1;
+                    int numberOfFrames = -1;
+                    int tileNumber = -1;
+                    bool gotFirstFrameIndex = encodedData.value()->getFirstFrameIndexIfSet(firstFrameIndex);
+                    bool gotNumberOfFrames = encodedData.value()->getNumberOfFramesIfSet(numberOfFrames);
+                    bool gotTileNumber = encodedData.value()->getTileNumberIfSet(tileNumber);
 
-                            for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
-                                assert(decoder->frameNumberQueue()->push(i));
-                                if (gotTileNumber)
-                                    assert(decoder->tileNumberQueue()->push(tileNumber));
+                    if (gotFirstFrameIndex && gotNumberOfFrames) {
+                        if (decoder.frameNumberQueue()->write_available() <
+                            static_cast<unsigned int>(numberOfFrames)) {
+                            if (!nextDataQueue.read_available()) {
+                                // There should be at least some data to decode.
+                                assert(i);
+                                break;
+                            } else {
+                                while (decoder.frameNumberQueue()->write_available() <
+                                       (long unsigned int) numberOfFrames)
+                                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
                             }
                         }
 
-                        auto packet = static_cast<DecodeReaderPacket>(reader++);
-                        combinedData->insert(combinedData->end(), packet.payload, packet.payload + packet.payload_size);
-                        flags |= packet.flags;
+                        for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
+                            assert(decoder.frameNumberQueue()->push(i));
+                            if (gotTileNumber)
+                                assert(decoder.tileNumberQueue()->push(tileNumber));
+                        }
                     }
+                    auto packet = encodedData.value()->packet();
+                    combinedData->insert(combinedData->end(), packet.payload, packet.payload + packet.payload_size);
+                    flags |= packet.flags;
                 }
                 while (!nextDataQueue.push(std::make_pair(combinedData, flags))) {
                     // We're getting too far ahead of the decoder. Sleep for a bit.
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 }
             }
-        } while (reader != end);
+        } while (!reader->isComplete());
         *isDoneReading = true;
     }
 
-    static void DecodeAll(std::shared_ptr<VideoDecoder> decoder, Input reader, const Input end, DataQueue &nextDataQueue, std::atomic_bool *isDoneReading) {
+    static void
+    DecodeAll(VideoDecoder &decoder, DataQueue &nextDataQueue, std::atomic_bool *isDoneReading, std::atomic_bool *isComplete) {
         CUresult status;
         auto parser = CreateParser(decoder);
 
@@ -184,11 +223,14 @@ private:
                 throw std::runtime_error("Call to cuvidParseVideoData failed: " + std::to_string(status));
             }
 
-        }  while (!(*isDoneReading) || nextDataQueue.read_available());
+        } while (!(*isDoneReading) || nextDataQueue.read_available());
 
         cuvidDestroyVideoParser(parser);
         std::cout << "Decode complete; thread terminating." << std::endl;
+        isComplete->store(true);
     }
 };
+
+} // namespace tasm
 
 #endif //TASM_VIDEODECODERSESSION_H

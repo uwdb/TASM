@@ -197,7 +197,6 @@ public:
                                      lastFrame_);
     }
 
-    // TODO: Rename directory once we know the last frame number.
     void commit() override;
 
     void abort() override;

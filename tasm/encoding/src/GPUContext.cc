@@ -1,4 +1,3 @@
-//
-// Created by Maureen Daum on 6/10/20.
-//
+#include "GPUContext.h"
 
+bool GPUContext::isInitialized = false;

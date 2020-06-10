@@ -39,7 +39,7 @@ set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG --coverage -g3 -Wall -Wextra -Wno-unused-p
 
 # Find required library dependencies
 set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} nvcuvid dl pthread glog gflags stdc++fs)
-set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} nvcuvid pthread stdc++fs)
+set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} nvcuvid dl pthread stdc++fs)
 
 include(cmake/nvenc.cmake)
 
@@ -86,6 +86,7 @@ find_package(Protobuf REQUIRED)
 include_directories(${PROTOBUF_INCLUDE_DIR})
 include_directories(SYSTEM ${CMAKE_BINARY_DIR}/protobuf)
 set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${Protobuf_LIBRARIES} lightdb_protobuf)
+set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${Protobuf_LIBRARIES} lightdb_protobuf)
 add_subdirectory(protobuf)
 
 find_package (Glog REQUIRED)
@@ -98,6 +99,7 @@ find_package (Glog REQUIRED)
 find_package(GPAC REQUIRED)
 include_directories(SYSTEM ${GPAC_INCLUDE_DIRS})
 set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${GPAC_LIBRARIES})
+set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${GPAC_LIBRARIES})
 
 find_library(SQLITE3_LIBRARY sqlite3)
 message("INCLUDES: ${SQLITE3_LIBRARY}")

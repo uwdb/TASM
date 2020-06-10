@@ -151,7 +151,7 @@ namespace lightdb::tiles {
 class TileLayoutProvider {
 public:
     virtual const TileLayout &tileLayoutForFrame(unsigned int frame) = 0;
-    ~TileLayoutProvider() {}
+    virtual ~TileLayoutProvider() {}
 };
 
 class TileConfigurationProvider : public TileLayoutProvider {

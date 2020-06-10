@@ -4,16 +4,13 @@
 #include "Configuration.h"
 #include "GPUContext.h"
 #include "VideoLock.h"
+#include "spsc_queue.h"
 
 #include "cuviddec.h"
 #include "nvcuvid.h"
 #include <mutex>
 #include <unordered_map>
 #include <vector>
-#include <boost/lockfree/spsc_queue.hpp>
-
-template<typename T>
-using spsc_queue = boost::lockfree::spsc_queue<T>;
 
 static const unsigned int NUMBER_OF_PREALLOCATED_FRAMES = 150;
 
@@ -21,9 +18,10 @@ class VideoDecoder {
 public:
     VideoDecoder(const Configuration &configuration,
             std::shared_ptr<VideoLock> lock,
-            std::shared_ptr<spsc_queue<int>> frameNumberQueue,
-            std::shared_ptr<spsc_queue<int>> tileNumberQueue)
-            : lock_(lock),
+            std::shared_ptr<tasm::spsc_queue<int>> frameNumberQueue,
+            std::shared_ptr<tasm::spsc_queue<int>> tileNumberQueue)
+            : configuration_(configuration),
+                lock_(lock),
                 frameNumberQueue_(frameNumberQueue),
                 tileNumberQueue_(tileNumberQueue),
                 decodedPictureQueue_(100),
@@ -63,28 +61,41 @@ public:
 
     void mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format);
     void unmapFrame(unsigned int picIndex);
+    std::pair<CUdeviceptr, unsigned int> frameInfoForPicIndex(unsigned int picIndex) const;
 
-    std::shared_ptr<spsc_queue<int>> frameNumberQueue() const { return frameNumberQueue_; }
-    std::shared_ptr<spsc_queue<int>> tileNumberQueue() const { return tileNumberQueue_; }
+    const Configuration &configuration() const { return configuration_; }
+    std::shared_ptr<tasm::spsc_queue<int>> frameNumberQueue() const { return frameNumberQueue_; }
+    std::shared_ptr<tasm::spsc_queue<int>> tileNumberQueue() const { return tileNumberQueue_; }
+    tasm::spsc_queue<std::shared_ptr<CUVIDPARSERDISPINFO>> &decodedPictureQueue() { return decodedPictureQueue_; }
     CUVIDDECODECREATEINFO createInfo() const { return creationInfo_; }
     CUvideodecoder handle() const { return handle_; }
     CUVIDEOFORMAT currentFormat() const { return currentFormat_; }
+
+    struct DecodedDimensions {
+        unsigned int displayWidth;
+        unsigned int displayHeight;
+        unsigned int codedWidth;
+        unsigned int codedHeight;
+    };
+    DecodedDimensions decodedDimensionsForPicIndex(unsigned int picIndex) const;
 
 private:
     static CUVIDDECODECREATEINFO CreateInfoFromConfiguration(const Configuration &configuration, CUvideoctxlock lock);
     static CUVIDEOFORMAT FormatFromCreateInfo(CUVIDDECODECREATEINFO createInfo);
 
+    Configuration configuration_;
+
     CUvideodecoder handle_;
     std::shared_ptr<VideoLock> lock_;
-    std::shared_ptr<spsc_queue<int>> frameNumberQueue_;
-    std::shared_ptr<spsc_queue<int>> tileNumberQueue_;
-    spsc_queue<std::shared_ptr<CUVIDPARSERDISPINFO>> decodedPictureQueue_;
+    std::shared_ptr<tasm::spsc_queue<int>> frameNumberQueue_;
+    std::shared_ptr<tasm::spsc_queue<int>> tileNumberQueue_;
+    tasm::spsc_queue<std::shared_ptr<CUVIDPARSERDISPINFO>> decodedPictureQueue_;
 
     CUVIDDECODECREATEINFO creationInfo_;
     int picId_;
 
     std::vector<CUdeviceptr> preallocatedFrameArrays_;
-    spsc_queue<CUdeviceptr> availableFrameArrays_;
+    tasm::spsc_queue<CUdeviceptr> availableFrameArrays_;
     size_t pitchOfPreallocatedFrameArrays_;
     size_t heightOfPreallocatedFrameArrays_;
 

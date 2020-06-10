@@ -245,7 +245,7 @@ TEST_F(VisitorTestFixture, testDrawBoxes) {
 //}
 
 TEST_F(VisitorTestFixture, testScanAndSink) {
-    auto input = Scan("traffic-4k");
+    auto input = Scan("red10");
     Coordinator().execute(input.Sink());
 }
 

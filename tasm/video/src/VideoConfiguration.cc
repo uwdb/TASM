@@ -52,7 +52,7 @@ std::unique_ptr<const Configuration> GetConfiguration(const std::filesystem::pat
                 displayWidth, displayHeight,
                 codedWidth, codedHeight,
                 codedWidth, codedHeight,
-                framerate, codec));
+                framerate, codec, static_cast<unsigned int>(context->bit_rate)));
 
         avformat_close_input(&context);
         avformat_free_context(context);

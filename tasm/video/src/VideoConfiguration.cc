@@ -20,12 +20,12 @@ Codec CodecFromAVCodec(AVCodecID codecId) {
     }
 }
 
-std::unique_ptr<const Configuration> GetConfiguration(const std::filesystem::path &path) {
+std::unique_ptr<Configuration> GetConfiguration(const std::filesystem::path &path) {
     int result;
     char error[AV_ERROR_MAX_STRING_SIZE];
     auto context = avformat_alloc_context();
 
-    std::unique_ptr<const Configuration> configuration;
+    std::unique_ptr<Configuration> configuration;
     try {
         if ((result = avformat_open_input(&context, path.c_str(), nullptr, nullptr)) < 0) {
             throw std::runtime_error(av_make_error_string(error, AV_ERROR_MAX_STRING_SIZE, result));

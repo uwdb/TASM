@@ -1,6 +1,9 @@
 #ifndef TASM_SEMANTICINDEX_H
 #define TASM_SEMANTICINDEX_H
 
+#include "Rectangle.h"
+#include "SemanticSelection.h"
+#include "TemporalSelection.h"
 #include "sqlite3.h"
 #include <filesystem>
 #include <string>
@@ -16,6 +19,16 @@ public:
             unsigned int y1,
             unsigned int x2,
             unsigned int y2) = 0;
+
+    virtual std::unique_ptr<std::vector<int>> orderedFramesForSelection(
+            const std::string &video,
+            std::shared_ptr<MetadataSelection> metadataSelection,
+            std::shared_ptr<TemporalSelection> temporalSelection) = 0;
+
+    virtual std::unique_ptr<std::vector<Rectangle>> rectanglesForFrame(
+            const std::string &video,
+            std::shared_ptr<MetadataSelection> metadataSelection,
+            int frame) = 0;
 
     virtual ~SemanticIndex() {}
 };
@@ -34,6 +47,13 @@ public:
                      unsigned int y1,
                      unsigned int x2,
                      unsigned int y2) override;
+
+    std::unique_ptr<std::vector<int>> orderedFramesForSelection(
+            const std::string &video,
+            std::shared_ptr<MetadataSelection> metadataSelection,
+            std::shared_ptr<TemporalSelection> temporalSelection) override;
+
+    std::unique_ptr<std::vector<Rectangle>> rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame) override;
 
     ~SemanticIndexSQLite() {
         destroyStatements();

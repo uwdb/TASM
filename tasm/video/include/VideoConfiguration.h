@@ -7,7 +7,7 @@
 
 namespace tasm::video {
 
-std::unique_ptr<const Configuration> GetConfiguration(const std::filesystem::path &path);
+std::unique_ptr<Configuration> GetConfiguration(const std::filesystem::path &path);
 
 } // namespace tasm::video
 

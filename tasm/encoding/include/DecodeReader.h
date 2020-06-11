@@ -2,6 +2,7 @@
 #define TASM_DECODEREADER_H
 
 #include "GPUContext.h"
+#include "MP4Reader.h"
 #include "spsc_queue.h"
 
 #include "nvcuvid.h"
@@ -209,6 +210,191 @@ private:
     CUvideosource source_;
     CUVIDEOFORMAT format_;
     size_t decoded_bytes_;
+};
+
+struct GOPReaderPacket {
+public:
+    explicit GOPReaderPacket(std::vector<char> data, unsigned int firstFrameIndex, unsigned int numberOfFrames)
+            : data_(std::make_unique<std::vector<char>>(data)),
+              firstFrameIndex_(firstFrameIndex),
+              numberOfFrames_(numberOfFrames)
+    {}
+
+    explicit GOPReaderPacket(std::unique_ptr<std::vector<char>> data, unsigned int firstFrameIndex, unsigned int numberOfFrames)
+            : data_(std::move(data)),
+              firstFrameIndex_(firstFrameIndex),
+              numberOfFrames_(numberOfFrames)
+    { }
+
+    std::unique_ptr<std::vector<char>> &data() { return data_; }
+    unsigned int firstFrameIndex() const { return firstFrameIndex_; }
+    unsigned int numberOfFrames() const { return numberOfFrames_; }
+
+public:
+    std::unique_ptr<std::vector<char>> data_;
+    unsigned int firstFrameIndex_;
+    unsigned int numberOfFrames_;
+};
+
+class EncodedFrameReader {
+public:
+    // Assume frames is sorted.
+    // Frames is in global frame numbers (e.g. starting from frameOffsetInFile, not 0).
+    explicit EncodedFrameReader(std::filesystem::path filename, std::vector<int> frames, int frameOffsetInFile = 0, bool shouldReadEntireGOPs=false)
+            : filename_(std::move(filename)),
+              mp4Reader_(filename_),
+              frames_(std::move(frames)),
+              numberOfSamplesRead_(0),
+              shouldReadFramesExactly_(false),
+              frameOffsetInFile_(frameOffsetInFile),
+              shouldReadEntireGOPs_(shouldReadEntireGOPs)
+    {
+        // Update frames to be 0-indexed.
+        if (frameOffsetInFile) {
+            std::for_each(frames_.begin(), frames_.end(), [&](auto &frame) {
+                frame -= frameOffsetInFile;
+            });
+        }
+
+        frameIterator_ = frames_.begin(); // In global frame numbers.
+        keyframeIterator_ = mp4Reader_.keyframeNumbers().begin(); // 0-indexed.
+    }
+
+    void setNewFileWithSameKeyframes(const std::filesystem::path &newFilename) {
+        mp4Reader_.setNewFileWithSameKeyframes(newFilename);
+
+        frameIterator_ = frames_.begin();
+        keyframeIterator_ = mp4Reader_.keyframeNumbers().begin();
+    }
+
+    void setNewFileWithSameKeyframesButNewFrames(const std::filesystem::path &newFilename, std::vector<int> frames, int frameOffsetInFile) {
+        filename_ = newFilename;
+        mp4Reader_.setNewFileWithSameKeyframes(newFilename);
+        frames_ = std::move(frames);
+        frameOffsetInFile_ = frameOffsetInFile;
+
+        if (frameOffsetInFile) {
+            std::for_each(frames_.begin(), frames_.end(), [&](auto &frame) {
+                frame -= frameOffsetInFile;
+            });
+        }
+
+        frameIterator_ = frames_.begin();
+        keyframeIterator_ = mp4Reader_.keyframeNumbers().begin();
+    }
+
+    void setGlobalFrames(const std::vector<int> &globalFrames) {
+        globalFrames_ = globalFrames;
+        globalFramesIterator_ = globalFrames_.begin();
+    }
+
+    void setNewFrames(std::vector<int> frames) {
+        frames_ = std::move(frames);
+        frameIterator_ = frames_.begin();
+    }
+
+    void setShouldReadFramesExactly(bool shouldReadFramesExactly) {
+        shouldReadFramesExactly_ = shouldReadFramesExactly;
+    }
+
+    bool isEos() const { return frameIterator_ == frames_.end(); }
+
+    std::optional<GOPReaderPacket> read() {
+        // If we are reading all of the frames, return the frames for the next GOP.
+        if (frameIterator_ == frames_.end())
+            return {};
+
+        // Unideal, but frames_ is 0-indexed, but keyframes are 1-indexed because they are sample numbers.
+        unsigned int firstSampleToRead = 0;
+        unsigned int lastSampleToRead = 0;
+        if (mp4Reader_.allFramesAreKeyframes()) {
+            // Read sequential portion of frames.
+            firstSampleToRead = MP4Reader::frameNumberToSampleNumber(*frameIterator_);
+
+            auto lastFrameIndex = *frameIterator_++;
+            while (frameIterator_ != frames_.end() && *frameIterator_ == lastFrameIndex + 1)
+                lastFrameIndex = *frameIterator_++;
+
+            lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*std::prev(frameIterator_));
+        } else {
+            // Find GOP that the current frame is in.
+            while (haveMoreKeyframes() &&
+                   *keyframeIterator_ <= *frameIterator_)
+                keyframeIterator_++;
+
+            // Now keyframeIterator is pointing to the keyframe of the next GOP.
+            // Find the rest of the frames that we want and are in the same GOP.
+            int firstFrame = -1;
+            if (shouldReadFramesExactly_)
+                firstFrame = *frameIterator_;
+
+            if (!haveMoreKeyframes())
+                frameIterator_ = frames_.end();
+            else {
+                while (haveMoreFrames() && *frameIterator_ < *keyframeIterator_)
+                    frameIterator_++;
+            }
+
+            // Now frameIterator_ is point to one past the last frame we are interested in.
+            // Read frames from the previous GOP to the last frame we are interested in.
+            firstSampleToRead = MP4Reader::frameNumberToSampleNumber(shouldReadFramesExactly_ ? firstFrame : *std::prev(keyframeIterator_));
+            lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*std::prev(frameIterator_));
+
+            if (shouldReadEntireGOPs_) {
+                // If there are more keyframes, then read to before the next one.
+                if (haveMoreKeyframes()) {
+                    lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*keyframeIterator_ - 1);
+                } else {
+                    lastSampleToRead = mp4Reader_.numberOfSamples();
+                }
+            }
+
+            if (globalFrames_.size()) {
+                // Finish reading frames in this GOP, even if they aren't in the frames list.
+                // Make the last sample the last global frame in this GOP.
+                // If there are no more keyframes, we're in the last GOP, so the last sample to read is the last frame in the global frames.
+                if (!haveMoreKeyframes())
+                    lastSampleToRead = MP4Reader::frameNumberToSampleNumber(globalFrames_.back());
+                else {
+                    // Move the global frames iterator forward until it's no longer in this GOP.
+                    while (haveMoreGlobalFrames() && *globalFramesIterator_ < *keyframeIterator_)
+                        globalFramesIterator_++;
+
+                    lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*std::prev(globalFramesIterator_));
+                }
+            }
+
+        }
+
+        numberOfSamplesRead_ += lastSampleToRead - firstSampleToRead + 1;
+        return dataForSamples(firstSampleToRead, lastSampleToRead);
+    }
+
+//    ~EncodedFrameReader() {
+//        std::cout << "Number of samples read: " << numberOfSamplesRead_ << std::endl;
+//    }
+
+private:
+    bool haveMoreFrames() const { return frameIterator_ != frames_.end(); }
+    bool haveMoreKeyframes() const { return keyframeIterator_ != mp4Reader_.keyframeNumbers().end(); }
+    bool haveMoreGlobalFrames() const { return globalFramesIterator_ != globalFrames_.end(); }
+
+    std::optional<GOPReaderPacket> dataForSamples(unsigned int firstSampleToRead, unsigned int lastSampleToRead) {
+        // -1 from firstSampleToRead to go from sample number -> index.
+        return { GOPReaderPacket(mp4Reader_.dataForSamples(firstSampleToRead, lastSampleToRead), MP4Reader::sampleNumberToFrameNumber(firstSampleToRead + frameOffsetInFile_), lastSampleToRead - firstSampleToRead + 1) };
+    }
+
+    std::filesystem::path filename_;
+    MP4Reader mp4Reader_;
+    std::vector<int> frames_;
+    std::vector<int>::iterator frameIterator_;
+    std::vector<int>::const_iterator keyframeIterator_;
+    unsigned int numberOfSamplesRead_;
+    std::vector<int> globalFrames_;
+    std::vector<int>::const_iterator globalFramesIterator_;
+    bool shouldReadFramesExactly_;
+    int frameOffsetInFile_;
+    bool shouldReadEntireGOPs_;
 };
 
 

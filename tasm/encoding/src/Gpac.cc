@@ -55,4 +55,16 @@ void write_tile_configuration(const std::filesystem::path &metadata_filename,
     write_tile_configuration(metadata_filename, tileConfiguration);
 }
 
+TileLayout load_tile_configuration(const std::filesystem::path &metadataFilename) {
+    lightdb::serialization::TileConfiguration tileConfiguration;
+    std::fstream input(metadataFilename, std::ios::in | std::ios::binary);
+    if (!tileConfiguration.ParseFromIstream(&input))
+        throw std::runtime_error("Failed to read tile configuration from input stream");
+
+    // Construct tile layout object.
+    std::vector<unsigned int> widthsOfColumns(tileConfiguration.widthsofcolumns().begin(), tileConfiguration.widthsofcolumns().end());
+    std::vector<unsigned int> heightsOfRows(tileConfiguration.heightsofrows().begin(), tileConfiguration.heightsofrows().end());
+    return TileLayout(tileConfiguration.numberofcolumns(), tileConfiguration.numberofrows(), widthsOfColumns, heightsOfRows);
+}
+
 } // namespace tasm::gpac

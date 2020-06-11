@@ -14,6 +14,11 @@ public:
 
     virtual std::optional<T> next() = 0;
     virtual bool isComplete() = 0;
+};
+
+template <class T>
+class ConfigurationOperator : public Operator<T> {
+public:
     virtual const Configuration &configuration() = 0;
 };
 

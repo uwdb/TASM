@@ -5,8 +5,6 @@
 
 namespace tasm {
 
-static const std::filesystem::path CatalogPath = "resources";
-
 class TileFiles {
 public:
     static std::filesystem::path tileVersionFilename(const std::filesystem::path &path) {
@@ -17,12 +15,12 @@ public:
         return path / tile_metadata_filename_;
     }
 
-    static std::filesystem::path directoryForTilesInFrames(const CrackedEntry &entry, unsigned int firstFrame,
+    static std::filesystem::path directoryForTilesInFrames(const TiledEntry &entry, unsigned int firstFrame,
                                                            unsigned int lastFrame) {
         return entry.path()  / (std::to_string(firstFrame) + separating_string_ + std::to_string(lastFrame) + separating_string_ + std::to_string(entry.tile_version()));
     }
 
-    static std::filesystem::path temporaryTileFilename(const CrackedEntry &entry, unsigned int tileNumber,
+    static std::filesystem::path temporaryTileFilename(const TiledEntry &entry, unsigned int tileNumber,
                                                        unsigned int firstFrame,
                                                        unsigned int lastFrame) {
         auto tempName = directoryForTilesInFrames(entry, firstFrame, lastFrame) / (baseTileFilename(tileNumber) +
@@ -38,7 +36,7 @@ public:
         return ".mp4";
     }
 
-    static std::filesystem::path tileMetadataFilename(const CrackedEntry &entry, unsigned int firstFrame, unsigned lastFrame) {
+    static std::filesystem::path tileMetadataFilename(const TiledEntry &entry, unsigned int firstFrame, unsigned lastFrame) {
         return directoryForTilesInFrames(entry, firstFrame, lastFrame) / tile_metadata_filename_;
     }
 

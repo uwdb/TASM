@@ -10,7 +10,7 @@ class Transaction;
 class OutputStream {
 public:
     OutputStream(const Transaction &transaction,
-                 const tasm::CrackedEntry &entry,
+                 const tasm::TiledEntry &entry,
                  unsigned int tileNumber,
                  unsigned int firstFrame,
                  unsigned int lastFrame)
@@ -30,7 +30,7 @@ public:
 
 protected:
     const Transaction &transaction_;
-    const tasm::CrackedEntry &entry_;
+    const tasm::TiledEntry &entry_;
     const std::filesystem::path filename_;
     const Codec codec_;
     std::ofstream stream_;
@@ -72,7 +72,7 @@ private:
 
 class TileCrackingTransaction: public Transaction {
 public:
-    TileCrackingTransaction(std::shared_ptr<tasm::CrackedEntry> entry, const tasm::TileLayout &tileLayout, int firstFrame = -1, int lastFrame = -1)
+    TileCrackingTransaction(std::shared_ptr<tasm::TiledEntry> entry, const tasm::TileLayout &tileLayout, int firstFrame = -1, int lastFrame = -1)
             : Transaction(0u),
               entry_(entry),
               tileLayout_(tileLayout),
@@ -104,7 +104,7 @@ private:
     void prepareTileDirectory();
     void writeTileMetadata();
 
-    std::shared_ptr<tasm::CrackedEntry> entry_;
+    std::shared_ptr<tasm::TiledEntry> entry_;
     const tasm::TileLayout tileLayout_;
 
     int firstFrame_;

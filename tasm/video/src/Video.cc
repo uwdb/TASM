@@ -4,7 +4,7 @@
 
 namespace tasm {
 
-void CrackedEntry::incrementTileVersion() {
+void TiledEntry::incrementTileVersion() {
     std::ofstream output(TileFiles::tileVersionFilename(path_));
 
     ++version_;

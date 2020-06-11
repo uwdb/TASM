@@ -13,7 +13,7 @@ namespace tasm {
 class TileOperator : public Operator<GPUDecodedFrameData> {
 public:
     TileOperator(std::shared_ptr<Video> video,
-            std::shared_ptr<Operator<GPUDecodedFrameData>> parent,
+            std::shared_ptr<ConfigurationOperator<GPUDecodedFrameData>> parent,
             std::shared_ptr<TileLayoutProvider> tileConfigurationProvider,
             std::string outputEntryName,
             unsigned int layoutDuration,
@@ -23,7 +23,7 @@ public:
             video_(video),
             parent_(parent),
             tileConfigurationProvider_(tileConfigurationProvider),
-          outputEntry_(new CrackedEntry(CatalogPath / outputEntryName)),
+          outputEntry_(new TiledEntry(outputEntryName)),
           layoutDuration_(layoutDuration),
           tileEncodersManager_(EncodeConfiguration(parent->configuration(), NV_ENC_HEVC, layoutDuration), *context, *lock),
           firstFrameInGroup_(-1),
@@ -32,7 +32,6 @@ public:
     {}
 
     bool isComplete() override { return isComplete_; }
-    const Configuration &configuration() override { return parent_->configuration(); }
     std::optional<GPUDecodedFrameData> next() override;
 
 private:
@@ -43,9 +42,9 @@ private:
 
     bool isComplete_;
     std::shared_ptr<Video> video_;
-    std::shared_ptr<Operator<GPUDecodedFrameData>> parent_;
+    std::shared_ptr<ConfigurationOperator<GPUDecodedFrameData>> parent_;
     std::shared_ptr<TileLayoutProvider> tileConfigurationProvider_;
-    std::shared_ptr<CrackedEntry> outputEntry_;
+    std::shared_ptr<TiledEntry> outputEntry_;
     const unsigned int layoutDuration_;
     MultipleEncoderManager tileEncodersManager_;
     std::unique_ptr<TileLayout> currentTileLayout_;

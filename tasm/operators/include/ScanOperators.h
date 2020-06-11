@@ -9,7 +9,7 @@
 
 namespace tasm {
 
-class ScanFileDecodeReader : public Operator<CPUEncodedFrameDataPtr> {
+class ScanFileDecodeReader : public ConfigurationOperator<CPUEncodedFrameDataPtr> {
 public:
     ScanFileDecodeReader(std::shared_ptr<Video> video)
         : video_(video),

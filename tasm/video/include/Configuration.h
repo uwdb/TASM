@@ -40,6 +40,8 @@ struct Configuration {
         frameRate(frameRate),
         codec(codec),
         bitrate(bitrate) {}
+
+    Configuration() = default;
 };
 
 struct EncodeConfiguration: public Configuration

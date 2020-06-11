@@ -80,4 +80,54 @@ void SemanticIndexSQLite::addMetadata(
     ASSERT_SQLITE_OK(sqlite3_reset(addMetadataStmt_));
 }
 
+std::unique_ptr<std::vector<int>> SemanticIndexSQLite::orderedFramesForSelection(
+        const std::string &video,
+        std::shared_ptr<MetadataSelection> metadataSelection,
+        std::shared_ptr<TemporalSelection> temporalSelection) {
+    std::string query = "SELECT frame FROM labels WHERE video = ? AND " + metadataSelection->labelConstraints();
+    if (temporalSelection)
+        query += " AND " + temporalSelection->frameConstraints();
+    query += " ORDER BY frame ASC";
+
+    sqlite3_stmt *select;
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
+    ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
+
+    auto frames = std::make_unique<std::vector<int>>();
+
+    int result;
+    while ((result = sqlite3_step(select)) == SQLITE_ROW) {
+        frames->push_back(sqlite3_column_int(select, 0));
+    }
+
+    assert(result == SQLITE_DONE);
+    ASSERT_SQLITE_OK(sqlite3_finalize(select));
+
+    return frames;
+}
+
+std::unique_ptr<std::vector<Rectangle>> SemanticIndexSQLite::rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame) {
+    std::string query = "SELECT x1, y1, x2, y2 FROM labels WHERE video = ? AND " + metadataSelection->labelConstraints() + " AND frame = ?";
+    sqlite3_stmt *select;
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
+    ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, frame));
+
+    auto rectangles = std::make_unique<std::vector<Rectangle>>();
+    int result;
+    while ((result = sqlite3_step(select)) == SQLITE_ROW) {
+        unsigned int x1 = sqlite3_column_int(select, 0);
+        unsigned int y1 = sqlite3_column_int(select, 1);
+        unsigned int x2 = sqlite3_column_int(select, 2);
+        unsigned int y2 = sqlite3_column_int(select, 3);
+
+        rectangles->emplace_back(frame, x1, y1, (x2 - x1), (y2 - y1));
+    }
+
+    ASSERT_SQLITE_DONE(result);
+    ASSERT_SQLITE_OK(sqlite3_finalize(select));
+
+    return rectangles;
+}
+
 } // namespace tasm

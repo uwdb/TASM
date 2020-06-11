@@ -34,7 +34,7 @@ public:
     }
 
 private:
-    std::unique_ptr<SemanticIndex> semanticIndex_;
+    std::shared_ptr<SemanticIndex> semanticIndex_;
     VideoManager videoManager_;
 };
 

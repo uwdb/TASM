@@ -71,8 +71,8 @@ CUVIDDECODECREATEINFO VideoDecoder::CreateInfoFromConfiguration(const Configurat
     info.ulNumOutputSurfaces = 32;
     info.vidLock = lock;
 
-    info.ulMaxWidth = configuration.codedWidth;
-    info.ulMaxHeight = configuration.codedHeight;
+    info.ulMaxWidth = configuration.maxWidth;
+    info.ulMaxHeight = configuration.maxHeight;
 
     return info;
 }

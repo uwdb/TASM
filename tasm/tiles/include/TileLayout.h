@@ -128,4 +128,18 @@ static const TileLayout EmptyTileLayout(0, 0, std::vector<unsigned int>(), std::
 
 } // namespace tasm
 
+namespace std {
+template<>
+struct hash<tasm::TileLayout> {
+    size_t operator() (const tasm::TileLayout &tileLayout) const {
+        size_t seed = 0;
+        boost::hash_combine(seed, tileLayout.numberOfColumns());
+        boost::hash_combine(seed, tileLayout.numberOfRows());
+        boost::hash_combine(seed, tileLayout.widthsOfColumns());
+        boost::hash_combine(seed, tileLayout.heightsOfRows());
+        return seed;
+    }
+};
+} // namespace std
+
 #endif //TASM_TILELAYOUT_H

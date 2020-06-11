@@ -9,24 +9,27 @@
 
 namespace tasm {
 
-class GPUDecodeFromCPU : public Operator<GPUDecodedFrameData> {
+class GPUDecodeFromCPU : public ConfigurationOperator<GPUDecodedFrameData> {
 public:
     GPUDecodeFromCPU(std::shared_ptr<Operator<CPUEncodedFrameDataPtr>> scan,
             const Configuration &configuration,
             std::shared_ptr<GPUContext> context,
-            std::shared_ptr<VideoLock> lock)
+            std::shared_ptr<VideoLock> lock,
+            unsigned int largestWidth = 0,
+            unsigned int largestHeight = 0)
         : isComplete_(false),
         configuration_(configuration),
         frameNumberQueue_(std::make_shared<spsc_queue<int>>(50000)),
         tileNumberQueue_(std::make_shared<spsc_queue<int>>(50000)),
         context_(context),
         lock_(lock),
+        largestWidth_(largestWidth ?: configuration_.codedWidth),
+        largestHeight_(largestHeight ?: configuration_.codedHeight),
         decoder_(configuration_, lock_, frameNumberQueue_, tileNumberQueue_),
         session_(decoder_, scan),
           numberOfFramesDecoded_(0)
     {
-        // TODO: Use largest width/height from tiles.
-        decoder_.preallocateArraysForDecodedFrames(configuration_.codedWidth, configuration_.codedHeight);
+        decoder_.preallocateArraysForDecodedFrames(largestWidth_, largestHeight_);
     }
 
     const Configuration &configuration() override { return configuration_; }
@@ -68,11 +71,12 @@ private:
 
     std::shared_ptr<GPUContext> context_;
     std::shared_ptr<VideoLock> lock_;
+    unsigned int largestWidth_;
+    unsigned int largestHeight_;
 
     VideoDecoder decoder_;
     VideoDecoderSession session_;
     int numberOfFramesDecoded_;
-
 };
 
 } // namespace tasm

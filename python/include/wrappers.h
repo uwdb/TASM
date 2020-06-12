@@ -7,7 +7,7 @@
 namespace p = boost::python;
 namespace np = boost::python::numpy;
 
-namespace tasm {
+namespace tasm::python {
 class PythonImage {
 public:
     PythonImage(ImagePtr image)
@@ -52,8 +52,19 @@ public:
                                   unsigned int lastFrameExclusive) {
         return SelectionResults(select(video, label, firstFrameInclusive, lastFrameExclusive));
     }
+
+    SelectionResults pythonSelect(const std::string &video,
+                                  const std::string &label) {
+        return SelectionResults(select(video, label));
+    }
+
+    SelectionResults pythonSelect(const std::string &video,
+                                  const std::string &label,
+                                  unsigned int frame) {
+        return SelectionResults(select(video, label, frame));
+    }
 };
 
-} // namespace tasm;
+} // namespace tasm::python;
 
 #endif //TASM_WRAPPERS_H

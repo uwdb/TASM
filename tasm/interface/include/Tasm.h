@@ -35,20 +35,32 @@ public:
         videoManager_.store(videoPath, savedName);
     }
 
+    virtual std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label) {
+        return select(video, label, std::shared_ptr<TemporalSelection>());
+    }
+
+    virtual std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label, unsigned int frame) {
+        return select(video, label, std::make_shared<EqualTemporalSelection>(frame));
+    }
+
     virtual std::unique_ptr<ImageIterator> select(const std::string &video,
                          const std::string &label,
                          unsigned int firstFrameInclusive,
                          unsigned int lastFrameExclusive) {
-        return videoManager_.select(
-                video,
-                std::make_shared<SingleMetadataSelection>(label),
-                std::make_shared<RangeTemporalSelection>(firstFrameInclusive, lastFrameExclusive),
-                semanticIndex_);
+        return select(video, label, std::make_shared<RangeTemporalSelection>(firstFrameInclusive, lastFrameExclusive));
     }
 
     virtual ~TASM() = default;
 
 private:
+    std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label, std::shared_ptr<TemporalSelection> temporalSelection) {
+        return videoManager_.select(
+                video,
+                std::make_shared<SingleMetadataSelection>(label),
+                temporalSelection,
+                semanticIndex_);
+    }
+
     std::shared_ptr<SemanticIndex> semanticIndex_;
     VideoManager videoManager_;
 };

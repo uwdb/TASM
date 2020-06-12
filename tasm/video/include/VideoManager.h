@@ -20,6 +20,7 @@ public:
     }
 
     void store(const std::experimental::filesystem::path &path, const std::string &name);
+
     std::unique_ptr<ImageIterator> select(const std::string &video,
             std::shared_ptr<MetadataSelection> metadataSelection,
             std::shared_ptr<TemporalSelection> temporalSelection,

@@ -1,6 +1,7 @@
 #include "VideoManager.h"
 #include <gtest/gtest.h>
 
+#include "SemanticIndex.h"
 #include "Video.h"
 #include <cassert>
 
@@ -31,6 +32,7 @@ TEST_F(VideoManagerTestFixture, testSelect) {
     std::experimental::filesystem::path labels = "testLabels.db";
 
     // Delete DB at path.
+    // Better would be to use an in-memory db for the tests.
     std::experimental::filesystem::remove(labels);
     auto semanticIndex = std::make_shared<SemanticIndexSQLite>(labels);
 

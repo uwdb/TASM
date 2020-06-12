@@ -27,26 +27,27 @@ private:
     TileLayout layout_;
 };
 
-template <int Rows, int Columns>
 class UniformTileconfigurationProvider: public TileLayoutProvider {
 public:
-    UniformTileconfigurationProvider(Configuration configuration)
-        : configuration_(configuration)
+    UniformTileconfigurationProvider(unsigned int numRows, unsigned int numColumns, Configuration configuration)
+        : numRows_(numRows),
+        numColumns_(numColumns),
+        configuration_(configuration)
     {}
 
     const TileLayout &tileLayoutForFrame(unsigned int frame) override {
         if (layoutPtr)
             return *layoutPtr;
 
-        layoutPtr = std::make_unique<TileLayout>(Columns, Rows,
-                tile_dimensions(configuration_.codedWidth, configuration_.displayWidth, Columns),
-                tile_dimensions(configuration_.codedHeight, configuration_.displayHeight, Rows));
+        layoutPtr = std::make_unique<TileLayout>(numColumns_, numRows_,
+                tile_dimensions(configuration_.codedWidth, configuration_.displayWidth, numColumns_),
+                tile_dimensions(configuration_.codedHeight, configuration_.displayHeight, numRows_));
         return *layoutPtr;
     }
 
 private:
     std::vector<unsigned int> tile_dimensions(unsigned int codedDimension, unsigned int displayDimension, unsigned int numTiles) {
-        static unsigned int CTBS_SIZE_Y = 32;
+//        static unsigned int CTBS_SIZE_Y = 32;
         std::vector<unsigned int> dimensions(numTiles);
         unsigned int total = 0;
         for (auto i = 0u; i < numTiles; ++i) {
@@ -60,6 +61,8 @@ private:
         return dimensions;
     }
 
+    unsigned int numRows_;
+    unsigned int numColumns_;
     Configuration configuration_;
     std::unique_ptr<TileLayout> layoutPtr;
 };

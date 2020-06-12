@@ -26,8 +26,9 @@ BOOST_PYTHON_MODULE(_tasm) {
             .def("next", &tasm::python::SelectionResults::next);
 
     class_<tasm::python::PythonTASM, boost::noncopyable>("TASM")
-        .def("addMetadata", &tasm::python::PythonTASM::addMetadata)
+        .def("add_metadata", &tasm::python::PythonTASM::addMetadata)
         .def("store", &tasm::python::PythonTASM::store)
+        .def("store_with_uniform_layout", &tasm::python::PythonTASM::storeWithUniformLayout)
         .def("select", selectRange)
         .def("select", selectEqual)
         .def("select", selectAll);

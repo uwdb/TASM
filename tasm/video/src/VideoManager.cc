@@ -25,15 +25,23 @@ void VideoManager::createCatalogIfNecessary() {
 
 void VideoManager::store(const std::experimental::filesystem::path &path, const std::string &name) {
     std::shared_ptr<Video> video(new Video(path));
-
-    std::shared_ptr<ScanFileDecodeReader> scan(new ScanFileDecodeReader(video));
-    std::shared_ptr<GPUDecodeFromCPU> decode(new GPUDecodeFromCPU(scan, video->configuration(), gpuContext_, lock_));
-
     auto tileConfigurationProvider = std::make_shared<SingleTileConfigurationProvider>(
             video->configuration().displayWidth,
             video->configuration().displayHeight);
+    storeTiledVideo(video, tileConfigurationProvider, name);
+}
 
-    TileOperator tile(video, decode, tileConfigurationProvider, name, video->configuration().frameRate, gpuContext_, lock_);
+void VideoManager::storeWithUniformLayout(const std::experimental::filesystem::path &path, const std::string &name, unsigned int numRows, unsigned int numColumns) {
+    std::shared_ptr<Video> video(new Video(path));
+    auto tileConfigurationProvider = std::make_shared<UniformTileconfigurationProvider>(numRows, numColumns, video->configuration());
+    storeTiledVideo(video, tileConfigurationProvider, name);
+}
+
+void VideoManager::storeTiledVideo(std::shared_ptr<Video> video, std::shared_ptr<TileLayoutProvider> tileLayoutProvider, const std::string &savedName) {
+    std::shared_ptr<ScanFileDecodeReader> scan(new ScanFileDecodeReader(video));
+    std::shared_ptr<GPUDecodeFromCPU> decode(new GPUDecodeFromCPU(scan, video->configuration(), gpuContext_, lock_));
+
+    TileOperator tile(video, decode, tileLayoutProvider, savedName, video->configuration().frameRate, gpuContext_, lock_);
     while (!tile.isComplete()) {
         tile.next();
     }

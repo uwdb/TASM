@@ -5,11 +5,13 @@
 #include "ImageUtilities.h"
 #include "VideoLock.h"
 #include <experimental/filesystem>
+#include <TileConfigurationProvider.h>
 
 namespace tasm {
 class SemanticIndex;
 class MetadataSelection;
 class TemporalSelection;
+class Video;
 
 class VideoManager {
 public:
@@ -20,6 +22,7 @@ public:
     }
 
     void store(const std::experimental::filesystem::path &path, const std::string &name);
+    void storeWithUniformLayout(const std::experimental::filesystem::path &path, const std::string &name, unsigned int numRows, unsigned int numColumns);
 
     std::unique_ptr<ImageIterator> select(const std::string &video,
             std::shared_ptr<MetadataSelection> metadataSelection,
@@ -28,6 +31,7 @@ public:
 
 private:
     void createCatalogIfNecessary();
+    void storeTiledVideo(std::shared_ptr<Video>, std::shared_ptr<TileLayoutProvider>, const std::string &savedName);
 
     std::shared_ptr<GPUContext> gpuContext_;
     std::shared_ptr<VideoLock> lock_;

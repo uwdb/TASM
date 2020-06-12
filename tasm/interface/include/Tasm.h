@@ -35,6 +35,10 @@ public:
         videoManager_.store(videoPath, savedName);
     }
 
+    virtual void storeWithUniformLayout(const std::string &videoPath, const std::string &savedName, unsigned int rows, unsigned int columns) {
+        videoManager_.storeWithUniformLayout(videoPath, savedName, rows, columns);
+    }
+
     virtual std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label) {
         return select(video, label, std::shared_ptr<TemporalSelection>());
     }

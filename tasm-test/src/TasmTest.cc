@@ -68,3 +68,19 @@ TEST_F(TasmTestFixture, testSelectDifferentPath) {
 
     std::experimental::filesystem::remove(path);
 }
+
+TEST_F(TasmTestFixture, testTileBird) {
+    tasm::TASM tasm;
+    tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-bird", "birdsincage", "bird");
+}
+
+TEST_F(TasmTestFixture, testSelectBird) {
+    tasm::TASM tasm;
+    auto selection = tasm.select("birdsincage-bird", "bird", "birdsincage");
+    ImagePtr next;
+    auto count = 0u;
+    while ((next = selection->next())) {
+        ++count;
+    }
+    assert(count == 360);
+}

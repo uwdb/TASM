@@ -72,15 +72,24 @@ std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
     // Set up scan of a tiled video.
     std::shared_ptr<TiledVideoManager> tiledVideoManager(new TiledVideoManager(entry));
     auto tileLocationProvider = std::make_shared<SingleTileLocationProvider>(tiledVideoManager);
-    auto semanticDataManager = std::make_shared<SemanticDataManager>(semanticIndex, metadataIdentifier, metadataSelection, temporalSelection);
+    auto semanticDataManager = std::make_shared<SemanticDataManager>(semanticIndex, metadataIdentifier, metadataSelection, temporalSelection, tiledVideoManager->totalWidth(), tiledVideoManager->totalHeight());
     auto scan = std::make_shared<ScanTiledVideoOperator>(entry, semanticDataManager, tileLocationProvider);
 
     // Set up decode. Specify largest tile dimensions which are required to successfully reconfigure the decoder.
     auto maxWidth = tiledVideoManager->largestWidth();
     auto maxHeight = tiledVideoManager->largestHeight();
+
+    // The maximum dimensions were set based on display dimensions; make sure they are big enough to handle larger coded dimensions.
+    static const unsigned int CodedDimension = 32;
+    if (maxWidth % CodedDimension)
+        maxWidth = (maxWidth / CodedDimension + 1) * CodedDimension;
+    if (maxHeight % CodedDimension)
+        maxHeight = (maxHeight / CodedDimension + 1) * CodedDimension;
+
     auto configuration = video::GetConfiguration(tileLocationProvider->locationOfTileForFrame(0, 0));
-    configuration->maxWidth = std::max(maxWidth, configuration->maxWidth);
-    configuration->maxHeight = std::max(maxHeight, configuration->maxHeight);
+    configuration->maxWidth = maxWidth;
+    configuration->maxHeight = maxHeight;
+
     std::shared_ptr<GPUDecodeFromCPU> decode(new GPUDecodeFromCPU(scan, *configuration, gpuContext_, lock_, maxWidth, maxHeight));
 
     // Set up tile merger.

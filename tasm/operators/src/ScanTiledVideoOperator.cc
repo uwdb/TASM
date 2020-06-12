@@ -146,16 +146,6 @@ std::optional<CPUEncodedFrameDataPtr> ScanTiledVideoOperator::next() {
     totalNumberOfFrames_ += gopPacket->numberOfFrames();
     totalNumberOfBytes_ += gopPacket->data()->size();
 
-    assert(totalVideoWidth_);
-    assert(totalVideoHeight_);
-    static const unsigned int CodedDimension = 32;
-    configuration.maxWidth = std::max(totalVideoWidth_, configuration.maxWidth);
-    if (configuration.maxWidth % CodedDimension)
-        configuration.maxWidth = (configuration.maxWidth / CodedDimension + 1) * CodedDimension;
-    configuration.maxHeight = std::max(totalVideoHeight_, configuration.maxHeight);
-    if (configuration.maxHeight % CodedDimension)
-        configuration.maxHeight = (configuration.maxHeight / CodedDimension + 1) * CodedDimension;
-
     unsigned long flags = 0;
     auto data = std::make_shared<CPUEncodedFrameData>(configuration, DecodeReaderPacket(*gopPacket->data(), flags));
     data->setFirstFrameIndexAndNumberOfFrames(gopPacket->firstFrameIndex(), gopPacket->numberOfFrames());

@@ -6,7 +6,7 @@
 
 namespace tasm {
 
-void GetImage(CUdeviceptr dpSrc, uint8_t *pDst, int nWidth, int nHeight, int srcXOffset, int srcYOffset)
+void GetImage(CUdeviceptr dpSrc, uint8_t *pDst, int nWidth, int nHeight, int srcXOffset, int srcYOffset, int srcPitch)
 {
     CUDA_MEMCPY2D m;
     memset(&m, 0, sizeof(m));
@@ -14,7 +14,7 @@ void GetImage(CUdeviceptr dpSrc, uint8_t *pDst, int nWidth, int nHeight, int src
     m.Height = nHeight;
     m.srcMemoryType = CU_MEMORYTYPE_DEVICE;
     m.srcDevice = (CUdeviceptr)dpSrc;
-    m.srcPitch = m.WidthInBytes;
+    m.srcPitch = srcPitch;
     m.srcXInBytes = srcXOffset;
     m.srcY = srcYOffset;
     m.dstMemoryType = CU_MEMORYTYPE_HOST;
@@ -49,7 +49,8 @@ std::optional<std::unique_ptr<std::vector<ImagePtr>>> TransformToImage::next() {
         Nv12ToColor32<RGBA32>((uint8_t *)object->handle(), object->pitch(), (uint8_t *)tmpImage_, tmpImagePitch_, maxWidth_, maxHeight_);
 
         std::unique_ptr<uint8_t[]> pImage(new uint8_t[frameSize]);
-        GetImage(tmpImage_, reinterpret_cast<uint8_t*>(pImage.get()), numChannels_ * width, height, numChannels_ * object->xOffset(), object->yOffset());
+        GetImage(tmpImage_, reinterpret_cast<uint8_t*>(pImage.get()), numChannels_ * width, height, numChannels_ * object->xOffset(), object->yOffset(), tmpImagePitch_);
+
         images->emplace_back(std::make_unique<Image>(width, height, std::move(pImage)));
     }
     return images;

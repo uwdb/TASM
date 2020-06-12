@@ -47,7 +47,7 @@ std::optional<GPUPixelDataContainer> MergeTilesOperator::next() {
             pixelData->emplace_back(std::make_shared<GPUPixelDataFromDecodedFrame>(
                     frame,
                     boundingBox.width, boundingBox.height,
-                    offsetIntoTile.first, offsetIntoTile.second));
+                    offsetIntoTile.second, offsetIntoTile.first));
 
         }
     }

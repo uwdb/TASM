@@ -13,11 +13,15 @@ public:
     SemanticDataManager(std::shared_ptr<SemanticIndex> index,
             const std::string &video,
             std::shared_ptr<MetadataSelection> metadataSelection,
-            std::shared_ptr<TemporalSelection> temporalSelection)
+            std::shared_ptr<TemporalSelection> temporalSelection,
+            unsigned int maxWidth = 0,
+            unsigned int maxHeight = 0)
             : index_(index),
             video_(video),
             metadataSelection_(metadataSelection),
-            temporalSelection_(temporalSelection)
+            temporalSelection_(temporalSelection),
+            maxWidth_(maxWidth),
+            maxHeight_(maxHeight)
     {}
 
     const std::vector<int> &orderedFrames() {
@@ -32,7 +36,7 @@ public:
         if (frameToRectangles_.count(frame))
             return *frameToRectangles_.at(frame);
 
-        frameToRectangles_.emplace(frame, std::move(index_->rectanglesForFrame(video_, metadataSelection_, frame)));
+        frameToRectangles_.emplace(frame, std::move(index_->rectanglesForFrame(video_, metadataSelection_, frame, maxWidth_, maxHeight_)));
         return *frameToRectangles_.at(frame);
     }
 
@@ -45,6 +49,8 @@ private:
     std::string video_;
     std::shared_ptr<MetadataSelection> metadataSelection_;
     std::shared_ptr<TemporalSelection> temporalSelection_;
+    unsigned int maxWidth_;
+    unsigned int maxHeight_;
 
     std::unique_ptr<std::vector<int>> orderedFrames_;
     std::unordered_map<int, std::unique_ptr<std::list<Rectangle>>> frameToRectangles_;

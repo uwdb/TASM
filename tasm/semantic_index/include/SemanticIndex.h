@@ -28,7 +28,9 @@ public:
     virtual std::unique_ptr<std::list<Rectangle>> rectanglesForFrame(
             const std::string &video,
             std::shared_ptr<MetadataSelection> metadataSelection,
-            int frame) = 0;
+            int frame,
+            unsigned int maxWidth = 0,
+            unsigned int maxHeight = 0) = 0;
 
     virtual std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(
             const std::string &video,
@@ -59,7 +61,7 @@ public:
             std::shared_ptr<MetadataSelection> metadataSelection,
             std::shared_ptr<TemporalSelection> temporalSelection) override;
 
-    std::unique_ptr<std::list<Rectangle>> rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame) override;
+    std::unique_ptr<std::list<Rectangle>> rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame, unsigned int maxWidth = 0, unsigned int maxHeight = 0) override;
     std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int firstFrameInclusive, int lastFrameExclusive) override;
 
     ~SemanticIndexSQLite() {
@@ -69,7 +71,7 @@ public:
 
 private:
     // Finalizes the statement.
-    std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt);
+    std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0);
 
     void openDatabase(const std::experimental::filesystem::path &dbPath);
     void createDatabase(const std::experimental::filesystem::path &dbPath);

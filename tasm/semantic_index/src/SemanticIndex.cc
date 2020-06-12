@@ -106,14 +106,14 @@ std::unique_ptr<std::vector<int>> SemanticIndexSQLite::orderedFramesForSelection
     return frames;
 }
 
-std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame) {
+std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame, unsigned int maxWidth, unsigned int maxHeight) {
     std::string query = "SELECT frame, x1, y1, x2, y2 FROM labels WHERE video = ? AND " + metadataSelection->labelConstraints() + " AND frame = ?";
     sqlite3_stmt *select;
     ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
     ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
     ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, frame));
 
-    return rectanglesForQuery(select);
+    return rectanglesForQuery(select, maxWidth, maxHeight);
 }
 
 std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForFrames(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int firstFrameInclusive, int lastFrameExclusive) {
@@ -127,7 +127,7 @@ std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForFrames(c
     return rectanglesForQuery(select);
 }
 
-std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForQuery(sqlite3_stmt *select) {
+std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForQuery(sqlite3_stmt *select, unsigned int maxWidth, unsigned int maxHeight) {
     auto rectangles = std::make_unique<std::list<Rectangle>>();
     int result;
     while ((result = sqlite3_step(select)) == SQLITE_ROW) {
@@ -136,6 +136,12 @@ std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForQuery(sq
         unsigned int y1 = sqlite3_column_int(select, 2);
         unsigned int x2 = sqlite3_column_int(select, 3);
         unsigned int y2 = sqlite3_column_int(select, 4);
+
+        if (maxWidth)
+            x2 = std::min(x2, maxWidth);
+
+        if (maxHeight)
+            y2 = std::min(y2, maxHeight);
 
         rectangles->emplace_back(frame, x1, y1, (x2 - x1), (y2 - y1));
     }

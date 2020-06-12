@@ -32,6 +32,7 @@ BOOST_PYTHON_MODULE(_tasm) {
         .def("add_metadata", &tasm::python::PythonTASM::addMetadata)
         .def("store", &tasm::python::PythonTASM::store)
         .def("store_with_uniform_layout", &tasm::python::PythonTASM::storeWithUniformLayout)
+        .def("store_with_nonuniform_layout", &tasm::python::PythonTASM::storeWithNonUniformLayout)
         .def("select", selectRange)
         .def("select", selectEqual)
         .def("select", selectAll)

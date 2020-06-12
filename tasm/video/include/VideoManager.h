@@ -23,6 +23,11 @@ public:
 
     void store(const std::experimental::filesystem::path &path, const std::string &name);
     void storeWithUniformLayout(const std::experimental::filesystem::path &path, const std::string &name, unsigned int numRows, unsigned int numColumns);
+    void storeWithNonUniformLayout(const std::experimental::filesystem::path &path,
+                                    const std::string &storedName,
+                                    const std::string &metadataIdentifier,
+                                    std::shared_ptr<MetadataSelection> metadataSelection,
+                                    std::shared_ptr<SemanticIndex> semanticIndex);
 
     std::unique_ptr<ImageIterator> select(const std::string &video,
                                           const std::string &metadataIdentifier,

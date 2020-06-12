@@ -39,6 +39,11 @@ public:
         videoManager_.storeWithUniformLayout(videoPath, savedName, rows, columns);
     }
 
+    virtual void storeWithNonUniformLayout(const std::string &videoPath, const std::string &savedName, const std::string &metadataIdentifier, const std::string &labelToTileAround) {
+        // TODO: Maybe add a "force" parameter to distinguish case where TASM doesn't think the layout will be beneficial.
+        videoManager_.storeWithNonUniformLayout(videoPath, savedName, metadataIdentifier, std::make_shared<SingleMetadataSelection>(labelToTileAround), semanticIndex_);
+    }
+
     virtual std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label, const std::string &metadataIdentifier = "") {
         return select(video, label, std::shared_ptr<TemporalSelection>(), metadataIdentifier);
     }

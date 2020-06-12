@@ -28,12 +28,16 @@ public:
         return *orderedFrames_;
     }
 
-    const std::vector<Rectangle> &rectanglesForFrame(int frame) {
+    const std::list<Rectangle> &rectanglesForFrame(int frame) {
         if (frameToRectangles_.count(frame))
             return *frameToRectangles_.at(frame);
 
         frameToRectangles_.emplace(frame, std::move(index_->rectanglesForFrame(video_, metadataSelection_, frame)));
         return *frameToRectangles_.at(frame);
+    }
+
+    std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) {
+        return index_->rectanglesForFrames(video_, metadataSelection_, firstFrameInclusive, lastFrameExclusive);
     }
 
 private:
@@ -43,7 +47,7 @@ private:
     std::shared_ptr<TemporalSelection> temporalSelection_;
 
     std::unique_ptr<std::vector<int>> orderedFrames_;
-    std::unordered_map<int, std::unique_ptr<std::vector<Rectangle>>> frameToRectangles_;
+    std::unordered_map<int, std::unique_ptr<std::list<Rectangle>>> frameToRectangles_;
 };
 
 } // namespace tasm

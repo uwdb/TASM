@@ -37,6 +37,21 @@ void VideoManager::storeWithUniformLayout(const std::experimental::filesystem::p
     storeTiledVideo(video, tileConfigurationProvider, name);
 }
 
+void VideoManager::storeWithNonUniformLayout(const std::experimental::filesystem::path &path,
+                                                const std::string &storedName,
+                                                const std::string &metadataIdentifier,
+                                                std::shared_ptr<MetadataSelection> metadataSelection,
+                                                std::shared_ptr<SemanticIndex> semanticIndex) {
+    std::shared_ptr<Video> video(new Video(path));
+    auto semanticDataManager = std::make_shared<SemanticDataManager>(semanticIndex, metadataIdentifier, metadataSelection, std::shared_ptr<TemporalSelection>());
+    auto fineGrainedLayoutProvider = std::make_shared<FineGrainedTileConfigurationProvider>(
+            video->configuration().frameRate,
+            semanticDataManager,
+            video->configuration().displayWidth,
+            video->configuration().displayHeight);
+    storeTiledVideo(video, fineGrainedLayoutProvider, storedName);
+}
+
 void VideoManager::storeTiledVideo(std::shared_ptr<Video> video, std::shared_ptr<TileLayoutProvider> tileLayoutProvider, const std::string &savedName) {
     std::shared_ptr<ScanFileDecodeReader> scan(new ScanFileDecodeReader(video));
     std::shared_ptr<GPUDecodeFromCPU> decode(new GPUDecodeFromCPU(scan, video->configuration(), gpuContext_, lock_));
@@ -57,7 +72,7 @@ std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
     // Set up scan of a tiled video.
     std::shared_ptr<TiledVideoManager> tiledVideoManager(new TiledVideoManager(entry));
     auto tileLocationProvider = std::make_shared<SingleTileLocationProvider>(tiledVideoManager);
-    auto semanticDataManager = std::make_shared<SemanticDataManager>(semanticIndex, entry->metadataIdentifier(), metadataSelection, temporalSelection);
+    auto semanticDataManager = std::make_shared<SemanticDataManager>(semanticIndex, metadataIdentifier, metadataSelection, temporalSelection);
     auto scan = std::make_shared<ScanTiledVideoOperator>(entry, semanticDataManager, tileLocationProvider);
 
     // Set up decode. Specify largest tile dimensions which are required to successfully reconfigure the decoder.

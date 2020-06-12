@@ -1,9 +1,12 @@
 #ifndef TASM_TILECONFIGURATIONPROVIDER_H
 #define TASM_TILECONFIGURATIONPROVIDER_H
 
+#include "Configuration.h"
+#include "Interval.h"
 #include "TileLayout.h"
 
 namespace tasm {
+class SemanticDataManager;
 
 class TileLayoutProvider {
 public:
@@ -65,6 +68,29 @@ private:
     unsigned int numColumns_;
     Configuration configuration_;
     std::unique_ptr<TileLayout> layoutPtr;
+};
+
+class FineGrainedTileConfigurationProvider : public TileLayoutProvider {
+public:
+    FineGrainedTileConfigurationProvider(unsigned int tileLayoutDuration,
+                                        std::shared_ptr<SemanticDataManager> semanticDataManager,
+                                        unsigned int frameWidth,
+                                        unsigned int frameHeight)
+        : tileLayoutDuration_(tileLayoutDuration),
+        semanticDataManager_(semanticDataManager),
+        frameWidth_(frameWidth),
+        frameHeight_(frameHeight) {}
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override;
+
+private:
+    std::vector<unsigned int> tileDimensions(const std::vector<interval::Interval<int>> &sortedIntervals, int minDistance, int totalDimension);
+
+    unsigned int tileLayoutDuration_;
+    std::shared_ptr<SemanticDataManager> semanticDataManager_;
+    unsigned int frameWidth_;
+    unsigned int frameHeight_;
+    std::unordered_map<unsigned int, TileLayout> tileGroupToTileLayout_;
 };
 
 } // namespace tasm

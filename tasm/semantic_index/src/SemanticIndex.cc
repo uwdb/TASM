@@ -106,20 +106,36 @@ std::unique_ptr<std::vector<int>> SemanticIndexSQLite::orderedFramesForSelection
     return frames;
 }
 
-std::unique_ptr<std::vector<Rectangle>> SemanticIndexSQLite::rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame) {
-    std::string query = "SELECT x1, y1, x2, y2 FROM labels WHERE video = ? AND " + metadataSelection->labelConstraints() + " AND frame = ?";
+std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame) {
+    std::string query = "SELECT frame, x1, y1, x2, y2 FROM labels WHERE video = ? AND " + metadataSelection->labelConstraints() + " AND frame = ?";
     sqlite3_stmt *select;
     ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
     ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
     ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, frame));
 
-    auto rectangles = std::make_unique<std::vector<Rectangle>>();
+    return rectanglesForQuery(select);
+}
+
+std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForFrames(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int firstFrameInclusive, int lastFrameExclusive) {
+    std::string query = "SELECT frame, x1, y1, x2, y2 FROM labels WHERE video = ? AND " + metadataSelection->labelConstraints() + " AND frame >= ? AND frame < ?";
+    sqlite3_stmt *select;
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
+    ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, firstFrameInclusive));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 3, lastFrameExclusive));
+
+    return rectanglesForQuery(select);
+}
+
+std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForQuery(sqlite3_stmt *select) {
+    auto rectangles = std::make_unique<std::list<Rectangle>>();
     int result;
     while ((result = sqlite3_step(select)) == SQLITE_ROW) {
-        unsigned int x1 = sqlite3_column_int(select, 0);
-        unsigned int y1 = sqlite3_column_int(select, 1);
-        unsigned int x2 = sqlite3_column_int(select, 2);
-        unsigned int y2 = sqlite3_column_int(select, 3);
+        unsigned int frame = sqlite3_column_int(select, 0);
+        unsigned int x1 = sqlite3_column_int(select, 1);
+        unsigned int y1 = sqlite3_column_int(select, 2);
+        unsigned int x2 = sqlite3_column_int(select, 3);
+        unsigned int y2 = sqlite3_column_int(select, 4);
 
         rectangles->emplace_back(frame, x1, y1, (x2 - x1), (y2 - y1));
     }
@@ -129,5 +145,7 @@ std::unique_ptr<std::vector<Rectangle>> SemanticIndexSQLite::rectanglesForFrame(
 
     return rectangles;
 }
+
+
 
 } // namespace tasm

@@ -1,8 +1,8 @@
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
 
+#include "ImageUtilities.h"
 #include "Tasm.h"
-#include "TransformToImage.h"
 
 namespace p = boost::python;
 namespace np = boost::python::numpy;

@@ -1,14 +1,20 @@
 #include "VideoManager.h"
 
+#include "ImageUtilities.h"
+#include "MergeTiles.h"
 #include "TileLocationProvider.h"
 #include "TiledVideoManager.h"
 #include "ScanOperators.h"
 #include "ScanTiledVideoOperator.h"
 #include "DecodeOperators.h"
+#include "SemanticIndex.h"
+#include "SemanticSelection.h"
+#include "TemporalSelection.h"
 #include "TileOperators.h"
 #include "TransformToImage.h"
 #include "Video.h"
 #include "VideoConfiguration.h"
+
 
 namespace tasm {
 
@@ -34,18 +40,18 @@ void VideoManager::store(const std::experimental::filesystem::path &path, const 
 }
 
 std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
-        std::shared_ptr<MetadataSelection> metadataSelection,
-        std::shared_ptr<TemporalSelection> temporalSelection,
-        std::shared_ptr<SemanticIndex> semanticIndex) {
+                                                     std::shared_ptr<MetadataSelection> metadataSelection,
+                                                     std::shared_ptr<TemporalSelection> temporalSelection,
+                                                     std::shared_ptr<SemanticIndex> semanticIndex) {
     std::shared_ptr<TiledEntry> entry(new TiledEntry(video));
 
-    // Set up scan-multi-tile.
+    // Set up scan of a tiled video.
     std::shared_ptr<TiledVideoManager> tiledVideoManager(new TiledVideoManager(entry));
     auto tileLocationProvider = std::make_shared<SingleTileLocationProvider>(tiledVideoManager);
     auto semanticDataManager = std::make_shared<SemanticDataManager>(semanticIndex, entry->name(), metadataSelection, temporalSelection);
     auto scan = std::make_shared<ScanTiledVideoOperator>(entry, semanticDataManager, tileLocationProvider);
 
-    // Set up decode. Specify largest tile dimensions.
+    // Set up decode. Specify largest tile dimensions which are required to successfully reconfigure the decoder.
     auto maxWidth = tiledVideoManager->largestWidth();
     auto maxHeight = tiledVideoManager->largestHeight();
     auto configuration = video::GetConfiguration(tileLocationProvider->locationOfTileForFrame(0, 0));

@@ -4,26 +4,9 @@
 #include "Operator.h"
 
 #include "DecodedPixelData.h"
+#include "ImageUtilities.h"
 
 namespace tasm {
-
-using PixelPtr = uint8_t[];
-class Image {
-public:
-    Image(unsigned int width, unsigned int height, std::unique_ptr<PixelPtr> pixels)
-        : width_(width), height_(height), pixels_(std::move(pixels))
-    {}
-
-    unsigned int width() const { return width_; }
-    unsigned int height() const { return height_; }
-    uint8_t* pixels() const { return pixels_.get(); }
-
-private:
-    unsigned int width_;
-    unsigned int height_;
-    std::unique_ptr<PixelPtr> pixels_;
-};
-using ImagePtr = std::shared_ptr<Image>;
 
 class TransformToImage : public Operator<std::unique_ptr<std::vector<ImagePtr>>> {
 public:

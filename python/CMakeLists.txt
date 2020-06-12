@@ -6,7 +6,7 @@ include_directories(${Python2_INCLUDE_DIRS})
 find_package(Boost 1.64 COMPONENTS python numpy filesystem system REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
-include_directories(${TASM_INCLUDE_DIRS})
+include_directories(${TASM_INCLUDE_DIRS} include)
 
 target_link_libraries(_tasm ${Boost_LIBRARIES} ${Python2_LIBRARIES} ${TASM_LIB_DEPENDENCIES} tasm)
 

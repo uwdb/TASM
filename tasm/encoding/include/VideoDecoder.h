@@ -33,6 +33,10 @@ public:
         creationInfo_ = CreateInfoFromConfiguration(configuration, lock->get());
         currentFormat_ = FormatFromCreateInfo(creationInfo_);
 
+        // TODO: Create a larger decoder with a smaller display area if the width/height are too small.
+        if (creationInfo_.ulWidth < 256 || creationInfo_.ulHeight < 136)
+            std::cerr << "Decode dimensions are too small (width: " << creationInfo_.ulWidth << ", height: " << creationInfo_.ulHeight << ")" << std::endl;
+
         if ((result = cuvidCreateDecoder(&handle_, &creationInfo_)) != CUDA_SUCCESS) {
             throw std::runtime_error("Call to cuvidCreateDecoder failed: " + std::to_string(result));
         }

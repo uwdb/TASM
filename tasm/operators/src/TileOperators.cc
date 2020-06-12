@@ -49,7 +49,6 @@ std::optional<GPUDecodedFrameData> TileOperator::next() {
 void TileOperator::reconfigureEncodersForNewLayout(const tasm::TileLayout &newLayout) {
     for (auto tileIndex = 0u; tileIndex < newLayout.numberOfTiles(); ++tileIndex) {
         Rectangle rect = newLayout.rectangleForTile(tileIndex);
-        // Don't do this if the configuration is the same as the encoder's current configuration.
         tileEncodersManager_.createEncoderWithConfiguration(tileIndex, rect.width, rect.height);
         tilesCurrentlyBeingEncoded_.push_back(tileIndex);
     }

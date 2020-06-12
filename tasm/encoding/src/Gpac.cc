@@ -9,7 +9,7 @@ namespace tasm::gpac {
 
 static auto constexpr TILE_CONFIGURATION_VERSION = 1u;
 
-void mux_media(const std::filesystem::path &source, const std::filesystem::path &destination) {
+void mux_media(const std::experimental::filesystem::path &source, const std::experimental::filesystem::path &destination) {
     GF_MediaImporter import{};
     GF_Err result;
     auto input = source.string();
@@ -24,18 +24,18 @@ void mux_media(const std::filesystem::path &source, const std::filesystem::path 
         throw std::runtime_error("Error importing track: " + std::to_string(result));
     else if((result = gf_isom_close(import.dest)) != GF_OK)
         throw std::runtime_error("Error closing file: " + std::to_string(result));
-    else if(!std::filesystem::remove(source))
+    else if(!std::experimental::filesystem::remove(source))
         throw std::runtime_error("Error deleting source file");
 }
 
-static void write_tile_configuration(const std::filesystem::path &metadata_filename,
+static void write_tile_configuration(const std::experimental::filesystem::path &metadata_filename,
                                      const lightdb::serialization::TileConfiguration &tileConfiguration) {
     std::fstream output(metadata_filename, std::ios::out | std::ios::trunc | std::ios::binary);
     if (!tileConfiguration.SerializeToOstream(&output))
         throw std::runtime_error("Failed to write tile configuration to file");
 }
 
-void write_tile_configuration(const std::filesystem::path &metadata_filename,
+void write_tile_configuration(const std::experimental::filesystem::path &metadata_filename,
                               const TileLayout &tileLayout) {
     lightdb::serialization::TileConfiguration tileConfiguration;
     tileConfiguration.set_version(TILE_CONFIGURATION_VERSION);
@@ -55,7 +55,7 @@ void write_tile_configuration(const std::filesystem::path &metadata_filename,
     write_tile_configuration(metadata_filename, tileConfiguration);
 }
 
-TileLayout load_tile_configuration(const std::filesystem::path &metadataFilename) {
+TileLayout load_tile_configuration(const std::experimental::filesystem::path &metadataFilename) {
     lightdb::serialization::TileConfiguration tileConfiguration;
     std::fstream input(metadataFilename, std::ios::in | std::ios::binary);
     if (!tileConfiguration.ParseFromIstream(&input))

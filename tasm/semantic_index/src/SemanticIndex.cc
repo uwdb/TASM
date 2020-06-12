@@ -8,8 +8,8 @@
 
 namespace tasm {
 
-void SemanticIndexSQLite::openDatabase(const std::filesystem::path &dbPath) {
-    if (!std::filesystem::exists(dbPath))
+void SemanticIndexSQLite::openDatabase(const std::experimental::filesystem::path &dbPath) {
+    if (!std::experimental::filesystem::exists(dbPath))
         createDatabase(dbPath);
     else
         ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE, NULL));
@@ -17,7 +17,7 @@ void SemanticIndexSQLite::openDatabase(const std::filesystem::path &dbPath) {
     return;
 }
 
-void SemanticIndexSQLite::createDatabase(const std::filesystem::path &dbPath) {
+void SemanticIndexSQLite::createDatabase(const std::experimental::filesystem::path &dbPath) {
     ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL));
 
     const char *createTable = "CREATE TABLE labels (" \

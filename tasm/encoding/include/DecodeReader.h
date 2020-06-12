@@ -6,7 +6,7 @@
 #include "spsc_queue.h"
 
 #include "nvcuvid.h"
-#include <filesystem>
+#include <experimental/filesystem>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -179,7 +179,7 @@ private:
                 {nullptr}
         };
 
-        if(!std::filesystem::exists(filename))
+        if(!std::experimental::filesystem::exists(filename))
             throw std::runtime_error("File does not exist: " + std::string(filename));
         else if(GPUContext::device_count() == 0)
             throw std::runtime_error("No CUDA device was found");
@@ -240,7 +240,7 @@ class EncodedFrameReader {
 public:
     // Assume frames is sorted.
     // Frames is in global frame numbers (e.g. starting from frameOffsetInFile, not 0).
-    explicit EncodedFrameReader(std::filesystem::path filename, std::vector<int> frames, int frameOffsetInFile = 0, bool shouldReadEntireGOPs=false)
+    explicit EncodedFrameReader(std::experimental::filesystem::path filename, std::vector<int> frames, int frameOffsetInFile = 0, bool shouldReadEntireGOPs=false)
             : filename_(std::move(filename)),
               mp4Reader_(filename_),
               frames_(std::move(frames)),
@@ -260,14 +260,14 @@ public:
         keyframeIterator_ = mp4Reader_.keyframeNumbers().begin(); // 0-indexed.
     }
 
-    void setNewFileWithSameKeyframes(const std::filesystem::path &newFilename) {
+    void setNewFileWithSameKeyframes(const std::experimental::filesystem::path &newFilename) {
         mp4Reader_.setNewFileWithSameKeyframes(newFilename);
 
         frameIterator_ = frames_.begin();
         keyframeIterator_ = mp4Reader_.keyframeNumbers().begin();
     }
 
-    void setNewFileWithSameKeyframesButNewFrames(const std::filesystem::path &newFilename, std::vector<int> frames, int frameOffsetInFile) {
+    void setNewFileWithSameKeyframesButNewFrames(const std::experimental::filesystem::path &newFilename, std::vector<int> frames, int frameOffsetInFile) {
         filename_ = newFilename;
         mp4Reader_.setNewFileWithSameKeyframes(newFilename);
         frames_ = std::move(frames);
@@ -384,7 +384,7 @@ private:
         return { GOPReaderPacket(mp4Reader_.dataForSamples(firstSampleToRead, lastSampleToRead), MP4Reader::sampleNumberToFrameNumber(firstSampleToRead + frameOffsetInFile_), lastSampleToRead - firstSampleToRead + 1) };
     }
 
-    std::filesystem::path filename_;
+    std::experimental::filesystem::path filename_;
     MP4Reader mp4Reader_;
     std::vector<int> frames_;
     std::vector<int>::iterator frameIterator_;

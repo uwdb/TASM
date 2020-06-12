@@ -6,8 +6,8 @@ SET(BOOST_MIN_VERSION "1.64.0")
 # Set the cmake Module path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-#set(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
-#enable_language(CUDA)
+set(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
+enable_language(CUDA)
 
 # Set shared library suffix
 if(APPLE)

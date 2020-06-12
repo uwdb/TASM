@@ -5,7 +5,7 @@
 #include "SemanticSelection.h"
 #include "TemporalSelection.h"
 #include "sqlite3.h"
-#include <filesystem>
+#include <experimental/filesystem>
 #include <string>
 
 namespace tasm {
@@ -35,7 +35,7 @@ public:
 
 class SemanticIndexSQLite : public SemanticIndex {
 public:
-    SemanticIndexSQLite(std::filesystem::path dbPath = "labels.db") {
+    SemanticIndexSQLite(std::experimental::filesystem::path dbPath = "labels.db") {
         openDatabase(dbPath);
         initializeStatements();
     }
@@ -61,8 +61,8 @@ public:
     }
 
 private:
-    void openDatabase(const std::filesystem::path &dbPath);
-    void createDatabase(const std::filesystem::path &dbPath);
+    void openDatabase(const std::experimental::filesystem::path &dbPath);
+    void createDatabase(const std::experimental::filesystem::path &dbPath);
     void closeDatabase();
     void initializeStatements();
     void destroyStatements();

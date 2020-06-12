@@ -9,9 +9,9 @@ namespace tasm {
 
 class TileLocationProvider : public TileLayoutProvider {
 public:
-    virtual std::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const = 0;
+    virtual std::experimental::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const = 0;
 
-    unsigned int frameOffsetInTileFile(const std::filesystem::path &tilePath) const {
+    unsigned int frameOffsetInTileFile(const std::experimental::filesystem::path &tilePath) const {
         return TileFiles::firstAndLastFramesFromPath(tilePath.parent_path()).first;
     }
 
@@ -26,7 +26,7 @@ public:
             : tileLayoutsManager_(tileLayoutsManager)
     { }
 
-    std::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const override {
+    std::experimental::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const override {
         return tileLayoutsManager_->locationOfTileForId(tileNumber, layoutIdForFrame(frame));
     }
 

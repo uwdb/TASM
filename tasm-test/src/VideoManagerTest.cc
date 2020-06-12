@@ -28,15 +28,15 @@ TEST_F(VideoManagerTestFixture, testScan) {
 }
 
 TEST_F(VideoManagerTestFixture, testSelect) {
-    std::filesystem::path labels = "testLabels.db";
+    std::experimental::filesystem::path labels = "testLabels.db";
 
     // Delete DB at path.
-    std::filesystem::remove(labels);
+    std::experimental::filesystem::remove(labels);
     auto semanticIndex = std::make_shared<SemanticIndexSQLite>(labels);
 
     std::string video("red10");
     std::string label("fish");
-    for (int i = 0; i < 250; ++i)
+    for (int i = 0; i < 10; ++i)
         semanticIndex->addMetadata(video, label, i, 5, 5, 20, 100);
 
     auto metadataSelection = std::make_shared<SingleMetadataSelection>(label);
@@ -45,6 +45,6 @@ TEST_F(VideoManagerTestFixture, testSelect) {
     VideoManager manager;
     manager.select(video, metadataSelection, temporalSelection, semanticIndex);
 
-    std::filesystem::remove(labels);
+    std::experimental::filesystem::remove(labels);
 }
 

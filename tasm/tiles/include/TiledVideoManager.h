@@ -22,7 +22,7 @@ public:
     std::shared_ptr<TiledEntry> entry() const { return entry_; }
     std::vector<int> tileLayoutIdsForFrame(unsigned int frameNumber) const;
     const TileLayout &tileLayoutForId(int id) const { return *directoryIdToTileLayout_.at(id); }
-    std::filesystem::path locationOfTileForId(unsigned int tileNumber, int id) const;
+    std::experimental::filesystem::path locationOfTileForId(unsigned int tileNumber, int id) const;
 
     unsigned int totalWidth() const { return totalWidth_; }
     unsigned int totalHeight() const { return totalHeight_; }
@@ -36,7 +36,7 @@ private:
     IntervalTree<unsigned int> intervalTree_;
 
 public: // For sake of measuring.
-    std::unordered_map<int, std::filesystem::path> directoryIdToTileDirectory_;
+    std::unordered_map<int, std::experimental::filesystem::path> directoryIdToTileDirectory_;
     std::unordered_map<int, std::shared_ptr<const TileLayout>> directoryIdToTileLayout_;
     std::unordered_map <TileLayout, std::shared_ptr<const TileLayout>> tileLayoutReferences_;
 

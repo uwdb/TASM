@@ -54,13 +54,13 @@ private:
     bool didSignalEOS_;
 
     std::unique_ptr<TileLayout> currentTileLayout_;
-    std::unique_ptr<std::filesystem::path> currentTilePath_;
+    std::unique_ptr<std::experimental::filesystem::path> currentTilePath_;
     unsigned int currentTileNumber_;
     std::unique_ptr<EncodedFrameReader> currentEncodedFrameReader_;
     std::unordered_map<std::string, Configuration> tilePathToConfiguration_;
 
     struct TileInformation {
-        std::filesystem::path filename;
+        std::experimental::filesystem::path filename;
         int tileNumber;
         unsigned int width;
         unsigned int height;

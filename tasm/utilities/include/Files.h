@@ -7,20 +7,20 @@ namespace tasm {
 
 class TileFiles {
 public:
-    static std::filesystem::path tileVersionFilename(const std::filesystem::path &path) {
+    static std::experimental::filesystem::path tileVersionFilename(const std::experimental::filesystem::path &path) {
         return path / tile_version_filename_;
     }
 
-    static std::filesystem::path tileMetadataFilename(const std::filesystem::path &path) {
+    static std::experimental::filesystem::path tileMetadataFilename(const std::experimental::filesystem::path &path) {
         return path / tile_metadata_filename_;
     }
 
-    static std::filesystem::path directoryForTilesInFrames(const TiledEntry &entry, unsigned int firstFrame,
+    static std::experimental::filesystem::path directoryForTilesInFrames(const TiledEntry &entry, unsigned int firstFrame,
                                                            unsigned int lastFrame) {
         return entry.path()  / (std::to_string(firstFrame) + separating_string_ + std::to_string(lastFrame) + separating_string_ + std::to_string(entry.tile_version()));
     }
 
-    static std::filesystem::path temporaryTileFilename(const TiledEntry &entry, unsigned int tileNumber,
+    static std::experimental::filesystem::path temporaryTileFilename(const TiledEntry &entry, unsigned int tileNumber,
                                                        unsigned int firstFrame,
                                                        unsigned int lastFrame) {
         auto tempName = directoryForTilesInFrames(entry, firstFrame, lastFrame) / (baseTileFilename(tileNumber) +
@@ -28,7 +28,7 @@ public:
         return tempName;
     }
 
-    static std::filesystem::path tileFilename(const std::filesystem::path &directoryPath, unsigned int tileNumber) {
+    static std::experimental::filesystem::path tileFilename(const std::experimental::filesystem::path &directoryPath, unsigned int tileNumber) {
         return directoryPath / (baseTileFilename(tileNumber) + muxedFilenameExtension());
     }
 
@@ -36,11 +36,11 @@ public:
         return ".mp4";
     }
 
-    static std::filesystem::path tileMetadataFilename(const TiledEntry &entry, unsigned int firstFrame, unsigned lastFrame) {
+    static std::experimental::filesystem::path tileMetadataFilename(const TiledEntry &entry, unsigned int firstFrame, unsigned lastFrame) {
         return directoryForTilesInFrames(entry, firstFrame, lastFrame) / tile_metadata_filename_;
     }
 
-    static std::pair<unsigned int, unsigned int> firstAndLastFramesFromPath(const std::filesystem::path &directoryPath) {
+    static std::pair<unsigned int, unsigned int> firstAndLastFramesFromPath(const std::experimental::filesystem::path &directoryPath) {
         std::string directoryName = directoryPath.filename();
 
         // First frame = string up to first separating character.
@@ -57,7 +57,7 @@ public:
         return std::make_pair(firstFrame, lastFrame);
     }
 
-    static unsigned int tileVersionFromPath(const std::filesystem::path &directoryPath) {
+    static unsigned int tileVersionFromPath(const std::experimental::filesystem::path &directoryPath) {
         std::string directoryName = directoryPath.filename();
         auto lastSeparator = directoryName.rfind(separating_string_);
         return std::stoul(directoryName.substr(lastSeparator+1));

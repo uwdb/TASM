@@ -6,7 +6,7 @@ using namespace tasm;
 
 #define ASSERT_SQLITE_OK(i) (assert(i == SQLITE_OK))
 
-void countEntriesInDB(const std::filesystem::path &dbPath, int (*callback)(void*,int,char**,char**)) {
+void countEntriesInDB(const std::experimental::filesystem::path &dbPath, int (*callback)(void*,int,char**,char**)) {
     sqlite3 *db;
     ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db, SQLITE_OPEN_READONLY, NULL));
 
@@ -22,8 +22,8 @@ public:
 };
 
 TEST_F(TasmTestFixture, testAddMetadata) {
-    std::filesystem::path path("testLabels.db");
-    std::filesystem::remove(path);
+    std::experimental::filesystem::path path("testLabels.db");
+    std::experimental::filesystem::remove(path);
 
     tasm::TASM tasm(path);
     tasm.addMetadata("video", "label", 0, 0, 0, 0, 0);
@@ -42,5 +42,5 @@ TEST_F(TasmTestFixture, testAddMetadata) {
         return 0;
     });
 
-    std::filesystem::remove(path);
+    std::experimental::filesystem::remove(path);
 }

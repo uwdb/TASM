@@ -4,11 +4,11 @@
 #include "gpac/isomedia.h"
 #include "gpac/internal/isomedia_dev.h"
 #include "gpac/list.h"
-#include <filesystem>
+#include <experimental/filesystem>
 
 class MP4Reader {
 public:
-    explicit MP4Reader(const std::filesystem::path &filename)
+    explicit MP4Reader(const std::experimental::filesystem::path &filename)
             : filename_(filename),
               invalidFile_(false)
     {
@@ -62,7 +62,7 @@ public:
         }
     }
 
-    void setNewFileWithSameKeyframes(const std::filesystem::path &filename) {
+    void setNewFileWithSameKeyframes(const std::experimental::filesystem::path &filename) {
         closeFile();
         filename_ = filename;
         setUpGFIsomFile();
@@ -116,7 +116,7 @@ private:
     }
 
     static const unsigned int trackNumber_ = 1;
-    std::filesystem::path filename_;
+    std::experimental::filesystem::path filename_;
     mutable GF_ISOFile *file_;
     std::vector<int> keyframeNumbers_;
     unsigned int numberOfSamples_;

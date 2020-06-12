@@ -11,7 +11,7 @@ foreach(subdir ${TASM_SOURCE_DIRS})
 endforeach()
 
 # Gather the core source files
-file(GLOB_RECURSE TASM_SOURCES "*.cc")
+file(GLOB_RECURSE TASM_SOURCES "*.cc" "*.cu")
 set(TASM_SOURCES ${TASM_SOURCES})
 message("sources: ${TASM_SOURCES}")
 

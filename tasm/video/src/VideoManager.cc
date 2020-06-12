@@ -6,17 +6,18 @@
 #include "ScanTiledVideoOperator.h"
 #include "DecodeOperators.h"
 #include "TileOperators.h"
+#include "TransformToImage.h"
 #include "Video.h"
 #include "VideoConfiguration.h"
 
 namespace tasm {
 
 void VideoManager::createCatalogIfNecessary() {
-    if (!std::filesystem::exists(CatalogPath))
-        std::filesystem::create_directory(CatalogPath);
+    if (!std::experimental::filesystem::exists(CatalogPath))
+        std::experimental::filesystem::create_directory(CatalogPath);
 }
 
-void VideoManager::store(const std::filesystem::path &path, const std::string &name) {
+void VideoManager::store(const std::experimental::filesystem::path &path, const std::string &name) {
     std::shared_ptr<Video> video(new Video(path));
 
     std::shared_ptr<ScanFileDecodeReader> scan(new ScanFileDecodeReader(video));
@@ -32,7 +33,7 @@ void VideoManager::store(const std::filesystem::path &path, const std::string &n
     }
 }
 
-void VideoManager::select(const std::string &video,
+std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
         std::shared_ptr<MetadataSelection> metadataSelection,
         std::shared_ptr<TemporalSelection> temporalSelection,
         std::shared_ptr<SemanticIndex> semanticIndex) {
@@ -52,8 +53,13 @@ void VideoManager::select(const std::string &video,
     configuration->maxHeight = std::max(maxHeight, configuration->maxHeight);
     std::shared_ptr<GPUDecodeFromCPU> decode(new GPUDecodeFromCPU(scan, *configuration, gpuContext_, lock_, maxWidth, maxHeight));
 
-    while (!decode->isComplete())
-        decode->next();
+    // Set up tile merger.
+    std::shared_ptr<MergeTilesOperator> merge(new MergeTilesOperator(decode, semanticDataManager, tileLocationProvider));
+
+    // Transform pixels to RGB images.
+    std::shared_ptr<TransformToImage> transform(new TransformToImage(merge, maxWidth, maxHeight));
+
+    return std::make_unique<ImageIterator>(transform);
 }
 
 } // namespace tasm

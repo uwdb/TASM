@@ -52,7 +52,7 @@ struct Rectangle {
         auto left = std::max(x, other.x);
         auto right = std::min(x + width, other.x + other.width);
 
-        return Rectangle(id, left, top, right - left, bottom - top);
+        return Rectangle(other.id, left, top, right - left, bottom - top);
     }
 
     Rectangle expand(const Rectangle &other) {

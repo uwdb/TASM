@@ -36,7 +36,7 @@ std::vector<int> ScanTiledVideoOperator::nextGroupOfFramesWithTheSameLayoutAndFr
     auto fakeTileNumber = 0;
     // Get the configuration and location for the next frame.
     // While the path is the same, it must have the same configuration.
-    currentTilePath_ = std::make_unique<std::filesystem::path>(tileLocationProvider_->locationOfTileForFrame(fakeTileNumber, *frameIt));
+    currentTilePath_ = std::make_unique<std::experimental::filesystem::path>(tileLocationProvider_->locationOfTileForFrame(fakeTileNumber, *frameIt));
     currentTileLayout_ = std::make_unique<TileLayout>(tileLocationProvider_->tileLayoutForFrame(*frameIt));
 
     if (!totalVideoWidth_) {
@@ -93,7 +93,7 @@ void ScanTiledVideoOperator::setUpNextEncodedFrameReader() {
                 shouldReadEntireGOPs_);
 
         currentTileArea_ = orderedTileInformationIt_->width * orderedTileInformationIt_->height;
-        currentTilePath_ = std::make_unique<std::filesystem::path>(orderedTileInformationIt_->filename);
+        currentTilePath_ = std::make_unique<std::experimental::filesystem::path>(orderedTileInformationIt_->filename);
         currentTileNumber_ = orderedTileInformationIt_->tileNumber;
 
         ++orderedTileInformationIt_;

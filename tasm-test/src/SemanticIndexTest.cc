@@ -4,6 +4,7 @@
 #include "SemanticSelection.h"
 #include "TemporalSelection.h"
 #include <cassert>
+#include <experimental/filesystem>
 
 using namespace tasm;
 
@@ -13,19 +14,19 @@ public:
 };
 
 TEST_F(SemanticIndexTestFixture, testCreateDB) {
-    std::filesystem::path labels = "testLabels.db";
+    std::experimental::filesystem::path labels = "testLabels.db";
 
     // Delete DB at path.
-    std::filesystem::remove(labels);
+    std::experimental::filesystem::remove(labels);
     SemanticIndexSQLite semanticIndex(labels);
-    std::filesystem::remove(labels);
+    std::experimental::filesystem::remove(labels);
 }
 
 TEST_F(SemanticIndexTestFixture, testSelectOrderedFrames) {
-    std::filesystem::path labels = "testLabels.db";
+    std::experimental::filesystem::path labels = "testLabels.db";
 
     // Delete DB at path.
-    std::filesystem::remove(labels);
+    std::experimental::filesystem::remove(labels);
     SemanticIndexSQLite semanticIndex(labels);
 
     std::string video("video");
@@ -53,14 +54,14 @@ TEST_F(SemanticIndexTestFixture, testSelectOrderedFrames) {
     expectedFrames = std::vector<int>{3, 4, 5, 6, 7, 8};
     assert(*fishFrames == expectedFrames);
 
-    std::filesystem::remove(labels);
+    std::experimental::filesystem::remove(labels);
 }
 
 TEST_F(SemanticIndexTestFixture, testSelectRectanglesForFrame) {
-    std::filesystem::path labels = "testLabels.db";
+    std::experimental::filesystem::path labels = "testLabels.db";
 
     // Delete DB at path.
-    std::filesystem::remove(labels);
+    std::experimental::filesystem::remove(labels);
     SemanticIndexSQLite semanticIndex(labels);
 
     std::string video("video");
@@ -81,5 +82,5 @@ TEST_F(SemanticIndexTestFixture, testSelectRectanglesForFrame) {
     assert(fishFrames->front() == Rectangle(1, 0, 0, 0, 0));
     assert(fishFrames->back() == Rectangle(1, 1, 0, 0, 0));
 
-    std::filesystem::remove(labels);
+    std::experimental::filesystem::remove(labels);
 }

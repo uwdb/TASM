@@ -3,11 +3,11 @@
 
 #include "Configuration.h"
 
-#include <filesystem>
+#include <experimental/filesystem>
 
 namespace tasm::video {
 
-std::unique_ptr<Configuration> GetConfiguration(const std::filesystem::path &path);
+std::unique_ptr<Configuration> GetConfiguration(const std::experimental::filesystem::path &path);
 
 } // namespace tasm::video
 

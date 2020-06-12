@@ -17,8 +17,9 @@ void TiledVideoManager::loadAllTileConfigurations() {
     unsigned int lowerBound = INT32_MAX;
     unsigned int upperBound = 0;
 
-    for (auto &dir : std::filesystem::directory_iterator(catalogEntryPath)) {
-        if (!dir.is_directory())
+    for (auto &dir : std::experimental::filesystem::directory_iterator(catalogEntryPath)) {
+//        if (!dir.is_directory())
+        if (!std::experimental::filesystem::is_directory(dir.status()))
             continue;
 
         auto dirId = globalDirId++;
@@ -73,7 +74,7 @@ std::vector<int> TiledVideoManager::tileLayoutIdsForFrame(unsigned int frameNumb
     return layoutIds;
 }
 
-std::filesystem::path TiledVideoManager::locationOfTileForId(unsigned int tileNumber, int id) const {
+std::experimental::filesystem::path TiledVideoManager::locationOfTileForId(unsigned int tileNumber, int id) const {
     std::scoped_lock lock(mutex_);
     return TileFiles::tileFilename(directoryIdToTileDirectory_.at(id), tileNumber);
 }

@@ -48,15 +48,16 @@ void VideoManager::storeTiledVideo(std::shared_ptr<Video> video, std::shared_ptr
 }
 
 std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
+                                                     const std::string &metadataIdentifier,
                                                      std::shared_ptr<MetadataSelection> metadataSelection,
                                                      std::shared_ptr<TemporalSelection> temporalSelection,
                                                      std::shared_ptr<SemanticIndex> semanticIndex) {
-    std::shared_ptr<TiledEntry> entry(new TiledEntry(video));
+    std::shared_ptr<TiledEntry> entry(new TiledEntry(video, metadataIdentifier));
 
     // Set up scan of a tiled video.
     std::shared_ptr<TiledVideoManager> tiledVideoManager(new TiledVideoManager(entry));
     auto tileLocationProvider = std::make_shared<SingleTileLocationProvider>(tiledVideoManager);
-    auto semanticDataManager = std::make_shared<SemanticDataManager>(semanticIndex, entry->name(), metadataSelection, temporalSelection);
+    auto semanticDataManager = std::make_shared<SemanticDataManager>(semanticIndex, entry->metadataIdentifier(), metadataSelection, temporalSelection);
     auto scan = std::make_shared<ScanTiledVideoOperator>(entry, semanticDataManager, tileLocationProvider);
 
     // Set up decode. Specify largest tile dimensions which are required to successfully reconfigure the decoder.

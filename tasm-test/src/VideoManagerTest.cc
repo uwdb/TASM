@@ -45,7 +45,7 @@ TEST_F(VideoManagerTestFixture, testSelect) {
     std::shared_ptr<TemporalSelection> temporalSelection;
 
     VideoManager manager;
-    manager.select(video, metadataSelection, temporalSelection, semanticIndex);
+    manager.select(video, video, metadataSelection, temporalSelection, semanticIndex);
 
     std::experimental::filesystem::remove(labels);
 }

@@ -44,3 +44,27 @@ TEST_F(TasmTestFixture, testAddMetadata) {
 
     std::experimental::filesystem::remove(path);
 }
+
+TEST_F(TasmTestFixture, testScan) {
+    std::experimental::filesystem::path path("testLabels.db");
+    std::experimental::filesystem::remove(path);
+
+    tasm::TASM tasm(path);
+    tasm.addMetadata("red10", "red", 0, 0, 0, 100, 100);
+
+//    tasm.storeWithUniformLayout("/home/maureen/red102k.mp4", "red10-2x2", 2, 2);
+
+    std::experimental::filesystem::remove(path);
+}
+
+TEST_F(TasmTestFixture, testSelectDifferentPath) {
+    std::experimental::filesystem::path path("testLabels.db");
+    std::experimental::filesystem::remove(path);
+
+    tasm::TASM tasm(path);
+    tasm.addMetadata("red10", "red", 0, 0, 0, 100, 100);
+
+    tasm.select("red10-2x2", "red", "red10");
+
+    std::experimental::filesystem::remove(path);
+}

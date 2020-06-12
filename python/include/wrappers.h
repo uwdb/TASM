@@ -47,9 +47,9 @@ private:
 class PythonTASM : public TASM {
 public:
     SelectionResults pythonSelect(const std::string &video,
-                                  const std::string &label,
-                                  unsigned int firstFrameInclusive,
-                                  unsigned int lastFrameExclusive) {
+                                       const std::string &label,
+                                       unsigned int firstFrameInclusive,
+                                       unsigned int lastFrameExclusive) {
         return SelectionResults(select(video, label, firstFrameInclusive, lastFrameExclusive));
     }
 
@@ -62,6 +62,27 @@ public:
                                   const std::string &label,
                                   unsigned int frame) {
         return SelectionResults(select(video, label, frame));
+    }
+
+    SelectionResults pythonSelect(const std::string &video,
+                                  const std::string &metadataIdentifier,
+                                  const std::string &label,
+                                  unsigned int firstFrameInclusive,
+                                  unsigned int lastFrameExclusive) {
+        return SelectionResults(select(video, label, firstFrameInclusive, lastFrameExclusive, metadataIdentifier));
+    }
+
+    SelectionResults pythonSelect(const std::string &video,
+                                  const std::string &metadataIdentifier,
+                                  const std::string &label) {
+        return SelectionResults(select(video, label, metadataIdentifier));
+    }
+
+    SelectionResults pythonSelect(const std::string &video,
+                                  const std::string &metadataIdentifier,
+                                  const std::string &label,
+                                  unsigned int frame) {
+        return SelectionResults(select(video, label, frame, metadataIdentifier));
     }
 };
 

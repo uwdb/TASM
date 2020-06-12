@@ -9,6 +9,9 @@ namespace np = boost::python::numpy;
 tasm::python::SelectionResults (tasm::python::PythonTASM::*selectRange)(const std::string&, const std::string&, unsigned int, unsigned int) = &tasm::python::PythonTASM::pythonSelect;
 tasm::python::SelectionResults (tasm::python::PythonTASM::*selectEqual)(const std::string&, const std::string&, unsigned int) = &tasm::python::PythonTASM::pythonSelect;
 tasm::python::SelectionResults (tasm::python::PythonTASM::*selectAll)(const std::string&, const std::string&) = &tasm::python::PythonTASM::pythonSelect;
+tasm::python::SelectionResults (tasm::python::PythonTASM::*selectRangeWithMetadataID)(const std::string&, const std::string&, const std::string&, unsigned int, unsigned int) = &tasm::python::PythonTASM::pythonSelect;
+tasm::python::SelectionResults (tasm::python::PythonTASM::*selectEqualWithMetadataID)(const std::string&, const std::string&, const std::string&, unsigned int) = &tasm::python::PythonTASM::pythonSelect;
+tasm::python::SelectionResults (tasm::python::PythonTASM::*selectAllWithMetadataID)(const std::string&, const std::string&, const std::string&) = &tasm::python::PythonTASM::pythonSelect;
 
 BOOST_PYTHON_MODULE(_tasm) {
     using namespace boost::python;
@@ -31,5 +34,8 @@ BOOST_PYTHON_MODULE(_tasm) {
         .def("store_with_uniform_layout", &tasm::python::PythonTASM::storeWithUniformLayout)
         .def("select", selectRange)
         .def("select", selectEqual)
-        .def("select", selectAll);
+        .def("select", selectAll)
+        .def("select", selectRangeWithMetadataID)
+        .def("select", selectEqualWithMetadataID)
+        .def("select", selectAllWithMetadataID);
 }

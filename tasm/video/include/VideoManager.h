@@ -25,9 +25,10 @@ public:
     void storeWithUniformLayout(const std::experimental::filesystem::path &path, const std::string &name, unsigned int numRows, unsigned int numColumns);
 
     std::unique_ptr<ImageIterator> select(const std::string &video,
-            std::shared_ptr<MetadataSelection> metadataSelection,
-            std::shared_ptr<TemporalSelection> temporalSelection,
-            std::shared_ptr<SemanticIndex> semanticIndex);
+                                          const std::string &metadataIdentifier,
+                                          std::shared_ptr<MetadataSelection> metadataSelection,
+                                          std::shared_ptr<TemporalSelection> temporalSelection,
+                                          std::shared_ptr<SemanticIndex> semanticIndex);
 
 private:
     void createCatalogIfNecessary();

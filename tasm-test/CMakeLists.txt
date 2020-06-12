@@ -13,10 +13,11 @@ file(GLOB_RECURSE TASM_TEST_SOURCES "src/*")
 message("TASM_TEST_SOURCES: ${TASM_TEST_SOURCES}")
 
 # Build tests
+# Link with tasm_shared rather than tasm_static to avoid CLion error: https://youtrack.jetbrains.com/issue/CPP-10292
 add_executable(tasm_test EXCLUDE_FROM_ALL ${TASM_TEST_SOURCES})
 target_link_libraries(
         tasm_test   gtest #${GTEST_BOTH_LIBRARIES}
-        tasm_static ${TASM_LIB_DEPENDENCIES}
+        tasm_shared ${TASM_LIB_DEPENDENCIES}
 )
 add_test(tasm_test tasm_test)
 

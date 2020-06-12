@@ -34,7 +34,7 @@ public:
         currentFormat_ = FormatFromCreateInfo(creationInfo_);
 
         if ((result = cuvidCreateDecoder(&handle_, &creationInfo_)) != CUDA_SUCCESS) {
-            throw std::runtime_error("Call to cuvidCreateDecoder failes: " + std::to_string(result));
+            throw std::runtime_error("Call to cuvidCreateDecoder failed: " + std::to_string(result));
         }
     }
 

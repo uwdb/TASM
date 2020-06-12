@@ -39,27 +39,29 @@ public:
         videoManager_.storeWithUniformLayout(videoPath, savedName, rows, columns);
     }
 
-    virtual std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label) {
-        return select(video, label, std::shared_ptr<TemporalSelection>());
+    virtual std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label, const std::string &metadataIdentifier = "") {
+        return select(video, label, std::shared_ptr<TemporalSelection>(), metadataIdentifier);
     }
 
-    virtual std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label, unsigned int frame) {
-        return select(video, label, std::make_shared<EqualTemporalSelection>(frame));
+    virtual std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label, unsigned int frame, const std::string &metadataIdentifier = "") {
+        return select(video, label, std::make_shared<EqualTemporalSelection>(frame), metadataIdentifier);
     }
 
     virtual std::unique_ptr<ImageIterator> select(const std::string &video,
                          const std::string &label,
                          unsigned int firstFrameInclusive,
-                         unsigned int lastFrameExclusive) {
-        return select(video, label, std::make_shared<RangeTemporalSelection>(firstFrameInclusive, lastFrameExclusive));
+                         unsigned int lastFrameExclusive,
+                         const std::string &metadataIdentifier = "") {
+        return select(video, label, std::make_shared<RangeTemporalSelection>(firstFrameInclusive, lastFrameExclusive), metadataIdentifier);
     }
 
     virtual ~TASM() = default;
 
 private:
-    std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label, std::shared_ptr<TemporalSelection> temporalSelection) {
+    std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label, std::shared_ptr<TemporalSelection> temporalSelection, const std::string &metadataIdentifier) {
         return videoManager_.select(
                 video,
+                metadataIdentifier.length() ? metadataIdentifier : video,
                 std::make_shared<SingleMetadataSelection>(label),
                 temporalSelection,
                 semanticIndex_);

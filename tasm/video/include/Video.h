@@ -27,8 +27,9 @@ private:
 
 class TiledEntry {
 public:
-    TiledEntry(const std::string &name)
+    TiledEntry(const std::string &name, const std::string &metadataIdentifier = "")
             : name_(name),
+            metadataIdentifier_(metadataIdentifier.length() ? metadataIdentifier : name),
             path_(CatalogPath / name_),
             version_(loadVersion())
     {
@@ -39,6 +40,7 @@ public:
     unsigned int tile_version() const { return version_; }
     const std::experimental::filesystem::path &path() const { return path_; }
     const std::string &name() const { return name_; }
+    const std::string &metadataIdentifier() const { return metadataIdentifier_; }
 
     void incrementTileVersion();
 
@@ -55,6 +57,7 @@ private:
     }
 
     const std::string name_;
+    const std::string metadataIdentifier_;
     const std::experimental::filesystem::path path_;
     unsigned int version_;
 };

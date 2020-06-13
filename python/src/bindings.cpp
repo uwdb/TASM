@@ -12,6 +12,8 @@ tasm::python::SelectionResults (tasm::python::PythonTASM::*selectAll)(const std:
 tasm::python::SelectionResults (tasm::python::PythonTASM::*selectRangeWithMetadataID)(const std::string&, const std::string&, const std::string&, unsigned int, unsigned int) = &tasm::python::PythonTASM::pythonSelect;
 tasm::python::SelectionResults (tasm::python::PythonTASM::*selectEqualWithMetadataID)(const std::string&, const std::string&, const std::string&, unsigned int) = &tasm::python::PythonTASM::pythonSelect;
 tasm::python::SelectionResults (tasm::python::PythonTASM::*selectAllWithMetadataID)(const std::string&, const std::string&, const std::string&) = &tasm::python::PythonTASM::pythonSelect;
+void (tasm::python::PythonTASM::*storeForceNonUniformLayout)(const std::string&, const std::string&, const std::string&, const std::string&) = &tasm::python::PythonTASM::pythonStoreWithNonUniformLayout;
+void (tasm::python::PythonTASM::*storeDoNotForceNonUniformLayout)(const std::string&, const std::string&, const std::string&, const std::string&, bool) = &tasm::python::PythonTASM::pythonStoreWithNonUniformLayout;
 
 BOOST_PYTHON_MODULE(_tasm) {
     using namespace boost::python;
@@ -32,7 +34,8 @@ BOOST_PYTHON_MODULE(_tasm) {
         .def("add_metadata", &tasm::python::PythonTASM::addMetadata)
         .def("store", &tasm::python::PythonTASM::store)
         .def("store_with_uniform_layout", &tasm::python::PythonTASM::storeWithUniformLayout)
-        .def("store_with_nonuniform_layout", &tasm::python::PythonTASM::storeWithNonUniformLayout)
+        .def("store_with_nonuniform_layout", storeForceNonUniformLayout)
+        .def("store_with_nonuniform_layout", storeDoNotForceNonUniformLayout)
         .def("select", selectRange)
         .def("select", selectEqual)
         .def("select", selectAll)

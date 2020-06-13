@@ -71,7 +71,12 @@ TEST_F(TasmTestFixture, testSelectDifferentPath) {
 
 TEST_F(TasmTestFixture, testTileBird) {
     tasm::TASM tasm;
-    tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-bird", "birdsincage", "bird");
+    tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-not-forced", "birdsincage", "bird", false);
+}
+
+TEST_F(TasmTestFixture, testTileElFuente1) {
+    tasm::TASM tasm;
+    tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/ElFuente1_hevc.mp4", "elfuente1-not-forced", "elfuente1", "person", false);
 }
 
 TEST_F(TasmTestFixture, testSelectBird) {

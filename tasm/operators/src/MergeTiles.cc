@@ -31,7 +31,7 @@ std::optional<GPUPixelDataContainer> MergeTilesOperator::next() {
         assert(tileNumber != static_cast<int>(-1));
 
         auto &boundingBoxesForFrame = semanticDataManager_->rectanglesForFrame(frameNumber);
-        auto tileRect = tileLayoutProvider_->tileLayoutForFrame(frameNumber).rectangleForTile(tileNumber);
+        auto tileRect = tileLayoutProvider_->tileLayoutForFrame(frameNumber)->rectangleForTile(tileNumber);
 
         // TODO: Cache this work. Because it's also done when determining which tiles to decode.
         // See if any of the rectangles intersect this tile.

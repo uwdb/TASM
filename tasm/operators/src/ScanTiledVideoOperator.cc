@@ -37,7 +37,7 @@ std::vector<int> ScanTiledVideoOperator::nextGroupOfFramesWithTheSameLayoutAndFr
     // Get the configuration and location for the next frame.
     // While the path is the same, it must have the same configuration.
     currentTilePath_ = std::make_unique<std::experimental::filesystem::path>(tileLocationProvider_->locationOfTileForFrame(fakeTileNumber, *frameIt));
-    currentTileLayout_ = std::make_unique<TileLayout>(tileLocationProvider_->tileLayoutForFrame(*frameIt));
+    currentTileLayout_ = tileLocationProvider_->tileLayoutForFrame(*frameIt);
 
     if (!totalVideoWidth_) {
         assert(!totalVideoHeight_);

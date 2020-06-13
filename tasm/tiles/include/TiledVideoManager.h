@@ -21,7 +21,7 @@ public:
 
     std::shared_ptr<TiledEntry> entry() const { return entry_; }
     std::vector<int> tileLayoutIdsForFrame(unsigned int frameNumber) const;
-    const TileLayout &tileLayoutForId(int id) const { return *directoryIdToTileLayout_.at(id); }
+    std::shared_ptr<const TileLayout> tileLayoutForId(int id) const { return directoryIdToTileLayout_.at(id); }
     std::experimental::filesystem::path locationOfTileForId(unsigned int tileNumber, int id) const;
 
     unsigned int totalWidth() const { return totalWidth_; }

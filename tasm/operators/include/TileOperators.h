@@ -35,7 +35,7 @@ public:
     std::optional<GPUDecodedFrameData> next() override;
 
 private:
-    void reconfigureEncodersForNewLayout(const TileLayout &newLayout);
+    void reconfigureEncodersForNewLayout(std::shared_ptr<const TileLayout> newLayout);
     void saveTileGroupsToDisk();
     void encodeFrameToTiles(GPUFramePtr frame, int frameNumber);
     void readDataFromEncoders(bool shouldFlush);
@@ -47,7 +47,7 @@ private:
     std::shared_ptr<TiledEntry> outputEntry_;
     const unsigned int layoutDuration_;
     MultipleEncoderManager tileEncodersManager_;
-    std::unique_ptr<TileLayout> currentTileLayout_;
+    std::shared_ptr<const TileLayout> currentTileLayout_;
     int firstFrameInGroup_;
     int lastFrameInGroup_;
     unsigned int frameNumber_;

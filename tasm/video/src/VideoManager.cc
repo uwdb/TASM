@@ -9,11 +9,13 @@
 #include "DecodeOperators.h"
 #include "SemanticIndex.h"
 #include "SemanticSelection.h"
+#include "SmartTileConfigurationProvider.h"
 #include "TemporalSelection.h"
 #include "TileOperators.h"
 #include "TransformToImage.h"
 #include "Video.h"
 #include "VideoConfiguration.h"
+#include "WorkloadCostEstimator.h"
 
 
 namespace tasm {
@@ -41,15 +43,29 @@ void VideoManager::storeWithNonUniformLayout(const std::experimental::filesystem
                                                 const std::string &storedName,
                                                 const std::string &metadataIdentifier,
                                                 std::shared_ptr<MetadataSelection> metadataSelection,
-                                                std::shared_ptr<SemanticIndex> semanticIndex) {
+                                                std::shared_ptr<SemanticIndex> semanticIndex, bool force) {
     std::shared_ptr<Video> video(new Video(path));
     auto semanticDataManager = std::make_shared<SemanticDataManager>(semanticIndex, metadataIdentifier, metadataSelection, std::shared_ptr<TemporalSelection>());
-    auto fineGrainedLayoutProvider = std::make_shared<FineGrainedTileConfigurationProvider>(
-            video->configuration().frameRate,
-            semanticDataManager,
-            video->configuration().displayWidth,
-            video->configuration().displayHeight);
-    storeTiledVideo(video, fineGrainedLayoutProvider, storedName);
+    std::shared_ptr<TileLayoutProvider> layoutProvider;
+
+    auto layoutDuration = video->configuration().frameRate;
+    auto width = video->configuration().displayWidth;
+    auto height = video->configuration().displayHeight;
+
+    if (force) {
+        layoutProvider = std::make_shared<FineGrainedTileConfigurationProvider>(
+                layoutDuration,
+                semanticDataManager,
+                width,
+                height);
+    } else {
+        layoutProvider = std::make_shared<SmartTileConfigurationProviderSingleSelection>(
+                layoutDuration,
+                semanticDataManager,
+                width,
+                height);
+    }
+    storeTiledVideo(video, layoutProvider, storedName);
 }
 
 void VideoManager::storeTiledVideo(std::shared_ptr<Video> video, std::shared_ptr<TileLayoutProvider> tileLayoutProvider, const std::string &savedName) {

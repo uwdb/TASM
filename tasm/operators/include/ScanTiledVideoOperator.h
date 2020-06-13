@@ -53,7 +53,7 @@ private:
     unsigned int numberOfTilesRead_;
     bool didSignalEOS_;
 
-    std::unique_ptr<TileLayout> currentTileLayout_;
+    std::shared_ptr<const TileLayout> currentTileLayout_;
     std::unique_ptr<std::experimental::filesystem::path> currentTilePath_;
     unsigned int currentTileNumber_;
     std::unique_ptr<EncodedFrameReader> currentEncodedFrameReader_;

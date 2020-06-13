@@ -18,10 +18,9 @@ std::optional<GPUDecodedFrameData> TileOperator::next() {
         int frameNumber = -1;
         frameNumber = frame->getFrameNumber(frameNumber) ? frameNumber : frameNumber_++;
         auto tileLayout = tileConfigurationProvider_->tileLayoutForFrame(frameNumber);
-        assert(tileLayout != EmptyTileLayout);
 
         // Reconfigure the encoders if the layout changed.
-        if (!currentTileLayout_ || tileLayout != *currentTileLayout_ || frameNumber != lastFrameInGroup_ + 1) {
+        if (!currentTileLayout_ || *tileLayout != *currentTileLayout_ || frameNumber != lastFrameInGroup_ + 1) {
             // Read the data that was flushed from the encoders because it has the rest of the frames
             // that were encoded with the last configuration.
             if (currentTileLayout_) {
@@ -34,7 +33,7 @@ std::optional<GPUDecodedFrameData> TileOperator::next() {
             // Reconfigure the encoders.
             reconfigureEncodersForNewLayout(tileLayout);
 
-            currentTileLayout_.reset(new TileLayout(tileLayout));
+            currentTileLayout_.reset(tileLayout);
             firstFrameInGroup_ = frameNumber;
         }
 
@@ -46,9 +45,9 @@ std::optional<GPUDecodedFrameData> TileOperator::next() {
     return decodedData;
 }
 
-void TileOperator::reconfigureEncodersForNewLayout(const tasm::TileLayout &newLayout) {
-    for (auto tileIndex = 0u; tileIndex < newLayout.numberOfTiles(); ++tileIndex) {
-        Rectangle rect = newLayout.rectangleForTile(tileIndex);
+void TileOperator::reconfigureEncodersForNewLayout(std::shared_ptr<const tasm::TileLayout> newLayout) {
+    for (auto tileIndex = 0u; tileIndex < newLayout->numberOfTiles(); ++tileIndex) {
+        Rectangle rect = newLayout->rectangleForTile(tileIndex);
         tileEncodersManager_.createEncoderWithConfiguration(tileIndex, rect.width, rect.height);
         tilesCurrentlyBeingEncoded_.push_back(tileIndex);
     }

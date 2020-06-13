@@ -27,7 +27,8 @@ public:
                                     const std::string &storedName,
                                     const std::string &metadataIdentifier,
                                     std::shared_ptr<MetadataSelection> metadataSelection,
-                                    std::shared_ptr<SemanticIndex> semanticIndex);
+                                    std::shared_ptr<SemanticIndex> semanticIndex,
+                                    bool force);
 
     std::unique_ptr<ImageIterator> select(const std::string &video,
                                           const std::string &metadataIdentifier,

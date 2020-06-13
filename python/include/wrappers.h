@@ -46,6 +46,15 @@ private:
 
 class PythonTASM : public TASM {
 public:
+    void pythonStoreWithNonUniformLayout(const std::string &videoPath, const std::string &savedName, const std::string &metadataIdentifier, const std::string &labelToTileAround) {
+        // If "force" isn't specified, do the tiling.
+        storeWithNonUniformLayout(videoPath, savedName, metadataIdentifier, labelToTileAround, true);
+    }
+
+    void pythonStoreWithNonUniformLayout(const std::string &videoPath, const std::string &savedName, const std::string &metadataIdentifier, const std::string &labelToTileAround, bool force) {
+        storeWithNonUniformLayout(videoPath, savedName, metadataIdentifier, labelToTileAround, force);
+    }
+
     SelectionResults pythonSelect(const std::string &video,
                                        const std::string &label,
                                        unsigned int firstFrameInclusive,

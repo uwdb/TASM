@@ -46,6 +46,7 @@ std::optional<std::unique_ptr<std::vector<ImagePtr>>> TransformToImage::next() {
         auto height = object->height();
         auto frameSize = width * height * numChannels_;
 
+        // TODO: It's inefficient to do this work for every bounding box in the same tile.
         Nv12ToColor32<RGBA32>((uint8_t *)object->handle(), object->pitch(), (uint8_t *)tmpImage_, tmpImagePitch_, maxWidth_, maxHeight_);
 
         std::unique_ptr<uint8_t[]> pImage(new uint8_t[frameSize]);

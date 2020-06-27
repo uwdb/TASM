@@ -13,7 +13,7 @@ public:
     SemanticDataManager(std::shared_ptr<SemanticIndex> index,
             const std::string &video,
             std::shared_ptr<MetadataSelection> metadataSelection,
-            std::shared_ptr<TemporalSelection> temporalSelection,
+            std::shared_ptr<TemporalSelection> temporalSelection = std::shared_ptr<TemporalSelection>(),
             unsigned int maxWidth = 0,
             unsigned int maxHeight = 0)
             : index_(index),
@@ -43,6 +43,8 @@ public:
     std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) {
         return index_->rectanglesForFrames(video_, metadataSelection_, firstFrameInclusive, lastFrameExclusive);
     }
+
+    const std::vector<std::string> &labelsInQuery() const { return metadataSelection_->objects(); }
 
 private:
     std::shared_ptr<SemanticIndex> index_;

@@ -31,6 +31,47 @@ private:
     const std::vector<std::string> objects_;
 };
 
+class OrMetadataSelection : public MetadataSelection {
+public:
+    OrMetadataSelection(const std::vector<std::shared_ptr<MetadataSelection>> &elements)
+            : elements_(elements)
+    {
+        for (const auto& element : elements_)
+            objects_.insert(objects_.end(), element->objects().begin(), element->objects().end());
+    }
+
+    OrMetadataSelection(const std::vector<std::string> &objects)
+    {
+        elements_.resize(objects.size());
+        std::transform(objects.begin(), objects.end(), elements_.begin(), [](std::string object) {
+            return std::make_shared<SingleMetadataSelection>(object);
+        });
+
+        for (const auto& element : elements_)
+            objects_.insert(objects_.end(), element->objects().begin(), element->objects().end());
+    }
+
+    std::string labelConstraints() const override {
+        std::string constraint = "(";
+        auto numElements = elements_.size();
+        for (auto i = 0u; i < numElements; ++i) {
+            constraint += elements_[i]->labelConstraints();
+            if (i < numElements - 1)
+                constraint += " OR ";
+        }
+        constraint += ")";
+        return constraint;
+    }
+
+    const std::vector<std::string> &objects() const override {
+        return objects_;
+    }
+
+private:
+    std::vector<std::shared_ptr<MetadataSelection>> elements_;
+    std::vector<std::string> objects_;
+};
+
 } // namespace tasm
 
 #endif //TASM_SEMANTICSELECTION_H

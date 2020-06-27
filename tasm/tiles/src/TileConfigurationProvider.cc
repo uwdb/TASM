@@ -117,7 +117,7 @@ std::shared_ptr<const TileLayout> FineGrainedTileConfigurationProvider::tileLayo
         return interval::Interval<int>(rect.y, rect.y + rect.height);
     });
     std::sort(verticalIntervals.begin(), verticalIntervals.end());
-    auto tileHeights = verticalIntervals.size() ? tileDimensions(verticalIntervals, 136, frameHeight_) : std::vector<unsigned int>({ frameHeight_ });
+    auto tileHeights = verticalIntervals.size() ? tileDimensions(verticalIntervals, 160, frameHeight_) : std::vector<unsigned int>({ frameHeight_ });
 
     tileGroupToTileLayout_[tileGroupForFrame] = std::make_shared<const TileLayout>(tileWidths.size(), tileHeights.size(), tileWidths, tileHeights);
     return tileGroupToTileLayout_.at(tileGroupForFrame);

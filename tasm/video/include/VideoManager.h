@@ -39,7 +39,7 @@ public:
 
     void retileVideoBasedOnRegret(const std::string &video);
 
-    void activateRegretBasedRetilingForVideo(const std::string &video, const std::string &metadataIdentifier, std::shared_ptr<SemanticIndex> semanticIndex);
+    void activateRegretBasedRetilingForVideo(const std::string &video, const std::string &metadataIdentifier, std::shared_ptr<SemanticIndex> semanticIndex, double threshold = 1.0);
     void deactivateRegretBasedRetilingForVideo(const std::string &video);
 
 private:

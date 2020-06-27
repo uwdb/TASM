@@ -159,7 +159,7 @@ void VideoManager::accumulateRegret(const std::string &video, std::shared_ptr<Se
     regretAccumulator->addRegretForQuery(workload, currentLayout);
 }
 
-void VideoManager::activateRegretBasedRetilingForVideo(const std::string &video, const std::string &metadataIdentifier, std::shared_ptr<SemanticIndex> semanticIndex) {
+void VideoManager::activateRegretBasedRetilingForVideo(const std::string &video, const std::string &metadataIdentifier, std::shared_ptr<SemanticIndex> semanticIndex, double threshold) {
     std::shared_ptr<TiledEntry> entry(new TiledEntry(video, metadataIdentifier));
     std::shared_ptr<TiledVideoManager> tiledVideoManager(new TiledVideoManager(entry));
     Video originalVideo(tiledVideoManager->locationOfTileForId(0, 0));
@@ -169,7 +169,8 @@ void VideoManager::activateRegretBasedRetilingForVideo(const std::string &video,
             metadataIdentifier,
             tiledVideoManager->totalWidth(),
             tiledVideoManager->totalHeight(),
-            originalVideo.configuration().frameRate);
+            originalVideo.configuration().frameRate,
+            threshold);
 }
 
 void VideoManager::deactivateRegretBasedRetilingForVideo(const std::string &video) {

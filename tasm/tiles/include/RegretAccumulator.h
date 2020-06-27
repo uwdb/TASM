@@ -15,7 +15,8 @@ public:
         : semanticIndex_(semanticIndex), metadataIdentifier_(metadataIdentifier),
         width_(width), height_(height), gopLength_(gopLength), threshold_(threshold),
         gopSizeInPixels_(width_ * height_ * gopLength_),
-        gopTilingCost_(estimateCostToEncodeGOP(gopSizeInPixels_)) {}
+        gopTilingCost_(estimateCostToEncodeGOP(gopSizeInPixels_)),
+        noTilesConfiguration_(new SingleTileConfigurationProvider(width_, height_)) {}
 
     void addRegretForQuery(std::shared_ptr<Workload> workload, std::shared_ptr<TileLayoutProvider> currentLayout);
     std::unique_ptr<std::unordered_map<unsigned int, std::shared_ptr<TileLayoutProvider>>> getNewGOPLayouts();

@@ -3,6 +3,7 @@
 
 #include "GPUContext.h"
 #include "ImageUtilities.h"
+#include "RegretAccumulator.h"
 #include "VideoLock.h"
 #include <experimental/filesystem>
 #include <TileConfigurationProvider.h>
@@ -36,12 +37,22 @@ public:
                                           std::shared_ptr<TemporalSelection> temporalSelection,
                                           std::shared_ptr<SemanticIndex> semanticIndex);
 
+    void retileVideoBasedOnRegret(const std::string &video);
+
+    void activateRegretBasedRetilingForVideo(const std::string &video, const std::string &metadataIdentifier, std::shared_ptr<SemanticIndex> semanticIndex);
+    void deactivateRegretBasedRetilingForVideo(const std::string &video);
+
 private:
     void createCatalogIfNecessary();
     void storeTiledVideo(std::shared_ptr<Video>, std::shared_ptr<TileLayoutProvider>, const std::string &savedName);
+    void setUpRegretBasedRetiling(const std::string &video, std::shared_ptr<SemanticDataManager> selection, std::shared_ptr<TileLayoutProvider> currentLayout);
+    void accumulateRegret(const std::string &video, std::shared_ptr<SemanticDataManager> selection, std::shared_ptr<TileLayoutProvider> currentLayout);
+    void retileVideo(std::shared_ptr<Video> video, std::shared_ptr<std::vector<int>> framesToRead, std::shared_ptr<TileLayoutProvider> newLayoutProvider, const std::string &savedName);
 
     std::shared_ptr<GPUContext> gpuContext_;
     std::shared_ptr<VideoLock> lock_;
+
+    std::unordered_map<std::string, std::shared_ptr<RegretAccumulator>> videoToRegretAccumulator_;
 };
 
 } // namespace tasm

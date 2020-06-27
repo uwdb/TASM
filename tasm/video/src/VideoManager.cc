@@ -78,6 +78,34 @@ void VideoManager::storeTiledVideo(std::shared_ptr<Video> video, std::shared_ptr
     }
 }
 
+void VideoManager::retileVideoBasedOnRegret(const std::string &videoName) {
+    assert(videoToRegretAccumulator_.count(videoName));
+
+    auto tiledEntry = std::make_shared<TiledEntry>(videoName);
+    auto tiledVideoManager = std::make_shared<TiledVideoManager>(tiledEntry);
+    auto video = std::make_shared<Video>(tiledVideoManager->locationOfTileForId(0, 0));
+    auto gopLength = video->configuration().frameRate;
+
+    auto gopToLayouts = videoToRegretAccumulator_.at(videoName)->getNewGOPLayouts();
+    // Because we re-tile the entire GOP, we only need to specify the first frame for each GOP.
+    auto frames = std::make_shared<std::vector<int>>();
+    for (auto it = gopToLayouts->begin(); it != gopToLayouts->end(); ++it)
+        frames->push_back(it->first * gopLength);
+
+    retileVideo(video, frames, std::make_shared<ConglomerationTileConfigurationProvider>(std::move(gopToLayouts), gopLength), videoName);
+}
+
+void VideoManager::retileVideo(std::shared_ptr<Video> video, std::shared_ptr<std::vector<int>> framesToRead, std::shared_ptr<TileLayoutProvider> newLayoutProvider, const std::string &savedName) {
+    // Set up scan of original video using specified frames. Re-tile entire GOPs, even if not every frame is specified.
+    auto scan = std::make_shared<ScanFramesFromFileDecodeReader>(video, framesToRead, true);
+    auto decode = std::make_shared<GPUDecodeFromCPU>(scan, video->configuration(), gpuContext_, lock_);
+
+    TileOperator tile(video, decode, newLayoutProvider, savedName, video->configuration().frameRate, gpuContext_, lock_);
+    while (!tile.isComplete()) {
+        tile.next();
+    }
+}
+
 std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
                                                      const std::string &metadataIdentifier,
                                                      std::shared_ptr<MetadataSelection> metadataSelection,
@@ -114,7 +142,38 @@ std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
     // Transform pixels to RGB images.
     std::shared_ptr<TransformToImage> transform(new TransformToImage(merge, maxWidth, maxHeight));
 
+    // Accumulate regret for this query.
+    if (videoToRegretAccumulator_.count(video))
+        accumulateRegret(video, semanticDataManager, tileLocationProvider);
+
     return std::make_unique<ImageIterator>(transform);
+}
+
+void VideoManager::accumulateRegret(const std::string &video, std::shared_ptr<SemanticDataManager> selection, std::shared_ptr<TileLayoutProvider> currentLayout) {
+    auto regretAccumulator = videoToRegretAccumulator_.at(video);
+
+    // Create a workload.
+    auto workload = std::make_shared<Workload>(selection);
+
+    // Add regret for this query and get GOPs that have accumulated enough regret to be re-tiled.
+    regretAccumulator->addRegretForQuery(workload, currentLayout);
+}
+
+void VideoManager::activateRegretBasedRetilingForVideo(const std::string &video, const std::string &metadataIdentifier, std::shared_ptr<SemanticIndex> semanticIndex) {
+    std::shared_ptr<TiledEntry> entry(new TiledEntry(video, metadataIdentifier));
+    std::shared_ptr<TiledVideoManager> tiledVideoManager(new TiledVideoManager(entry));
+    Video originalVideo(tiledVideoManager->locationOfTileForId(0, 0));
+
+    videoToRegretAccumulator_[video] = std::make_shared<RegretAccumulator>(
+            semanticIndex,
+            metadataIdentifier,
+            tiledVideoManager->totalWidth(),
+            tiledVideoManager->totalHeight(),
+            originalVideo.configuration().frameRate);
+}
+
+void VideoManager::deactivateRegretBasedRetilingForVideo(const std::string &video) {
+    videoToRegretAccumulator_.erase(video);
 }
 
 } // namespace tasm

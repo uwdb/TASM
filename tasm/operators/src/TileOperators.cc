@@ -33,7 +33,7 @@ std::optional<GPUDecodedFrameData> TileOperator::next() {
             // Reconfigure the encoders.
             reconfigureEncodersForNewLayout(tileLayout);
 
-            currentTileLayout_.reset(tileLayout);
+            currentTileLayout_ = tileLayout;
             firstFrameInGroup_ = frameNumber;
         }
 

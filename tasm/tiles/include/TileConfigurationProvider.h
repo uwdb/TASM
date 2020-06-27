@@ -93,6 +93,21 @@ private:
     std::unordered_map<unsigned int, std::shared_ptr<const TileLayout>> tileGroupToTileLayout_;
 };
 
+class ConglomerationTileConfigurationProvider : public TileLayoutProvider {
+public:
+    ConglomerationTileConfigurationProvider(std::unique_ptr<std::unordered_map<unsigned int, std::shared_ptr<TileLayoutProvider>>> gopToLayoutProvider, unsigned int gopLength)
+        : gopToLayoutProvider_(std::move(gopToLayoutProvider)),
+        gopLength_(gopLength) {}
+
+    std::shared_ptr<const TileLayout> tileLayoutForFrame(unsigned int frame) override {
+        return gopToLayoutProvider_->at(frame / gopLength_)->tileLayoutForFrame(frame);
+    }
+
+private:
+    std::unique_ptr<std::unordered_map<unsigned int, std::shared_ptr<TileLayoutProvider>>> gopToLayoutProvider_;
+    unsigned int gopLength_;
+};
+
 } // namespace tasm
 
 #endif //TASM_TILECONFIGURATIONPROVIDER_H

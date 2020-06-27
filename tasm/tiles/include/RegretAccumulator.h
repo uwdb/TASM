@@ -8,8 +8,6 @@
 namespace tasm {
 class SemanticIndex;
 
-using GOP = unsigned int;
-
 class RegretAccumulator {
 public:
     RegretAccumulator(std::shared_ptr<SemanticIndex> semanticIndex, const std::string &metadataIdentifier,
@@ -19,7 +17,8 @@ public:
         gopSizeInPixels_(width_ * height_ * gopLength_),
         gopTilingCost_(estimateCostToEncodeGOP(gopSizeInPixels_)) {}
 
-    std::unique_ptr<std::unordered_map<GOP, std::shared_ptr<TileLayoutProvider>>> addRegretForQueryAndGetNewGOPLayouts(std::shared_ptr<Workload> workload, std::shared_ptr<TileLayoutProvider> currentLayout);
+    void addRegretForQuery(std::shared_ptr<Workload> workload, std::shared_ptr<TileLayoutProvider> currentLayout);
+    std::unique_ptr<std::unordered_map<unsigned int, std::shared_ptr<TileLayoutProvider>>> getNewGOPLayouts();
 
 private:
     bool shouldRetileGOP(unsigned int gop, std::string &layoutIdentifier);

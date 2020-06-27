@@ -59,6 +59,18 @@ public:
         return select(video, label, std::make_shared<RangeTemporalSelection>(firstFrameInclusive, lastFrameExclusive), metadataIdentifier);
     }
 
+    void retileVideoBasedOnRegret(const std::string &video) {
+        videoManager_.retileVideoBasedOnRegret(video);
+    }
+
+    void activateRegretBasedTilingForVideo(const std::string &video) {
+        videoManager_.activateRegretBasedRetilingForVideo(video);
+    }
+
+    void deactivateRegretBasedTilingForVideo(const std::string &video) {
+        videoManager_.deactivateRegretBasedRetilingForVideo(video);
+    }
+
     virtual ~TASM() = default;
 
 private:

@@ -17,7 +17,7 @@ static std::string combineStrings(const std::vector<std::string> &strings) {
     return combined;
 }
 
-void RegretAccumulator::addRegretForQuery(std::shared_ptr<Workload> workload,
+std::unique_ptr<std::unordered_map<GOP, std::shared_ptr<TileLayoutProvider>>> RegretAccumulator::addRegretForQueryAndGetNewGOPLayouts(std::shared_ptr<Workload> workload,
                                           std::shared_ptr<TileLayoutProvider> currentLayout) {
     ++queryIteration_;
     auto &queryObjects = workload->semanticDataManagerForQuery(0)->labelsInQuery();
@@ -33,6 +33,18 @@ void RegretAccumulator::addRegretForQuery(std::shared_ptr<Workload> workload,
 
     iterationToWorkload_[queryIteration_] = workload;
     iterationToBaselineCosts_[queryIteration_] = baselineCosts;
+
+    // Get new GOP layouts.
+    auto newGOPLayouts = std::make_unique<std::unordered_map<GOP, std::shared_ptr<TileLayoutProvider>>>();
+    for (auto it = baselineCosts->begin(); it != baselineCosts->end(); ++it) {
+        auto gop = it->first;
+        std::string idForGOP;
+        if (shouldRetileGOP(gop, idForGOP)) {
+            newGOPLayouts->insert({gop, configurationProviderForIdentifier(idForGOP)});
+            resetRegretForGOP(gop);
+        }
+    }
+    return newGOPLayouts;
 }
 
 bool RegretAccumulator::shouldRetileGOP(unsigned int gop, std::string &layoutIdentifier) {

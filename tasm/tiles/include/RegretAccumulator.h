@@ -8,21 +8,24 @@
 namespace tasm {
 class SemanticIndex;
 
+using GOP = unsigned int;
+
 class RegretAccumulator {
 public:
     RegretAccumulator(std::shared_ptr<SemanticIndex> semanticIndex, const std::string &metadataIdentifier,
-            unsigned int width, unsigned int height, unsigned int gopLength, double threshold)
+            unsigned int width, unsigned int height, unsigned int gopLength, double threshold = 1.0)
         : semanticIndex_(semanticIndex), metadataIdentifier_(metadataIdentifier),
         width_(width), height_(height), gopLength_(gopLength), threshold_(threshold),
         gopSizeInPixels_(width_ * height_ * gopLength_),
         gopTilingCost_(estimateCostToEncodeGOP(gopSizeInPixels_)) {}
 
-    void addRegretForQuery(std::shared_ptr<Workload> workload, std::shared_ptr<TileLayoutProvider> currentLayout);
+    std::unique_ptr<std::unordered_map<GOP, std::shared_ptr<TileLayoutProvider>>> addRegretForQueryAndGetNewGOPLayouts(std::shared_ptr<Workload> workload, std::shared_ptr<TileLayoutProvider> currentLayout);
+
+private:
     bool shouldRetileGOP(unsigned int gop, std::string &layoutIdentifier);
     void resetRegretForGOP(unsigned int gop);
     std::shared_ptr<TileLayoutProvider> configurationProviderForIdentifier(const std::string &identifier);
 
-private:
     void addRegretForHistoricalQueries(const std::vector<std::string> &objects);
     std::shared_ptr<TileLayoutProvider> tileLayoutForObjects(const std::vector<std::string> &objects);
     bool costsAreForGOPsThatHaveNotBeenRetiled(unsigned int iteration, std::shared_ptr<std::unordered_map<unsigned int, CostElements>> baselineCosts);

@@ -14,6 +14,9 @@ tasm::python::SelectionResults (tasm::python::PythonTASM::*selectEqualWithMetada
 tasm::python::SelectionResults (tasm::python::PythonTASM::*selectAllWithMetadataID)(const std::string&, const std::string&, const std::string&) = &tasm::python::PythonTASM::pythonSelect;
 void (tasm::python::PythonTASM::*storeForceNonUniformLayout)(const std::string&, const std::string&, const std::string&, const std::string&) = &tasm::python::PythonTASM::pythonStoreWithNonUniformLayout;
 void (tasm::python::PythonTASM::*storeDoNotForceNonUniformLayout)(const std::string&, const std::string&, const std::string&, const std::string&, bool) = &tasm::python::PythonTASM::pythonStoreWithNonUniformLayout;
+void (tasm::python::PythonTASM::*activateRegretBasedTilingWithoutMetadataIdentifier)(const std::string&) = &tasm::python::PythonTASM::pythonActivateRegretBasedTilingForVideo;
+void (tasm::python::PythonTASM::*activateRegretBasedTilingWithMetadataIdentifier)(const std::string&, const std::string&) = &tasm::python::PythonTASM::pythonActivateRegretBasedTilingForVideo;
+void (tasm::python::PythonTASM::*activateRegretBasedTilingWithThreshold)(const std::string&, const std::string&, double) = &tasm::python::PythonTASM::pythonActivateRegretBasedTilingForVideo;
 
 BOOST_PYTHON_MODULE(_tasm) {
     using namespace boost::python;
@@ -41,5 +44,10 @@ BOOST_PYTHON_MODULE(_tasm) {
         .def("select", selectAll)
         .def("select", selectRangeWithMetadataID)
         .def("select", selectEqualWithMetadataID)
-        .def("select", selectAllWithMetadataID);
+        .def("select", selectAllWithMetadataID)
+        .def("activate_regret_based_tiling", activateRegretBasedTilingWithMetadataIdentifier)
+        .def("activate_regret_based_tiling", activateRegretBasedTilingWithoutMetadataIdentifier)
+        .def("activate_regret_based_tiling", activateRegretBasedTilingWithThreshold)
+        .def("deactivate_regret_based_tiling", &tasm::python::PythonTASM::deactivateRegretBasedTilingForVideo)
+        .def("retile_based_on_regret", &tasm::python::PythonTASM::retileVideoBasedOnRegret);
 }

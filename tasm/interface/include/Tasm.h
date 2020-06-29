@@ -63,8 +63,8 @@ public:
         videoManager_.retileVideoBasedOnRegret(video);
     }
 
-    void activateRegretBasedTilingForVideo(const std::string &video, const std::string &metadataIdentifier = "") {
-        videoManager_.activateRegretBasedRetilingForVideo(video, metadataIdentifier.length() ? metadataIdentifier : video, semanticIndex_);
+    void activateRegretBasedTilingForVideo(const std::string &video, const std::string &metadataIdentifier = "", double threshold = 0) {
+        videoManager_.activateRegretBasedRetilingForVideo(video, metadataIdentifier.length() ? metadataIdentifier : video, semanticIndex_, threshold);
     }
 
     void deactivateRegretBasedTilingForVideo(const std::string &video) {

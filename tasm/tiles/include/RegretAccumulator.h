@@ -16,6 +16,7 @@ public:
         width_(width), height_(height), gopLength_(gopLength), threshold_(threshold),
         gopSizeInPixels_(width_ * height_ * gopLength_),
         gopTilingCost_(estimateCostToEncodeGOP(gopSizeInPixels_)),
+        queryIteration_(0),
         noTilesConfiguration_(new SingleTileConfigurationProvider(width_, height_)) {}
 
     void addRegretForQuery(std::shared_ptr<Workload> workload, std::shared_ptr<TileLayoutProvider> currentLayout);
@@ -43,7 +44,7 @@ private:
     }
 
     std::shared_ptr<SemanticIndex> semanticIndex_;
-    const std::string &metadataIdentifier_;
+    const std::string metadataIdentifier_;
 
     unsigned int width_;
     unsigned int height_;

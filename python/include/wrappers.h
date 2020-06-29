@@ -93,6 +93,22 @@ public:
                                   unsigned int frame) {
         return SelectionResults(select(video, label, frame, metadataIdentifier));
     }
+
+    void pythonActivateRegretBasedTilingForVideo(const std::string &video) {
+        return activateRegretBasedTilingForVideo(video);
+    }
+
+    void pythonActivateRegretBasedTilingForVideo(const std::string &video,
+                                                const std::string &metadataIdentifier) {
+        return activateRegretBasedTilingForVideo(video, metadataIdentifier);
+    }
+
+    void pythonActivateRegretBasedTilingForVideo(const std::string &video,
+                                                 const std::string &metadataIdentifier,
+                                                 double threshold) {
+        return activateRegretBasedTilingForVideo(video, metadataIdentifier, threshold);
+    }
+
 };
 
 } // namespace tasm::python;

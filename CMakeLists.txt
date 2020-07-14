@@ -37,37 +37,16 @@ set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -fvisibility=hidden -Wall  -Wextra -Wn
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG -Wall -Wextra -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG --coverage -g3 -Wall -Wextra -Wno-unused-parameter")
 
-# Find required library dependencies
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} nvcuvid dl pthread glog gflags stdc++fs)
 set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} nvcuvid dl pthread stdc++fs)
 
 include(cmake/nvenc.cmake)
 
 find_package(CUDA 8.0 REQUIRED)
 # Using SYSTEM breaks building.
-include_directories(${CUDA_INCLUDE_DIRS}) #  /usr/local/cuda-8.0/include ${CUDA_INCLUDE_DIRS}
+include_directories(${CUDA_INCLUDE_DIRS})
 message("Cuda include: ${CUDA_INCLUDE_DIRS}")
 message("libs: ${CUDA_CUDA_LIBRARY}, ${CUDA_nvcuvenc_LIBRARY}")
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${CUDA_CUDA_LIBRARY} ${CUDA_nvcuvenc_LIBRARY} /usr/lib/x86_64-linux-gnu/libnvcuvid.so /usr/local/cuda-9.0/lib64/libnvToolsExt.so)
 set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${CUDA_CUDA_LIBRARY} ${CUDA_nvcuvenc_LIBRARY} /usr/lib/x86_64-linux-gnu/libnvcuvid.so /usr/local/cuda-9.0/lib64/libnvToolsExt.so)
-
-# For ipp stuff in saving frames as images.
-link_directories(/opt/intel/ipp/lib/intel64)
-include_directories(/opt/intel/ipp/include)
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ipps ippi ippcc)
-
-#TODO add FindLLV.cmake; clean this up
-#TODO Do we still depend on OpenCV outside of plugins?
-#find_package(OpenCV REQUIRED)
-#set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${OPENCV_LIBS} opencv_features2d)
-#set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} lfv)
-
-#find_package(NVENC REQUIRED)
-#set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${NVENC_LIBRARIES})
-
-#find_package(NvidiaSDK REQUIRED)
-#include_directories(SYSTEM ${NVIDIASDK_INCLUDE_DIR})
-#set(CLANG_TIDY_EXCLUDED_SOURCES ${NVIDIASDK_SOURCES})
 
 find_package(PythonLibs 3)
 include_directories(SYSTEM ${PYTHON_INCLUDE_DIRS})
@@ -78,36 +57,23 @@ set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${Boost_LIBRARIES})
 
 find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVFORMAT AVUTIL SWSCALE)
 include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${FFMPEG_LIBRARIES})
 set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${FFMPEG_LIBRARIES})
 
 # Protobufs
 find_package(Protobuf REQUIRED)
 include_directories(${PROTOBUF_INCLUDE_DIR})
 include_directories(SYSTEM ${CMAKE_BINARY_DIR}/protobuf)
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${Protobuf_LIBRARIES} lightdb_protobuf)
 set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${Protobuf_LIBRARIES} lightdb_protobuf)
 add_subdirectory(protobuf)
 
 find_package (Glog REQUIRED)
-#find_package(ClangTidy)
-
-#find_package(Bento4 REQUIRED)
-#include_directories(${Bento4_INCLUDE_DIRS})
-#add_subdirectory(${Bento4_SOURCE_DIR})
 
 find_package(GPAC REQUIRED)
 include_directories(SYSTEM ${GPAC_INCLUDE_DIRS})
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${GPAC_LIBRARIES})
 set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${GPAC_LIBRARIES})
 
 find_library(SQLITE3_LIBRARY sqlite3)
-message("INCLUDES: ${SQLITE3_LIBRARY}")
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${SQLITE3_LIBRARY})
 set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${SQLITE3_LIBRARY})
-
-# Build LightDB library
-add_subdirectory(core)
 
 # Enable testing
 option(ENABLE_TESTS "Enable tests" ON)
@@ -139,5 +105,5 @@ add_custom_target(
    uninstall
    COMMAND eval "${CMD}"
    COMMAND xargs rm -f < install_manifest.txt
-   COMMAND echo "LightDB uninstalled"
+   COMMAND echo "TASM uninstalled"
 )

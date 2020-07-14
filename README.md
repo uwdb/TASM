@@ -1,6 +1,6 @@
 # TASM
 
-Prototype implementation of TASM, which is a tile-based storage manager.
+Prototype implementation of TASM, which is a tile-based storage manager video analytics. See the [paper](https://arxiv.org/abs/2006.02958) for more details.
 
 # Example usage
 
@@ -68,7 +68,38 @@ t.retile_based_on_regret("video")
 
 ```
 
+## Sample videos to test on
+With the specific videos tested in the paper listed.
+- [Netflix Public Dataset](https://github.com/Netflix/vmaf/blob/master/resource/doc/datasets.md)
+    - BirdsInCage
+    - CrowdRun
+    - ElFuente1
+    - ElFuente2
+    - OldtownCross
+    - Seeking
+    - Tennis
+- [xiph](https://media.xiph.org/video/derf/)
+    - touchdown_pass
+    - red_kayak
+    - park_joy (2K, 4K)
+    - Netflix_DrivingPOV
+    - Netflix_ToddlerFountain
+    - Netflix_FoodMarket
+    - Netflix_FoodMarket2
+    - Netflix_Narrator
+    - Netflix_BoxingPractice
+- [Netflix Open Source](http://download.opencontent.netflix.com/?prefix=TechblogAssets/)
+    - Cosmos Laundromat
+    - Meridian
+- [MOT16](https://motchallenge.net/data/MOT16/)
+    - All except for MOT16-05 and MOT16-06, whose resolutions are too small.
+- [El Fuente](https://www.cdvl.org/documents/ElFuente_summary.pdf)
+- [Visual Road](https://db.cs.washington.edu/projects/visualroad/)
+    - Tested on 15 minute videos with 2K and 4K resolutions from the perspective of static traffic cameras.
+    - Tested on 2K videos generated from a car's POV.
+
+
 ## Future enhancements:
 - Expose an API toggle to choose between fine-grained and coarse-grained tile layouts.
-- Support H264-encoded videos.
+- Support H264-encoded videos. Currently only HEVC-encoded videos are encoded.
 - Reduce duplicated work when retrieving pixels from decoded frames.

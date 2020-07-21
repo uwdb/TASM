@@ -1,21 +1,6 @@
 # TASM
 
 Prototype implementation of TASM, which is a tile-based storage manager.
-Currently only HEVC-encoded videos are supported.
-
-< Link to website >
-
-# Building
-
-## Install dependencies
-< list dependencies >
-
-## Make
-< Instructions to build. >
-< Make sure tasm python library is installed to correct location.
-
-Videos are stored in `path/to/cmake/debug/python/resources/`  
-Metadata is stored in `path/to/cmake/debug/python/labels.db`
 
 # Example usage
 

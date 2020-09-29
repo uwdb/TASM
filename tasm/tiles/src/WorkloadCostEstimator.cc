@@ -4,6 +4,12 @@
 
 namespace tasm {
 
+
+std::ostream &operator<<(std::ostream &ostr, const CostElements &c) {
+    ostr << "num_pixels: " << c.numPixels << ", num_tiles: " << c.numTiles << "\n";
+    return ostr;
+}
+
 CostElements WorkloadCostEstimator::estimateCostForQuery(unsigned int queryNum, std::unordered_map<unsigned int, CostElements> *costByGOP) {
     auto semanticDataManager = workload_->semanticDataManagerForQuery(queryNum);
     auto start = semanticDataManager->orderedFrames().begin();

@@ -1,5 +1,6 @@
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
+#include <boost/python/operators.hpp>
 
 #include "TasmWrappers.h"
 #include "WorkloadWrappers.h"
@@ -79,7 +80,9 @@ BOOST_PYTHON_MODULE(_tasm) {
 
     class_<tasm::CostElements>("CostElements", init<unsigned int, unsigned int>())
         .def_readonly("num_pixels", &tasm::CostElements::numPixels)
-        .def_readonly("num_tiles", &tasm::CostElements::numTiles);
+        .def_readonly("num_tiles", &tasm::CostElements::numTiles)
+        .def(self_ns::str(self_ns::self))
+        .def(self_ns::repr(self_ns::self));
 
     class_<tasm::python::PythonWorkloadCostEstimator>("WorkloadCostEstimator", no_init)
         .def("estimate_cost", &tasm::python::PythonWorkloadCostEstimator::estimateCostForWorkload)

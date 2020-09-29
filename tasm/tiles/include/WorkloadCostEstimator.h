@@ -49,6 +49,8 @@ struct CostElements {
     unsigned long long numTiles;
 };
 
+std::ostream &operator<<(std::ostream &ostr, const CostElements &c);
+
 class WorkloadCostEstimator {
 public:
     WorkloadCostEstimator(std::shared_ptr<TileLayoutProvider> tileLayoutProvider,

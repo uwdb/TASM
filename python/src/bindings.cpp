@@ -74,6 +74,7 @@ BOOST_PYTHON_MODULE(_tasm) {
         .def(init<std::string, std::string, std::string, unsigned int, unsigned int>());
 
     class_<tasm::python::PythonWorkload>("Workload", init<list, list>())
+        .def(init<tasm::python::Query>())
         .def("counts", &tasm::python::PythonWorkload::list_counts);
 
     class_<tasm::TileLayout, std::shared_ptr<tasm::TileLayout>>("BaseTileLayout", no_init)

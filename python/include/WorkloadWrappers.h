@@ -72,6 +72,11 @@ public:
         counts_(extract<unsigned int>(counts))
     {}
 
+    PythonWorkload(const Query &q)
+        : queries_({q}),
+        counts_({1})
+    {}
+
     std::shared_ptr<Workload> toWorkload(TASM &tasm) const {
         std::vector<std::shared_ptr<SemanticDataManager>> selections(queries_.size());
         std::transform(queries_.begin(), queries_.end(), selections.begin(), [&](const Query &query) {

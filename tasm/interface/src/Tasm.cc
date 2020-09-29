@@ -12,4 +12,8 @@ void TASM::addMetadata(const std::string &video,
     semanticIndex_->addMetadata(video, label, frame, x1, y1, x2, y2);
 }
 
+void TASM::addBulkMetadata(const std::vector<MetadataInfo> &metadataInfo) {
+    semanticIndex_->addBulkMetadata(metadataInfo);
+}
+
 } // namespace tasm

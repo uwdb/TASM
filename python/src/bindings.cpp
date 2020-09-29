@@ -37,10 +37,20 @@ BOOST_PYTHON_MODULE(_tasm) {
     class_<tasm::python::SelectionResults>("ObjectIterator", no_init)
             .def("next", &tasm::python::SelectionResults::next);
 
+    class_<tasm::MetadataInfo>("MetadataInfo", init<std::string, std::string, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int>())
+            .def_readonly("video", &tasm::MetadataInfo::video)
+            .def_readonly("label", &tasm::MetadataInfo::label)
+            .def_readonly("frame", &tasm::MetadataInfo::frame)
+            .def_readonly("x1", &tasm::MetadataInfo::x1)
+            .def_readonly("y1", &tasm::MetadataInfo::y1)
+            .def_readonly("x2", &tasm::MetadataInfo::x2)
+            .def_readonly("y2", &tasm::MetadataInfo::y2);
+
     class_<tasm::TASM, boost::noncopyable>("BaseTASM", no_init);
 
     class_<tasm::python::PythonTASM, bases<tasm::TASM>, boost::noncopyable>("TASM")
         .def("add_metadata", &tasm::python::PythonTASM::addMetadata)
+        .def("add_bulk_metadata", &tasm::python::PythonTASM::addBulkMetadataFromList)
         .def("store", &tasm::python::PythonTASM::store)
         .def("store_with_uniform_layout", &tasm::python::PythonTASM::storeWithUniformLayout)
         .def("store_with_nonuniform_layout", storeForceNonUniformLayout)

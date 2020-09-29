@@ -31,6 +31,8 @@ public:
             unsigned int x2,
             unsigned int y2);
 
+    virtual void addBulkMetadata(const std::vector<MetadataInfo>&);
+
     virtual void store(const std::string &videoPath, const std::string &savedName) {
         videoManager_.store(videoPath, savedName);
     }

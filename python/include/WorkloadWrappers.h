@@ -6,9 +6,9 @@
 #include "Tasm.h"
 #include "TiledVideoManager.h"
 #include "TileLocationProvider.h"
+#include "utilities.h"
 #include "WorkloadCostEstimator.h"
 #include "Video.h"
-#include <boost/python/list.hpp>
 #include <boost/python/wrapper.hpp>
 
 namespace tasm::python {
@@ -64,23 +64,6 @@ private:
     unsigned int firstFrameInclusive_;
     unsigned int lastFrameExclusive_;
 };
-
-template <typename T>
-std::vector<T> extract(boost::python::list l) {
-    std::vector<T> result;
-    for (auto i = 0; i < boost::python::len(l); ++i) {
-        result.push_back(boost::python::extract<T>(l[i]));
-    }
-    return result;
-}
-
-template <typename T>
-boost::python::list listify(std::vector<T> vec) {
-    auto list = boost::python::list();
-    for (const auto &i : vec)
-        list.append(i);
-    return list;
-}
 
 class PythonWorkload {
 public:

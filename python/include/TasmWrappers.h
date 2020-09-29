@@ -2,6 +2,7 @@
 #define TASM_WRAPPERS_H
 
 #include "ImageUtilities.h"
+#include "utilities.h"
 #include "Tasm.h"
 #include <boost/python/numpy.hpp>
 
@@ -47,6 +48,10 @@ private:
 
 class PythonTASM : public TASM {
 public:
+    void addBulkMetadataFromList(boost::python::list metadataInfo) {
+        addBulkMetadata(extract<MetadataInfo>(metadataInfo));
+    }
+
     void pythonStoreWithNonUniformLayout(const std::string &videoPath, const std::string &savedName, const std::string &metadataIdentifier, const std::string &labelToTileAround) {
         // If "force" isn't specified, do the tiling.
         storeWithNonUniformLayout(videoPath, savedName, metadataIdentifier, labelToTileAround, true);

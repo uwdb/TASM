@@ -10,6 +10,20 @@
 
 namespace tasm {
 
+struct MetadataInfo {
+    MetadataInfo(const std::string &video, const std::string &label, unsigned int frame, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2)
+            : video(video), label(label), frame(frame), x1(x1), y1(y1), x2(x2), y2(y2)
+    {}
+
+    std::string video;
+    std::string label;
+    unsigned int frame;
+    unsigned int x1;
+    unsigned int y1;
+    unsigned int x2;
+    unsigned int y2;
+};
+
 class SemanticIndex {
 public:
     virtual void addMetadata(const std::string &video,
@@ -19,6 +33,8 @@ public:
             unsigned int y1,
             unsigned int x2,
             unsigned int y2) = 0;
+
+    virtual void addBulkMetadata(const std::vector<MetadataInfo>&) = 0;
 
     virtual std::unique_ptr<std::vector<int>> orderedFramesForSelection(
             const std::string &video,
@@ -55,6 +71,8 @@ public:
                      unsigned int y1,
                      unsigned int x2,
                      unsigned int y2) override;
+
+    void addBulkMetadata(const std::vector<MetadataInfo>&) override;
 
     std::unique_ptr<std::vector<int>> orderedFramesForSelection(
             const std::string &video,

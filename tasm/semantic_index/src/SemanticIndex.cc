@@ -80,6 +80,13 @@ void SemanticIndexSQLite::addMetadata(
     ASSERT_SQLITE_OK(sqlite3_reset(addMetadataStmt_));
 }
 
+void SemanticIndexSQLite::addBulkMetadata(const std::vector<MetadataInfo> &metadataInfo) {
+    sqlite3_exec(db_, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+    for (const auto &m : metadataInfo)
+        addMetadata(m.video, m.label, m.frame, m.x1, m.y1, m.x2, m.y2);
+    sqlite3_exec(db_, "END TRANSACTION;", NULL, NULL, NULL);
+}
+
 std::unique_ptr<std::vector<int>> SemanticIndexSQLite::orderedFramesForSelection(
         const std::string &video,
         std::shared_ptr<MetadataSelection> metadataSelection,

@@ -49,7 +49,7 @@ void TiledVideoManager::loadAllTileConfigurations() {
         largestHeight_ = std::max(largestHeight_, tileLayout.largestHeight());
 
         if (!tileLayoutReferences_.count(tileLayout))
-            tileLayoutReferences_[tileLayout] = std::make_shared<const TileLayout>(tileLayout);
+            tileLayoutReferences_[tileLayout] = std::make_shared<TileLayout>(tileLayout);
 
         directoryIdToTileLayout_[dirId] = tileLayoutReferences_.at(tileLayout);
         directoryIdToTileDirectory_[dirId] = tileDirectoryPath;

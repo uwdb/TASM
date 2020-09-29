@@ -28,10 +28,14 @@ private:
 class TiledEntry {
 public:
     TiledEntry(const std::string &name, const std::string &metadataIdentifier = "")
-            : name_(name),
-            metadataIdentifier_(metadataIdentifier.length() ? metadataIdentifier : name),
-            path_(CatalogPath / name_),
-            version_(loadVersion())
+            : TiledEntry(name, CatalogPath / name, metadataIdentifier)
+    { }
+
+    TiledEntry(const std::string &name, const std::experimental::filesystem::path &path, const std::string &metadataIdentifier = "")
+        : name_(name),
+        metadataIdentifier_(metadataIdentifier.length() ? metadataIdentifier : name),
+        path_(path),
+        version_(loadVersion())
     {
         if (!std::experimental::filesystem::exists(path_))
             std::experimental::filesystem::create_directory(path_);

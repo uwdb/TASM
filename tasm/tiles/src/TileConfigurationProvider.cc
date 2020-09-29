@@ -94,7 +94,7 @@ std::vector<unsigned int> FineGrainedTileConfigurationProvider::tileDimensions(c
     return dimensions;
 }
 
-std::shared_ptr<const TileLayout> FineGrainedTileConfigurationProvider::tileLayoutForFrame(unsigned int frame) {
+std::shared_ptr<TileLayout> FineGrainedTileConfigurationProvider::tileLayoutForFrame(unsigned int frame) {
     unsigned int tileGroupForFrame = frame / tileLayoutDuration_;
     if (tileGroupToTileLayout_.count(tileGroupForFrame))
         return tileGroupToTileLayout_.at(tileGroupForFrame);
@@ -119,7 +119,7 @@ std::shared_ptr<const TileLayout> FineGrainedTileConfigurationProvider::tileLayo
     std::sort(verticalIntervals.begin(), verticalIntervals.end());
     auto tileHeights = verticalIntervals.size() ? tileDimensions(verticalIntervals, 160, frameHeight_) : std::vector<unsigned int>({ frameHeight_ });
 
-    tileGroupToTileLayout_[tileGroupForFrame] = std::make_shared<const TileLayout>(tileWidths.size(), tileHeights.size(), tileWidths, tileHeights);
+    tileGroupToTileLayout_[tileGroupForFrame] = std::make_shared<TileLayout>(tileWidths.size(), tileHeights.size(), tileWidths, tileHeights);
     return tileGroupToTileLayout_.at(tileGroupForFrame);
 }
 

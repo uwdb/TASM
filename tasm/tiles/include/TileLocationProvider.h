@@ -30,7 +30,7 @@ public:
         return tileLayoutsManager_->locationOfTileForId(tileNumber, layoutIdForFrame(frame));
     }
 
-    std::shared_ptr<const TileLayout> tileLayoutForFrame(unsigned int frame) override {
+    std::shared_ptr<TileLayout> tileLayoutForFrame(unsigned int frame) override {
         std::scoped_lock lock(mutex_);
         return tileLayoutsManager_->tileLayoutForId(layoutIdForFrame(frame));
     }

@@ -21,7 +21,7 @@ public:
 
     std::shared_ptr<TiledEntry> entry() const { return entry_; }
     std::vector<int> tileLayoutIdsForFrame(unsigned int frameNumber) const;
-    std::shared_ptr<const TileLayout> tileLayoutForId(int id) const { return directoryIdToTileLayout_.at(id); }
+    std::shared_ptr<TileLayout> tileLayoutForId(int id) const { return directoryIdToTileLayout_.at(id); }
     std::experimental::filesystem::path locationOfTileForId(unsigned int tileNumber, int id) const;
 
     unsigned int totalWidth() const { return totalWidth_; }
@@ -37,8 +37,8 @@ private:
 
 public: // For sake of measuring.
     std::unordered_map<int, std::experimental::filesystem::path> directoryIdToTileDirectory_;
-    std::unordered_map<int, std::shared_ptr<const TileLayout>> directoryIdToTileLayout_;
-    std::unordered_map <TileLayout, std::shared_ptr<const TileLayout>> tileLayoutReferences_;
+    std::unordered_map<int, std::shared_ptr<TileLayout>> directoryIdToTileLayout_;
+    std::unordered_map <TileLayout, std::shared_ptr<TileLayout>> tileLayoutReferences_;
 
 private:
     mutable std::mutex mutex_;

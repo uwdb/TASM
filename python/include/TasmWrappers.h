@@ -3,6 +3,7 @@
 
 #include "ImageUtilities.h"
 #include "Tasm.h"
+#include <boost/python/numpy.hpp>
 
 namespace p = boost::python;
 namespace np = boost::python::numpy;

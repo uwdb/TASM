@@ -26,7 +26,7 @@ public:
         untiledWorkloadCostEstimator_->estimateCostForQuery(0, untiledCostByGOP_.get());
     }
 
-    std::shared_ptr<const TileLayout> tileLayoutForFrame(unsigned int frame) override;
+    std::shared_ptr<TileLayout> tileLayoutForFrame(unsigned int frame) override;
 
 private:
     std::shared_ptr<FineGrainedTileConfigurationProvider> fineGrainedLayoutProvider_;
@@ -35,7 +35,7 @@ private:
     std::shared_ptr<WorkloadCostEstimator> fineGrainedWorkloadCostEstimator_;
     std::shared_ptr<WorkloadCostEstimator> untiledWorkloadCostEstimator_;
 
-    std::unordered_map<unsigned int, std::shared_ptr<const TileLayout>> gopToLayout_;
+    std::unordered_map<unsigned int, std::shared_ptr<TileLayout>> gopToLayout_;
     constexpr static const double pixelThreshold_ = 0.8;
 
     std::unique_ptr<std::unordered_map<unsigned int, CostElements>> fineGrainedLayoutCostByGOP_;

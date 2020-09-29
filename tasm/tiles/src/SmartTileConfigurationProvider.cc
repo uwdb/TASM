@@ -4,7 +4,7 @@
 
 namespace tasm {
 
-std::shared_ptr<const TileLayout> SmartTileConfigurationProviderSingleSelection::tileLayoutForFrame(unsigned int frame) {
+std::shared_ptr<TileLayout> SmartTileConfigurationProviderSingleSelection::tileLayoutForFrame(unsigned int frame) {
     auto gop = fineGrainedWorkloadCostEstimator_->gopForFrame(frame);
     if (gopToLayout_.count(gop))
         return gopToLayout_.at(gop);

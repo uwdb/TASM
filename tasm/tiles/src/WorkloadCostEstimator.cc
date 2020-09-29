@@ -21,7 +21,17 @@ CostElements WorkloadCostEstimator::estimateCostForQuery(unsigned int queryNum, 
             costByGOP->emplace(costElements);
     }
 
-    return CostElements(totalNumberOfPixels, totalNumberOfTiles);
+    auto multiplier = workload_->numberOfTimesQueryIsExecuted(queryNum);
+    return CostElements(multiplier * totalNumberOfPixels, multiplier * totalNumberOfTiles);
+}
+
+CostElements WorkloadCostEstimator::estimateCostForWorkload() {
+    CostElements results(0, 0);
+    for (auto i = 0u; i < workload_->numberOfQueries(); ++i) {
+        auto queryResults = estimateCostForQuery(i);
+        results.add(queryResults);
+    }
+    return results;
 }
 
 std::pair<int, CostElements> WorkloadCostEstimator::estimateCostForNextGOP(std::vector<int>::const_iterator &currentFrame,

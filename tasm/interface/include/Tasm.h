@@ -73,6 +73,10 @@ public:
 
     virtual ~TASM() = default;
 
+    std::shared_ptr<SemanticIndex> semanticIndex() const {
+        return semanticIndex_;
+    }
+
 private:
     std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label, std::shared_ptr<TemporalSelection> temporalSelection, const std::string &metadataIdentifier) {
         return videoManager_.select(

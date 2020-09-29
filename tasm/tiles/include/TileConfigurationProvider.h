@@ -10,7 +10,7 @@ class SemanticDataManager;
 
 class TileLayoutProvider {
 public:
-    virtual std::shared_ptr<const TileLayout> tileLayoutForFrame(unsigned int frame) = 0;
+    virtual std::shared_ptr<TileLayout> tileLayoutForFrame(unsigned int frame) = 0;
     virtual ~TileLayoutProvider() {}
 };
 
@@ -20,14 +20,14 @@ public:
             : totalWidth_(totalWidth), totalHeight_(totalHeight), layout_(new TileLayout(1, 1, {totalWidth_}, {totalHeight_}))
     { }
 
-    std::shared_ptr<const TileLayout> tileLayoutForFrame(unsigned int frame) override {
+    std::shared_ptr<TileLayout> tileLayoutForFrame(unsigned int frame) override {
         return layout_;
     }
 
 private:
     unsigned int totalWidth_;
     unsigned  int totalHeight_;
-    std::shared_ptr<const TileLayout> layout_;
+    std::shared_ptr<TileLayout> layout_;
 };
 
 class UniformTileconfigurationProvider: public TileLayoutProvider {
@@ -38,11 +38,11 @@ public:
         configuration_(configuration)
     {}
 
-    std::shared_ptr<const TileLayout> tileLayoutForFrame(unsigned int frame) override {
+    std::shared_ptr<TileLayout> tileLayoutForFrame(unsigned int frame) override {
         if (layoutPtr)
             return layoutPtr;
 
-        layoutPtr = std::make_shared<const TileLayout>(numColumns_, numRows_,
+        layoutPtr = std::make_shared<TileLayout>(numColumns_, numRows_,
                 tile_dimensions(configuration_.codedWidth, configuration_.displayWidth, numColumns_),
                 tile_dimensions(configuration_.codedHeight, configuration_.displayHeight, numRows_));
         return layoutPtr;
@@ -67,7 +67,7 @@ private:
     unsigned int numRows_;
     unsigned int numColumns_;
     Configuration configuration_;
-    std::shared_ptr<const TileLayout> layoutPtr;
+    std::shared_ptr<TileLayout> layoutPtr;
 };
 
 class FineGrainedTileConfigurationProvider : public TileLayoutProvider {
@@ -81,7 +81,7 @@ public:
         frameWidth_(frameWidth),
         frameHeight_(frameHeight) {}
 
-    std::shared_ptr<const TileLayout> tileLayoutForFrame(unsigned int frame) override;
+    std::shared_ptr<TileLayout> tileLayoutForFrame(unsigned int frame) override;
 
 private:
     std::vector<unsigned int> tileDimensions(const std::vector<interval::Interval<int>> &sortedIntervals, int minDistance, int totalDimension);
@@ -90,7 +90,7 @@ private:
     std::shared_ptr<SemanticDataManager> semanticDataManager_;
     unsigned int frameWidth_;
     unsigned int frameHeight_;
-    std::unordered_map<unsigned int, std::shared_ptr<const TileLayout>> tileGroupToTileLayout_;
+    std::unordered_map<unsigned int, std::shared_ptr<TileLayout>> tileGroupToTileLayout_;
 };
 
 class ConglomerationTileConfigurationProvider : public TileLayoutProvider {
@@ -99,7 +99,7 @@ public:
         : gopToLayoutProvider_(std::move(gopToLayoutProvider)),
         gopLength_(gopLength) {}
 
-    std::shared_ptr<const TileLayout> tileLayoutForFrame(unsigned int frame) override {
+    std::shared_ptr<TileLayout> tileLayoutForFrame(unsigned int frame) override {
         return gopToLayoutProvider_->at(frame / gopLength_)->tileLayoutForFrame(frame);
     }
 

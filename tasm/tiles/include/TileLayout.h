@@ -108,7 +108,7 @@ public:
         return intersectingRectangleIds;
     }
 
-private:
+protected:
     unsigned int tileColumnForX(unsigned int x) const;
 
     unsigned int tileRowForY(unsigned int y) const;

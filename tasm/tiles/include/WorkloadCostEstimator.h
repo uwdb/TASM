@@ -40,6 +40,11 @@ struct CostElements {
             numPixels(numPixels),
             numTiles(numTiles) {}
 
+    void add(const CostElements &other) {
+        numPixels += other.numPixels;
+        numTiles += other.numTiles;
+    }
+
     unsigned long long numPixels;
     unsigned long long numTiles;
 };
@@ -56,6 +61,7 @@ public:
             totalNumberOfTiles_(0) {}
 
     CostElements estimateCostForQuery(unsigned int queryNum, std::unordered_map<unsigned int, CostElements> *costByGOP = nullptr);
+    CostElements estimateCostForWorkload();
 
     unsigned int gopForFrame(unsigned int frameNum) const {
         return frameNum / gopLength_;

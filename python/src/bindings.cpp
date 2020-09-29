@@ -1,7 +1,10 @@
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
 
-#include "wrappers.h"
+#include "TasmWrappers.h"
+#include "WorkloadWrappers.h"
+
+#include "TileLayout.h"
 
 namespace p = boost::python;
 namespace np = boost::python::numpy;
@@ -33,7 +36,9 @@ BOOST_PYTHON_MODULE(_tasm) {
     class_<tasm::python::SelectionResults>("ObjectIterator", no_init)
             .def("next", &tasm::python::SelectionResults::next);
 
-    class_<tasm::python::PythonTASM, boost::noncopyable>("TASM")
+    class_<tasm::TASM, boost::noncopyable>("BaseTASM", no_init);
+
+    class_<tasm::python::PythonTASM, bases<tasm::TASM>, boost::noncopyable>("TASM")
         .def("add_metadata", &tasm::python::PythonTASM::addMetadata)
         .def("store", &tasm::python::PythonTASM::store)
         .def("store_with_uniform_layout", &tasm::python::PythonTASM::storeWithUniformLayout)
@@ -50,4 +55,33 @@ BOOST_PYTHON_MODULE(_tasm) {
         .def("activate_regret_based_tiling", activateRegretBasedTilingWithThreshold)
         .def("deactivate_regret_based_tiling", &tasm::python::PythonTASM::deactivateRegretBasedTilingForVideo)
         .def("retile_based_on_regret", &tasm::python::PythonTASM::retileVideoBasedOnRegret);
+
+    class_<tasm::python::Query>("Query", init<std::string, std::string, unsigned int, unsigned int>())
+        .def(init<std::string, std::string>())
+        .def(init<std::string, std::string, unsigned int>())
+        .def(init<std::string, std::string, std::string>())
+        .def(init<std::string, std::string, std::string, unsigned int, unsigned int>());
+
+    class_<tasm::python::PythonWorkload>("Workload", init<list, list>())
+        .def("counts", &tasm::python::PythonWorkload::list_counts);
+
+    class_<tasm::TileLayout, std::shared_ptr<tasm::TileLayout>>("BaseTileLayout", no_init)
+        .def("num_rows", &tasm::TileLayout::numberOfRows)
+        .def("num_cols", &tasm::TileLayout::numberOfColumns);
+
+    class_<tasm::python::PythonTileLayout, std::shared_ptr<tasm::python::PythonTileLayout>, bases<tasm::TileLayout>>("TileLayout",  no_init)
+        .def("heights_of_rows", &tasm::python::PythonTileLayout::heightsAsList)
+        .def("widths_of_cols", &tasm::python::PythonTileLayout::widthsAsList);
+
+    class_<tasm::python::PythonTiledVideo>("TiledVideo", init<std::string, std::string, unsigned int>())
+         .def("gop_length", &tasm::python::PythonTiledVideo::gopLength)
+         .def("layout_for_frame", &tasm::python::PythonTiledVideo::tileLayoutForFrame);
+
+    class_<tasm::CostElements>("CostElements", init<unsigned int, unsigned int>())
+        .def_readonly("num_pixels", &tasm::CostElements::numPixels)
+        .def_readonly("num_tiles", &tasm::CostElements::numTiles);
+
+    class_<tasm::python::PythonWorkloadCostEstimator>("WorkloadCostEstimator", no_init)
+        .def("estimate_cost", &tasm::python::PythonWorkloadCostEstimator::estimateCostForWorkload)
+        .staticmethod("estimate_cost");
 }

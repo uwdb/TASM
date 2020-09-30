@@ -179,7 +179,8 @@ namespace lightdb::video::gpac {
                                 {scale * samples, static_cast<unsigned int>(duration)},
                                 {static_cast<unsigned int>(left), static_cast<unsigned int>(top)}},
                         volume,
-                        geometry});
+                        geometry,
+                        streamConfig.decode.nb_frames});
             }
         }
 

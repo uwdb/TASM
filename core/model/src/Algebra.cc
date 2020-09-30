@@ -164,7 +164,8 @@ namespace lightdb::logical {
                                               const std::string &metadataIdentifier,
                                               const MetadataSpecification * const metadataSpecification,
                                               unsigned int layoutDuration,
-                                              CrackingStrategy crackingStrategy) {
+                                              CrackingStrategy crackingStrategy,
+                                              bool encodeTiles) {
         std::shared_ptr<metadata::MetadataManager> metadataManager_;
         if (metadataIdentifier.length()) {
             assert(metadataSpecification);
@@ -176,7 +177,8 @@ namespace lightdb::logical {
                 Codec::hevc(),
                 metadataManager_,
                 layoutDuration,
-                crackingStrategy);
+                crackingStrategy,
+                encodeTiles);
     }
 
     LightFieldReference Algebra::StoreCrackedUniform(const std::string &name,

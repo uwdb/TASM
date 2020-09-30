@@ -162,6 +162,7 @@ struct DecodeConfiguration: public Configuration {
     const unsigned int decode_surfaces;
     const unsigned long creation_flags;
     const cudaVideoDeinterlaceMode deinterlace_mode;
+    unsigned int nb_frames;
 
     DecodeConfiguration(const unsigned int height, const unsigned int width,
                         const unsigned int max_height, const unsigned int max_width,
@@ -245,7 +246,8 @@ struct DecodeConfiguration: public Configuration {
               output_surfaces(output_surfaces),
               decode_surfaces(decode_surfaces != 0 ? decode_surfaces : DefaultDecodeSurfaces()),
               creation_flags(creation_flags),
-              deinterlace_mode(deinterlace_mode)
+              deinterlace_mode(deinterlace_mode),
+              nb_frames(0)
     { }
 
     DecodeConfiguration(DecodeConfiguration&&) = default;

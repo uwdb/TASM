@@ -476,13 +476,15 @@ namespace lightdb::logical {
                           Codec codec=Codec::hevc(),
                           std::shared_ptr<metadata::MetadataManager> metadataManager=nullptr,
                           unsigned int layoutDuration=0,
-                          CrackingStrategy crackingStrategy=CrackingStrategy::None)
+                          CrackingStrategy crackingStrategy=CrackingStrategy::None,
+                          bool encodeTiles=true)
             : StoredLightField(source, name, catalog, geometry, codec),
               metadataManager_(metadataManager),
               layoutDuration_(layoutDuration),
               crackingStrategy_(crackingStrategy),
               uniformDimensionsCols_(0),
-              uniformDimensionsRows_(0)
+              uniformDimensionsRows_(0),
+              encodeTiles_(encodeTiles)
         { }
 
         CrackedLightField(const LightFieldReference &source,
@@ -490,12 +492,14 @@ namespace lightdb::logical {
                 const catalog::Catalog &catalog,
                 CrackingStrategy crackingStrategy,
                 unsigned int uniformDimensionsCols,
-                unsigned int uniformDimensionsRows)
+                unsigned int uniformDimensionsRows,
+                bool encodeTiles=true)
             : StoredLightField(source, name, catalog, {}, Codec::hevc()),
               layoutDuration_(0),
               crackingStrategy_(crackingStrategy),
               uniformDimensionsCols_(uniformDimensionsCols),
-              uniformDimensionsRows_(uniformDimensionsRows)
+              uniformDimensionsRows_(uniformDimensionsRows),
+              encodeTiles_(encodeTiles)
         {
             assert(crackingStrategy_ == CrackingStrategy::Uniform);
         }
@@ -512,6 +516,8 @@ namespace lightdb::logical {
             return uniformDimensionsRows_;
         }
 
+        bool shouldEncodeTiles() const { return encodeTiles_; }
+
         void accept(LightFieldVisitor &visitor) override { LightField::accept<CrackedLightField>(visitor); }
 
     private:
@@ -520,6 +526,7 @@ namespace lightdb::logical {
         CrackingStrategy crackingStrategy_;
         unsigned int uniformDimensionsCols_;
         unsigned int uniformDimensionsRows_;
+        bool encodeTiles_;
     };
 
     class SavedLightField : public LightField {

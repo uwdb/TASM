@@ -5,6 +5,7 @@
 #include "PhysicalOperators.h"
 #include "TileConfigurationProvider.h"
 #include "ThreadPool.h"
+#include "Transaction.h"
 #include <iostream>
 
 namespace lightdb::physical {
@@ -179,6 +180,77 @@ private:
     std::unordered_set<int> desiredKeyframes_;
     std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider_;
     unsigned int layoutDuration_;
+};
+
+class CrackVideoWithoutEncoding {
+public:
+    explicit CrackVideoWithoutEncoding(
+            const LightFieldReference &scanned,
+            const std::string &metadataIdentifier,
+            const MetadataSpecification &metadataSpecification,
+            unsigned int layoutDuration,
+            CrackingStrategy strategy,
+            std::string outputEntryName = "")
+        : tileConfigurationProvider_(createProvider(scanned, strategy, std::make_shared<metadata::MetadataManager>(metadataIdentifier, metadataSpecification), layoutDuration)),
+        nb_frames_(scanned.downcast<logical::ScannedLightField>().sources()[0].nb_frames()),
+        outputEntryName_(outputEntryName)
+    {}
+
+    void saveTileLayouts() {
+        auto firstFrameInGroup = 0;
+        auto lastFrameInGroup = 0;
+        tiles::TileLayout currentTileLayout;
+        for (auto i = 0u; i < nb_frames_; ++i) {
+            auto &tileLayout = tileConfigurationProvider_->tileLayoutForFrame(i);
+            if (!i)
+                currentTileLayout = tileLayout;
+            else if (tileLayout != currentTileLayout) {
+                saveTileLayoutToDisk(currentTileLayout, firstFrameInGroup, lastFrameInGroup);
+                firstFrameInGroup = i;
+                currentTileLayout = tileLayout;
+            }
+            lastFrameInGroup = i;
+        }
+        saveTileLayoutToDisk(currentTileLayout, firstFrameInGroup, lastFrameInGroup);
+    }
+
+    const std::string &outputEntryName() const { return outputEntryName_; }
+    const catalog::Catalog &catalog() const {
+        return catalog::Catalog::instance();
+    }
+
+private:
+    std::shared_ptr<tiles::TileConfigurationProvider> createProvider(const LightFieldReference &scan, CrackingStrategy strategy, std::shared_ptr<metadata::MetadataManager> metadataManager, unsigned int layoutDuration) {
+        auto &config = scan.downcast<logical::ScannedLightField>().sources()[0].configuration();
+        if (strategy == CrackingStrategy::SmallTiles) {
+            return std::make_shared<tiles::GroupingTileConfigurationProvider>(
+                    layoutDuration,
+                    metadataManager,
+                    config.width,
+                    config.height);
+        } else if (strategy == CrackingStrategy::GroupingExtent) {
+            return std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
+                    layoutDuration,
+                    metadataManager,
+                    config.width,
+                    config.height);
+        } else {
+            assert(false);
+        }
+    }
+
+    void saveTileLayoutToDisk(const tiles::TileLayout &layout, int firstFrame, int lastFrame) {
+        transactions::TileCrackingTransaction transaction(catalog(),
+                                                          outputEntryName(),
+                                                          layout,
+                                                          firstFrame,
+                                                          lastFrame);
+        transaction.commit();
+    }
+
+    std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider_;
+    unsigned int nb_frames_;
+    const std::string outputEntryName_;
 };
 
 } // namespace lightdb::physical

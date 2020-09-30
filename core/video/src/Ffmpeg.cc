@@ -85,8 +85,8 @@ namespace lightdb::video::ffmpeg {
             throw FfmpegRuntimeError("No duration associated with stream");
         else if(stream->time_base.num == 0 || stream->time_base.den == 0)
             throw FfmpegRuntimeError("No time base associated with stream");
-        else
-            return StreamConfiguration{
+        else {
+            auto returnVal = StreamConfiguration{
                 DecodeConfiguration{
                     static_cast<unsigned int>(stream->codecpar->height),
                     static_cast<unsigned int>(stream->codecpar->width),
@@ -99,6 +99,9 @@ namespace lightdb::video::ffmpeg {
 
                 },
                 rational{stream->duration * stream->time_base.num, stream->time_base.den}};
+            returnVal.decode.nb_frames = stream->nb_frames;
+            return returnVal;
+        }
     }
 
     /*

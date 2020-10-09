@@ -4,6 +4,7 @@
 #include "ImageUtilities.h"
 #include "utilities.h"
 #include "Tasm.h"
+#include "Video.h"
 #include <boost/python/numpy.hpp>
 
 namespace p = boost::python;
@@ -48,6 +49,14 @@ private:
 
 class PythonTASM : public TASM {
 public:
+    PythonTASM()
+        : TASM()
+    {}
+
+    PythonTASM(const std::string ogDBPath, TASM::IndexType indexType)
+        : TASM(ogDBPath, indexType)
+    {}
+
     void addBulkMetadataFromList(boost::python::list metadataInfo) {
         addBulkMetadata(extract<MetadataInfo>(metadataInfo));
     }
@@ -100,6 +109,12 @@ public:
         return SelectionResults(select(video, label, frame, metadataIdentifier));
     }
 
+    SelectionResults pythonSelectTiles(const std::string &video,
+                                        const std::string &metadataIdentifier,
+                                        const std::string &label) {
+        return SelectionResults(selectTiles(video, label, metadataIdentifier));
+    }
+
     void pythonActivateRegretBasedTilingForVideo(const std::string &video) {
         return activateRegretBasedTilingForVideo(video);
     }
@@ -116,6 +131,14 @@ public:
     }
 
 };
+
+PythonTASM *tasmFromOG(const std::string &ogDBPath) {
+    return new PythonTASM(ogDBPath, TASM::IndexType::OG);
+}
+
+void setCatalogPath(const std::string &resourcesPath) {
+    tasm::CatalogConfiguration::SetCatalogPath(resourcesPath);
+}
 
 } // namespace tasm::python;
 

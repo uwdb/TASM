@@ -48,7 +48,10 @@ BOOST_PYTHON_MODULE(_tasm) {
 
     class_<tasm::TASM, boost::noncopyable>("BaseTASM", no_init);
 
-    class_<tasm::python::PythonTASM, bases<tasm::TASM>, boost::noncopyable>("TASM")
+    def("tasm_from_db", &tasm::python::tasmFromOG, return_value_policy<manage_new_object>());
+    def("set_resources_path", &tasm::python::setCatalogPath);
+
+    class_<tasm::python::PythonTASM, std::shared_ptr<tasm::python::PythonTASM>, bases<tasm::TASM>, boost::noncopyable>("TASM")
         .def("add_metadata", &tasm::python::PythonTASM::addMetadata)
         .def("add_bulk_metadata", &tasm::python::PythonTASM::addBulkMetadataFromList)
         .def("store", &tasm::python::PythonTASM::store)
@@ -61,6 +64,7 @@ BOOST_PYTHON_MODULE(_tasm) {
         .def("select", selectRangeWithMetadataID)
         .def("select", selectEqualWithMetadataID)
         .def("select", selectAllWithMetadataID)
+        .def("select_tiles", &tasm::python::PythonTASM::pythonSelectTiles)
         .def("activate_regret_based_tiling", activateRegretBasedTilingWithMetadataIdentifier)
         .def("activate_regret_based_tiling", activateRegretBasedTilingWithoutMetadataIdentifier)
         .def("activate_regret_based_tiling", activateRegretBasedTilingWithThreshold)

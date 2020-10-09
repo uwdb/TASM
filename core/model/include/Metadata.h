@@ -234,6 +234,17 @@ namespace lightdb {
         std::shared_ptr<MetadataElement> metadataElement_;
     };
 
+    struct ROI {
+        ROI()
+            : x1(0), y1(0), x2(0), y2(0) {}
+        ROI(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2)
+            : x1(x1), y1(y1), x2(x2), y2(y2) {}
+        unsigned int x1;
+        unsigned int y1;
+        unsigned int x2;
+        unsigned int y2;
+    };
+
 //    class MetadataAndSpecification : public MetadataSpecification {
 //    public:
 //        MetadataAndSpecification(const std::vector<MetadataSpecification> &components) :

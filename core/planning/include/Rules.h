@@ -1331,6 +1331,10 @@ namespace lightdb::optimization {
                         assert(false);
                 } else if (node.crackingStrategy() == CrackingStrategy::OneTile) {
                     tileConfig = std::make_shared<tiles::SingleTileConfigurationProvider>(width, height);
+                } else if (node.crackingStrategy() == CrackingStrategy::ROI) {
+                    tileConfig = std::make_shared<tiles::ROITileConfigurationProvider>(width, height, node.roi());
+                } else {
+                    assert(false);
                 }
 
                 auto crack = plan().emplace<physical::CrackVideo>(

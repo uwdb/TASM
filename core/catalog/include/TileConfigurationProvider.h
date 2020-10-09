@@ -206,6 +206,33 @@ private:
     TileLayout layout_;
 };
 
+class ROITileConfigurationProvider : public TileConfigurationProvider {
+public:
+    ROITileConfigurationProvider(unsigned int totalWidth, unsigned int totalHeight, ROI roi)
+        : totalWidth_(totalWidth),
+        totalHeight_(totalHeight),
+        roi_(roi)
+    {
+        makeLayout();
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        return *layout_;
+    }
+
+    unsigned int maximumNumberOfTiles() override {
+        return 0;
+    }
+
+private:
+    void makeLayout();
+
+    unsigned int totalWidth_;
+    unsigned int totalHeight_;
+    ROI roi_;
+    std::unique_ptr<TileLayout> layout_;
+};
+
 template <int Rows, int Columns>
 class UniformTileconfigurationProvider: public TileConfigurationProvider {
 public:

@@ -92,6 +92,7 @@ namespace lightdb {
             LightFieldReference StoreCrackedUniform(const std::string &name,
                                                 unsigned int uniformDimensionsCols,
                                                 unsigned int uniformDimensionsRows);
+            LightFieldReference StoreCrackedROI(const std::string &name, ROI roi);
             LightFieldReference PrepareForCracking(const std::string &name, unsigned int layoutDuration = 0);
 
             LightFieldReference Save(const std::filesystem::path&);

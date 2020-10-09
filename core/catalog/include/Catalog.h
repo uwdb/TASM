@@ -25,6 +25,7 @@ namespace lightdb {
         GroupingExtent,
         Uniform,
         OneTile,
+        ROI
     };
 
     namespace catalog {

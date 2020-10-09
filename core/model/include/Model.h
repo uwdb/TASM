@@ -504,6 +504,22 @@ namespace lightdb::logical {
             assert(crackingStrategy_ == CrackingStrategy::Uniform);
         }
 
+        CrackedLightField(const LightFieldReference &source,
+                std::string name,
+                const catalog::Catalog &catalog,
+                CrackingStrategy crackingStrategy,
+                ROI roi,
+                bool encodeTiles=true)
+            : StoredLightField(source, name, catalog, {}, Codec::hevc()),
+            layoutDuration_(0),
+            crackingStrategy_(crackingStrategy),
+            roi_(roi),
+            encodeTiles_(encodeTiles)
+        {
+            assert(crackingStrategy_ == CrackingStrategy::ROI);
+        }
+
+
         std::shared_ptr<metadata::MetadataManager> metadataManager() const { return metadataManager_; }
         unsigned int layoutDuration() const { return layoutDuration_; }
         CrackingStrategy crackingStrategy() const { return crackingStrategy_; }
@@ -516,6 +532,10 @@ namespace lightdb::logical {
             return uniformDimensionsRows_;
         }
 
+        ROI roi() const {
+            return roi_;
+        }
+
         bool shouldEncodeTiles() const { return encodeTiles_; }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<CrackedLightField>(visitor); }
@@ -526,6 +546,7 @@ namespace lightdb::logical {
         CrackingStrategy crackingStrategy_;
         unsigned int uniformDimensionsCols_;
         unsigned int uniformDimensionsRows_;
+        ROI roi_;
         bool encodeTiles_;
     };
 

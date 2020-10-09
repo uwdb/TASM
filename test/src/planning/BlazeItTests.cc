@@ -43,6 +43,10 @@ std::string LargeTilesName(const std::string &video, const std::string &label, i
     return video + "-cracked-" + label + "-grouping-extent-duration" + std::to_string(duration);
 }
 
+std::string ROITilesName(const std::string &video) {
+    return video + "-cracked-ROI";
+}
+
 // Ingest video.
 TEST_F(BlazeItTestFixture, testScanAndSave) {
     auto input = Load("/home/maureen/blazeit_stuff/data/svideo/venice-grand-canal/merged_2018-01-17_short/merged_2018-01-17-short.mp4",
@@ -78,6 +82,14 @@ TEST_F(BlazeItTestFixture, testCrackAroundForegroundObjects) {
     }
 }
 
+// Tile around ROI.
+TEST_F(BlazeItTestFixture, testTileAroundROI) {
+    std::string video("venice-grand-canal-2018-01-17");
+    auto input = Scan(video);
+    ROI roi(0, 490, 1300, 935);
+    Coordinator().execute(input.StoreCrackedROI(ROITilesName(video), roi));
+}
+
 // Measure decode time for un-tiled, small tiles, large tiles.
 TEST_F(BlazeItTestFixture, testDecodeTilesWithForegroundObjects) {
     std::string video("venice-grand-canal-2018-01-17");
@@ -106,5 +118,26 @@ TEST_F(BlazeItTestFixture, testDecodeTilesWithForegroundObjects) {
         auto input = ScanMultiTiled(LargeTilesName(video, label, baseFramerate));
         Coordinator().execute(input.Select(selection));
     }
+}
 
+// Measure decode time for un-tiled, small tiles, large tiles.
+TEST_F(BlazeItTestFixture, testDecodeTilesWithROI) {
+    std::string video("venice-grand-canal-2018-01-17");
+    std::string label("ROI");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+
+    // Untiled video.
+    {
+        std::cout << "Reading from untiled video" << std::endl;
+        auto input = Scan(video);
+        input.downcast<ScannedLightField>().setWillReadEntireEntry(false);
+        Coordinator().execute(input.Select(selection));
+    }
+
+    // ROI tiles.
+    {
+        std::cout << "Reading from ROI tiles" << std::endl;
+        auto input = ScanMultiTiled(ROITilesName(video));
+        Coordinator().execute(input.Select(selection));
+    }
 }

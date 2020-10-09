@@ -100,6 +100,17 @@ find_library(SQLITE3_LIBRARY sqlite3)
 message("INCLUDES: ${SQLITE3_LIBRARY}")
 set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${SQLITE3_LIBRARY})
 
+# Probabilistic predicates stuff
+set(PP_DIR "/home/maureen/PPdemo")
+file(GLOB PP_SOURCE_DIRS "${PP_DIR}/lib/*")
+list(REMOVE_ITEM PP_SOURCE_DIRS "${PP_DIR}/lib/Makefile")
+message("PP_SOURCE_DIRS: ${PP_SOURCE_DIRS}")
+include_directories(SYSTEM ${PP_SOURCE_DIRS})
+file(GLOB PP_LIBS "${PP_DIR}/bin/*.so")
+message("PP_LIBS: ${PP_LIBS}")
+set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${PP_LIBS})
+
+
 # Build LightDB library
 add_subdirectory(core)
 

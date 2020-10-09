@@ -7,6 +7,7 @@
 #include "sqlite3.h"
 #include <experimental/filesystem>
 #include <string>
+#include <iostream>
 
 namespace tasm {
 
@@ -87,20 +88,54 @@ public:
         closeDatabase();
     }
 
-private:
+protected:
     // Finalizes the statement.
-    std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0);
+    virtual std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0);
 
-    void openDatabase(const std::experimental::filesystem::path &dbPath);
-    void createDatabase(const std::experimental::filesystem::path &dbPath);
-    void closeDatabase();
-    void initializeStatements();
-    void destroyStatements();
+    virtual void openDatabase(const std::experimental::filesystem::path &dbPath);
+    virtual void createDatabase(const std::experimental::filesystem::path &dbPath);
+    virtual void closeDatabase();
+    virtual void initializeStatements();
+    virtual void destroyStatements();
 
     sqlite3 *db_;
 
     // Statements.
     sqlite3_stmt *addMetadataStmt_;
+};
+
+class SemanticIndexOG : public SemanticIndexSQLite {
+public:
+    SemanticIndexOG(std::experimental::filesystem::path dbPath) {
+        openDatabase(dbPath);
+        initializeStatements();
+    }
+
+    void addMetadata(const std::string &video,
+                     const std::string &label,
+                     unsigned int frame,
+                     unsigned int x1,
+                     unsigned int y1,
+                     unsigned int x2,
+                     unsigned int y2) override;
+
+    std::unique_ptr<std::vector<int>> orderedFramesForSelection(
+            const std::string &video,
+            std::shared_ptr<MetadataSelection> metadataSelection,
+            std::shared_ptr<TemporalSelection> temporalSelection) override;
+
+    std::unique_ptr<std::list<Rectangle>> rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame, unsigned int maxWidth = 0, unsigned int maxHeight = 0) override;
+    std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int firstFrameInclusive, int lastFrameExclusive) override;
+
+protected:
+    // Finalizes the statement.
+    std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0) override;
+
+    void openDatabase(const std::experimental::filesystem::path &dbPath) override;
+    void createDatabase(const std::experimental::filesystem::path &dbPath) override;
+    void closeDatabase() override;
+    void initializeStatements() override;
+    void destroyStatements() override;
 };
 
 } // namespace tasm

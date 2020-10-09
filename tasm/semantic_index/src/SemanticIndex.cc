@@ -159,6 +159,126 @@ std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForQuery(sq
     return rectangles;
 }
 
+void SemanticIndexOG::openDatabase(const std::experimental::filesystem::path &dbPath) {
+    if (!std::experimental::filesystem::exists(dbPath))
+        createDatabase(dbPath);
+    else
+        ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE, NULL));
+}
 
+void SemanticIndexOG::createDatabase(const std::experimental::filesystem::path &dbPath) {
+    ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL));
+
+    const char *createTable = "CREATE TABLE labels (" \
+                                "label text not null, " \
+                                "frame int not null, " \
+                                "x int not null, " \
+                                "y int not null, " \
+                                "width int not null, " \
+                                "height int not null"
+                              "PRIMARY KEY (label, frame, x, y, width, height));";
+    char *error = nullptr;
+    auto result = sqlite3_exec(db_, createTable, NULL, NULL, &error);
+    if (result != SQLITE_OK) {
+        std::cerr << "Error creating table" << std::endl;
+        sqlite3_free(error);
+    }
+}
+
+void SemanticIndexOG::closeDatabase() {
+    ASSERT_SQLITE_OK(sqlite3_close(db_));
+}
+
+void SemanticIndexOG::initializeStatements() {
+    // addMetadataStmt_
+    std::string query = "INSERT INTO labels (label, frame, x, y, width, height) VALUES (?, ?, ?, ?, ?, ?)";
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &addMetadataStmt_, nullptr));
+}
+
+void SemanticIndexOG::destroyStatements() {
+    ASSERT_SQLITE_OK(sqlite3_finalize(addMetadataStmt_));
+}
+
+void SemanticIndexOG::addMetadata(
+        const std::string &video,
+        const std::string &label,
+        unsigned int frame,
+        unsigned int x1,
+        unsigned int y1,
+        unsigned int x2,
+        unsigned int y2) {
+    ASSERT_SQLITE_OK(sqlite3_bind_text(addMetadataStmt_, 1, label.c_str(), -1, SQLITE_STATIC));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(addMetadataStmt_, 2, frame));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(addMetadataStmt_, 3, x1));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(addMetadataStmt_, 4, y1));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(addMetadataStmt_, 5, x2 - x1));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(addMetadataStmt_, 6, y2 - y1));
+
+    ASSERT_SQLITE_DONE(sqlite3_step(addMetadataStmt_));
+    ASSERT_SQLITE_OK(sqlite3_reset(addMetadataStmt_));
+}
+
+std::unique_ptr<std::vector<int>> SemanticIndexOG::orderedFramesForSelection(
+        const std::string &video,
+        std::shared_ptr<MetadataSelection> metadataSelection,
+        std::shared_ptr<TemporalSelection> temporalSelection) {
+    std::string query = "SELECT frame FROM labels WHERE " + metadataSelection->labelConstraints();
+    if (temporalSelection)
+        query += " AND " + temporalSelection->frameConstraints();
+    query += " ORDER BY frame ASC";
+
+    sqlite3_stmt *select;
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
+
+    auto frames = std::make_unique<std::vector<int>>();
+
+    int result;
+    while ((result = sqlite3_step(select)) == SQLITE_ROW) {
+        frames->push_back(sqlite3_column_int(select, 0));
+    }
+
+    assert(result == SQLITE_DONE);
+    ASSERT_SQLITE_OK(sqlite3_finalize(select));
+
+    return frames;
+}
+
+std::unique_ptr<std::list<Rectangle>> SemanticIndexOG::rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame, unsigned int maxWidth, unsigned int maxHeight) {
+    std::string query = "SELECT frame, x, y, width, height FROM labels WHERE " + metadataSelection->labelConstraints() + " AND frame = ?";
+    sqlite3_stmt *select;
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 1, frame));
+
+    return rectanglesForQuery(select, maxWidth, maxHeight);
+}
+
+std::unique_ptr<std::list<Rectangle>> SemanticIndexOG::rectanglesForFrames(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int firstFrameInclusive, int lastFrameExclusive) {
+    std::string query = "SELECT frame, x, y, width, height FROM labels WHERE " + metadataSelection->labelConstraints() + " AND frame >= ? AND frame < ?";
+    sqlite3_stmt *select;
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 1, firstFrameInclusive));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, lastFrameExclusive));
+
+    return rectanglesForQuery(select);
+}
+
+std::unique_ptr<std::list<Rectangle>> SemanticIndexOG::rectanglesForQuery(sqlite3_stmt *select, unsigned int maxWidth, unsigned int maxHeight) {
+    auto rectangles = std::make_unique<std::list<Rectangle>>();
+    int result;
+    while ((result = sqlite3_step(select)) == SQLITE_ROW) {
+        unsigned int frame = sqlite3_column_int(select, 0);
+        unsigned int x = sqlite3_column_int(select, 1);
+        unsigned int y = sqlite3_column_int(select, 2);
+        unsigned int width = sqlite3_column_int(select, 3);
+        unsigned int height = sqlite3_column_int(select, 4);
+
+        rectangles->emplace_back(frame, x, y, width, height);
+    }
+
+    ASSERT_SQLITE_DONE(result);
+    ASSERT_SQLITE_OK(sqlite3_finalize(select));
+
+    return rectangles;
+}
 
 } // namespace tasm

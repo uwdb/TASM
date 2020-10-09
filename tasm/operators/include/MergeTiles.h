@@ -29,6 +29,21 @@ private:
     bool isComplete_;
 };
 
+class TilesToPixelsOperator : public Operator<GPUPixelDataContainer> {
+public:
+    TilesToPixelsOperator(std::shared_ptr<Operator<GPUDecodedFrameData>> parent)
+        : parent_(parent),
+        isComplete_(false) {}
+
+    bool isComplete() override { return isComplete_; }
+    std::optional<GPUPixelDataContainer> next() override;
+
+private:
+    std::shared_ptr<Operator<GPUDecodedFrameData>> parent_;
+    std::shared_ptr<TileLayoutProvider> tileLayoutProvider_;
+    bool isComplete_;
+};
+
 } // namespace tasm
 
 #endif //TASM_MERGETILES_H

@@ -54,4 +54,24 @@ std::optional<GPUPixelDataContainer> MergeTilesOperator::next() {
     return pixelData;
 }
 
+std::optional<GPUPixelDataContainer> TilesToPixelsOperator::next() {
+    auto decodedData = parent_->next();
+    if (parent_->isComplete()) {
+        assert(!decodedData.has_value());
+        isComplete_ = true;
+        return std::nullopt;
+    }
+
+    assert(decodedData.has_value());
+
+    auto pixelData = std::make_unique<std::vector<GPUPixelDataPtr>>();
+    for (auto frame : decodedData->frames()) {
+        pixelData->emplace_back(std::make_shared<GPUPixelDataFromDecodedFrame>(
+                frame,
+                frame->width(), frame->height(),
+                0, 0)); // Fake a (0, 0) offset.
+    }
+    return pixelData;
+}
+
 } // namespace tasm

@@ -107,10 +107,11 @@ void VideoManager::retileVideo(std::shared_ptr<Video> video, std::shared_ptr<std
 }
 
 std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
-                                                     const std::string &metadataIdentifier,
-                                                     std::shared_ptr<MetadataSelection> metadataSelection,
-                                                     std::shared_ptr<TemporalSelection> temporalSelection,
-                                                     std::shared_ptr<SemanticIndex> semanticIndex) {
+                                                    const std::string &metadataIdentifier,
+                                                    std::shared_ptr<MetadataSelection> metadataSelection,
+                                                    std::shared_ptr<TemporalSelection> temporalSelection,
+                                                    std::shared_ptr<SemanticIndex> semanticIndex,
+                                                    SelectStrategy selectStrategy) {
     std::shared_ptr<TiledEntry> entry(new TiledEntry(video, metadataIdentifier));
 
     // Set up scan of a tiled video.
@@ -136,11 +137,18 @@ std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
 
     std::shared_ptr<GPUDecodeFromCPU> decode(new GPUDecodeFromCPU(scan, *configuration, gpuContext_, lock_, maxWidth, maxHeight));
 
-    // Set up tile merger.
-    std::shared_ptr<MergeTilesOperator> merge(new MergeTilesOperator(decode, semanticDataManager, tileLocationProvider));
+    // Transform tiles to pixel blobs.
+    std::shared_ptr<Operator<GPUPixelDataContainer>> mergeOperator;
+    if (selectStrategy == SelectStrategy::Objects) {
+        std::cout << "Merging pixels to recover objects" << std::endl;
+        mergeOperator = std::make_shared<MergeTilesOperator>(decode, semanticDataManager, tileLocationProvider);
+    } else {
+        std::cout << "Returning raw tiles" << std::endl;
+        mergeOperator = std::make_shared<TilesToPixelsOperator>(decode);
+    }
 
     // Transform pixels to RGB images.
-    std::shared_ptr<TransformToImage> transform(new TransformToImage(merge, maxWidth, maxHeight));
+    std::shared_ptr<TransformToImage> transform(new TransformToImage(mergeOperator, maxWidth, maxHeight));
 
     // Accumulate regret for this query.
     if (videoToRegretAccumulator_.count(video))

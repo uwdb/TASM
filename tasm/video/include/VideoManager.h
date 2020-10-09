@@ -14,6 +14,11 @@ class MetadataSelection;
 class TemporalSelection;
 class Video;
 
+enum class SelectStrategy{
+    Objects,
+    Tiles,
+};
+
 class VideoManager {
 public:
     VideoManager()
@@ -35,7 +40,8 @@ public:
                                           const std::string &metadataIdentifier,
                                           std::shared_ptr<MetadataSelection> metadataSelection,
                                           std::shared_ptr<TemporalSelection> temporalSelection,
-                                          std::shared_ptr<SemanticIndex> semanticIndex);
+                                          std::shared_ptr<SemanticIndex> semanticIndex,
+                                          SelectStrategy selectStrategy);
 
     void retileVideoBasedOnRegret(const std::string &video);
 

@@ -70,6 +70,12 @@ public:
         return select(video, label, std::make_shared<RangeTemporalSelection>(firstFrameInclusive, lastFrameExclusive), metadataIdentifier);
     }
 
+    virtual std::unique_ptr<ImageIterator> selectTiles(const std::string &video,
+                const std::string &label,
+                const std::string &metadataIdentifier = "") {
+        return select(video, label, std::shared_ptr<TemporalSelection>(), metadataIdentifier, SelectStrategy::Tiles);
+    }
+
     void retileVideoBasedOnRegret(const std::string &video) {
         videoManager_.retileVideoBasedOnRegret(video);
     }
@@ -89,13 +95,14 @@ public:
     }
 
 private:
-    std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label, std::shared_ptr<TemporalSelection> temporalSelection, const std::string &metadataIdentifier) {
+    std::unique_ptr<ImageIterator> select(const std::string &video, const std::string &label, std::shared_ptr<TemporalSelection> temporalSelection, const std::string &metadataIdentifier, SelectStrategy strategy=SelectStrategy::Objects) {
         return videoManager_.select(
                 video,
                 metadataIdentifier.length() ? metadataIdentifier : video,
                 std::make_shared<SingleMetadataSelection>(label),
                 temporalSelection,
-                semanticIndex_);
+                semanticIndex_,
+                strategy);
     }
 
     std::shared_ptr<SemanticIndex> semanticIndex_;

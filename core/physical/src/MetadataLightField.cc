@@ -114,6 +114,9 @@ namespace lightdb::associations {
                     {"river_boat", "/home/maureen/cdvl/elfuente_scenes/labels/river_boat.db"},
                     {"square_with_fountain", "/home/maureen/cdvl/elfuente_scenes/labels/square_with_fountain.db"},
                     {"street_night_view", "/home/maureen/cdvl/elfuente_scenes/labels/street_night_view.db"},
+
+                    // BlazeIt videos.
+                    {"venice-grand-canal-2018-01-17", "/home/maureen/blazeit_stuff/data/background_subtraction/venice-grand-canal-2018-01-17.db"},
             } );
 } // namespace lightdb::associations
 

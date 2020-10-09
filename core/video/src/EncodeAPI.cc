@@ -883,8 +883,11 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
 
     m_stCreateEncodeParams.darWidth = pEncCfg->width;
     m_stCreateEncodeParams.darHeight = pEncCfg->height;
-    m_stCreateEncodeParams.frameRateNum = static_cast<uint32_t>(pEncCfg->framerate.numerator()); // static_cast<uint32_t>(pEncCfg->framerate.fps());
-    m_stCreateEncodeParams.frameRateDen = static_cast<uint32_t>(pEncCfg->framerate.denominator()); // 1;
+    uint32_t fps = static_cast<uint32_t>(pEncCfg->framerate.fps());
+    if (pEncCfg->framerate.denominator() != 1)
+        ++fps; // Round up for case like fps = 59.99.
+    m_stCreateEncodeParams.frameRateNum = fps; //static_cast<uint32_t>(pEncCfg->framerate.numerator()); // static_cast<uint32_t>(pEncCfg->framerate.fps());
+    m_stCreateEncodeParams.frameRateDen = 1; //static_cast<uint32_t>(pEncCfg->framerate.denominator()); // 1;
     m_stCreateEncodeParams.enableEncodeAsync = 0;
 
     m_stCreateEncodeParams.enablePTD = 1;

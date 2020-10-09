@@ -49,10 +49,14 @@ std::string ROITilesName(const std::string &video) {
 
 // Ingest video.
 TEST_F(BlazeItTestFixture, testScanAndSave) {
-    auto input = Load("/home/maureen/blazeit_stuff/data/svideo/venice-grand-canal/merged_2018-01-17_short/merged_2018-01-17-short.mp4",
-                      Volume::limits(),
-                      GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.Store("venice-grand-canal-2018-01-17"));
+    std::vector<std::string> dates{"2018-01-19", "2018-01-20"};
+    for (const auto &date : dates) {
+        auto input = Load("/home/maureen/blazeit_stuff/data/svideo/venice-grand-canal/merged_" + date + "/merged_" + date + "-short.mp4",
+                          Volume::limits(),
+                          GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+        std::string savePath = "venice-grand-canal-" + date;
+        Coordinator().execute(input.Store(savePath));
+    }
 }
 
 // Test decoding untiled video.
@@ -63,31 +67,36 @@ TEST_F(BlazeItTestFixture, testScanAndSink) {
 
 // Tile around KNN-background detections.
 TEST_F(BlazeItTestFixture, testCrackAroundForegroundObjects) {
-    std::string video("venice-grand-canal-2018-01-17");
+    std::vector<std::string> videos {"venice-grand-canal-2018-01-19", "venice-grand-canal-2018-01-20"};
     unsigned int baseFramerate = 60;
     std::string label("KNN");
     MetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
-
-    {
-        // Small tiles.
-        auto input = Scan(video);
-        std::string savedName = SmallTilesName(video, label, baseFramerate);
-        Coordinator().execute(input.StoreCracked(savedName, video, &selection, baseFramerate, CrackingStrategy::SmallTiles));
-    }
-    {
-        // Large tiles.
-        auto input = Scan(video);
-        std::string savedName = LargeTilesName(video, label, baseFramerate);
-        Coordinator().execute(input.StoreCracked(savedName, video, &selection, baseFramerate, CrackingStrategy::GroupingExtent));
+    for (const auto &video : videos) {
+        {
+            // Small tiles.
+            auto input = Scan(video);
+            std::string savedName = SmallTilesName(video, label, baseFramerate);
+            Coordinator().execute(
+                    input.StoreCracked(savedName, video, &selection, baseFramerate, CrackingStrategy::SmallTiles));
+        }
+        {
+            // Large tiles.
+            auto input = Scan(video);
+            std::string savedName = LargeTilesName(video, label, baseFramerate);
+            Coordinator().execute(
+                    input.StoreCracked(savedName, video, &selection, baseFramerate, CrackingStrategy::GroupingExtent));
+        }
     }
 }
 
 // Tile around ROI.
 TEST_F(BlazeItTestFixture, testTileAroundROI) {
-    std::string video("venice-grand-canal-2018-01-17");
-    auto input = Scan(video);
+    std::vector<std::string> videos {"venice-grand-canal-2018-01-19", "venice-grand-canal-2018-01-20"};
     ROI roi(0, 490, 1300, 935);
-    Coordinator().execute(input.StoreCrackedROI(ROITilesName(video), roi));
+    for (const auto &video : videos) {
+        auto input = Scan(video);
+        Coordinator().execute(input.StoreCrackedROI(ROITilesName(video), roi));
+    }
 }
 
 // Measure decode time for un-tiled, small tiles, large tiles.

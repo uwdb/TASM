@@ -5,10 +5,30 @@
 #include "VideoConfiguration.h"
 #include <experimental/filesystem>
 #include <fstream>
+#include <iostream>
 
 namespace tasm {
 
-static const std::experimental::filesystem::path CatalogPath = "resources";
+class CatalogConfiguration {
+public:
+    static CatalogConfiguration *instance() {
+        if (!instance_)
+            instance_ = std::unique_ptr<CatalogConfiguration>(new CatalogConfiguration());
+        return instance_.get();
+    }
+
+    static const std::experimental::filesystem::path &CatalogPath() { return instance()->catalogPath(); }
+    static void SetCatalogPath(const std::experimental::filesystem::path &newPath) { instance()->setCatalogPath(newPath); }
+
+    const std::experimental::filesystem::path &catalogPath() const { return catalogPath_; }
+    void setCatalogPath(const std::experimental::filesystem::path &newPath) { catalogPath_ = newPath; }
+
+private:
+    static std::unique_ptr<CatalogConfiguration> instance_;
+    CatalogConfiguration()
+        : catalogPath_("resources") {}
+    std::experimental::filesystem::path catalogPath_;
+};
 
 class Video {
 public:
@@ -28,8 +48,8 @@ private:
 class TiledEntry {
 public:
     TiledEntry(const std::string &name, const std::string &metadataIdentifier = "")
-            : TiledEntry(name, CatalogPath / name, metadataIdentifier)
-    { }
+            : TiledEntry(name, CatalogConfiguration::CatalogPath() / name, metadataIdentifier)
+    {}
 
     TiledEntry(const std::string &name, const std::experimental::filesystem::path &path, const std::string &metadataIdentifier = "")
         : name_(name),

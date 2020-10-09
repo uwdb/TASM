@@ -21,8 +21,8 @@
 namespace tasm {
 
 void VideoManager::createCatalogIfNecessary() {
-    if (!std::experimental::filesystem::exists(CatalogPath))
-        std::experimental::filesystem::create_directory(CatalogPath);
+    if (!std::experimental::filesystem::exists(CatalogConfiguration::CatalogPath()))
+        std::experimental::filesystem::create_directory(CatalogConfiguration::CatalogPath());
 }
 
 void VideoManager::store(const std::experimental::filesystem::path &path, const std::string &name) {

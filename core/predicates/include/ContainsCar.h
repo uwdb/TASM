@@ -100,6 +100,7 @@ public:
     {}
 
     FloatVectorPtr getFeatures(image im);
+    FloatVectorPtr getFeaturesForResizedImages(std::vector<float> &resizedImages, unsigned int batchSize);
 };
 
 class DetracBusPredicate : public LinearPredicate {

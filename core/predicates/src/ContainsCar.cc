@@ -92,6 +92,10 @@ FloatVectorPtr DetracPPFeaturePredicate::getFeatures(image im) {
     return features;
 }
 
+FloatVectorPtr DetracPPFeaturePredicate::getFeaturesForResizedImages(std::vector<float> &resizedImages, unsigned int batchSize) {
+    return _forward_msd_model_ptr(modelName_.c_str(), resizedImages.data(), modelHeight_ * modelWidth_ * 3, batchSize, false);
+}
+
 bool DetracBusPredicate::matches(FloatVectorPtr features) {
     auto predictions = _regress_linear_model_ptr(modelName_.c_str(), features->data(), features->size(), 1, false);
     return true;
@@ -161,6 +165,12 @@ IppStatus resize(Ipp32f* pSrc, IppiSize srcSize, Ipp32s srcStep, Ipp32f* pDst, I
 void lightdb::physical::PredicateOperator::Runtime::convertFrames(CPUDecodedFrameData data) {
     const auto channels = 3u;
     std::vector<float> output;
+
+    unsigned int batchSize = 32;
+    auto scaledImageSize = ppFeaturePredicate_->modelWidth() * ppFeaturePredicate_->modelHeight() * channels;
+    std::vector<float> resizedImages(batchSize * scaledImageSize);
+
+    unsigned int batchItem = 0;
     for (auto &frame : data.frames()) {
         Timer timer;
         timer.startSection("transform frame");
@@ -186,30 +196,30 @@ void lightdb::physical::PredicateOperator::Runtime::convertFrames(CPUDecodedFram
         assert(ippsDivC_32f_I(255.f, scaled_.data(), total_size_) == ippStsNoErr);
         timer.endSection("transform frame");
 
+        timer.startSection("Resize");
+        auto resized = resize_image(float_to_image(frame->width(), frame->height(), channels, scaled_.data()),
+                                    ppFeaturePredicate_->modelWidth(), ppFeaturePredicate_->modelHeight());
+        auto insertPoint = batchItem * scaledImageSize;
+        std::copy_n(resized.data, scaledImageSize, resizedImages.begin() + insertPoint);
+        free_image(resized);
+        timer.endSection("Resize");
+        timer.printAllTimes();
+        ++batchItem;
+        if (batchItem >= batchSize)
+            break;
+    }
+    if (batchItem) {
+        Timer timer;
         timer.startSection("Get PP features");
-        auto frameIm = float_to_image(frame->width(), frame->height(), channels, scaled_.data());
-        auto features = ppFeaturePredicate_->getFeatures(frameIm);
-        timer.endSection("Get PP features");
-
-        timer.startSection("Check for gray");
-        auto matches = busPredicate_->matches(std::move(features));
-        timer.endSection("Check for gray");
-
-//        timer.startSection("predict");
 //        auto frameIm = float_to_image(frame->width(), frame->height(), channels, scaled_.data());
-//        auto boxes = carPredicate_->detectImage(frameIm);
-//        timer.endSection("predict");
-//
-//        timer.startSection("Get features");
-//        auto features = getCarColorFeatures(frameIm, boxes);
-//        timer.endSection("Get features");
-//
-//        timer.startSection("Get colors");
-//        auto colors = getCarColors(features);
-//        timer.endSection("Get colors");
-
+        auto features = ppFeaturePredicate_->getFeaturesForResizedImages(resizedImages, batchSize);
+        timer.endSection("Get PP features");
         timer.printAllTimes();
     }
+
+//        timer.startSection("Check for gray");
+//        auto matches = busPredicate_->matches(std::move(features));
+//        timer.endSection("Check for gray");
 }
 
 void lightdb::physical::PredicateOperator::Runtime::Allocate(unsigned int height, unsigned int width, unsigned int channels) {

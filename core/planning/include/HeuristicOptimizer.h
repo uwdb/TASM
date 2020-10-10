@@ -30,6 +30,7 @@ namespace lightdb::optimization {
                      make_rule<RemoveIdentities>(),
                      make_rule<RemoveDegenerateDecodeEncode>(),
                      make_rule<ConvertLoadSaveToCopy>(),
+                     make_rule<ChoosePredicate>(),
                      };
         }
     };

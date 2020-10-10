@@ -27,6 +27,7 @@
 #include "SelectPixelsOperators.h"
 #include "TileOperators.h"
 #include "WorkloadCostEstimator.h"
+#include "ContainsCar.h"
 
 namespace lightdb::optimization {
     class ChooseMaterializedScans : public OptimizerRule {
@@ -564,6 +565,29 @@ namespace lightdb::optimization {
                 return true;
             } else
                 return false;
+        }
+    };
+
+    class ChoosePredicate : public OptimizerRule {
+    public:
+        using OptimizerRule::OptimizerRule;
+
+        bool visit(const logical::PredicateLightField &node) override {
+            if (!plan().has_physical_assignment(node)) {
+                auto physical_parents = functional::flatmap<std::vector<PhysicalOperatorReference>>(
+                        node.parents().begin(), node.parents().end(),
+                        [this](auto &parent) { return plan().unassigned(parent); });
+                assert(physical_parents.size() == 1);
+                auto parent = physical_parents[0];
+
+                // Add GPU -> CPU.
+                auto transfer = plan().emplace<physical::GPUtoCPUTransfer>(plan().lookup(node), parent);
+
+                // Add Predicate.
+                plan().emplace<physical::PredicateOperator>(plan().lookup(node), transfer);
+                return true;
+            }
+            return false;
         }
     };
 

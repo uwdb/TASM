@@ -582,6 +582,14 @@ namespace lightdb::logical {
         void accept(LightFieldVisitor &visitor) override { LightField::accept<SunkLightField>(visitor); }
     };
 
+    class PredicateLightField : public LightField {
+    public:
+        explicit PredicateLightField(const LightFieldReference &source)
+            : LightField(source)
+        { }
+
+        void accept(LightFieldVisitor &visitor) override { LightField::accept<PredicateLightField>(visitor); }
+    };
 } // namespace lightdb::logical
 
 #endif //LIGHTDB_MODEL_H

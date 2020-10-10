@@ -97,6 +97,7 @@ namespace lightdb {
 
             LightFieldReference Save(const std::filesystem::path&);
             LightFieldReference Sink();
+            LightFieldReference Predicate();
 
             Algebra& operator=(Algebra&& other) noexcept { return *this; }
 

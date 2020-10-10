@@ -89,6 +89,24 @@ public:
     IntVectorPtr classifyColors(float *features, unsigned int len_in);
 };
 
+class DetracPPFeaturePredicate : public MSDPredicate {
+public:
+    DetracPPFeaturePredicate()
+        : MSDPredicate("data/detrac_pp_conv.model", 384, 384)
+    {}
+
+    FloatVectorPtr getFeatures(image im);
+};
+
+class DetracBusPredicate : public LinearPredicate {
+public:
+    DetracBusPredicate()
+        : LinearPredicate("data/pps/detrac-type-bus.model", 0, 0)
+    {}
+
+    bool matches(FloatVectorPtr features);
+};
+
 namespace lightdb::physical {
 class PredicateOperator : public PhysicalOperator {
 public:
@@ -106,11 +124,15 @@ private:
                         total_size_(0),
                         carPredicate_(std::unique_ptr<ContainsCarPredicate>(new ContainsCarPredicate())),
                         carColorFeaturePredicate_(std::unique_ptr<CarColorFeaturePredicate>(new CarColorFeaturePredicate())),
-                        carColorPredicate_(std::make_unique<CarColorPredicate>())
+                        carColorPredicate_(std::make_unique<CarColorPredicate>()),
+                        ppFeaturePredicate_(std::make_unique<DetracPPFeaturePredicate>()),
+                        busPredicate_(std::make_unique<DetracBusPredicate>())
             {
                 carPredicate_->loadModel();
                 carColorFeaturePredicate_->loadModel();
                 carColorPredicate_->loadModel();
+                ppFeaturePredicate_->loadModel();
+                busPredicate_->loadModel();
             }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -136,6 +158,8 @@ private:
         std::unique_ptr<ContainsCarPredicate> carPredicate_;
         std::unique_ptr<CarColorFeaturePredicate> carColorFeaturePredicate_;
         std::unique_ptr<CarColorPredicate> carColorPredicate_;
+        std::unique_ptr<DetracPPFeaturePredicate> ppFeaturePredicate_;
+        std::unique_ptr<DetracBusPredicate> busPredicate_;
     };
 
 };

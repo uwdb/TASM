@@ -78,6 +78,82 @@ std::vector<IntVectorPtr> lightdb::physical::PredicateOperator::Runtime::getCarC
     return colors;
 }
 
+FloatVectorPtr DetracPPFeaturePredicate::getFeatures(image im) {
+    auto resized = resize_image(im, modelWidth_, modelHeight_);
+//    std::string cropName = std::string("crop_") + std::to_string(COUNT) + std::string(".jpg");
+//    save_image(resized, cropName.c_str());
+//    ++COUNT;
+    auto features = _forward_msd_model_ptr(modelName_.c_str(), resized.data, resized.w * resized.w * resized.c, 1, 0);
+    free_image(resized);
+    return features;
+}
+
+bool DetracBusPredicate::matches(FloatVectorPtr features) {
+    auto predictions = _regress_linear_model_ptr(modelName_.c_str(), features->data(), features->size(), 1, false);
+    return true;
+}
+
+IppStatus resize(Ipp32f* pSrc, IppiSize srcSize, Ipp32s srcStep, Ipp32f* pDst, IppiSize dstSize, Ipp32s dstStep) {
+    // https://software.intel.com/content/www/us/en/develop/documentation/ipp-dev-reference/top/volume-2-image-processing/image-geometry-transforms/geometric-transform-functions/resize-functions-with-prior-initialization/using-intel-ipp-resize-functions-with-prior-initialization.html
+    // Re-use pDst, pSpec, pBuffer.
+    IppiResizeSpec_32f *pSpec = 0;
+    int specSize = 0, initSize = 0, bufSize = 0;
+    Ipp8u *pBuffer = 0;
+    Ipp8u *pInitBuf = 0;
+    Ipp32u numChannels = 3;
+    IppiPoint dstOffset = {0, 0};
+    IppStatus status = ippStsNoErr;
+    IppiBorderType border = ippBorderRepl;
+
+    status = ippiResizeGetSize_32f(srcSize, dstSize, ippLinear, 0, &specSize, &initSize);
+
+    if (status != ippStsNoErr) return status;
+
+    /* Memory allocation */
+    pInitBuf = ippsMalloc_8u(initSize);
+    pSpec    = (IppiResizeSpec_32f*)ippsMalloc_32f(specSize);
+
+    if (pInitBuf == NULL || pSpec == NULL)
+    {
+        ippsFree(pInitBuf);
+        ippsFree(pSpec);
+        return ippStsNoMemErr;
+    }
+
+    /* Filter initialization */
+    status = ippiResizeLinearInit_32f(srcSize, dstSize, pSpec);
+    ippsFree(pInitBuf);
+
+    if (status != ippStsNoErr)
+    {
+        ippsFree(pSpec);
+        return status;
+    }
+
+    /* work buffer size */
+    status = ippiResizeGetBufferSize_32f(pSpec, dstSize, numChannels, &bufSize);
+    if (status != ippStsNoErr)
+    {
+        ippsFree(pSpec);
+        return status;
+    }
+
+    pBuffer = ippsMalloc_8u(bufSize);
+    if (pBuffer == NULL)
+    {
+        ippsFree(pSpec);
+        return ippStsNoMemErr;
+    }
+
+    /* Resize processing */
+    status = ippiResizeLinear_32f_C3R(pSrc, srcStep, pDst, dstStep, dstOffset, dstSize, border, 0, pSpec, pBuffer);
+
+    ippsFree(pSpec);
+    ippsFree(pBuffer);
+
+    return status;
+}
+
 void lightdb::physical::PredicateOperator::Runtime::convertFrames(CPUDecodedFrameData data) {
     const auto channels = 3u;
     std::vector<float> output;
@@ -106,18 +182,27 @@ void lightdb::physical::PredicateOperator::Runtime::convertFrames(CPUDecodedFram
         assert(ippsDivC_32f_I(255.f, scaled_.data(), total_size_) == ippStsNoErr);
         timer.endSection("transform frame");
 
-        timer.startSection("predict");
+        timer.startSection("Get PP features");
         auto frameIm = float_to_image(frame->width(), frame->height(), channels, scaled_.data());
-        auto boxes = carPredicate_->detectImage(frameIm);
-        timer.endSection("predict");
+        auto features = ppFeaturePredicate_->getFeatures(frameIm);
+        timer.endSection("Get PP features");
 
-        timer.startSection("Get features");
-        auto features = getCarColorFeatures(frameIm, boxes);
-        timer.endSection("Get features");
+        timer.startSection("Check for gray");
+        auto matches = busPredicate_->matches(std::move(features));
+        timer.endSection("Check for gray");
 
-        timer.startSection("Get colors");
-        auto colors = getCarColors(features);
-        timer.endSection("Get colors");
+//        timer.startSection("predict");
+//        auto frameIm = float_to_image(frame->width(), frame->height(), channels, scaled_.data());
+//        auto boxes = carPredicate_->detectImage(frameIm);
+//        timer.endSection("predict");
+//
+//        timer.startSection("Get features");
+//        auto features = getCarColorFeatures(frameIm, boxes);
+//        timer.endSection("Get features");
+//
+//        timer.startSection("Get colors");
+//        auto colors = getCarColors(features);
+//        timer.endSection("Get colors");
 
         timer.printAllTimes();
     }

@@ -79,11 +79,15 @@ std::vector<IntVectorPtr> lightdb::physical::PredicateOperator::Runtime::getCarC
 }
 
 FloatVectorPtr DetracPPFeaturePredicate::getFeatures(image im) {
+    lightdb::Timer timer;
+    timer.startSection("Resize");
     auto resized = resize_image(im, modelWidth_, modelHeight_);
-//    std::string cropName = std::string("crop_") + std::to_string(COUNT) + std::string(".jpg");
-//    save_image(resized, cropName.c_str());
-//    ++COUNT;
+    timer.endSection("Resize");
+
+    timer.startSection("Model predict");
     auto features = _forward_msd_model_ptr(modelName_.c_str(), resized.data, resized.w * resized.w * resized.c, 1, 0);
+    timer.endSection("Model predict");
+    timer.printAllTimes();
     free_image(resized);
     return features;
 }

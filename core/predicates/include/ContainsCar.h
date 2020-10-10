@@ -7,6 +7,10 @@
 #include <image.h>
 #include <box.h>
 
+// Try re-defining missing function?
+//#include <cudnn.h>
+//cudnnHandle_t cudnn_handle();
+
 typedef std::unique_ptr<std::vector<int>> IntVectorPtr;
 typedef std::unique_ptr<std::vector<float>> FloatVectorPtr;
 

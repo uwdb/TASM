@@ -109,6 +109,10 @@ include_directories(SYSTEM ${PP_SOURCE_DIRS})
 file(GLOB PP_LIBS "${PP_DIR}/bin/*.so")
 message("PP_LIBS: ${PP_LIBS}")
 set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${PP_LIBS})
+link_directories("${PP_DIR}/bin/")
+
+include_directories(/usr/local/cudnn/include)
+
 
 
 # Build LightDB library

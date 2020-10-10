@@ -6,6 +6,7 @@
 
 #include <image.h>
 #include <box.h>
+#include "ipp.h"
 
 // Try re-defining missing function?
 //#include <cudnn.h>
@@ -127,15 +128,18 @@ private:
                 : runtime::UnaryRuntime<PredicateOperator, CPUDecodedFrameData>(physical),
                         frame_size_(0),
                         total_size_(0),
-                        carPredicate_(std::unique_ptr<ContainsCarPredicate>(new ContainsCarPredicate())),
-                        carColorFeaturePredicate_(std::unique_ptr<CarColorFeaturePredicate>(new CarColorFeaturePredicate())),
-                        carColorPredicate_(std::make_unique<CarColorPredicate>()),
+                        model_size_(0),
+//                        carPredicate_(std::unique_ptr<ContainsCarPredicate>(new ContainsCarPredicate())),
+//                        carColorFeaturePredicate_(std::unique_ptr<CarColorFeaturePredicate>(new CarColorFeaturePredicate())),
+//                        carColorPredicate_(std::make_unique<CarColorPredicate>()),
                         ppFeaturePredicate_(std::make_unique<DetracPPFeaturePredicate>()),
-                        busPredicate_(std::make_unique<DetracBusPredicate>())
+                        busPredicate_(std::make_unique<DetracBusPredicate>()),
+                        pSpec_(0),
+                        pBuffer_(0)
             {
-                carPredicate_->loadModel();
-                carColorFeaturePredicate_->loadModel();
-                carColorPredicate_->loadModel();
+//                carPredicate_->loadModel();
+//                carColorFeaturePredicate_->loadModel();
+//                carColorPredicate_->loadModel();
                 ppFeaturePredicate_->loadModel();
                 busPredicate_->loadModel();
             }
@@ -148,23 +152,39 @@ private:
             return {};
         }
 
+        ~Runtime() {
+            if (pSpec_)
+                ippsFree(pSpec_);
+            if (pBuffer_)
+                ippsFree(pBuffer_);
+        }
+
     private:
         void convertFrames(CPUDecodedFrameData data);
         void Allocate(unsigned int height, unsigned int width, unsigned int channels);
+        IppStatus resize(Ipp8u *src, Ipp32s srcStep, Ipp8u *pDst, Ipp32s dstStep);
         std::vector<FloatVectorPtr> getCarColorFeatures(image im, const std::vector<box> &crops);
         std::vector<IntVectorPtr> getCarColors(const std::vector<std::unique_ptr<std::vector<float>>> &features);
 
         unsigned int frame_size_;
         unsigned int total_size_;
+        unsigned int model_size_;
         std::vector<unsigned char> rgb_;
         std::vector<unsigned char> planes_;
         std::vector<float> scaled_;
-        std::vector<float> resized_;
-        std::unique_ptr<ContainsCarPredicate> carPredicate_;
-        std::unique_ptr<CarColorFeaturePredicate> carColorFeaturePredicate_;
-        std::unique_ptr<CarColorPredicate> carColorPredicate_;
+        std::vector<unsigned char> resized_;
+//        std::unique_ptr<ContainsCarPredicate> carPredicate_;
+//        std::unique_ptr<CarColorFeaturePredicate> carColorFeaturePredicate_;
+//        std::unique_ptr<CarColorPredicate> carColorPredicate_;
         std::unique_ptr<DetracPPFeaturePredicate> ppFeaturePredicate_;
         std::unique_ptr<DetracBusPredicate> busPredicate_;
+
+        // Structures for resizing.
+        IppiResizeSpec_32f *pSpec_;
+        Ipp8u* pBuffer_;
+//        Ipp8u* pInitBuf_;
+        IppiSize srcSize_;
+        IppiSize dstSize_;
     };
 
 };

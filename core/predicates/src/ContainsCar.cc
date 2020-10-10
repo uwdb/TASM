@@ -64,18 +64,20 @@ IntVectorPtr CarColorPredicate::classifyColors(float *features, unsigned int len
 }
 
 std::vector<FloatVectorPtr> lightdb::physical::PredicateOperator::Runtime::getCarColorFeatures(image im, const std::vector<box> &crops) {
-    std::vector<FloatVectorPtr> features;
-    for (auto &crop : crops) {
-        features.push_back(carColorFeaturePredicate_->getFeatures(crop_image(im, crop.x, crop.y, crop.w, crop.h)));
-    }
-    return features;
+//    std::vector<FloatVectorPtr> features;
+//    for (auto &crop : crops) {
+////        features.push_back(carColorFeaturePredicate_->getFeatures(crop_image(im, crop.x, crop.y, crop.w, crop.h)));
+//    }
+//    return features;
+    return {};
 }
 
 std::vector<IntVectorPtr> lightdb::physical::PredicateOperator::Runtime::getCarColors(const std::vector<FloatVectorPtr> &features) {
-    std::vector<IntVectorPtr> colors;
-    for (auto &feat : features)
-        colors.push_back(carColorPredicate_->classifyColors(feat->data(), feat->size()));
-    return colors;
+//    std::vector<IntVectorPtr> colors;
+//    for (auto &feat : features)
+////        colors.push_back(carColorPredicate_->classifyColors(feat->data(), feat->size()));
+//    return colors;
+    return {};
 }
 
 FloatVectorPtr DetracPPFeaturePredicate::getFeatures(image im) {
@@ -101,63 +103,13 @@ bool DetracBusPredicate::matches(FloatVectorPtr features) {
     return true;
 }
 
-IppStatus resize(Ipp32f* pSrc, IppiSize srcSize, Ipp32s srcStep, Ipp32f* pDst, IppiSize dstSize, Ipp32s dstStep) {
+IppStatus lightdb::physical::PredicateOperator::Runtime::resize(Ipp8u* pSrc, Ipp32s srcStep, Ipp8u* pDst, Ipp32s dstStep) {
     // https://software.intel.com/content/www/us/en/develop/documentation/ipp-dev-reference/top/volume-2-image-processing/image-geometry-transforms/geometric-transform-functions/resize-functions-with-prior-initialization/using-intel-ipp-resize-functions-with-prior-initialization.html
-    // Re-use pDst, pSpec, pBuffer.
-    IppiResizeSpec_32f *pSpec = 0;
-    int specSize = 0, initSize = 0, bufSize = 0;
-    Ipp8u *pBuffer = 0;
-    Ipp8u *pInitBuf = 0;
-    Ipp32u numChannels = 3;
     IppiPoint dstOffset = {0, 0};
-    IppStatus status = ippStsNoErr;
     IppiBorderType border = ippBorderRepl;
 
-    status = ippiResizeGetSize_32f(srcSize, dstSize, ippLinear, 0, &specSize, &initSize);
-
-    if (status != ippStsNoErr) return status;
-
-    /* Memory allocation */
-    pInitBuf = ippsMalloc_8u(initSize);
-    pSpec    = (IppiResizeSpec_32f*)ippsMalloc_32f(specSize);
-
-    if (pInitBuf == NULL || pSpec == NULL)
-    {
-        ippsFree(pInitBuf);
-        ippsFree(pSpec);
-        return ippStsNoMemErr;
-    }
-
-    /* Filter initialization */
-    status = ippiResizeLinearInit_32f(srcSize, dstSize, pSpec);
-    ippsFree(pInitBuf);
-
-    if (status != ippStsNoErr)
-    {
-        ippsFree(pSpec);
-        return status;
-    }
-
-    /* work buffer size */
-    status = ippiResizeGetBufferSize_32f(pSpec, dstSize, numChannels, &bufSize);
-    if (status != ippStsNoErr)
-    {
-        ippsFree(pSpec);
-        return status;
-    }
-
-    pBuffer = ippsMalloc_8u(bufSize);
-    if (pBuffer == NULL)
-    {
-        ippsFree(pSpec);
-        return ippStsNoMemErr;
-    }
-
     /* Resize processing */
-    status = ippiResizeLinear_32f_C3R(pSrc, srcStep, pDst, dstStep, dstOffset, dstSize, border, 0, pSpec, pBuffer);
-
-    ippsFree(pSpec);
-    ippsFree(pBuffer);
+    auto status = ippiResizeLinear_8u_C3R(pSrc, srcStep, pDst, dstStep, dstOffset, dstSize_, border, 0, pSpec_, pBuffer_);
 
     return status;
 }
@@ -189,33 +141,31 @@ void lightdb::physical::PredicateOperator::Runtime::convertFrames(CPUDecodedFram
                 {planes_.data(), planes_.data() + frame_size_, planes_.data() + 2 * frame_size_}).begin(),
                                  frame->width(), size) == ippStsNoErr);
 
+        assert(resize(planes_.data(), 3*frame->width(), resized_.data(), 3*ppFeaturePredicate_->modelWidth()) == ippStsNoErr);
+
         // uchar -> float
-        assert(ippsConvert_8u32f(planes_.data(), scaled_.data(), total_size_) == ippStsNoErr);
+        assert(ippsConvert_8u32f(resized_.data(), scaled_.data(), model_size_) == ippStsNoErr);
 
         // float -> scaled float (x / 255)
-        assert(ippsDivC_32f_I(255.f, scaled_.data(), total_size_) == ippStsNoErr);
+        assert(ippsDivC_32f_I(255.f, scaled_.data(), model_size_) == ippStsNoErr);
         timer.endSection("transform frame");
+//
+//        auto downscaledImage = float_to_image(ppFeaturePredicate_->modelWidth(), ppFeaturePredicate_->modelHeight(), 3, scaled_.data());
+//        save_image(downscaledImage, "downscaled_frame");
 
-        timer.startSection("Resize");
-        auto resized = resize_image(float_to_image(frame->width(), frame->height(), channels, scaled_.data()),
-                                    ppFeaturePredicate_->modelWidth(), ppFeaturePredicate_->modelHeight());
-        auto insertPoint = batchItem * scaledImageSize;
-        std::copy_n(resized.data, scaledImageSize, resizedImages.begin() + insertPoint);
-        free_image(resized);
-        timer.endSection("Resize");
         timer.printAllTimes();
         ++batchItem;
         if (batchItem >= batchSize)
             break;
     }
-    if (batchItem) {
-        Timer timer;
-        timer.startSection("Get PP features");
-//        auto frameIm = float_to_image(frame->width(), frame->height(), channels, scaled_.data());
-        auto features = ppFeaturePredicate_->getFeaturesForResizedImages(resizedImages, batchSize);
-        timer.endSection("Get PP features");
-        timer.printAllTimes();
-    }
+//    if (batchItem) {
+//        Timer timer;
+//        timer.startSection("Get PP features");
+////        auto frameIm = float_to_image(frame->width(), frame->height(), channels, scaled_.data());
+//        auto features = ppFeaturePredicate_->getFeaturesForResizedImages(resizedImages, batchSize);
+//        timer.endSection("Get PP features");
+//        timer.printAllTimes();
+//    }
 
 //        timer.startSection("Check for gray");
 //        auto matches = busPredicate_->matches(std::move(features));
@@ -226,9 +176,26 @@ void lightdb::physical::PredicateOperator::Runtime::Allocate(unsigned int height
     if (total_size_ != channels * width * height) {
         frame_size_ = height * width;
         total_size_ = channels * frame_size_;
+        model_size_ = ppFeaturePredicate_->modelWidth() * ppFeaturePredicate_->modelHeight() * channels;
+
         rgb_.resize(total_size_);
-        scaled_.resize(total_size_);
+        scaled_.resize(model_size_);
         planes_.resize(total_size_);
-//        resized_.resize(carPredicate_->modelWidth() * carPredicate_->modelHeight() * channels);
+        resized_.resize(model_size_);
+
+        // Initialize structures for resizing.
+        if (pSpec_)
+            ippsFree(pSpec_);
+        if (pBuffer_)
+            ippsFree(pBuffer_);
+
+        srcSize_ = {static_cast<int>(width), static_cast<int>(height)};
+        dstSize_ = {static_cast<int>(ppFeaturePredicate_->modelWidth()), static_cast<int>(ppFeaturePredicate_->modelHeight())};
+        int specSize = 0, initSize = 0, bufSize = 0;
+        assert(ippiResizeGetSize_8u(srcSize_, dstSize_, ippLinear, 0, &specSize, &initSize) == ippStsNoErr);
+        pSpec_ = (IppiResizeSpec_32f*)ippsMalloc_32f(specSize);
+        assert(ippiResizeLinearInit_8u(srcSize_, dstSize_, pSpec_) == ippStsNoErr);
+        assert(ippiResizeGetBufferSize_8u(pSpec_, dstSize_, channels, &bufSize) == ippStsNoErr);
+        pBuffer_ = ippsMalloc_8u(bufSize);
     }
 }

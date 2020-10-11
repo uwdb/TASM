@@ -113,6 +113,20 @@ public:
     bool matches(FloatVectorPtr features);
 };
 
+class BlazeItPredicate {
+public:
+    BlazeItPredicate()
+        : modelWidth_(65), modelHeight_(65)
+    {}
+
+    unsigned int modelWidth() const { return modelWidth_; }
+    unsigned int modelHeight() const { return modelHeight_; }
+
+private:
+    unsigned int modelWidth_;
+    unsigned int modelHeight_;
+};
+
 namespace lightdb::physical {
 class PredicateOperator : public PhysicalOperator {
 public:
@@ -126,31 +140,16 @@ private:
     public:
         explicit Runtime(PredicateOperator &physical)
                 : runtime::UnaryRuntime<PredicateOperator, CPUDecodedFrameData>(physical),
+                        blazeItPredicate_(std::make_unique<BlazeItPredicate>()),
                         frame_size_(0),
                         total_size_(0),
                         model_size_(0),
-//                        carPredicate_(std::unique_ptr<ContainsCarPredicate>(new ContainsCarPredicate())),
-//                        carColorFeaturePredicate_(std::unique_ptr<CarColorFeaturePredicate>(new CarColorFeaturePredicate())),
-//                        carColorPredicate_(std::make_unique<CarColorPredicate>()),
-                        ppFeaturePredicate_(std::make_unique<DetracPPFeaturePredicate>()),
-                        busPredicate_(std::make_unique<DetracBusPredicate>()),
+                        downsampled_frame_size_(0),
                         pSpec_(0),
                         pBuffer_(0)
-            {
-//                carPredicate_->loadModel();
-//                carColorFeaturePredicate_->loadModel();
-//                carColorPredicate_->loadModel();
-                ppFeaturePredicate_->loadModel();
-                busPredicate_->loadModel();
-            }
+            {}
 
-        std::optional<physical::MaterializedLightFieldReference> read() override {
-            while (iterator() != iterator().eos()) {
-                auto data = iterator()++;
-                convertFrames(data);
-            }
-            return {};
-        }
+        std::optional<physical::MaterializedLightFieldReference> read() override;
 
         ~Runtime() {
             if (pSpec_)
@@ -160,29 +159,24 @@ private:
         }
 
     private:
-        void convertFrames(CPUDecodedFrameData data);
+        void convertFrames(CPUDecodedFrameData &data);
         void Allocate(unsigned int height, unsigned int width, unsigned int channels);
-        IppStatus resize(Ipp8u *src, Ipp32s srcStep, Ipp8u *pDst, Ipp32s dstStep);
-        std::vector<FloatVectorPtr> getCarColorFeatures(image im, const std::vector<box> &crops);
-        std::vector<IntVectorPtr> getCarColors(const std::vector<std::unique_ptr<std::vector<float>>> &features);
+        IppStatus resize(const Ipp8u *src, Ipp32s srcStep, Ipp8u *pDst, Ipp32s dstStep);
+        std::unique_ptr<BlazeItPredicate> blazeItPredicate_;
 
         unsigned int frame_size_;
         unsigned int total_size_;
         unsigned int model_size_;
+        unsigned int downsampled_frame_size_;
         std::vector<unsigned char> rgb_;
-        std::vector<unsigned char> planes_;
+        std::vector<float> planes_;
         std::vector<float> scaled_;
+        std::vector<float> normalized_;
         std::vector<unsigned char> resized_;
-//        std::unique_ptr<ContainsCarPredicate> carPredicate_;
-//        std::unique_ptr<CarColorFeaturePredicate> carColorFeaturePredicate_;
-//        std::unique_ptr<CarColorPredicate> carColorPredicate_;
-        std::unique_ptr<DetracPPFeaturePredicate> ppFeaturePredicate_;
-        std::unique_ptr<DetracBusPredicate> busPredicate_;
 
         // Structures for resizing.
         IppiResizeSpec_32f *pSpec_;
         Ipp8u* pBuffer_;
-//        Ipp8u* pInitBuf_;
         IppiSize srcSize_;
         IppiSize dstSize_;
     };

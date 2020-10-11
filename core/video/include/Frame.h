@@ -445,6 +445,10 @@ public:
             throw GpuCudaRuntimeError("Call to cuMemcpy2D failed", status);
     }
 
+    ~LocalFrame() {
+        assert(true);
+    }
+
     virtual unsigned char operator()(size_t x, size_t y) const {
         return static_cast<unsigned char>(data_->at(x + y * width()));
     }

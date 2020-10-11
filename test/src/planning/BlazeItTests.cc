@@ -150,3 +150,41 @@ TEST_F(BlazeItTestFixture, testDecodeTilesWithROI) {
         Coordinator().execute(input.Select(selection));
     }
 }
+
+/* Decode & preprocess benchmarks */
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay1) {
+    auto input = Scan("venice-grand-canal-2018-01-17");
+    Coordinator().execute(input.Predicate());
+}
+
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay2) {
+    auto input = Scan("venice-grand-canal-2018-01-19");
+    Coordinator().execute(input.Predicate());
+}
+
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay3) {
+    auto input = Scan("venice-grand-canal-2018-01-20");
+    Coordinator().execute(input.Predicate());
+}
+
+/* Decode & process KNN-big tiles */
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay1_Foreground) {
+    std::string label("KNN");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto input = ScanMultiTiled(LargeTilesName("venice-grand-canal-2018-01-17", label, 60));
+    Coordinator().execute(input.Select(selection).Predicate());
+}
+
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay2_Foreground) {
+    std::string label("KNN");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto input = ScanMultiTiled(LargeTilesName("venice-grand-canal-2018-01-19", label, 60));
+    Coordinator().execute(input.Select(selection).Predicate());
+}
+
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay3_Foreground) {
+    std::string label("KNN");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto input = ScanMultiTiled(LargeTilesName("venice-grand-canal-2018-01-20", label, 60));
+    Coordinator().execute(input.Select(selection).Predicate());
+}

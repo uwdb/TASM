@@ -737,7 +737,7 @@ namespace lightdb::optimization {
                 } else {
 //                    auto merge = plan().emplace<physical::MergeTilePixels>(logical, decode, tileLocationProvider);
 //                    plan().emplace<physical::SaveFramesToFiles>(logical, merge);
-                    plan().emplace<physical::Sink>(logical, decode);
+//                    plan().emplace<physical::Sink>(logical, decode);
                 }
 
                 // Add a merge operator whose parents are the decodes.

@@ -48,8 +48,18 @@ TEST_F(PredicateTestFixture, testIngestMVIVideo) {
 }
 
 TEST_F(PredicateTestFixture, testDetectOnFrames) {
-    std::string video = "MVI_39931";
+    std::string video = "venice-grand-canal-2018-01-17"; //"MVI_39931";
     auto input = Scan(video);
     Coordinator().execute(input.Predicate());
 }
+
+TEST_F(PredicateTestFixture, testPreprocessTiles) {
+    std::string video = "venice-grand-canal-2018-01-17-cracked-KNN-grouping-extent-duration60"; //"MVI_39931";
+    auto input = ScanMultiTiled(video);
+    std::string label("KNN");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    Coordinator().execute(input.Select(selection).Predicate());
+}
+
+
 

@@ -209,8 +209,8 @@ namespace lightdb::logical {
         return LightFieldReference::make<SunkLightField>(this_);
     }
 
-    LightFieldReference Algebra::Predicate() {
-        return LightFieldReference::make<PredicateLightField>(this_);
+    LightFieldReference Algebra::Predicate(std::string outName) {
+        return LightFieldReference::make<PredicateLightField>(this_, outName);
     }
 
     LightFieldReference Algebra::Encode(const Codec &codec, const options<> &options) {

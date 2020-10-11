@@ -584,11 +584,15 @@ namespace lightdb::logical {
 
     class PredicateLightField : public LightField {
     public:
-        explicit PredicateLightField(const LightFieldReference &source)
-            : LightField(source)
+        explicit PredicateLightField(const LightFieldReference &source, std::string outName)
+            : LightField(source),
+            outName_(outName)
         { }
 
+        const std::string &outName() const { return outName_; }
         void accept(LightFieldVisitor &visitor) override { LightField::accept<PredicateLightField>(visitor); }
+    private:
+        std::string outName_;
     };
 } // namespace lightdb::logical
 

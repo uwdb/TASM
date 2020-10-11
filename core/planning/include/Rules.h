@@ -584,7 +584,7 @@ namespace lightdb::optimization {
                 auto transfer = plan().emplace<physical::GPUtoCPUTransfer>(plan().lookup(node), parent);
 
                 // Add Predicate.
-                plan().emplace<physical::PredicateOperator>(plan().lookup(node), transfer);
+                plan().emplace<physical::PredicateOperator>(plan().lookup(node), transfer, node.outName());
                 return true;
             }
             return false;

@@ -133,14 +133,15 @@ namespace lightdb::physical {
 class PredicateOperator : public PhysicalOperator {
 public:
     PredicateOperator(const LightFieldReference &logical,
-            PhysicalOperatorReference &parent)
-            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "PredicateOperator-init"))
+            PhysicalOperatorReference &parent,
+            std::string outName)
+            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "PredicateOperator-init", outName))
         {}
 
 private:
     class Runtime : public runtime::UnaryRuntime<PredicateOperator, CPUDecodedFrameData> {
     public:
-        explicit Runtime(PredicateOperator &physical)
+        explicit Runtime(PredicateOperator &physical, const std::string fileName="")
                 : runtime::UnaryRuntime<PredicateOperator, CPUDecodedFrameData>(physical),
                         blazeItPredicate_(std::make_unique<BlazeItPredicate>()),
                         frame_size_(0),
@@ -149,7 +150,8 @@ private:
                         downsampled_frame_size_(0),
                         pSpec_(0),
                         pBuffer_(0),
-                        fout_("resized.dat", std::ios::out | std::ios::binary)
+                        shouldSave_(fileName.length()),
+                        fout_(fileName + ".dat", std::ios::out | std::ios::binary)
             {}
 
         std::optional<physical::MaterializedLightFieldReference> read() override;
@@ -185,6 +187,7 @@ private:
         IppiSize srcSize_;
         IppiSize dstSize_;
 
+        bool shouldSave_;
         std::ofstream fout_;
     };
 

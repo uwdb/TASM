@@ -159,7 +159,8 @@ std::optional<lightdb::physical::MaterializedLightFieldReference> lightdb::physi
                                      pDst,
                                      planarStep, dstSize_) == ippStsNoErr);
 
-//            fout_.write(reinterpret_cast<const char*>(planes_.data()), planes_.size()*sizeof(float));
+            if (shouldSave_)
+                fout_.write(reinterpret_cast<const char*>(planes_.data()), planes_.size()*sizeof(float));
         }
 
         return EmptyData{physical().device()};

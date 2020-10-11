@@ -119,6 +119,9 @@ namespace lightdb::associations {
                     {"venice-grand-canal-2018-01-17", "/home/maureen/blazeit_stuff/data/background_subtraction/venice-grand-canal-2018-01-17.db"},
                     {"venice-grand-canal-2018-01-19", "/home/maureen/blazeit_stuff/data/background_subtraction/venice-grand-canal-2018-01-19.db"},
                     {"venice-grand-canal-2018-01-20", "/home/maureen/blazeit_stuff/data/background_subtraction/venice-grand-canal-2018-01-20.db"},
+                    {"jackson-town-square-2017-12-14", "/home/maureen/blazeit_stuff/data/background_subtraction/jackson-town-square-2017-12-14.db"},
+                    {"jackson-town-square-2017-12-16", "/home/maureen/blazeit_stuff/data/background_subtraction/jackson-town-square-2017-12-16.db"},
+                    {"jackson-town-square-2017-12-17", "/home/maureen/blazeit_stuff/data/background_subtraction/jackson-town-square-2017-12-17.db"},
             } );
 } // namespace lightdb::associations
 

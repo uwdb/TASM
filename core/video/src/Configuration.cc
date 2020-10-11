@@ -30,8 +30,8 @@ CUVIDDECODECREATEINFO DecodeConfiguration::AsCuvidCreateInfo(CUvideoctxlock lock
         };
         info.OutputFormat = output_format;
         info.DeinterlaceMode = deinterlace_mode;
-        info.ulTargetWidth = width;
-        info.ulTargetHeight = height;
+        info.ulTargetWidth = max_width;
+        info.ulTargetHeight = max_height;
         info.ulNumOutputSurfaces = output_surfaces;
         info.vidLock = lock;
 

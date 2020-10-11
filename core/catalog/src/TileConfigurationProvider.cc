@@ -30,20 +30,24 @@ void ROITileConfigurationProvider::makeLayout() {
     if (left >= minWidth)
         widths.push_back(left);
     auto xComp = widths.empty() ? 0 : widths[0];
-    auto right = align(roi_.x2, Direction::FORWARDS);
+    auto right = std::min(totalWidth_, align(roi_.x2, Direction::FORWARDS));
     if ((right - xComp) >= minWidth && (totalWidth_ - right) >= minWidth)
         widths.push_back(right - xComp);
-    widths.push_back(totalWidth_ - widths.back());
+    auto accountedWidth = std::accumulate(widths.begin(), widths.end(), 0);
+    if (accountedWidth < totalWidth_)
+        widths.push_back(totalWidth_ - accountedWidth);
 
     std::vector<unsigned int> heights;
     auto top = align(roi_.y1, Direction::BACKWARDS);
     if (top >= minHeight)
         heights.push_back(top);
     auto yComp = heights.empty() ? 0 : heights[0];
-    auto bottom = align(roi_.y2, Direction::FORWARDS);
+    auto bottom = std::min(totalHeight_, align(roi_.y2, Direction::FORWARDS));
     if ((bottom - yComp) >= minHeight && (totalHeight_ - bottom) >= minHeight)
         heights.push_back(bottom - yComp);
-    heights.push_back(totalHeight_ - heights.back());
+    auto accountedHeight = std::accumulate(heights.begin(), heights.end(), 0);
+    if (accountedHeight < totalHeight_)
+        heights.push_back(totalHeight_ - accountedHeight);
 
     layout_ = std::make_unique<TileLayout>(widths.size(), heights.size(), widths, heights);
 }

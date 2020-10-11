@@ -8,6 +8,8 @@
 #include <box.h>
 #include "ipp.h"
 
+#include <ostream>
+
 // Try re-defining missing function?
 //#include <cudnn.h>
 //cudnnHandle_t cudnn_handle();
@@ -146,7 +148,8 @@ private:
                         model_size_(0),
                         downsampled_frame_size_(0),
                         pSpec_(0),
-                        pBuffer_(0)
+                        pBuffer_(0),
+                        fout_("resized.dat", std::ios::out | std::ios::binary)
             {}
 
         std::optional<physical::MaterializedLightFieldReference> read() override;
@@ -156,6 +159,8 @@ private:
                 ippsFree(pSpec_);
             if (pBuffer_)
                 ippsFree(pBuffer_);
+
+            fout_.close();
         }
 
     private:
@@ -179,6 +184,8 @@ private:
         Ipp8u* pBuffer_;
         IppiSize srcSize_;
         IppiSize dstSize_;
+
+        std::ofstream fout_;
     };
 
 };

@@ -122,7 +122,8 @@ std::optional<lightdb::physical::MaterializedLightFieldReference> lightdb::physi
         for (auto &frame : data.frames()) {
             Allocate(frame->height(), frame->width(), channels);
             auto y_data = reinterpret_cast<const unsigned char *>(frame->data().data());
-            auto uv_data = y_data + frame_size_;
+            // Memcpy'd the actual width, but coded height.
+            auto uv_data = y_data + frame->width() * frame->codedHeight();
             IppiSize size{static_cast<int>(frame->width()), static_cast<int>(frame->height())};
 //
 //            // NV12 -> RGB
@@ -158,9 +159,7 @@ std::optional<lightdb::physical::MaterializedLightFieldReference> lightdb::physi
                                      pDst,
                                      planarStep, dstSize_) == ippStsNoErr);
 
-//            auto frameIm = float_to_image(blazeItPredicate_->modelWidth(), blazeItPredicate_->modelHeight(), 3, planes_.data());
-//    //        auto frameIm = float_to_image(frame->width(), frame->height(), 3, scaled_.data());
-//            save_image(frameIm, "resized_frame");
+//            fout_.write(reinterpret_cast<const char*>(planes_.data()), planes_.size()*sizeof(float));
         }
 
         return EmptyData{physical().device()};

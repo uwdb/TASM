@@ -399,7 +399,8 @@ public:
 
     LocalFrame(unsigned int height, unsigned int width, std::shared_ptr<lightdb::bytestring> data)
             : Frame(height, width, NV_ENC_PIC_STRUCT_FRAME),
-              data_(std::move(data))
+              data_(std::move(data)),
+              codedWidth_(0), codedHeight_(0)
     { }
 
     LocalFrame(const LocalFrame &frame, const size_t size)
@@ -408,7 +409,8 @@ public:
 
     LocalFrame(const LocalFrame &frame, std::shared_ptr<lightdb::bytestring> data)
             : Frame(frame),
-              data_(std::move(data))
+              data_(std::move(data)),
+              codedWidth_(frame.codedWidth()), codedHeight_(frame.codedHeight())
     { }
 
     explicit LocalFrame(const CudaFrame &source)
@@ -416,7 +418,8 @@ public:
 
     explicit LocalFrame(const CudaFrame &source, const Configuration &configuration)
         : Frame(configuration, NV_ENC_PIC_STRUCT_FRAME),
-          data_(std::make_shared<lightdb::bytestring>(width() * height() * 3 / 2, 0))
+          data_(std::make_shared<lightdb::bytestring>(source.width() * source.codedHeight() * 3 / 2, 0)),
+          codedWidth_(source.codedWidth()), codedHeight_(source.codedHeight())
     {
         CUresult status;
         auto params = CUDA_MEMCPY2D {
@@ -437,12 +440,19 @@ public:
             .dstArray = nullptr,
             .dstPitch = 0,
 
-            .WidthInBytes = width(),
-            .Height = height() * 3 / 2
+            .WidthInBytes = source.width(),
+            .Height = source.codedHeight() * 3 / 2
         };
 
         if((status = cuMemcpy2D(&params)) != CUDA_SUCCESS)
             throw GpuCudaRuntimeError("Call to cuMemcpy2D failed", status);
+    }
+
+    unsigned int codedWidth() const override {
+        return codedWidth_;
+    }
+    unsigned int codedHeight() const override {
+        return codedHeight_;
     }
 
     ~LocalFrame() {
@@ -456,6 +466,8 @@ public:
 
 private:
     const std::shared_ptr<lightdb::bytestring> data_;
+    unsigned int codedWidth_;
+    unsigned int codedHeight_;
 };
 
 //TODO this should be CPUFrameRef

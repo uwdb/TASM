@@ -29,8 +29,10 @@ private:
                 auto data = input.downcast<GPUDecodedFrameData>();
                 CPUDecodedFrameData output{data.configuration(), data.geometry()};
 
-                for(auto &frame: data.frames())
-                    output.frames().emplace_back(LocalFrame{*frame->cuda(), data.configuration()});
+                for(auto &frame: data.frames()) {
+                    Configuration frameConfig{frame->width(), frame->height(), frame->codedWidth(), frame->codedHeight(), data.configuration().bitrate, data.configuration().framerate, data.configuration().offset};
+                    output.frames().emplace_back(LocalFrame{*frame->cuda(), frameConfig});
+                }
 
                 GLOBAL_TIMER.endSection("GPUtoCPUTransfer");
                 return {output};

@@ -171,20 +171,82 @@ TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay3) {
 TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay1_Foreground) {
     std::string label("KNN");
     PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
-    auto input = ScanMultiTiled(LargeTilesName("venice-grand-canal-2018-01-17", label, 60));
+    auto videoName = LargeTilesName("venice-grand-canal-2018-01-17", label, 60);
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
     Coordinator().execute(input.Select(selection).Predicate());
 }
 
 TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay2_Foreground) {
     std::string label("KNN");
     PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
-    auto input = ScanMultiTiled(LargeTilesName("venice-grand-canal-2018-01-19", label, 60));
+    auto videoName = LargeTilesName("venice-grand-canal-2018-01-19", label, 60);
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
     Coordinator().execute(input.Select(selection).Predicate());
 }
 
 TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay3_Foreground) {
     std::string label("KNN");
     PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
-    auto input = ScanMultiTiled(LargeTilesName("venice-grand-canal-2018-01-20", label, 60));
+    auto videoName = LargeTilesName("venice-grand-canal-2018-01-20", label, 60);
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
+    Coordinator().execute(input.Select(selection).Predicate());
+}
+
+/* Decode & process KNN-small tiles */
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay1_Foreground_Small) {
+    std::string label("KNN");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto videoName = SmallTilesName("venice-grand-canal-2018-01-17", label, 60);
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
+    Coordinator().execute(input.Select(selection).Predicate());
+}
+
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay2_Foreground_Small) {
+    std::string label("KNN");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto videoName = SmallTilesName("venice-grand-canal-2018-01-19", label, 60);
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
+    Coordinator().execute(input.Select(selection).Predicate());
+}
+
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay3_Foreground_Small) {
+    std::string label("KNN");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto videoName = SmallTilesName("venice-grand-canal-2018-01-20", label, 60);
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
+    Coordinator().execute(input.Select(selection).Predicate());
+}
+
+/* Decode & process ROI tiles */
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay1_ROI) {
+    std::string label("ROI");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto videoName = ROITilesName("venice-grand-canal-2018-01-17");
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
+    Coordinator().execute(input.Select(selection).Predicate());
+}
+
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay2_ROI) {
+    std::string label("ROI");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto videoName = ROITilesName("venice-grand-canal-2018-01-19");
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
+    Coordinator().execute(input.Select(selection).Predicate());
+}
+
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay3_ROI) {
+    std::string label("ROI");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto videoName = ROITilesName("venice-grand-canal-2018-01-20");
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
     Coordinator().execute(input.Select(selection).Predicate());
 }

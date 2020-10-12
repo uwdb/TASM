@@ -55,7 +55,7 @@ public:
 
     //TODO move this to GPUFrame
     NV_ENC_PIC_STRUCT type() const { return type_; }
-    bool getFrameNumber(int &outFrameNumber) const {
+    bool getFrameNumber(long &outFrameNumber) const {
         if (frameNumber_.has_value()) {
             outFrameNumber = *frameNumber_;
             return true;
@@ -67,7 +67,7 @@ public:
 protected:
     const unsigned int height_, width_;
     NV_ENC_PIC_STRUCT type_;
-    std::optional<int> frameNumber_;
+    std::optional<long> frameNumber_;
 };
 
 class CudaFrame;
@@ -410,7 +410,8 @@ public:
     LocalFrame(const LocalFrame &frame, std::shared_ptr<lightdb::bytestring> data)
             : Frame(frame),
               data_(std::move(data)),
-              codedWidth_(frame.codedWidth()), codedHeight_(frame.codedHeight())
+              codedWidth_(frame.codedWidth()), codedHeight_(frame.codedHeight()),
+              decodedFrameNumber_(frame.decodedFrameNumber())
     { }
 
     explicit LocalFrame(const CudaFrame &source)
@@ -421,6 +422,9 @@ public:
           data_(std::make_shared<lightdb::bytestring>(source.width() * source.codedHeight() * 3 / 2, 0)),
           codedWidth_(source.codedWidth()), codedHeight_(source.codedHeight())
     {
+        assert(source.getFrameNumber(decodedFrameNumber_));
+        assert(decodedFrameNumber_ >= 0);
+
         CUresult status;
         auto params = CUDA_MEMCPY2D {
             .srcXInBytes = configuration.offset.left,
@@ -455,6 +459,10 @@ public:
         return codedHeight_;
     }
 
+    unsigned int decodedFrameNumber() const {
+        return decodedFrameNumber_;
+    }
+
     ~LocalFrame() {
         assert(true);
     }
@@ -468,6 +476,7 @@ private:
     const std::shared_ptr<lightdb::bytestring> data_;
     unsigned int codedWidth_;
     unsigned int codedHeight_;
+    long decodedFrameNumber_;
 };
 
 //TODO this should be CPUFrameRef

@@ -120,6 +120,8 @@ std::optional<lightdb::physical::MaterializedLightFieldReference> lightdb::physi
     if (iterator() != iterator().eos()) {
         auto data = iterator()++;
         for (auto &frame : data.frames()) {
+            unsigned long long frameNum = static_cast<unsigned long long>(frame->decodedFrameNumber());
+
             Allocate(frame->height(), frame->width(), channels);
             auto y_data = reinterpret_cast<const unsigned char *>(frame->data().data());
             // Memcpy'd the actual width, but coded height.
@@ -159,12 +161,16 @@ std::optional<lightdb::physical::MaterializedLightFieldReference> lightdb::physi
                                      pDst,
                                      planarStep, dstSize_) == ippStsNoErr);
 
-            if (shouldSave_)
-                fout_.write(reinterpret_cast<const char*>(planes_.data()), planes_.size()*sizeof(float));
+            unsigned long long offset = frameNum * model_size_;
+            std::copy_n(planes_.data(), model_size_, outVec_->data() + offset);
+//            if (shouldSave_)
+//                fout_.write(reinterpret_cast<const char*>(planes_.data()), planes_.size()*sizeof(float));
         }
 
         return EmptyData{physical().device()};
     }
+    unsigned long long length = outVec_->size() * sizeof(float);
+    fout_.write(reinterpret_cast<const char*>(outVec_->data()), length);
     return {};
 }
 

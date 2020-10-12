@@ -44,7 +44,7 @@ private:
             physical::GPUDecodedFrameData output{configuration, geometry};
 
             for (const auto &frame : decoded.frames()) {
-                int frameNumber = -1;
+                long frameNumber = -1;
                 frameNumber = frame->getFrameNumber(frameNumber) ? frameNumber : frameNumber_++;
                 if (physical().framesToKeep().count(frameNumber)) {
                     output.frames().emplace_back(frame);

@@ -237,7 +237,7 @@ namespace lightdb::physical {
             return true;
         }
 
-        bool getNumberOfFramesIfSet(int &outNumberOfFrames) const {
+        bool getNumberOfFramesIfSet(long &outNumberOfFrames) const {
             if (numberOfFrames_ == -1)
                 return false;
 

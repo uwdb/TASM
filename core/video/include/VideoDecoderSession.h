@@ -100,7 +100,7 @@ protected:
                 for (auto i = 0u; i < 20; ++i) {
                     if (reader != end) {
                         int firstFrameIndex = -1;
-                        int numberOfFrames = -1;
+                        long numberOfFrames = -1;
                         int tileNumber = -1;
                         bool gotFirstFrameIndex = (*reader).getFirstFrameIndexIfSet(firstFrameIndex);
                         bool gotNumberOfFrames = (*reader).getNumberOfFramesIfSet(numberOfFrames);
@@ -119,7 +119,7 @@ protected:
                                 }
                             }
 
-                            for (int i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
+                            for (long i = firstFrameIndex; i < firstFrameIndex + numberOfFrames; i++) {
 
                                 assert(decoder.frameNumberQueue().push(i));
 

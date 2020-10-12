@@ -135,13 +135,15 @@ public:
     PredicateOperator(const LightFieldReference &logical,
             PhysicalOperatorReference &parent,
             std::string outName)
-            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "PredicateOperator-init", outName))
+            : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "PredicateOperator-init")),
+            outName_(outName)
         {}
-
+    const std::string outName() const { return outName_; }
 private:
+    std::string outName_;
     class Runtime : public runtime::UnaryRuntime<PredicateOperator, CPUDecodedFrameData> {
     public:
-        explicit Runtime(PredicateOperator &physical, const std::string fileName="")
+        explicit Runtime(PredicateOperator &physical)
                 : runtime::UnaryRuntime<PredicateOperator, CPUDecodedFrameData>(physical),
                         blazeItPredicate_(std::make_unique<BlazeItPredicate>()),
                         frame_size_(0),
@@ -150,9 +152,12 @@ private:
                         downsampled_frame_size_(0),
                         pSpec_(0),
                         pBuffer_(0),
-                        shouldSave_(fileName.length()),
-                        fout_(fileName + ".dat", std::ios::out | std::ios::binary)
-            {}
+                        shouldSave_(physical.outName().length()),
+                        fout_(physical.outName(), std::ios::out | std::ios::binary)
+            {
+                unsigned long long numPixels = 65*65*3*150000ull;
+                outVec_ = std::make_unique<std::vector<float>>(numPixels, 0);
+            }
 
         std::optional<physical::MaterializedLightFieldReference> read() override;
 
@@ -189,6 +194,7 @@ private:
 
         bool shouldSave_;
         std::ofstream fout_;
+        std::unique_ptr<std::vector<float>> outVec_;
     };
 
 };

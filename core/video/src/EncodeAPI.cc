@@ -886,7 +886,7 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
     uint32_t fps = static_cast<uint32_t>(pEncCfg->framerate.fps());
     if (pEncCfg->framerate.denominator() != 1)
         ++fps; // Round up for case like fps = 59.99.
-    m_stCreateEncodeParams.frameRateNum = fps; //static_cast<uint32_t>(pEncCfg->framerate.numerator()); // static_cast<uint32_t>(pEncCfg->framerate.fps());
+    m_stCreateEncodeParams.frameRateNum = 60; // fps; //static_cast<uint32_t>(pEncCfg->framerate.numerator()); // static_cast<uint32_t>(pEncCfg->framerate.fps());
     m_stCreateEncodeParams.frameRateDen = 1; //static_cast<uint32_t>(pEncCfg->framerate.denominator()); // 1;
     m_stCreateEncodeParams.enableEncodeAsync = 0;
 
@@ -911,7 +911,7 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
     }
     memcpy(&m_stEncodeConfig, &stPresetCfg.presetCfg, sizeof(NV_ENC_CONFIG));
 
-    m_stEncodeConfig.gopLength = pEncCfg->gopLength;
+    m_stEncodeConfig.gopLength = 60; // pEncCfg->gopLength;
     m_stEncodeConfig.frameIntervalP = pEncCfg->numB + 1;
     if (pEncCfg->pictureStruct == NV_ENC_PIC_STRUCT_FRAME)
     {

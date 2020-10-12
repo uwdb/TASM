@@ -101,7 +101,7 @@ private:
 
                         for (auto &frame : decoded.frames()) {
                             // Get rectangles for frame.
-                            int frameNumber = -1;
+                            long frameNumber = -1;
                             assert(frame->getFrameNumber(frameNumber));
                             int tileNumber = inNoTilesCase_ ? 0 : frame.downcast<DecodedFrame>().tileNumber();
 
@@ -315,7 +315,7 @@ private:
                     auto data = iterator()++;
                     int firstFrameIndex = 0;
                     assert(data.getFirstFrameIndexIfSet(firstFrameIndex));
-                    int numberOfFrames = 0;
+                    long numberOfFrames = 0;
                     assert(data.getNumberOfFramesIfSet(numberOfFrames));
 
                     // Move expected frames iterator forward number of frames amount.

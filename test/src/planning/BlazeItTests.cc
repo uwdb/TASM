@@ -59,6 +59,28 @@ TEST_F(BlazeItTestFixture, testScanAndSaveVenice) {
     }
 }
 
+TEST_F(BlazeItTestFixture, testScanAndSaveLongVenice) {
+    std::vector<std::string> dates{"2018-01-17"};
+    for (const auto &date : dates) {
+        auto input = Load("/home/maureen/blazeit_stuff/data/svideo/venice-grand-canal/merged_" + date + "/merged_" + date + ".mp4",
+                          Volume::limits(),
+                          GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+        std::string savePath = "long-venice-grand-canal-" + date;
+        Coordinator().execute(input.Store(savePath));
+    }
+}
+
+TEST_F(BlazeItTestFixture, testScanAndSaveLongVeniceDays2And3) {
+    std::vector<std::string> dates{"2018-01-19", "2018-01-20"};
+    for (const auto &date : dates) {
+        auto input = Load("/home/maureen/blazeit_stuff/data/svideo/venice-grand-canal/merged_" + date + "/merged_" + date + "-150k.mp4",
+                          Volume::limits(),
+                          GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+        std::string savePath = "long-venice-grand-canal-" + date;
+        Coordinator().execute(input.Store(savePath));
+    }
+}
+
 TEST_F(BlazeItTestFixture, testScanAndSaveJacksonSquare) {
     std::vector<std::string> dates{"2017-12-14", "2017-12-16", "2017-12-17"};
     for (const auto &date : dates) {
@@ -77,6 +99,22 @@ TEST_F(BlazeItTestFixture, testScanAndSink) {
 }
 
 // Tile around KNN-background detections.
+TEST_F(BlazeItTestFixture, testCrackAroundForegroundObjectsLongVenice) {
+    std::vector<std::string> videos {"long-venice-grand-canal-2018-01-19", "long-venice-grand-canal-2018-01-20"}; //, "long-venice-grand-canal-2018-01-17"};
+    unsigned int baseFramerate = 60;
+    std::string label("KNN");
+    MetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    for (const auto &video : videos) {
+        // Large tiles.
+        auto input = Scan(video);
+        std::string savedName = LargeTilesName(video, label, baseFramerate);
+        std::cout << video << std::endl;
+        std::cout << savedName << std::endl;
+        Coordinator().execute(
+                input.StoreCracked(savedName, video, &selection, baseFramerate, CrackingStrategy::GroupingExtent));
+    }
+}
+
 TEST_F(BlazeItTestFixture, testCrackAroundForegroundObjectsVenice) {
     std::vector<std::string> videos {"venice-grand-canal-2018-01-19", "venice-grand-canal-2018-01-20"};
     unsigned int baseFramerate = 60;
@@ -236,6 +274,33 @@ TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay3_ForegroundVenice) {
     std::cout << "Reading from " << videoName << std::endl;
     auto input = ScanMultiTiled(videoName);
     Coordinator().execute(input.Select(selection).Predicate());
+}
+
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay1_ForegroundLongVenice) {
+    std::string label("KNN");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto videoName = LargeTilesName("long-venice-grand-canal-2018-01-17", label, 60);
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
+    Coordinator().execute(input.Select(selection).Predicate("long-venice-grand-canal-2018-01-17.npy"));
+}
+
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay2_ForegroundLongVenice) {
+    std::string label("KNN");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto videoName = LargeTilesName("long-venice-grand-canal-2018-01-19", label, 60);
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
+    Coordinator().execute(input.Select(selection, false, true).Predicate("long-venice-grand-canal-2018-01-19.npy"));
+}
+
+TEST_F(BlazeItTestFixture, testDecodeAndPreprocessDay3_ForegroundLongVenice) {
+    std::string label("KNN");
+    PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", label));
+    auto videoName = LargeTilesName("long-venice-grand-canal-2018-01-20", label, 60);
+    std::cout << "Reading from " << videoName << std::endl;
+    auto input = ScanMultiTiled(videoName);
+    Coordinator().execute(input.Select(selection, false, true).Predicate("long-venice-grand-canal-2018-01-20.npy"));
 }
 
 /* Decode & process KNN-small tiles */

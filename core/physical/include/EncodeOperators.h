@@ -97,7 +97,7 @@ private:
                         if (encodedKeyframe)
                             break;
 
-                        int frameNumberFromFrame = -1;
+                        long frameNumberFromFrame = -1;
                         auto frameNumber = (*frameIt)->getFrameNumber(frameNumberFromFrame) ? frameNumberFromFrame
                                                                                             : frameNumber_;
                         ++frameNumber_; // Always increment this so we can keep track of how many frames were decoded.

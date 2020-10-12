@@ -118,11 +118,11 @@ private:
         const DecodeConfiguration configuration_;
         const GeometryReference geometry_;
         CUVIDFrameQueue queue_;
-        spsc_queue<int> frameNumberQueue_;
+        spsc_queue<long> frameNumberQueue_;
         spsc_queue<int> tileNumberQueue_;
         CudaDecoder decoder_;
         VideoDecoderSession<Runtime::downcast_iterator<CPUEncodedFrameData>> session_;
-        int numberOfFramesDecoded_;
+        long numberOfFramesDecoded_;
     };
 
     const std::chrono::microseconds poll_duration_;

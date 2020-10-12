@@ -45,7 +45,7 @@ private:
 
 class CudaDecoder: public VideoDecoder {
 public:
-  CudaDecoder(const DecodeConfiguration &configuration, FrameQueue& frame_queue, VideoLock& lock, lightdb::spsc_queue<int>& frameNumberQueue, lightdb::spsc_queue<int>& tileNumberQueue, bool isDecodingDifferentSizes)
+  CudaDecoder(const DecodeConfiguration &configuration, FrameQueue& frame_queue, VideoLock& lock, lightdb::spsc_queue<long>& frameNumberQueue, lightdb::spsc_queue<int>& tileNumberQueue, bool isDecodingDifferentSizes)
           : VideoDecoder(configuration, frame_queue), handle_(nullptr),
             lock_(lock),
             frameNumberQueue_(frameNumberQueue),
@@ -208,7 +208,7 @@ public:
 
   CUvideodecoder handle() const { return handle_; }
   VideoLock &lock() const {return lock_; }
-  lightdb::spsc_queue<int> &frameNumberQueue() const { return frameNumberQueue_; }
+  lightdb::spsc_queue<long> &frameNumberQueue() const { return frameNumberQueue_; }
   lightdb::spsc_queue<int> &tileNumberQueue() const { return tileNumberQueue_; }
   lightdb::spsc_queue<std::shared_ptr<CUVIDPARSERDISPINFO>> &decodedPictureQueue() { return decodedPictureQueue_; }
 
@@ -228,7 +228,7 @@ public:
 protected:
   CUvideodecoder handle_;
   VideoLock &lock_;
-  lightdb::spsc_queue<int> &frameNumberQueue_;
+  lightdb::spsc_queue<long> &frameNumberQueue_;
   lightdb::spsc_queue<int> &tileNumberQueue_;
   lightdb::spsc_queue<std::shared_ptr<CUVIDPARSERDISPINFO>> decodedPictureQueue_; // FIXME: should be prt for copy constructor.
   CUVIDDECODECREATEINFO creationInfo_;

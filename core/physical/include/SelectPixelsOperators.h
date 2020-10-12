@@ -45,7 +45,7 @@ private:
             auto tileRectangle = physical().tileLayout().rectangleForTile(physical().tileIndex());
 
             for (auto &frame: decoded.frames()) {
-                int frameNumber = -1;
+                long frameNumber = -1;
                 frameNumber = frame->getFrameNumber(frameNumber) ? frameNumber : frameNumber_++;
 
                 auto rectanglesForFrame = physical().metadataSubsetLightField().rectanglesForFrame(frameNumber);

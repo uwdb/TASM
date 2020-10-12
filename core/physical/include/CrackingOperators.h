@@ -78,7 +78,7 @@ private:
                 for (auto &frame: decoded.frames()) {
                     // Get the tile configuration for this frame.
                     // If it is different than the previous tile configuration, reconfigure the necessary encoders.
-                    int frameNumber = -1;
+                    long frameNumber = -1;
                     // If we are scanning the entire file, there won't be frame numbers attached to the decoded frames.
                     frameNumber = frame->getFrameNumber(frameNumber) ? frameNumber : frameNumber_++;
                     auto &tileLayout = tileConfigurationProvider_->tileLayoutForFrame(frameNumber);

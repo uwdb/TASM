@@ -59,7 +59,7 @@ private:
 
                     auto data = (*iterator++).downcast<CPUEncodedFrameData>();
                     int firstFrameIndex = -1;
-                    int numberOfFrames = -1;
+                    long numberOfFrames = -1;
                     assert(data.getFirstFrameIndexIfSet(firstFrameIndex));
                     assert(data.getNumberOfFramesIfSet(numberOfFrames));
 

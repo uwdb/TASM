@@ -63,3 +63,6 @@ cmake-build-*
 *.h265
 *.h264
 *.mp4
+
+# Vscode
+*.vscode

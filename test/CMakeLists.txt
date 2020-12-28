@@ -24,19 +24,11 @@ include_directories(${LIGHTDB_CORE_INCLUDE_DIRS})
 #set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${PP_LIBS})
 #link_directories("${PP_DIR}/bin/")
 
-# GPU Yolo linking
-set(YOLO_GPU_DIR "/home/maureen/yolo_gpu_lightdb/darknet")
-file(GLOB YOLO_GPU_SOURCE_DIRS ${YOLO_GPU_DIR}/src)
-include_directories(${YOLO_GPU_SOURCE_DIRS})
-file(GLOB YOLO_GPU_LIBS ${YOLO_GPU_DIR}/*.so)
-message("YOLO source dirs: ${YOLO_GPU_SOURCE_DIRS}, lib: ${YOLO_GPU_LIBS}")
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${YOLO_GPU_LIBS})
-link_directories(${YOLO_GPU_DIR})
-
 # Get test source files
 file(GLOB_RECURSE LIGHTDB_TEST_SOURCES "src/*VisitorTests.cc" "src/*KeyframePlacementTests.cc" "src/*UnknownWorkloadTests.cc" "src/*CreateLayoutsTest.cc"
         "src/*BlazeItTests.cc"
-#        "src/*PredicateTests.cc")
+#        "src/*PredicateTests.cc"
+        "src/*VisualRoadTests.cc")
 message("LIGHTDB_TEST_SOURCES: ${LIGHTDB_TEST_SOURCES}")
 
 # Build tests
@@ -53,31 +45,33 @@ file(COPY resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_definitions(lightdb_test PRIVATE LIGHTDB_BENCHMARK_DATASET_PATH="${CMAKE_SOURCE_DIR}/benchmarks/datasets")
 
 # Build plugins used by tests
-#include(ExternalProject)
-#file(GLOB LIGHTDB_PLUGIN_DIRS ${CMAKE_SOURCE_DIR}/plugins/*)
+include(ExternalProject)
+file(GLOB LIGHTDB_PLUGIN_DIRS
+        ${CMAKE_SOURCE_DIR}/plugins/*yolo_gpu)
+message("PLUGINS: ${LIGHTDB_PLUGIN_DIRS}")
 
 get_property(LIGHTDB_INCLUDES DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 string(REPLACE ";" "|" LIGHTDB_INCLUDES_STRING "${LIGHTDB_INCLUDES}")
 
-#foreach(LIGHTDB_PLUGIN_DIR ${LIGHTDB_PLUGIN_DIRS})
-#    if (IS_DIRECTORY ${LIGHTDB_PLUGIN_DIR})
-#        get_filename_component(LIGHTDB_PLUGIN_NAME ${LIGHTDB_PLUGIN_DIR} NAME_WE)
-#        string(TOLOWER "${LIGHTDB_PLUGIN_DIR}/cmake-build-${CMAKE_BUILD_TYPE}" LIGHTDB_PLUGIN_BINARY_DIR)
-#        ExternalProject_Add(
-#                ${LIGHTDB_PLUGIN_NAME}
-#                PREFIX ${LIGHTDB_PLUGIN_DIR}
-#                SOURCE_DIR ${LIGHTDB_PLUGIN_DIR}
-#                BINARY_DIR ${LIGHTDB_PLUGIN_BINARY_DIR}
-#                INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugins
-#                LIST_SEPARATOR |
-#                CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR> -DLIGHTDB_INCLUDES:list=${LIGHTDB_INCLUDES_STRING}
-#                EXCLUDE_FROM_ALL TRUE
-#                BUILD_ALWAYS TRUE
-#                INSTALL_COMMAND ""
-#        )
-#        add_dependencies(lightdb_test ${LIGHTDB_PLUGIN_NAME})
-#    endif(IS_DIRECTORY ${LIGHTDB_PLUGIN_DIR})
-#endforeach(LIGHTDB_PLUGIN_DIR)
+foreach(LIGHTDB_PLUGIN_DIR ${LIGHTDB_PLUGIN_DIRS})
+    if (IS_DIRECTORY ${LIGHTDB_PLUGIN_DIR})
+        get_filename_component(LIGHTDB_PLUGIN_NAME ${LIGHTDB_PLUGIN_DIR} NAME_WE)
+        string(TOLOWER "${LIGHTDB_PLUGIN_DIR}/cmake-build-${CMAKE_BUILD_TYPE}" LIGHTDB_PLUGIN_BINARY_DIR)
+        ExternalProject_Add(
+                ${LIGHTDB_PLUGIN_NAME}
+                PREFIX ${LIGHTDB_PLUGIN_DIR}
+                SOURCE_DIR ${LIGHTDB_PLUGIN_DIR}
+                BINARY_DIR ${LIGHTDB_PLUGIN_BINARY_DIR}
+                INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/plugins
+                LIST_SEPARATOR |
+                CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR> -DLIGHTDB_INCLUDES:list=${LIGHTDB_INCLUDES_STRING}
+                EXCLUDE_FROM_ALL TRUE
+                BUILD_ALWAYS TRUE
+                INSTALL_COMMAND ""
+        )
+        add_dependencies(lightdb_test ${LIGHTDB_PLUGIN_NAME})
+    endif(IS_DIRECTORY ${LIGHTDB_PLUGIN_DIR})
+endforeach(LIGHTDB_PLUGIN_DIR)
 
 # Copy modules to output directory
 ADD_CUSTOM_COMMAND(TARGET lightdb_test

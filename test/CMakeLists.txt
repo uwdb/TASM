@@ -24,6 +24,15 @@ include_directories(${LIGHTDB_CORE_INCLUDE_DIRS})
 #set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${PP_LIBS})
 #link_directories("${PP_DIR}/bin/")
 
+# GPU Yolo linking
+set(YOLO_GPU_DIR "/home/maureen/yolo_gpu_lightdb/darknet")
+file(GLOB YOLO_GPU_SOURCE_DIRS ${YOLO_GPU_DIR}/src)
+include_directories(${YOLO_GPU_SOURCE_DIRS})
+file(GLOB YOLO_GPU_LIBS ${YOLO_GPU_DIR}/*.so)
+message("YOLO source dirs: ${YOLO_GPU_SOURCE_DIRS}, lib: ${YOLO_GPU_LIBS}")
+set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${YOLO_GPU_LIBS})
+link_directories(${YOLO_GPU_DIR})
+
 # Get test source files
 file(GLOB_RECURSE LIGHTDB_TEST_SOURCES "src/*VisitorTests.cc" "src/*KeyframePlacementTests.cc" "src/*UnknownWorkloadTests.cc" "src/*CreateLayoutsTest.cc"
         "src/*BlazeItTests.cc"

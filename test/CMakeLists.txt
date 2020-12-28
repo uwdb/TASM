@@ -14,15 +14,15 @@ file(GLOB LIGHTDB_CORE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/core/*/include/")
 include_directories(${LIGHTDB_CORE_INCLUDE_DIRS})
 
 # Probabilistic predicates stuff
-set(PP_DIR "/home/maureen/PPdemo")
-file(GLOB PP_SOURCE_DIRS "${PP_DIR}/lib/*")
-list(REMOVE_ITEM PP_SOURCE_DIRS "${PP_DIR}/lib/Makefile")
-message("PP_SOURCE_DIRS: ${PP_SOURCE_DIRS}")
-include_directories(${PP_SOURCE_DIRS})
-file(GLOB PP_LIBS "${PP_DIR}/bin/*.so")
-message("PP_LIBS: ${PP_LIBS}")
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${PP_LIBS})
-link_directories("${PP_DIR}/bin/")
+#set(PP_DIR "/home/maureen/PPdemo")
+#file(GLOB PP_SOURCE_DIRS "${PP_DIR}/lib/*")
+#list(REMOVE_ITEM PP_SOURCE_DIRS "${PP_DIR}/lib/Makefile")
+#message("PP_SOURCE_DIRS: ${PP_SOURCE_DIRS}")
+#include_directories(${PP_SOURCE_DIRS})
+#file(GLOB PP_LIBS "${PP_DIR}/bin/*.so")
+#message("PP_LIBS: ${PP_LIBS}")
+#set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${PP_LIBS})
+#link_directories("${PP_DIR}/bin/")
 
 # Get test source files
 file(GLOB_RECURSE LIGHTDB_TEST_SOURCES "src/*VisitorTests.cc" "src/*KeyframePlacementTests.cc" "src/*UnknownWorkloadTests.cc" "src/*CreateLayoutsTest.cc"
@@ -44,8 +44,8 @@ file(COPY resources DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_definitions(lightdb_test PRIVATE LIGHTDB_BENCHMARK_DATASET_PATH="${CMAKE_SOURCE_DIR}/benchmarks/datasets")
 
 # Build plugins used by tests
-include(ExternalProject)
-file(GLOB LIGHTDB_PLUGIN_DIRS ${CMAKE_SOURCE_DIR}/plugins/*)
+#include(ExternalProject)
+#file(GLOB LIGHTDB_PLUGIN_DIRS ${CMAKE_SOURCE_DIR}/plugins/*)
 
 get_property(LIGHTDB_INCLUDES DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
 string(REPLACE ";" "|" LIGHTDB_INCLUDES_STRING "${LIGHTDB_INCLUDES}")

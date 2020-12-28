@@ -36,7 +36,7 @@ link_directories(${YOLO_GPU_DIR})
 # Get test source files
 file(GLOB_RECURSE LIGHTDB_TEST_SOURCES "src/*VisitorTests.cc" "src/*KeyframePlacementTests.cc" "src/*UnknownWorkloadTests.cc" "src/*CreateLayoutsTest.cc"
         "src/*BlazeItTests.cc"
-        "src/*PredicateTests.cc")
+#        "src/*PredicateTests.cc")
 message("LIGHTDB_TEST_SOURCES: ${LIGHTDB_TEST_SOURCES}")
 
 # Build tests

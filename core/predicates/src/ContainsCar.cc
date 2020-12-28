@@ -3,65 +3,65 @@
 #include "timer.h"
 
 // PP imports
-#include <msd_wrapper.h>
-#include <linear_wrapper.h>
-#include <image.h>
-#include <box.h>
+//#include <msd_wrapper.h>
+//#include <linear_wrapper.h>
+//#include <image.h>
+//#include <box.h>
 
-bool MSDPredicate::instantiatedModels_ = 0;
-bool LinearPredicate::instantiatedModels_ = 0;
-
-void MSDPredicate::loadModel() {
-    if (!instantiatedModels_) {
-        _init_msd_models();
-        instantiatedModels_ = true;
-    }
-
-    _load_msd_model(modelName_.c_str());
-    _print_msd_model_names();
-}
-
-void MSDPredicate::freeModel() {
-    _free_msd_model(modelName_.c_str());
-}
-
-void LinearPredicate::loadModel() {
-    if (!instantiatedModels_) {
-        _init_linear_models();
-        instantiatedModels_ = true;
-    }
-
-    _load_linear_model(modelName_.c_str());
-    _print_linear_model_names();
-}
-
-void LinearPredicate::freeModel() {
-    _free_linear_model(modelName_.c_str());
-}
-
-std::vector<box> ContainsCarPredicate::detectImage(const std::string &imagePath) {
-    return _detect_msd_model(modelName_.c_str(), imagePath.c_str());
-}
-
-std::vector<box> ContainsCarPredicate::detectImage(image im) {
-    return _detect_msd_model_from_image(modelName_.c_str(), im);
-}
-
-static int COUNT = 0;
-
-std::unique_ptr<std::vector<float>> CarColorFeaturePredicate::getFeatures(image im) {
-    auto resized = resize_image(im, modelWidth_, modelHeight_);
-    std::string cropName = std::string("crop_") + std::to_string(COUNT) + std::string(".jpg");
-    save_image(resized, cropName.c_str());
-    ++COUNT;
-    auto features = _forward_msd_model_ptr(modelName_.c_str(), resized.data, resized.w * resized.w * resized.c, 1, 0);
-    free_image(resized);
-    return features;
-}
-
-IntVectorPtr CarColorPredicate::classifyColors(float *features, unsigned int len_in) {
-    return _classify_linear_model_ptr(modelName_.c_str(), features, len_in, 1, false);
-}
+//bool MSDPredicate::instantiatedModels_ = 0;
+//bool LinearPredicate::instantiatedModels_ = 0;
+//
+//void MSDPredicate::loadModel() {
+//    if (!instantiatedModels_) {
+//        _init_msd_models();
+//        instantiatedModels_ = true;
+//    }
+//
+//    _load_msd_model(modelName_.c_str());
+//    _print_msd_model_names();
+//}
+//
+//void MSDPredicate::freeModel() {
+//    _free_msd_model(modelName_.c_str());
+//}
+//
+//void LinearPredicate::loadModel() {
+//    if (!instantiatedModels_) {
+//        _init_linear_models();
+//        instantiatedModels_ = true;
+//    }
+//
+//    _load_linear_model(modelName_.c_str());
+//    _print_linear_model_names();
+//}
+//
+//void LinearPredicate::freeModel() {
+//    _free_linear_model(modelName_.c_str());
+//}
+//
+//std::vector<box> ContainsCarPredicate::detectImage(const std::string &imagePath) {
+//    return _detect_msd_model(modelName_.c_str(), imagePath.c_str());
+//}
+//
+//std::vector<box> ContainsCarPredicate::detectImage(image im) {
+//    return _detect_msd_model_from_image(modelName_.c_str(), im);
+//}
+//
+//static int COUNT = 0;
+//
+//std::unique_ptr<std::vector<float>> CarColorFeaturePredicate::getFeatures(image im) {
+//    auto resized = resize_image(im, modelWidth_, modelHeight_);
+//    std::string cropName = std::string("crop_") + std::to_string(COUNT) + std::string(".jpg");
+//    save_image(resized, cropName.c_str());
+//    ++COUNT;
+//    auto features = _forward_msd_model_ptr(modelName_.c_str(), resized.data, resized.w * resized.w * resized.c, 1, 0);
+//    free_image(resized);
+//    return features;
+//}
+//
+//IntVectorPtr CarColorPredicate::classifyColors(float *features, unsigned int len_in) {
+//    return _classify_linear_model_ptr(modelName_.c_str(), features, len_in, 1, false);
+//}
 
 //std::vector<FloatVectorPtr> lightdb::physical::PredicateOperator::Runtime::getCarColorFeatures(image im, const std::vector<box> &crops) {
 ////    std::vector<FloatVectorPtr> features;
@@ -80,28 +80,28 @@ IntVectorPtr CarColorPredicate::classifyColors(float *features, unsigned int len
 //    return {};
 //}
 
-FloatVectorPtr DetracPPFeaturePredicate::getFeatures(image im) {
-    lightdb::Timer timer;
-    timer.startSection("Resize");
-    auto resized = resize_image(im, modelWidth_, modelHeight_);
-    timer.endSection("Resize");
-
-    timer.startSection("Model predict");
-    auto features = _forward_msd_model_ptr(modelName_.c_str(), resized.data, resized.w * resized.w * resized.c, 1, 0);
-    timer.endSection("Model predict");
-    timer.printAllTimes();
-    free_image(resized);
-    return features;
-}
-
-FloatVectorPtr DetracPPFeaturePredicate::getFeaturesForResizedImages(std::vector<float> &resizedImages, unsigned int batchSize) {
-    return _forward_msd_model_ptr(modelName_.c_str(), resizedImages.data(), modelHeight_ * modelWidth_ * 3, batchSize, false);
-}
-
-bool DetracBusPredicate::matches(FloatVectorPtr features) {
-    auto predictions = _regress_linear_model_ptr(modelName_.c_str(), features->data(), features->size(), 1, false);
-    return true;
-}
+//FloatVectorPtr DetracPPFeaturePredicate::getFeatures(image im) {
+//    lightdb::Timer timer;
+//    timer.startSection("Resize");
+//    auto resized = resize_image(im, modelWidth_, modelHeight_);
+//    timer.endSection("Resize");
+//
+//    timer.startSection("Model predict");
+//    auto features = _forward_msd_model_ptr(modelName_.c_str(), resized.data, resized.w * resized.w * resized.c, 1, 0);
+//    timer.endSection("Model predict");
+//    timer.printAllTimes();
+//    free_image(resized);
+//    return features;
+//}
+//
+//FloatVectorPtr DetracPPFeaturePredicate::getFeaturesForResizedImages(std::vector<float> &resizedImages, unsigned int batchSize) {
+//    return _forward_msd_model_ptr(modelName_.c_str(), resizedImages.data(), modelHeight_ * modelWidth_ * 3, batchSize, false);
+//}
+//
+//bool DetracBusPredicate::matches(FloatVectorPtr features) {
+//    auto predictions = _regress_linear_model_ptr(modelName_.c_str(), features->data(), features->size(), 1, false);
+//    return true;
+//}
 
 IppStatus lightdb::physical::PredicateOperator::Runtime::resize(const Ipp8u* pSrc, Ipp32s srcStep, Ipp8u* pDst, Ipp32s dstStep) {
     // https://software.intel.com/content/www/us/en/develop/documentation/ipp-dev-reference/top/volume-2-image-processing/image-geometry-transforms/geometric-transform-functions/resize-functions-with-prior-initialization/using-intel-ipp-resize-functions-with-prior-initialization.html

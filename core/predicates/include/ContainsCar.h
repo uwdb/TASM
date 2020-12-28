@@ -4,8 +4,8 @@
 #include "PhysicalOperators.h"
 #include <string>
 
-#include <image.h>
-#include <box.h>
+//#include <image.h>
+//#include <box.h>
 #include "ipp.h"
 
 #include <ostream>
@@ -13,107 +13,107 @@
 // Try re-defining missing function?
 //#include <cudnn.h>
 //cudnnHandle_t cudnn_handle();
+//
+//typedef std::unique_ptr<std::vector<int>> IntVectorPtr;
+//typedef std::unique_ptr<std::vector<float>> FloatVectorPtr;
 
-typedef std::unique_ptr<std::vector<int>> IntVectorPtr;
-typedef std::unique_ptr<std::vector<float>> FloatVectorPtr;
+//class Predicate {
+//public:
+//    Predicate(const std::string &name,
+//              unsigned int width,
+//              unsigned int height)
+//            : modelName_(name),
+//              modelWidth_(width),
+//              modelHeight_(height)
+//    {}
+//
+//    virtual void loadModel() = 0;
+//    virtual unsigned int modelWidth() const { return modelWidth_; }
+//    virtual unsigned int modelHeight() const { return modelHeight_; }
+//    virtual ~Predicate() {
+//        freeModel();
+//    }
+//
+//protected:
+//    virtual void freeModel() {}
+//    std::string modelName_;
+//    unsigned int modelWidth_;
+//    unsigned int modelHeight_;
+//};
 
-class Predicate {
-public:
-    Predicate(const std::string &name,
-              unsigned int width,
-              unsigned int height)
-            : modelName_(name),
-              modelWidth_(width),
-              modelHeight_(height)
-    {}
+//class MSDPredicate : public Predicate {
+//public:
+//    MSDPredicate(const std::string &name,
+//              unsigned int width,
+//              unsigned int height)
+//      : Predicate(name, width, height) {}
+//
+//    void loadModel() override;
+//
+//protected:
+//    void freeModel() override;
+//    static bool instantiatedModels_;
+//};
 
-    virtual void loadModel() = 0;
-    virtual unsigned int modelWidth() const { return modelWidth_; }
-    virtual unsigned int modelHeight() const { return modelHeight_; }
-    virtual ~Predicate() {
-        freeModel();
-    }
+//class LinearPredicate : public Predicate {
+//public:
+//    LinearPredicate(const std::string &name,
+//                 unsigned int width,
+//                 unsigned int height)
+//        : Predicate(name, width, height) {}
+//    void loadModel() override;
+//
+//protected:
+//    void freeModel() override;
+//    static bool instantiatedModels_;
+//};
 
-protected:
-    virtual void freeModel() {}
-    std::string modelName_;
-    unsigned int modelWidth_;
-    unsigned int modelHeight_;
-};
-
-class MSDPredicate : public Predicate {
-public:
-    MSDPredicate(const std::string &name,
-              unsigned int width,
-              unsigned int height)
-      : Predicate(name, width, height) {}
-
-    void loadModel() override;
-
-protected:
-    void freeModel() override;
-    static bool instantiatedModels_;
-};
-
-class LinearPredicate : public Predicate {
-public:
-    LinearPredicate(const std::string &name,
-                 unsigned int width,
-                 unsigned int height)
-        : Predicate(name, width, height) {}
-    void loadModel() override;
-
-protected:
-    void freeModel() override;
-    static bool instantiatedModels_;
-};
-
-class ContainsCarPredicate : public MSDPredicate {
-public:
-    ContainsCarPredicate()
-        : MSDPredicate("data/detrac.model", 736, 736)
-    {}
-
-    std::vector<box> detectImage(const std::string &imagePath);
-    std::vector<box> detectImage(image im);
-};
-
-class CarColorFeaturePredicate : public MSDPredicate {
-public:
-    CarColorFeaturePredicate()
-        : MSDPredicate("data/darknet_conv_color.model", 64, 64)
-    {}
-
-    FloatVectorPtr getFeatures(image im);
-};
-
-class CarColorPredicate : public LinearPredicate {
-public:
-    CarColorPredicate()
-        : LinearPredicate("data/detrac_color.model", 0, 0)
-    {}
-
-    IntVectorPtr classifyColors(float *features, unsigned int len_in);
-};
-
-class DetracPPFeaturePredicate : public MSDPredicate {
-public:
-    DetracPPFeaturePredicate()
-        : MSDPredicate("data/detrac_pp_conv.model", 384, 384)
-    {}
-
-    FloatVectorPtr getFeatures(image im);
-    FloatVectorPtr getFeaturesForResizedImages(std::vector<float> &resizedImages, unsigned int batchSize);
-};
-
-class DetracBusPredicate : public LinearPredicate {
-public:
-    DetracBusPredicate()
-        : LinearPredicate("data/pps/detrac-type-bus.model", 0, 0)
-    {}
-
-    bool matches(FloatVectorPtr features);
-};
+//class ContainsCarPredicate : public MSDPredicate {
+//public:
+//    ContainsCarPredicate()
+//        : MSDPredicate("data/detrac.model", 736, 736)
+//    {}
+//
+//    std::vector<box> detectImage(const std::string &imagePath);
+//    std::vector<box> detectImage(image im);
+//};
+//
+//class CarColorFeaturePredicate : public MSDPredicate {
+//public:
+//    CarColorFeaturePredicate()
+//        : MSDPredicate("data/darknet_conv_color.model", 64, 64)
+//    {}
+//
+//    FloatVectorPtr getFeatures(image im);
+//};
+//
+//class CarColorPredicate : public LinearPredicate {
+//public:
+//    CarColorPredicate()
+//        : LinearPredicate("data/detrac_color.model", 0, 0)
+//    {}
+//
+//    IntVectorPtr classifyColors(float *features, unsigned int len_in);
+//};
+//
+//class DetracPPFeaturePredicate : public MSDPredicate {
+//public:
+//    DetracPPFeaturePredicate()
+//        : MSDPredicate("data/detrac_pp_conv.model", 384, 384)
+//    {}
+//
+//    FloatVectorPtr getFeatures(image im);
+//    FloatVectorPtr getFeaturesForResizedImages(std::vector<float> &resizedImages, unsigned int batchSize);
+//};
+//
+//class DetracBusPredicate : public LinearPredicate {
+//public:
+//    DetracBusPredicate()
+//        : LinearPredicate("data/pps/detrac-type-bus.model", 0, 0)
+//    {}
+//
+//    bool matches(FloatVectorPtr features);
+//};
 
 class BlazeItPredicate {
 public:

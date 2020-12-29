@@ -2,6 +2,7 @@
 #define LIGHTDB_YOLO_GPU_LIBRARY_H
 
 #include "Functor.h"
+#include "Frame.h"
 
 #include <yolo_v2_class.hpp>
 
@@ -38,6 +39,7 @@ class YOLOGPU: public lightdb::functor::unaryfunctor {
         void allocate(unsigned int height, unsigned int width);
         void deallocate();
         void saveToNpy();
+        void preprocessFrame(GPUFrameReference&);
 
         std::shared_ptr<Detector> detector_;
         std::vector<std::string> objectNames_;

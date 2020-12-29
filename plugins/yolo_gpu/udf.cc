@@ -32,62 +32,66 @@ shared_reference<LightField> YOLOGPU::GPU::operator()(LightField &input) {
     physical::GPUDecodedFrameData output(data.configuration(), data.geometry());
 
     for (auto &frame : data.frames()) {
-        // Allocate arrays for conversions.
-        allocate(frame->width(), frame->height());
-
-        auto y_data = reinterpret_cast<unsigned char *>(frame->cuda()->handle());
-        auto uv_data = y_data + frame->cuda()->pitch() * frame->codedHeight();
-
-        // Convert to planar.
-        NppStatus status;
-        Npp8u* pSrc[2] = {y_data, uv_data};
-        int nSrcStep = frame->cuda()->pitch();
-        Npp8u* yuvSrc[3] = {reinterpret_cast<unsigned char *>(yuvHandle_),
-                          reinterpret_cast<unsigned char *>(yuvHandle_ + height_ * yuvPitch_),
-                          reinterpret_cast<unsigned char *>(yuvHandle_ + 2 * height_ * yuvPitch_)};
-        int yuvStep[3] = {yuvPitch_, yuvPitch_, yuvPitch_};
-        NppiSize oSizeROI{width_, height_};
-        status = nppiNV12ToYUV420_8u_P2P3R(pSrc, nSrcStep, yuvSrc, yuvStep, oSizeROI);
-        assert(status == NPP_SUCCESS);
-
-        // YUV420 -> BGR
-        Npp8u* bgrSrc = reinterpret_cast<unsigned char *>(bgrHandle_);
-        status = nppiYUV420ToBGR_8u_P3C3R(yuvSrc, yuvStep, bgrSrc, bgrPitch_, oSizeROI);
-        assert(status == NPP_SUCCESS);
-
-        // Resize.
-        NppiRect oSrcRectROI{0, 0, width_, height_};
-        NppiSize resizedSize{inputWidth_, inputHeight_};
-        NppiRect resizedRectROI{0, 0, inputWidth_, inputHeight_};
-        Npp8u* resizedSrc = reinterpret_cast<unsigned char *>(resizedHandle_);
-        status = nppiResize_8u_C3R(bgrSrc, bgrPitch_, oSizeROI, oSrcRectROI,
-                resizedSrc, resizedPitch_, resizedSize, resizedRectROI,
-                NPPI_INTER_LINEAR);
-        assert(status == NPP_SUCCESS);
-
-        // To float.
-        Npp32f* packedFloatSrc = reinterpret_cast<float *>(packedFloatHandle_);
-        status = nppiConvert_8u32f_C3R(
-                reinterpret_cast<unsigned char *>(resizedHandle_), resizedPitch_,
-                packedFloatSrc, packedFloatPitch_, resizedSize);
-        assert(status == NPP_SUCCESS);
-
-        // To scaled float (x / 255).
-        status = nppiDivC_32f_C1IR(255.f, packedFloatSrc, packedFloatPitch_, {3 * inputWidth_, inputHeight_});
-        assert(status == NPP_SUCCESS);
-
-        // To planar.
-        auto resizedFrameSize = inputWidth_ * inputHeight_ * sizeof(Npp32f);
-        Npp32f* planarDst[3] = {
-                reinterpret_cast<float *>(resizedPlanarHandle_),
-                reinterpret_cast<float *>(resizedPlanarHandle_ + resizedFrameSize),
-                reinterpret_cast<float *>(resizedPlanarHandle_ + 2 * resizedFrameSize)
-        };
-        status = nppiCopy_32f_C3P3R(packedFloatSrc, packedFloatPitch_, planarDst, sizeof(Npp32f) * inputWidth_, resizedSize);
-        assert(status == NPP_SUCCESS);
+        preprocessFrame(frame);
     }
 
     return output;
+}
+
+void YOLOGPU::GPU::preprocessFrame(GPUFrameReference &frame) {
+    // Allocate arrays for conversions.
+    allocate(frame->width(), frame->height());
+
+    auto y_data = reinterpret_cast<unsigned char *>(frame->cuda()->handle());
+    auto uv_data = y_data + frame->cuda()->pitch() * frame->codedHeight();
+
+    // Convert to planar.
+    NppStatus status;
+    Npp8u* pSrc[2] = {y_data, uv_data};
+    int nSrcStep = frame->cuda()->pitch();
+    Npp8u* yuvSrc[3] = {reinterpret_cast<unsigned char *>(yuvHandle_),
+                        reinterpret_cast<unsigned char *>(yuvHandle_ + height_ * yuvPitch_),
+                        reinterpret_cast<unsigned char *>(yuvHandle_ + 2 * height_ * yuvPitch_)};
+    int yuvStep[3] = {yuvPitch_, yuvPitch_, yuvPitch_};
+    NppiSize oSizeROI{width_, height_};
+    status = nppiNV12ToYUV420_8u_P2P3R(pSrc, nSrcStep, yuvSrc, yuvStep, oSizeROI);
+    assert(status == NPP_SUCCESS);
+
+    // YUV420 -> BGR
+    Npp8u* bgrSrc = reinterpret_cast<unsigned char *>(bgrHandle_);
+    status = nppiYUV420ToBGR_8u_P3C3R(yuvSrc, yuvStep, bgrSrc, bgrPitch_, oSizeROI);
+    assert(status == NPP_SUCCESS);
+
+    // Resize.
+    NppiRect oSrcRectROI{0, 0, width_, height_};
+    NppiSize resizedSize{inputWidth_, inputHeight_};
+    NppiRect resizedRectROI{0, 0, inputWidth_, inputHeight_};
+    Npp8u* resizedSrc = reinterpret_cast<unsigned char *>(resizedHandle_);
+    status = nppiResize_8u_C3R(bgrSrc, bgrPitch_, oSizeROI, oSrcRectROI,
+                               resizedSrc, resizedPitch_, resizedSize, resizedRectROI,
+                               NPPI_INTER_LINEAR);
+    assert(status == NPP_SUCCESS);
+
+    // To float.
+    Npp32f* packedFloatSrc = reinterpret_cast<float *>(packedFloatHandle_);
+    status = nppiConvert_8u32f_C3R(
+            reinterpret_cast<unsigned char *>(resizedHandle_), resizedPitch_,
+            packedFloatSrc, packedFloatPitch_, resizedSize);
+    assert(status == NPP_SUCCESS);
+
+    // To scaled float (x / 255).
+    status = nppiDivC_32f_C1IR(255.f, packedFloatSrc, packedFloatPitch_, {3 * inputWidth_, inputHeight_});
+    assert(status == NPP_SUCCESS);
+
+    // To planar.
+    auto resizedFrameSize = inputWidth_ * inputHeight_ * sizeof(Npp32f);
+    Npp32f* planarDst[3] = {
+            reinterpret_cast<float *>(resizedPlanarHandle_),
+            reinterpret_cast<float *>(resizedPlanarHandle_ + resizedFrameSize),
+            reinterpret_cast<float *>(resizedPlanarHandle_ + 2 * resizedFrameSize)
+    };
+    status = nppiCopy_32f_C3P3R(packedFloatSrc, packedFloatPitch_, planarDst, sizeof(Npp32f) * inputWidth_, resizedSize);
+    assert(status == NPP_SUCCESS);
 }
 
 void YOLOGPU::GPU::allocate(unsigned int width, unsigned int height) {

@@ -111,7 +111,7 @@ private:
 class ScanMultiTileOperator : public PhysicalOperator {
 public:
     explicit ScanMultiTileOperator(const LightFieldReference &logical,
-            std::shared_ptr<const metadata::MetadataManager> metadataManager,
+            std::shared_ptr<metadata::MetadataManager> metadataManager,
             std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider,
             bool shouldReadEntireGOPs = false)
         : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanMultiTileOperator-init", tileLocationProvider, shouldReadEntireGOPs)),
@@ -123,7 +123,7 @@ public:
         assert(tileLocationProvider_);
     }
 
-    const std::shared_ptr<const metadata::MetadataManager> metadataManager() const { return metadataManager_; }
+    const std::shared_ptr<metadata::MetadataManager> metadataManager() const { return metadataManager_; }
 
 private:
     class Runtime: public runtime::Runtime<ScanMultiTileOperator> {
@@ -155,8 +155,8 @@ private:
             : runtime::Runtime<ScanMultiTileOperator>(physical),
                     tileNumberForCurrentLayout_(0),
                     tileLocationProvider_(tileLocationProvider),
-                    framesIterator_(physical.metadataManager()->orderedFramesForMetadata().begin()),
-                    endOfFramesIterator_(physical.metadataManager()->orderedFramesForMetadata().end()),
+                    framesIterator_(physical.metadataManager()->orderedFramesForMetadataOrWithoutMetadata().begin()),
+                    endOfFramesIterator_(physical.metadataManager()->orderedFramesForMetadataOrWithoutMetadata().end()),
                     shouldReadEntireGOPs_(shouldReadEntireGOPs),
                     totalVideoWidth_(0),
                     totalVideoHeight_(0),
@@ -168,8 +168,8 @@ private:
                     didSignalEOS_(false),
                     currentTileNumber_(0)
         {
-            endOfFramesIterator_ = std::upper_bound(physical.metadataManager()->orderedFramesForMetadata().begin(),
-                    physical.metadataManager()->orderedFramesForMetadata().end(),
+            endOfFramesIterator_ = std::upper_bound(physical.metadataManager()->orderedFramesForMetadataOrWithoutMetadata().begin(),
+                    physical.metadataManager()->orderedFramesForMetadataOrWithoutMetadata().end(),
                     tileLocationProvider_->lastFrameWithLayout());
             std::cout << "***numberOfFrames," << tileLocationProvider_->lastFrameWithLayout() + 1 << std::endl;
 //            if (endOfFramesIterator_ != physical.metadataManager()->orderedFramesForMetadata().end())
@@ -441,7 +441,7 @@ private:
     };
 
     unsigned int tileNumber_;
-    const std::shared_ptr<const metadata::MetadataManager> metadataManager_;
+    const std::shared_ptr<metadata::MetadataManager> metadataManager_;
     const std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;
 
 };

@@ -68,6 +68,7 @@ namespace lightdb::metadata {
     public:
         explicit MetadataManager(const std::string &pathToVideo, const MetadataSpecification &metadataSpecification)
                 : videoIdentifier_(pathToVideo),
+                hasDetectedTable_(false),
                 metadataSpecification_(metadataSpecification),
                 didSetFramesForMetadata_(false),
                 framesForMetadata_(0),
@@ -75,6 +76,8 @@ namespace lightdb::metadata {
                 orderedFramesForMetadata_(0),
                 didSetIdealKeyframesForMetadata_(false),
                 idealKeyframesForMetadata_(0),
+                didSetFramesWithoutMetadata_(false),
+                didSetOrderedFramesForMetadataOrWithoutMetadata_(false),
                 didSetFramesForMetadataOrderedByNumObjects_(false),
                 framesForMetadataOrderedByNumObjects_(0)
         {
@@ -88,23 +91,36 @@ namespace lightdb::metadata {
         const std::string &metadataIdentifier() const { return videoIdentifier_; }
         const MetadataSpecification &metadataSpecification() const { return metadataSpecification_; }
 
-        const std::unordered_set<int> &framesForMetadata() const;
-        const std::vector<int> &orderedFramesForMetadata() const;
-        const std::unordered_set<int> &idealKeyframesForMetadata() const;
+        const std::unordered_set<int> &framesForMetadata();
+        const std::vector<int> &orderedFramesForMetadata();
+        const std::unordered_set<int> &idealKeyframesForMetadata();
         const std::vector<int> &framesForMetadataOrderedByNumObjects() const;
+
+        const std::unordered_set<int> &framesWithoutMetadata();
+        int getFramesWithoutMetadataCallback(int argc, char **argv, char **colName);
+        const std::vector<int> &orderedFramesForMetadataOrWithoutMetadata();
 
         const std::vector<Rectangle> &rectanglesForFrame(int frame) const;
         std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
         std::unique_ptr<std::list<Rectangle>> rectanglesForAllObjectsForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
 
+        void addMetadata(const std::string &videoId, const std::string &label, int frame, int x, int y, int w, int h) override {
+            assert(videoId == videoIdentifier_);
+            addMetadata(label, frame, x, y, w, h);
+        }
         void addMetadata(const std::string &label, int frame, int x1, int y1, int width, int height);
 
         static std::unordered_set<int> idealKeyframesForFrames(const std::vector<int> &orderedFrames);
 
-        std::unordered_set<int> idealKeyframesForMetadataAndTiles(const tiles::TileLayout &tileLayout) const;
+        std::unordered_set<int> idealKeyframesForMetadataAndTiles(const tiles::TileLayout &tileLayout);
         std::vector<int> framesForTileAndMetadata(unsigned int tile, const tiles::TileLayout &tileLayout) const;
 
         const std::string &dbPath() const { return  dbPath_; }
+
+        // I'm not sure whether this will work if no first/last frame are specified.
+        bool anyFramesLackDetections() const;
+
+        int hasDetectedTableCallback(int argc, char **argv, char **colName);
 
     private:
         void selectFromMetadataAndApplyFunction(const char* query, std::function<void(sqlite3_stmt*)> resultFn, std::function<void(sqlite3*)> afterOpeningFn = nullptr) const;
@@ -117,6 +133,7 @@ namespace lightdb::metadata {
 
         std::string dbPath_;
         const std::string videoIdentifier_;
+        bool hasDetectedTable_;
         const MetadataSpecification metadataSpecification_;
         mutable bool didSetFramesForMetadata_;
         mutable std::unordered_set<int> framesForMetadata_;
@@ -124,6 +141,12 @@ namespace lightdb::metadata {
         mutable std::vector<int> orderedFramesForMetadata_;
         mutable bool didSetIdealKeyframesForMetadata_;
         mutable std::unordered_set<int> idealKeyframesForMetadata_;
+
+        mutable bool didSetFramesWithoutMetadata_;
+        mutable std::unordered_set<int> framesWithoutMetadata_;
+        mutable bool didSetOrderedFramesForMetadataOrWithoutMetadata_;
+        mutable std::vector<int> orderedFramesForMetadataOrWithoutMetadata_;
+
         mutable std::unordered_map<int, std::vector<lightdb::Rectangle>> frameToRectangles_;
         sqlite3 *db_;
         mutable std::mutex mutex_;
@@ -132,6 +155,7 @@ namespace lightdb::metadata {
         mutable std::vector<int> framesForMetadataOrderedByNumObjects_;
 
         sqlite3_stmt *insertStmt_;
+        sqlite3_stmt *detectedStmt_;
     };
 } // namespace lightdb::metadata
 
@@ -165,16 +189,21 @@ namespace lightdb::logical {
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightFieldWithoutSources>(visitor); }
 
-        std::shared_ptr<const metadata::MetadataManager> metadataManager() const { return metadataManager_; }
+        std::shared_ptr<metadata::MetadataManager> metadataManager() const { return metadataManager_; }
         bool shouldCrack() const { return shouldCrack_; }
         bool shouldReadEntireGOPs() const { return shouldReadEntireGOPs_; }
+        MetadataSubsetType subsetType() const { return subsetType_; }
+
+        void setDetectionFunctor(functor::UnaryFunctorReference ref) { detectionFunctor_ = std::shared_ptr<functor::naryfunctor<1>>(ref); }
+        const std::shared_ptr<functor::naryfunctor<1>> functor() const { return detectionFunctor_; };
 
     private:
         const MetadataSpecification metadataSpecification_;
         const MetadataSubsetType subsetType_;
-        std::shared_ptr<const metadata::MetadataManager> metadataManager_;
+        std::shared_ptr<metadata::MetadataManager> metadataManager_;
         bool shouldCrack_;
         bool shouldReadEntireGOPs_;
+        std::shared_ptr<functor::naryfunctor<1>> detectionFunctor_;
     };
 
     class MetadataSubsetLightField : public LightField {
@@ -224,7 +253,7 @@ namespace lightdb::logical {
         MetadataSpecification metadataSelection_;
         MetadataSubsetType subsetType_;
         std::vector<catalog::Source> sources_;
-        metadata::MetadataManager metadataManager_;
+        mutable metadata::MetadataManager metadataManager_;
     };
 
     class FrameSubsetLightField : public LightField {

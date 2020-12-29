@@ -163,7 +163,29 @@ namespace lightdb::metadata {
             std::cout << "Error\n";
             sqlite3_free(error);
         }
+
+        // Create table to keep track of which frames have been detected on.
+        const char *createDetectedTable = "CREATE TABLE DETECTED(" \
+                "FRAME INT NOT NULL PRIMARY KEY, "
+                "DETECTED INT NOT NULL);";
+        result = sqlite3_exec(db, createDetectedTable, NULL, NULL, &error);
+        if (result != SQLITE_OK) {
+            std::cout << "Error creating detected table\n";
+            sqlite3_free(error);
+        }
+
+
         ASSERT_SQLITE_OK(sqlite3_close(db));
+    }
+
+    int MetadataManager::hasDetectedTableCallback(int argc, char **argv, char **colName) {
+        hasDetectedTable_ = true;
+        return 0;
+    }
+
+    static int c_hasDetectedTableCallback(void *param, int argc, char **argv, char **colName) {
+        MetadataManager *manager = reinterpret_cast<MetadataManager*>(param);
+        return manager->hasDetectedTableCallback(argc, argv, colName);
     }
 
     void MetadataManager::openDatabase() {
@@ -182,12 +204,25 @@ namespace lightdb::metadata {
         std::string query = "INSERT INTO labels (label, frame, x, y, width, height) VALUES (?, ?, ?, ?, ?, ?)";
         auto result = sqlite3_prepare_v2(db_, query.c_str(), query.length(), &insertStmt_, nullptr);
         ASSERT_SQLITE_OK(result);
+
+        // Check whether the detected table exists. If it doesn't, for backwards compatibility we'll assume detection ran on all frames.
+        query = "SELECT name FROM sqlite_master WHERE type='table' AND name='DETECTED'";
+        result = sqlite3_exec(db_, query.c_str(), &c_hasDetectedTableCallback, this, nullptr);
+        ASSERT_SQLITE_OK(result);
+
+        // Prepare checking for detected statement.
+        if (hasDetectedTable_) {
+            query = "SELECT COUNT(*) FROM detected WHERE frame>=? AND frame<?;";
+            result = sqlite3_prepare_v2(db_, query.c_str(), query.length(), &detectedStmt_, nullptr);
+            ASSERT_SQLITE_OK(result);
+        }
     }
 
     void MetadataManager::closeDatabase() {
         std::scoped_lock lock(mutex_);
 
         ASSERT_SQLITE_OK(sqlite3_finalize(insertStmt_));
+        ASSERT_SQLITE_OK(sqlite3_finalize(detectedStmt_));
 
         int closeResult = sqlite3_close(db_);
         assert(closeResult == SQLITE_OK);
@@ -255,7 +290,7 @@ void MetadataManager::selectFromMetadataAndApplyFunctionWithFrameLimits(const ch
     free(selectFramesStatement);
 }
 
-const std::unordered_set<int> &MetadataManager::framesForMetadata() const {
+const std::unordered_set<int> &MetadataManager::framesForMetadata() {
         std::scoped_lock lock(mutex_);
     if (didSetFramesForMetadata_)
         return framesForMetadata_;
@@ -295,9 +330,10 @@ void MetadataManager::addMetadata(const std::string &label, int frame, int x1, i
     ASSERT_SQLITE_OK(sqlite3_bind_int(insertStmt_, 6, height));
 
     ASSERT_SQLITE_DONE(sqlite3_step(insertStmt_));
+    sqlite3_reset(insertStmt_);
 }
 
-const std::vector<int> &MetadataManager::orderedFramesForMetadata() const {
+const std::vector<int> &MetadataManager::orderedFramesForMetadata() {
     {
         std::scoped_lock lock(mutex_);
         if (didSetOrderedFramesForMetadata_)
@@ -318,7 +354,66 @@ const std::vector<int> &MetadataManager::orderedFramesForMetadata() const {
     return orderedFramesForMetadata_;
 }
 
-const std::unordered_set<int> &MetadataManager::idealKeyframesForMetadata() const {
+int MetadataManager::getFramesWithoutMetadataCallback(int numCols, char **values, char **columns) {
+    assert(numCols == 1);
+    int frame = std::atoi(values[0]);
+    framesWithoutMetadata_.erase(frame);
+    return 0;
+}
+
+static int c_getFramesWithoutMetadataCallback(void *param, int argc, char **argv, char **columns) {
+    MetadataManager *manager = reinterpret_cast<MetadataManager*>(param);
+    return manager->getFramesWithoutMetadataCallback(argc, argv, columns);
+}
+
+const std::unordered_set<int> &MetadataManager::framesWithoutMetadata() {
+    std::scoped_lock lock(mutex_);
+    if (didSetFramesWithoutMetadata_)
+        return framesWithoutMetadata_;
+
+    if (!hasDetectedTable_) {
+        framesWithoutMetadata_.clear();
+        didSetFramesWithoutMetadata_ = true;
+        return framesWithoutMetadata_;
+    }
+
+    // Create a set with all possible frames.
+    int firstFrame = metadataSpecification().firstFrame();
+    int lastFrame = metadataSpecification().lastFrame();
+    framesWithoutMetadata_.clear();
+    for (auto i = firstFrame; i < lastFrame; ++i)
+        framesWithoutMetadata_.insert(i);
+
+    // Select all frames with detections from the db.
+    std::string query = "SELECT frame FROM detected WHERE detected=1 AND frame>=" + std::to_string(firstFrame) + " AND frame<" + std::to_string(lastFrame);
+    char *error = nullptr;
+    auto result = sqlite3_exec(db_, query.c_str(), &c_getFramesWithoutMetadataCallback, this, &error);
+    assert(result == SQLITE_OK);
+
+    didSetFramesWithoutMetadata_ = true;
+    return framesWithoutMetadata_;
+}
+
+const std::vector<int> &MetadataManager::orderedFramesForMetadataOrWithoutMetadata() {
+    {
+        std::scoped_lock lock(mutex_);
+        if (didSetOrderedFramesForMetadataOrWithoutMetadata_)
+            return orderedFramesForMetadataOrWithoutMetadata_;
+    }
+
+    std::unordered_set<int> frames = framesForMetadata();
+    const std::unordered_set<int> &framesWithout = framesWithoutMetadata();
+    frames.insert(framesWithout.begin(), framesWithout.end());
+    orderedFramesForMetadataOrWithoutMetadata_.clear();
+    orderedFramesForMetadataOrWithoutMetadata_.reserve(frames.size());
+    orderedFramesForMetadataOrWithoutMetadata_.insert(orderedFramesForMetadataOrWithoutMetadata_.begin(), frames.begin(), frames.end());
+    std::sort(orderedFramesForMetadataOrWithoutMetadata_.begin(), orderedFramesForMetadataOrWithoutMetadata_.end());
+
+    didSetOrderedFramesForMetadataOrWithoutMetadata_ = true;
+    return orderedFramesForMetadataOrWithoutMetadata_;
+}
+
+const std::unordered_set<int> &MetadataManager::idealKeyframesForMetadata() {
     {
         std::scoped_lock lock(mutex_);
         if (didSetIdealKeyframesForMetadata_)
@@ -427,7 +522,7 @@ static void doesRectangleIntersectTileRectangle(sqlite3_context *context, int ar
         sqlite3_result_int(context, 0);
 }
 
-std::unordered_set<int> MetadataManager::idealKeyframesForMetadataAndTiles(const tiles::TileLayout &tileLayout) const {
+std::unordered_set<int> MetadataManager::idealKeyframesForMetadataAndTiles(const tiles::TileLayout &tileLayout) {
     auto numberOfTiles = tileLayout.numberOfTiles();
     std::vector<std::vector<int>> framesForEachTile(numberOfTiles);
     for (auto i = 0u; i < numberOfTiles; ++i)
@@ -510,7 +605,18 @@ std::vector<int> MetadataManager::framesForTileAndMetadata(unsigned int tile, co
     return frames;
 }
 
+bool MetadataManager::anyFramesLackDetections() const {
+    int firstFrameInclusive = metadataSpecification().firstFrame();
+    int lastFrameExclusive = metadataSpecification().lastFrame();
+    ASSERT_SQLITE_OK(sqlite3_bind_int(detectedStmt_, 1, firstFrameInclusive));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(detectedStmt_, 2, lastFrameExclusive));
 
+    sqlite3_step(detectedStmt_);
+    int count = sqlite3_column_int(detectedStmt_, 1);
+    sqlite3_reset(detectedStmt_);
+
+    return count != lastFrameExclusive - firstFrameInclusive;
+}
 
 
 

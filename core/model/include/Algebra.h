@@ -60,6 +60,7 @@ namespace lightdb {
             LightFieldReference Select(const FrameMetadataSpecification&);
             LightFieldReference Select(const PixelMetadataSpecification&, bool shouldCrack=false, bool shouldReadEntireGOPs=false);
             LightFieldReference Select(const PixelsInFrameMetadataSpecification&);
+            LightFieldReference Select(const PixelsInFrameMetadataSpecification&, functor::UnaryFunctorReference);
             LightFieldReference Select(const MetadataSpecification&, MetadataSubsetType subsetType = MetadataSubsetTypeFrame, bool shouldCrack = false, bool shouldReadEntireGOPs=false);
             LightFieldReference Select(std::shared_ptr<const FrameSpecification> frameSpecification);
 

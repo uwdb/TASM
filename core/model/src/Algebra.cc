@@ -118,6 +118,12 @@ namespace lightdb::logical {
         return Select(pixelsInFrameMetadataSpecification, MetadataSubsetTypePixelsInFrame);
     }
 
+    LightFieldReference Algebra::Select(const PixelsInFrameMetadataSpecification &pixelsInFrameMetadataSpecification, functor::UnaryFunctorReference functor) {
+        auto lightField = Select(pixelsInFrameMetadataSpecification, MetadataSubsetTypePixelsInFrame);
+        lightField.downcast<MetadataSubsetLightFieldWithoutSources>().setDetectionFunctor(functor);
+        return lightField;
+    }
+
     LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType, bool shouldCrack, bool shouldReadEntireGOPs) {
         if (this_.is<ExternalLightField>())
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, std::vector<catalog::Source>({ this_.downcast<ExternalLightField>().source() }), std::optional(this_.downcast<ExternalLightField>().source().filename().parent_path()));

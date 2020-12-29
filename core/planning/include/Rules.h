@@ -28,6 +28,7 @@
 #include "TileOperators.h"
 #include "WorkloadCostEstimator.h"
 #include "ContainsCar.h"
+#include "extension.h"
 
 namespace lightdb::optimization {
     class ChooseMaterializedScans : public OptimizerRule {
@@ -676,6 +677,39 @@ namespace lightdb::optimization {
             return false;
         }
 
+        bool detectAndMask(const logical::MetadataSubsetLightFieldWithoutSources &node, std::vector<PhysicalOperatorReference> &physical_parents) {
+            auto logical = plan().lookup(node);
+            auto gpu = plan().allocator().gpu();
+
+            assert(physical_parents.size() == 1);
+            assert(physical_parents[0].is<physical::ScanMultiTilePlaceholderOperator>());
+
+            auto &multiTiledLightField = physical_parents[0].downcast<physical::ScanMultiTilePlaceholderOperator>().multiTiledLightField();
+            auto metadataManager = node.metadataManager();
+
+            auto tileLayoutsManager = multiTiledLightField.tileLayoutsManager();
+            auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
+
+            auto scan = plan().emplace<physical::ScanMultiTileOperator>(
+                    physical_parents[0]->logical(),
+                    metadataManager,
+                    tileLocationProvider,
+                    node.shouldReadEntireGOPs());
+            bool isDecodingDifferentSizes = !multiTiledLightField.usesOnlyOneTile() && !tileLayoutsManager->hasASingleTile();
+            auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, isDecodingDifferentSizes, tileLayoutsManager->largestWidth(), tileLayoutsManager->largestHeight());
+
+            // If any frames still have to be detected, add a YOLO map.
+            if (metadataManager->anyFramesLackDetections()) {
+                assert(node.functor());
+                auto map = plan().emplace<physical::GPUMap>(logical, decode, *node.functor());
+            }
+
+
+            plan().remove_operator(physical_parents[0]);
+
+            return true;
+        }
+
         bool visit(const logical::MetadataSubsetLightFieldWithoutSources &node) override {
             if (!plan().has_physical_assignment(node)) {
                 auto physical_parents = functional::flatmap<std::vector<PhysicalOperatorReference>>(
@@ -684,6 +718,9 @@ namespace lightdb::optimization {
 
                 if(physical_parents.empty())
                     return false;
+
+                if (node.subsetType() == MetadataSubsetType::MetadataSubsetTypePixelsInFrame)
+                    return detectAndMask(node, physical_parents);
 
                 auto logical = plan().lookup(node);
                 auto gpu = plan().allocator().gpu();

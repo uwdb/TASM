@@ -1,0 +1,185 @@
+From 9351b45ad5543512cc68c0fd3a64db9ec0305dbb Mon Sep 17 00:00:00 2001
+From: Maureen Daum <mdaum@cs.washington.edu>
+Date: Tue, 29 Dec 2020 05:55:08 -0800
+Subject: [PATCH] Modifications to run detection on a GPU frame
+
+---
+ Makefile                  |  6 ++---
+ include/yolo_v2_class.hpp |  4 ++++
+ src/network.h             |  1 +
+ src/network_kernels.cu    | 21 +++++++++++++++++
+ src/yolo_v2_class.cpp     | 48 +++++++++++++++++++++++++++++++++------
+ 5 files changed, 70 insertions(+), 10 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 5fb7054..8adad78 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,10 +1,10 @@
+-GPU=0
++GPU=1
+ CUDNN=0
+ CUDNN_HALF=0
+ OPENCV=0
+ AVX=0
+ OPENMP=0
+-LIBSO=0
++LIBSO=1
+ ZED_CAMERA=0
+ ZED_CAMERA_v2_8=0
+ 
+@@ -74,7 +74,7 @@ CC=gcc
+ endif
+ 
+ CPP=g++ -std=c++11
+-NVCC=nvcc
++NVCC=/usr/local/cuda/bin/nvcc
+ OPTS=-Ofast
+ LDFLAGS= -lm -pthread
+ COMMON= -Iinclude/ -I3rdparty/stb/include
+diff --git a/include/yolo_v2_class.hpp b/include/yolo_v2_class.hpp
+index 360c332..024ae55 100644
+--- a/include/yolo_v2_class.hpp
++++ b/include/yolo_v2_class.hpp
+@@ -71,6 +71,9 @@ class Detector {
+     std::shared_ptr<void> detector_gpu_ptr;
+     std::deque<std::vector<bbox_t>> prev_bbox_vec_deque;
+     std::string _cfg_filename, _weight_filename;
++
++    // If data is not null, it will be freed.
++    std::vector<bbox_t> processPredictions(float*, float thresh, bool use_mean, int w, int h, float *data, int old_gpu_index);
+ public:
+     const int cur_gpu_id;
+     float nms = .4;
+@@ -81,6 +84,7 @@ public:
+ 
+     LIB_API std::vector<bbox_t> detect(std::string image_filename, float thresh = 0.2, bool use_mean = false);
+     LIB_API std::vector<bbox_t> detect(image_t img, float thresh = 0.2, bool use_mean = false);
++    LIB_API std::vector<bbox_t> detect_gpu(float *gpu_img, int w, int h, float thresh = 0.2, bool use_mean = false);
+     static LIB_API image_t load_image(std::string image_filename);
+     static LIB_API void free_image(image_t m);
+     LIB_API int get_net_width() const;
+diff --git a/src/network.h b/src/network.h
+index 7661c8e..b02c618 100644
+--- a/src/network.h
++++ b/src/network.h
+@@ -96,6 +96,7 @@ float train_networks(network *nets, int n, data d, int interval);
+ void sync_nets(network *nets, int n, int interval);
+ float train_network_datum_gpu(network net, float *x, float *y);
+ float *network_predict_gpu(network net, float *input);
++float *network_predict_gpu_input(network net, float *input);
+ float * get_network_output_gpu_layer(network net, int i);
+ float * get_network_delta_gpu_layer(network net, int i);
+ float *get_network_output_gpu(network net);
+diff --git a/src/network_kernels.cu b/src/network_kernels.cu
+index e6e24d2..965d313 100644
+--- a/src/network_kernels.cu
++++ b/src/network_kernels.cu
+@@ -695,3 +695,24 @@ float *network_predict_gpu(network net, float *input)
+     //cuda_free(state.input);   // will be freed in the free_network()
+     return out;
+ }
++
++float *network_predict_gpu_input(network net, float *input) {
++    if (net.gpu_index != cuda_get_device())
++        cuda_set_device(net.gpu_index);
++    int size = get_network_input_size(net) * net.batch;
++    network_state state;
++    state.index = 0;
++    state.net = net;
++    state.input = net.input_state_gpu;
++    //memcpy(net.input_pinned_cpu, input, size * sizeof(float));
++    //cuda_push_array(state.input, net.input_pinned_cpu, size);
++    // I'm not sure what to do with net.input_pinned_cpu.
++    net.input_pinned_cpu = 0;
++    state.input = input;
++    state.truth = 0;
++    state.train = 0;
++    state.delta = 0;
++    forward_network_gpu(net, state);
++    float *out = get_network_output_gpu(net);
++    return out;
++}
+diff --git a/src/yolo_v2_class.cpp b/src/yolo_v2_class.cpp
+index 93812e7..a6b267c 100644
+--- a/src/yolo_v2_class.cpp
++++ b/src/yolo_v2_class.cpp
+@@ -300,6 +300,40 @@ LIB_API std::vector<bbox_t> Detector::detect(image_t img, float thresh, bool use
+     float *X = sized.data;
+ 
+     float *prediction = network_predict(net, X);
++    return processPredictions(prediction, thresh, use_mean, im.w, im.h, sized.data, 0);
++}
++
++LIB_API std::vector<bbox_t> Detector::detect_gpu(float *gpu_img, int w, int h, float thresh, bool use_mean)
++{
++#ifdef GPU
++    // Copied from detect(image_t image).
++    detector_gpu_t &detector_gpu = *static_cast<detector_gpu_t *>(detector_gpu_ptr.get());
++    network &net = detector_gpu.net;
++
++    int old_gpu_index;
++    cudaGetDevice(&old_gpu_index);
++    if(cur_gpu_id != old_gpu_index)
++        cudaSetDevice(net.gpu_index);
++
++    net.wait_stream = wait_stream;    // 1 - wait CUDA-stream, 0 - not to wait
++    //std::cout << "net.gpu_index = " << net.gpu_index << std::endl;
++
++    layer l = net.layers[net.n - 1];
++
++    float *prediction = network_predict_gpu_input(net, gpu_img);
++    return processPredictions(prediction, thresh, use_mean, w, h, nullptr, old_gpu_index);
++#else
++    // This should only be called when GPU=1.
++    assert(false);
++#endif
++}
++
++std::vector<bbox_t> Detector::processPredictions(float *prediction, float thresh, bool use_mean, int w, int h, float *data, int old_gpu_index)
++{
++    // Duplicated from detect().
++    detector_gpu_t &detector_gpu = *static_cast<detector_gpu_t *>(detector_gpu_ptr.get());
++    network &net = detector_gpu.net;
++    layer l = net.layers[net.n - 1];
+ 
+     if (use_mean) {
+         memcpy(detector_gpu.predictions[detector_gpu.demo_index], prediction, l.outputs * sizeof(float));
+@@ -313,7 +347,7 @@ LIB_API std::vector<bbox_t> Detector::detect(image_t img, float thresh, bool use
+     int nboxes = 0;
+     int letterbox = 0;
+     float hier_thresh = 0.5;
+-    detection *dets = get_network_boxes(&net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes, letterbox);
++    detection *dets = get_network_boxes(&net, w, h, thresh, hier_thresh, 0, 1, &nboxes, letterbox);
+     if (nms) do_nms_sort(dets, nboxes, l.classes, nms);
+ 
+     std::vector<bbox_t> bbox_vec;
+@@ -326,10 +360,10 @@ LIB_API std::vector<bbox_t> Detector::detect(image_t img, float thresh, bool use
+         if (prob > thresh)
+         {
+             bbox_t bbox;
+-            bbox.x = std::max((double)0, (b.x - b.w / 2.)*im.w);
+-            bbox.y = std::max((double)0, (b.y - b.h / 2.)*im.h);
+-            bbox.w = b.w*im.w;
+-            bbox.h = b.h*im.h;
++            bbox.x = std::max((double)0, (b.x - b.w / 2.)*w);
++            bbox.y = std::max((double)0, (b.y - b.h / 2.)*h);
++            bbox.w = b.w*w;
++            bbox.h = b.h*h;
+             bbox.obj_id = obj_id;
+             bbox.prob = prob;
+             bbox.track_id = 0;
+@@ -343,8 +377,8 @@ LIB_API std::vector<bbox_t> Detector::detect(image_t img, float thresh, bool use
+     }
+ 
+     free_detections(dets, nboxes);
+-    if(sized.data)
+-        free(sized.data);
++    if(data)
++        free(data);
+ 
+ #ifdef GPU
+     if (cur_gpu_id != old_gpu_index)
+-- 
+2.23.0
+

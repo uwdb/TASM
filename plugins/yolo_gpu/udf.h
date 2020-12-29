@@ -13,12 +13,15 @@ class YOLOGPU: public lightdb::functor::unaryfunctor {
         GPU(const std::string &configuration_path,
             const std::string &weights_path,
             const std::string &names_path,
-            float threshold=0.2f)
+            float threshold=0.2f,
+            float minProb=0.001f)
                 : lightdb::functor::unaryfunction(lightdb::physical::DeviceType::GPU,
                         lightdb::Codec::boxes(),
                         true),
                     detector_(new Detector(configuration_path, weights_path)),
                     objectNames_(objects_names_from_file(names_path)),
+                    threshold_(threshold),
+                    minProb_(minProb),
                     width_(0),
                     height_(0),
                     yuvHandle_(0),
@@ -40,9 +43,12 @@ class YOLOGPU: public lightdb::functor::unaryfunctor {
         void deallocate();
         void saveToNpy();
         void preprocessFrame(GPUFrameReference&);
+        void detectFrame();
 
         std::shared_ptr<Detector> detector_;
         std::vector<std::string> objectNames_;
+        float threshold_;
+        float minProb_;
 
         static const int inputWidth_ = 416;
         static const int inputHeight_ = 416;

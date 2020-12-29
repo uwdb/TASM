@@ -33,6 +33,7 @@ shared_reference<LightField> YOLOGPU::GPU::operator()(LightField &input) {
 
     for (auto &frame : data.frames()) {
         preprocessFrame(frame);
+        detectFrame();
     }
 
     return output;
@@ -92,6 +93,19 @@ void YOLOGPU::GPU::preprocessFrame(GPUFrameReference &frame) {
     };
     status = nppiCopy_32f_C3P3R(packedFloatSrc, packedFloatPitch_, planarDst, sizeof(Npp32f) * inputWidth_, resizedSize);
     assert(status == NPP_SUCCESS);
+}
+
+void YOLOGPU::GPU::detectFrame() {
+    // Detection runs on the resized, planar image.
+    std::vector<bbox_t> predictions = detector_->detect_gpu(reinterpret_cast<float *>(resizedPlanarHandle_), inputWidth_, inputHeight_, threshold_);
+
+    // Get label for object.
+    for (const auto &prediction : predictions) {
+        if (prediction.prob <= minProb_)
+            continue;
+        auto &label = objectNames_[prediction.obj_id];
+        std::cout << "Detected " << label << " with prob " << prediction.prob << " on frame " << prediction.frames_counter << std::endl;
+    }
 }
 
 void YOLOGPU::GPU::allocate(unsigned int width, unsigned int height) {

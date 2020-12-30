@@ -47,7 +47,16 @@ TEST_F(VisualRoadTestFixture, testDetectAndMask) {
             std::make_shared<SingleMetadataElement>("label", "person", 30, 120));
     auto yolo = lightdb::extensibility::Load("yologpu");
 
+    // The first time, detection should run on all frames.
     Coordinator().execute(input.Select(selection, yolo));
+
+    // The second time, detection shouldn't run on any frames.
+    Coordinator().execute(input.Select(selection, yolo));
+
+    // With this partially overlapping selection, 90 frames should be decoded, and YOLO should only run on 60 of them.
+    PixelsInFrameMetadataSpecification partiallyOverlappingSelection("labels",
+                                                 std::make_shared<SingleMetadataElement>("label", "person", 90, 180));
+    Coordinator().execute(input.Select(partiallyOverlappingSelection, yolo));
 }
 
 TEST_F(VisualRoadTestFixture, testDetectOnGPU) {

@@ -20,7 +20,10 @@ public:
             : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUMap-init")),
               GPUOperator(parent),
               transform_(transform)
-    { }
+    {
+        if (logical->tasm())
+            transform_(DeviceType::GPU).handlePostCreation(logical->tasm());
+    }
 
     const functor::unaryfunctor transform() const { return transform_; }
 
@@ -58,7 +61,7 @@ private:
         Timer timer_;
     };
 
-    const functor::unaryfunctor transform_;
+    functor::unaryfunctor transform_;
 };
 
 class CPUMap: public PhysicalOperator {
@@ -68,7 +71,10 @@ public:
            const functor::unaryfunctor &transform)
             : PhysicalOperator(logical, {parent}, physical::DeviceType::CPU, runtime::make<Runtime>(*this, "CPUMap-init")),
               transform_(transform)
-    { }
+    {
+        if (logical->tasm())
+            transform_(DeviceType::CPU).handlePostCreation(logical->tasm());
+    }
 
     const functor::unaryfunctor transform() const { return transform_; }
 
@@ -94,7 +100,7 @@ class Runtime: public runtime::UnaryRuntime<CPUMap, CPUDecodedFrameData> {
         }
     };
 
-    const functor::unaryfunctor transform_;
+    functor::unaryfunctor transform_;
 };
 
 } // lightdb::physical

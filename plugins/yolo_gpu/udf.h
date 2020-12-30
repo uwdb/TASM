@@ -3,6 +3,7 @@
 
 #include "Functor.h"
 #include "Frame.h"
+#include "Tasm.h"
 
 #include <yolo_v2_class.hpp>
 
@@ -22,6 +23,7 @@ class YOLOGPU: public lightdb::functor::unaryfunctor {
                     objectNames_(objects_names_from_file(names_path)),
                     threshold_(threshold),
                     minProb_(minProb),
+                    numFramesDetected_(0),
                     width_(0),
                     height_(0),
                     yuvHandle_(0),
@@ -37,18 +39,25 @@ class YOLOGPU: public lightdb::functor::unaryfunctor {
 
         lightdb::shared_reference<lightdb::LightField> operator()(lightdb::LightField &field) override;
 
+        void handlePostCreation(const std::shared_ptr<void>&) override;
+        void handleAllDataHasBeenProcessed() override;
+
     private:
         static std::vector<std::string> objects_names_from_file(const std::string &filename);
         void allocate(unsigned int height, unsigned int width);
         void deallocate();
         void saveToNpy();
         void preprocessFrame(GPUFrameReference&);
-        void detectFrame();
+        void detectFrame(long frameNumber);
+
 
         std::shared_ptr<Detector> detector_;
         std::vector<std::string> objectNames_;
         float threshold_;
         float minProb_;
+
+        std::shared_ptr<Tasm> tasm_;
+        unsigned int numFramesDetected_;
 
         static const int inputWidth_ = 416;
         static const int inputHeight_ = 416;

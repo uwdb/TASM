@@ -215,6 +215,12 @@ namespace lightdb::metadata {
             query = "SELECT COUNT(*) FROM detected WHERE frame>=? AND frame<?;";
             result = sqlite3_prepare_v2(db_, query.c_str(), query.length(), &detectedStmt_, nullptr);
             ASSERT_SQLITE_OK(result);
+
+            query = "SELECT * FROM detected WHERE frame=? AND detected=1";
+            ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &detectedOnFrameStmt_, nullptr));
+
+            query = "INSERT INTO detected (frame, detected) VALUES (?, 1);";
+            ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &markDetectedStmt_, nullptr));
         }
     }
 
@@ -223,6 +229,8 @@ namespace lightdb::metadata {
 
         ASSERT_SQLITE_OK(sqlite3_finalize(insertStmt_));
         ASSERT_SQLITE_OK(sqlite3_finalize(detectedStmt_));
+        ASSERT_SQLITE_OK(sqlite3_finalize(detectedOnFrameStmt_));
+        ASSERT_SQLITE_OK(sqlite3_finalize(markDetectedStmt_));
 
         int closeResult = sqlite3_close(db_);
         assert(closeResult == SQLITE_OK);
@@ -611,11 +619,28 @@ bool MetadataManager::anyFramesLackDetections() const {
     ASSERT_SQLITE_OK(sqlite3_bind_int(detectedStmt_, 1, firstFrameInclusive));
     ASSERT_SQLITE_OK(sqlite3_bind_int(detectedStmt_, 2, lastFrameExclusive));
 
-    sqlite3_step(detectedStmt_);
-    int count = sqlite3_column_int(detectedStmt_, 1);
+    assert(sqlite3_step(detectedStmt_) == SQLITE_ROW);
+    int count = sqlite3_column_int(detectedStmt_, 0);
+    ASSERT_SQLITE_DONE(sqlite3_step(detectedStmt_));
     sqlite3_reset(detectedStmt_);
 
     return count != lastFrameExclusive - firstFrameInclusive;
+}
+
+bool MetadataManager::detectionHasBeenRunOnFrame(const std::string &videoId, int frame) {
+    assert(!videoId.length() || videoId == videoIdentifier_);
+    ASSERT_SQLITE_OK(sqlite3_bind_int(detectedOnFrameStmt_, 1, frame));
+    auto result = sqlite3_step(detectedOnFrameStmt_);
+    sqlite3_reset(detectedOnFrameStmt_);
+
+    return result != SQLITE_DONE;
+}
+
+void MetadataManager::markDetectionHasBeenRunOnFrame(const std::string &videoId, int frame) {
+    assert(!videoId.length() || videoId == videoIdentifier_);
+    ASSERT_SQLITE_OK(sqlite3_bind_int(markDetectedStmt_, 1, frame));
+    ASSERT_SQLITE_DONE(sqlite3_step(markDetectedStmt_));
+    sqlite3_reset(markDetectedStmt_);
 }
 
 

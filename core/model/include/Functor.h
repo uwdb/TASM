@@ -42,6 +42,8 @@ namespace lightdb {
             // Default do nothing.
             virtual void handleAllDataHasBeenProcessed() { }
 
+            virtual void handlePostCreation(const std::shared_ptr<void>&) { }
+
         private:
             const physical::DeviceType deviceType_;
             const Codec codec_;

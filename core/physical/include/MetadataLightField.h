@@ -13,6 +13,7 @@
 #include "Pool.h"
 #include "Rectangle.h"
 #include "reference.h"
+#include "Tasm.h"
 #include "sqlite3.h"
 #include <unordered_set>
 
@@ -64,7 +65,7 @@ namespace lightdb::physical {
 } // namespace lightdb::physical
 
 namespace lightdb::metadata {
-    class MetadataManager {
+    class MetadataManager : public Tasm {
     public:
         explicit MetadataManager(const std::string &pathToVideo, const MetadataSpecification &metadataSpecification)
                 : videoIdentifier_(pathToVideo),
@@ -104,8 +105,10 @@ namespace lightdb::metadata {
         std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
         std::unique_ptr<std::list<Rectangle>> rectanglesForAllObjectsForFrames(int firstFrameInclusive, int lastFrameExclusive) const;
 
+        bool detectionHasBeenRunOnFrame(const std::string &videoId, int frame) override;
+        void markDetectionHasBeenRunOnFrame(const std::string &videoId, int frame) override;
         void addMetadata(const std::string &videoId, const std::string &label, int frame, int x, int y, int w, int h) override {
-            assert(videoId == videoIdentifier_);
+            assert(!videoId.length() || videoId == videoIdentifier_);
             addMetadata(label, frame, x, y, w, h);
         }
         void addMetadata(const std::string &label, int frame, int x1, int y1, int width, int height);
@@ -156,6 +159,8 @@ namespace lightdb::metadata {
 
         sqlite3_stmt *insertStmt_;
         sqlite3_stmt *detectedStmt_;
+        sqlite3_stmt *detectedOnFrameStmt_;
+        sqlite3_stmt *markDetectedStmt_;
     };
 } // namespace lightdb::metadata
 
@@ -188,6 +193,7 @@ namespace lightdb::logical {
         }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MetadataSubsetLightFieldWithoutSources>(visitor); }
+        std::shared_ptr<Tasm> tasm() override { return metadataManager(); }
 
         std::shared_ptr<metadata::MetadataManager> metadataManager() const { return metadataManager_; }
         bool shouldCrack() const { return shouldCrack_; }

@@ -22,9 +22,20 @@ std::vector<std::string> YOLOGPU::GPU::objects_names_from_file(const std::string
     std::vector<std::string> file_lines;
     if (!file.is_open())
         return file_lines;
-    for (std::string line; getline(file, line); )
-        file_lines.push_back(line);
+    for (std::string line; getline(file, line); ) {
+        // Remove newline character that getline retrieves.
+        file_lines.push_back(line.substr(0, line.length() - 1));
+    }
     return file_lines;
+}
+
+void YOLOGPU::GPU::handlePostCreation(const std::shared_ptr<void> &arg) {
+    tasm_ = std::static_pointer_cast<Tasm>(arg);
+    numFramesDetected_ = 0;
+}
+
+void YOLOGPU::GPU::handleAllDataHasBeenProcessed() {
+    std::cout << "Ran YOLO on " << numFramesDetected_ << " frames" << std::endl;
 }
 
 shared_reference<LightField> YOLOGPU::GPU::operator()(LightField &input) {
@@ -32,11 +43,19 @@ shared_reference<LightField> YOLOGPU::GPU::operator()(LightField &input) {
     physical::GPUDecodedFrameData output(data.configuration(), data.geometry());
 
     for (auto &frame : data.frames()) {
+        long frameNumber = 0;
+        assert(frame->getFrameNumber(frameNumber));
+
+        // Check whether detection has been run on the frame yet.
+        if (tasm_ && tasm_->detectionHasBeenRunOnFrame("", frameNumber))
+            continue;
+
+        ++numFramesDetected_;
         preprocessFrame(frame);
-        detectFrame();
+        detectFrame(frameNumber);
     }
 
-    return output;
+    return shared_reference<physical::GPUDecodedFrameData>(data);
 }
 
 void YOLOGPU::GPU::preprocessFrame(GPUFrameReference &frame) {
@@ -95,17 +114,21 @@ void YOLOGPU::GPU::preprocessFrame(GPUFrameReference &frame) {
     assert(status == NPP_SUCCESS);
 }
 
-void YOLOGPU::GPU::detectFrame() {
+void YOLOGPU::GPU::detectFrame(long frameNumber) {
     // Detection runs on the resized, planar image.
     std::vector<bbox_t> predictions = detector_->detect_gpu(reinterpret_cast<float *>(resizedPlanarHandle_), inputWidth_, inputHeight_, threshold_);
 
-    // Get label for object.
     for (const auto &prediction : predictions) {
         if (prediction.prob <= minProb_)
             continue;
         auto &label = objectNames_[prediction.obj_id];
-        std::cout << "Detected " << label << " with prob " << prediction.prob << " on frame " << prediction.frames_counter << std::endl;
+//        std::cout << "Detected " << label << " with prob " << prediction.prob << " on frame " << prediction.frames_counter << std::endl;
+
+        if (tasm_)
+            tasm_->addMetadata("", label, frameNumber, prediction.x, prediction.y, prediction.w, prediction.h);
     }
+    if (tasm_)
+        tasm_->markDetectionHasBeenRunOnFrame("", frameNumber);
 }
 
 void YOLOGPU::GPU::allocate(unsigned int width, unsigned int height) {

@@ -7,6 +7,7 @@
 #include "Visitor.h"
 #include "reference.h"
 #include <vector>
+#include "Tasm.h"
 
 namespace lightdb {
     class LightField;
@@ -55,6 +56,9 @@ namespace lightdb {
         inline std::string type() const noexcept { return typeid(*this).name(); }
 
         virtual void accept(LightFieldVisitor &visitor) = 0;
+
+        // Default, do nothing.
+        virtual std::shared_ptr<Tasm> tasm() { return nullptr; }
 
     protected:
         //TODO think we should have a LightField<T>:LightField that does this all automatically

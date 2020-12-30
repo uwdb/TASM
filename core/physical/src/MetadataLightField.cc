@@ -457,13 +457,18 @@ std::unordered_set<int> MetadataManager::idealKeyframesForFrames(const std::vect
 }
 
 const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) const {
-    static std::vector<Rectangle> emptyVector;
+    return *rectanglesPtrForFrame(frame);
+}
+
+std::shared_ptr<std::vector<Rectangle>> MetadataManager::rectanglesPtrForFrame(int frame) const {
     if ((unsigned int)frame < metadataSpecification_.firstFrame() || (unsigned int)frame >= metadataSpecification_.lastFrame())
-        return emptyVector;
+        return nullptr;
 
     std::scoped_lock lock(mutex_);
     if (frameToRectangles_.count(frame))
         return frameToRectangles_[frame];
+
+    frameToRectangles_[frame] = std::shared_ptr<std::vector<Rectangle>>(new std::vector<Rectangle>());
 
     std::string query = "SELECT frame, x, y, width, height FROM %s WHERE (" + metadataSpecification_.whereClauseConstraints(false) + ") and frame = " + std::to_string(frame) + ";";
 
@@ -475,7 +480,7 @@ const std::vector<Rectangle> &MetadataManager::rectanglesForFrame(int frame) con
         unsigned int width = sqlite3_column_int(stmt, 3);
         unsigned int height = sqlite3_column_int(stmt, 4);
 
-        frameToRectangles_[frame].emplace_back(queryFrame, x, y, width, height);
+        frameToRectangles_[frame]->emplace_back(queryFrame, x, y, width, height);
     });
     return frameToRectangles_[frame];
 }

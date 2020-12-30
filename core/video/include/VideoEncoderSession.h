@@ -29,8 +29,8 @@ public:
         assert(buffer.input_buffer.buffer_format == NV_ENC_BUFFER_FORMAT_NV12_PL);
 
         if(top == 0 && left == 0 &&
-           frame.width() == buffer.input_buffer.width &&
-           frame.height() == buffer.input_buffer.height)
+           frame.codedWidth() == buffer.input_buffer.width &&
+           frame.codedHeight() == buffer.input_buffer.height)
             buffer.copy(encoder().lock_, frame);
         else
             buffer.copy(encoder().lock_, frame, top, left);

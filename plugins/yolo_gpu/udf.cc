@@ -114,6 +114,10 @@ void YOLOGPU::GPU::preprocessFrame(GPUFrameReference &frame) {
     assert(status == NPP_SUCCESS);
 }
 
+static float scaled(int value, int downsampled, int upsampled) {
+    return float(value) / downsampled * upsampled;
+}
+
 void YOLOGPU::GPU::detectFrame(long frameNumber) {
     // Detection runs on the resized, planar image.
     std::vector<bbox_t> predictions = detector_->detect_gpu(reinterpret_cast<float *>(resizedPlanarHandle_), inputWidth_, inputHeight_, threshold_);
@@ -125,7 +129,11 @@ void YOLOGPU::GPU::detectFrame(long frameNumber) {
 //        std::cout << "Detected " << label << " with prob " << prediction.prob << " on frame " << prediction.frames_counter << std::endl;
 
         if (tasm_)
-            tasm_->addMetadata("", label, frameNumber, prediction.x, prediction.y, prediction.w, prediction.h);
+            tasm_->addMetadata("", label, frameNumber,
+                               static_cast<int>(scaled(prediction.x, inputWidth_, width_)),
+                               static_cast<int>(scaled(prediction.y, inputHeight_, height_)),
+                                static_cast<int>(scaled(prediction.w, inputWidth_, width_)),
+                                static_cast<int>(scaled(prediction.h, inputHeight_, height_)));
     }
     if (tasm_)
         tasm_->markDetectionHasBeenRunOnFrame("", frameNumber);

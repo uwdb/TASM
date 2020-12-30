@@ -2,7 +2,7 @@
 #define LIGHTDB_TILEOPERATORS_H
 
 #include "PhysicalOperators.h"
-#include "Rectangle.h"
+#include "RectangleUtilities.h"
 #include "MultipleEncoderManager.h"
 
 #include "ipp.h"

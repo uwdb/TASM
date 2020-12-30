@@ -161,7 +161,7 @@ struct EncodeBuffer
 
         CUDA_MEMCPY2D chromaPlaneParameters{
                 srcXInBytes:   frame_left,
-                srcY:          frame.height() + frame_top / 2,
+                srcY:          frame.codedHeight() + frame_top / 2,
                 srcMemoryType: CU_MEMORYTYPE_DEVICE,
                 srcHost:       nullptr,
                 srcDevice:     cudaFrame->handle(),

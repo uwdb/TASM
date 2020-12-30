@@ -28,11 +28,11 @@ private:
 class Frame {
 public:
     Frame(unsigned int height, unsigned int width, NV_ENC_PIC_STRUCT type, int frameNumber)
-        : height_(height), width_(width), type_(type), frameNumber_(frameNumber)
+        : height_(height), width_(width), codedHeight_(height), codedWidth_(width), type_(type), frameNumber_(frameNumber)
     { }
 
     Frame(unsigned int height, unsigned int width, NV_ENC_PIC_STRUCT type)
-            : height_(height), width_(width), type_(type)
+            : height_(height), width_(width), codedHeight_(height), codedWidth_(width), type_(type)
     { }
 
     Frame(const Configuration &configuration, NV_ENC_PIC_STRUCT type)
@@ -50,8 +50,8 @@ public:
 
     virtual unsigned int height() const { return height_; }
     virtual unsigned int width() const { return width_; }
-    virtual unsigned int codedHeight() const { return 0; }
-    virtual unsigned int codedWidth() const { return 0; }
+    virtual unsigned int codedHeight() const { return codedHeight_; }
+    virtual unsigned int codedWidth() const { return codedWidth_; }
 
     //TODO move this to GPUFrame
     NV_ENC_PIC_STRUCT type() const { return type_; }
@@ -66,6 +66,7 @@ public:
 
 protected:
     const unsigned int height_, width_;
+    unsigned int codedHeight_, codedWidth_;
     NV_ENC_PIC_STRUCT type_;
     std::optional<long> frameNumber_;
 };
@@ -132,8 +133,8 @@ public:
     }
 
     void copy(VideoLock &lock, const CudaFrame &frame) {
-        if(frame.width() != width() ||
-           frame.height() != height()) {
+        if(frame.codedWidth() != codedWidth() ||
+           frame.codedHeight() != codedHeight()) {
             throw InvalidArgumentError("Frame sizes do not match", "frame");
         }
 
@@ -155,8 +156,8 @@ public:
             .dstArray = nullptr,
             .dstPitch = pitch(),
 
-            .WidthInBytes = width(),
-            .Height = height() * 3 / 2 //TODO this assumes NV12 format
+            .WidthInBytes = codedWidth(),
+            .Height = codedHeight() * 3 / 2 //TODO this assumes NV12 format
         });
     }
 
@@ -254,8 +255,8 @@ private:
 
         if((result = cuMemAllocPitch(&handle,
                                      &pitch,
-                                     frame.width(),
-                                     frame.height() * 3 / 2,
+                                     frame.codedWidth(),
+                                     frame.codedHeight() * 3 / 2,
                                      16)) != CUDA_SUCCESS)
             throw GpuCudaRuntimeError("Call to cuMemAllocPitch failed", result);
         else {
@@ -277,6 +278,8 @@ public:
               frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
               tileNumber_(tileNumber)
     {
+        codedWidth_ = frameDimensions_.codedWidth;
+        codedHeight_ = frameDimensions_.codedHeight;
 //        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
         // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
         // with that.
@@ -287,6 +290,8 @@ public:
             frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
             tileNumber_(-1)
     {
+        codedWidth_ = frameDimensions_.codedWidth;
+        codedHeight_ = frameDimensions_.codedHeight;
 //        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
         // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
         // with that.
@@ -297,6 +302,8 @@ public:
           frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
           tileNumber_(-1)
     {
+        codedWidth_ = frameDimensions_.codedWidth;
+        codedHeight_ = frameDimensions_.codedHeight;
 //        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
     }
 
@@ -310,8 +317,8 @@ public:
     unsigned int height() const override { return frameDimensions_.displayHeight; }
     unsigned int width() const override { return frameDimensions_.displayWidth; }
 
-    unsigned int codedHeight() const override { return frameDimensions_.codedHeight; }
-    unsigned int codedWidth() const override { return frameDimensions_.codedWidth; }
+//    unsigned int codedHeight() const override { return frameDimensions_.codedHeight; }
+//    unsigned int codedWidth() const override { return frameDimensions_.codedWidth; }
 
     int tileNumber() const { return tileNumber_; }
 

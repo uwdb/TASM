@@ -56,7 +56,7 @@ class YOLOGPU: public lightdb::functor::unaryfunctor {
         float threshold_;
         float minProb_;
 
-        std::shared_ptr<Tasm> tasm_;
+        std::shared_ptr<lightdb::Tasm> tasm_;
         unsigned int numFramesDetected_;
 
         static const int inputWidth_ = 416;

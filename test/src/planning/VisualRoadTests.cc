@@ -37,7 +37,7 @@ void DeleteDatabase(std::string id) {
     remove(dbPath.c_str());
 }
 
-TEST_F(VisualRoadTestFixture, testDetectAndMask) {
+TEST_F(VisualRoadTestFixture, testDetectRunYolo) {
     std::string videoId("traffic-4k-002-ds2k-not-tiled-cracked");
     DeleteDatabase(videoId);
 
@@ -66,4 +66,16 @@ TEST_F(VisualRoadTestFixture, testDetectOnGPU) {
     auto yolo = lightdb::extensibility::Load("yologpu");
     auto mapped = input.Map(yolo);
     Coordinator().execute(mapped);
+}
+
+TEST_F(VisualRoadTestFixture, testDetectAndMask) {
+    std::string videoId("traffic-4k-002-ds2k-not-tiled-cracked");
+    DeleteDatabase(videoId);
+
+    auto input = ScanMultiTiled(videoId);
+
+    PixelsInFrameMetadataSpecification selection("labels",
+                                                 std::make_shared<SingleMetadataElement>("label", "person", 30, 120));
+    auto yolo = lightdb::extensibility::Load("yologpu");
+    Coordinator().execute(input.Select(selection, yolo).Store("traffic-4k-002-ds2k-masked"));
 }

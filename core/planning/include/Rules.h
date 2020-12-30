@@ -29,6 +29,7 @@
 #include "WorkloadCostEstimator.h"
 #include "ContainsCar.h"
 #include "extension.h"
+#include "TasmOperators.h"
 
 namespace lightdb::optimization {
     class ChooseMaterializedScans : public OptimizerRule {
@@ -698,12 +699,16 @@ namespace lightdb::optimization {
             bool isDecodingDifferentSizes = !multiTiledLightField.usesOnlyOneTile() && !tileLayoutsManager->hasASingleTile();
             auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, isDecodingDifferentSizes, tileLayoutsManager->largestWidth(), tileLayoutsManager->largestHeight());
 
+            auto &last = decode;
             // If any frames still have to be detected, add a YOLO map.
             if (metadataManager->anyFramesLackDetections()) {
                 assert(node.functor());
                 auto map = plan().emplace<physical::GPUMap>(logical, decode, *node.functor());
+                last = map;
             }
 
+            // Add bounding boxes around the detected objects.
+            auto boxed = plan().emplace<physical::GPUMetadataTransform<video::GPURectangleOverlay>>(logical, last, metadataManager->metadataSpecification());
 
             plan().remove_operator(physical_parents[0]);
 

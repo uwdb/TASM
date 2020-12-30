@@ -107,6 +107,11 @@ namespace lightdb::metadata {
 
         bool detectionHasBeenRunOnFrame(const std::string &videoId, int frame) override;
         void markDetectionHasBeenRunOnFrame(const std::string &videoId, int frame) override;
+        std::shared_ptr<std::vector<Rectangle>> getMetadata(const std::string &videoId, const MetadataSpecification &specification, int frame) override {
+            // Assume specification == metadataSpecification_. Should eventually add ==.
+            assert(!videoId.length() || videoId == videoIdentifier_);
+            return rectanglesPtrForFrame(frame);
+        }
         void addMetadata(const std::string &videoId, const std::string &label, int frame, int x, int y, int w, int h) override {
             assert(!videoId.length() || videoId == videoIdentifier_);
             addMetadata(label, frame, x, y, w, h);
@@ -134,6 +139,8 @@ namespace lightdb::metadata {
 
         void createDatabase();
 
+        std::shared_ptr<std::vector<Rectangle>> rectanglesPtrForFrame(int frame) const;
+
         std::string dbPath_;
         const std::string videoIdentifier_;
         bool hasDetectedTable_;
@@ -150,7 +157,7 @@ namespace lightdb::metadata {
         mutable bool didSetOrderedFramesForMetadataOrWithoutMetadata_;
         mutable std::vector<int> orderedFramesForMetadataOrWithoutMetadata_;
 
-        mutable std::unordered_map<int, std::vector<lightdb::Rectangle>> frameToRectangles_;
+        mutable std::unordered_map<int, std::shared_ptr<std::vector<lightdb::Rectangle>>> frameToRectangles_;
         sqlite3 *db_;
         mutable std::mutex mutex_;
 

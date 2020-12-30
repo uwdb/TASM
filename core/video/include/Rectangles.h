@@ -27,7 +27,7 @@ public:
             cuda.copy(lock, *input);
 
             draw(lock,
-                 cuda.handle(), cuda.height(), cuda.width(), cuda.pitch(),
+                 cuda.handle(), cuda.codedHeight(), cuda.codedWidth(), cuda.pitch(),
                  boxes.data(), boxes.size(), line_width);
 
             return output;

@@ -30,6 +30,7 @@
 #include "ContainsCar.h"
 #include "extension.h"
 #include "TasmOperators.h"
+#include "SelectPixelsKernel.h"
 
 namespace lightdb::optimization {
     class ChooseMaterializedScans : public OptimizerRule {
@@ -709,6 +710,9 @@ namespace lightdb::optimization {
 
             // Add bounding boxes around the detected objects.
             auto boxed = plan().emplace<physical::GPUMetadataTransform<video::GPURectangleOverlay>>(logical, last, metadataManager->metadataSpecification());
+
+            // Mask background pixels.
+            auto masked = plan().emplace<physical::GPUMetadataTransform<video::GPUSelectPixels>>(logical, boxed, metadataManager->metadataSpecification());
 
             plan().remove_operator(physical_parents[0]);
 

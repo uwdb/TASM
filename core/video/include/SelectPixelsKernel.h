@@ -32,7 +32,7 @@ public:
         }
 
         CudaFrameReference draw(VideoLock &lock, const CudaFrameReference &input,
-                const std::vector<Rectangle> &boxes) const {
+                const std::vector<Rectangle> &boxes, unsigned int xOffset, unsigned int yOffset) const {
             auto output = GPUFrameReference::make<CudaFrame>(static_cast<Frame&>(*input));
 
             if (!boxes.size())
@@ -43,7 +43,7 @@ public:
             cuda.copy(lock, *input);
             select(lock,
                    cuda.handle(), cuda.codedHeight(), cuda.codedWidth(), cuda.pitch(),
-                   boxes.data(), boxes.size(), 0, 0);
+                   boxes.data(), boxes.size(), xOffset, yOffset);
 
             return output;
         }

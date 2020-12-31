@@ -12,8 +12,9 @@ class GPUMetadataTransform : public PhysicalOperator, public GPUOperator {
 public:
     explicit GPUMetadataTransform(const LightFieldReference &logical,
             PhysicalOperatorReference &parent,
-            MetadataSpecification specification)
-                : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUMetadataTransform-init")),
+            MetadataSpecification specification,
+            std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider)
+                : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUMetadataTransform-init", tileLocationProvider)),
                 GPUOperator(parent),
                 specification_(specification)
     {
@@ -27,10 +28,11 @@ public:
 private:
     class Runtime: public runtime::GPUUnaryRuntime<GPUMetadataTransform, GPUDecodedFrameData> {
     public:
-        explicit Runtime(GPUMetadataTransform &physical)
+        explicit Runtime(GPUMetadataTransform &physical, std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider)
             : runtime::GPUUnaryRuntime<GPUMetadataTransform, GPUDecodedFrameData>(physical),
                     transform_(this->context()),
-                    tasm_(physical.logical()->tasm())
+                    tasm_(physical.logical()->tasm()),
+                    tileLocationProvider_(tileLocationProvider)
         { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -42,10 +44,14 @@ private:
                 for (auto &frame : data.frames()) {
                     long frameNumber;
                     assert(frame->getFrameNumber(frameNumber));
+                    int tileNumber = frame->tileNumber();
+                    assert(tileNumber >= 0);
+                    auto tileRectangle = tileLocationProvider_->tileLayoutForFrame(frameNumber).rectangleForTile(tileNumber);
 
                     output.frames().emplace_back(transform_.nv12().draw(this->lock(),
                             frame->cuda(),
-                            *tasm_->getMetadata("", specification, frameNumber)));
+                            *tasm_->getMetadata("", specification, frameNumber),
+                            tileRectangle.x, tileRectangle.y));
                 }
                 return {output};
             } else {
@@ -56,6 +62,7 @@ private:
     private:
         Transform transform_;
         std::shared_ptr<Tasm> tasm_;
+        std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;
     };
     MetadataSpecification specification_;
 };

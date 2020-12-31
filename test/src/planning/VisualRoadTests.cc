@@ -1,6 +1,7 @@
 #include "HeuristicOptimizer.h"
 #include "Metadata.h"
 #include "extension.h"
+#include "TileUtilities.h"
 
 #include <cstdio>
 #include <gtest/gtest.h>
@@ -82,11 +83,32 @@ TEST_F(VisualRoadTestFixture, testDetectAndMask) {
 
 TEST_F(VisualRoadTestFixture, testCreateTilesAroundPeople) {
     std::string videoId("traffic-4k-002-ds2k-not-tiled-cracked");
-    DeleteDatabase(videoId);
-
-    // First, detect objects.
-    auto input = ScanMultiTiled(videoId);
-    FrameMetadataSpecification selection(std::make_shared<EntireFrameMetadataElement>(30, 120));
     auto yolo = lightdb::extensibility::Load("yologpu");
-    Coordinator().execute(input.Select(selection).Map(yolo));
+
+//    DeleteDatabase(videoId);
+//    DeleteTiles(videoId);
+//    ResetTileNum(videoId);
+//
+//    // First, detect objects.
+//    auto input = ScanMultiTiled(videoId);
+//    FrameMetadataSpecification selection(std::make_shared<EntireFrameMetadataElement>(30, 120));
+//    Coordinator().execute(input.Select(selection).Map(yolo));
+//
+    // Then, re-tile around people.
+    PixelsInFrameMetadataSpecification personSelection(std::make_shared<SingleMetadataElement>("label", "person", 30, 120));
+//    auto framerate = 30u;
+//    auto retileOp = ScanAndRetile(
+//            videoId,
+//            "traffic-4k-002-ds2k",
+//            personSelection,
+//            framerate,
+//            CrackingStrategy::GroupingExtent);
+//    Coordinator().execute(retileOp);
+
+    // Then, do selection on people tiles.
+    // Re-do scan so that new tiles are discovered.
+    // The storing does not work.
+    // Check offsets in select.
+    // Should also probably check offsets in detect.
+    Coordinator().execute(ScanMultiTiled(videoId).Select(personSelection, yolo).Store("traffic-4k-002-ds2k-tiled-masked"));
 }

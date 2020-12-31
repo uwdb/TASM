@@ -6,6 +6,7 @@
 #include "Metadata.h"
 #include "SelectPixels.h"
 #include "TestResources.h"
+#include "TileUtilities.h"
 #include "extension.h"
 #include <gtest/gtest.h>
 
@@ -816,48 +817,6 @@ static std::unique_ptr<WorkloadGenerator> GetGenerator(unsigned int workloadNum,
     } else {
             assert(false);
     }
-}
-
-static void DeleteTiles(const std::string &catalogEntryName) {
-    static std::string basePath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/";
-    auto catalogPath = basePath + catalogEntryName;
-    for (auto &dir : std::filesystem::directory_iterator(catalogPath)) {
-        if (!dir.is_directory())
-            continue;
-
-        auto dirName = dir.path().filename().string();
-        auto lastSep = dirName.rfind("-");
-        auto tileVersion = std::stoul(dirName.substr(lastSep + 1));
-        if (!tileVersion)
-            continue;
-        else
-            std::filesystem::remove_all(dir.path());
-    }
-}
-
-static void DeleteTilesPastNum(const std::string &catalogEntryName, unsigned int maxOriginalTileNum) {
-    static std::string basePath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/";
-    auto catalogPath = basePath + catalogEntryName;
-
-    for (auto &dir : std::filesystem::directory_iterator(catalogPath)) {
-        if (!dir.is_directory())
-            continue;
-
-        auto dirName = dir.path().filename().string();
-        auto lastSep = dirName.rfind("-");
-        auto tileVersion = std::stoul(dirName.substr(lastSep + 1));
-        if (tileVersion > maxOriginalTileNum)
-            std::filesystem::remove_all(dir.path());
-    }
-}
-
-static void ResetTileNum(const std::string &catalogEntryName, unsigned int maxOriginalTileNum) {
-    static std::string basePath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/";
-    auto tilePath = basePath + catalogEntryName + "/tile-version";
-
-    std::ofstream tileVersion(tilePath);
-    tileVersion << maxOriginalTileNum + 1;
-    tileVersion.close();
 }
 
 // Workload 1: Select a single object

@@ -27,12 +27,16 @@ private:
 
 class Frame {
 public:
+    Frame(unsigned int height, unsigned int width, NV_ENC_PIC_STRUCT type, int frameNumber, int tileNumber)
+            : height_(height), width_(width), codedHeight_(height), codedWidth_(width), type_(type), frameNumber_(frameNumber), tileNumber_(tileNumber)
+    { }
+
     Frame(unsigned int height, unsigned int width, NV_ENC_PIC_STRUCT type, int frameNumber)
-        : height_(height), width_(width), codedHeight_(height), codedWidth_(width), type_(type), frameNumber_(frameNumber)
+        : height_(height), width_(width), codedHeight_(height), codedWidth_(width), type_(type), frameNumber_(frameNumber), tileNumber_(-1)
     { }
 
     Frame(unsigned int height, unsigned int width, NV_ENC_PIC_STRUCT type)
-            : height_(height), width_(width), codedHeight_(height), codedWidth_(width), type_(type)
+            : height_(height), width_(width), codedHeight_(height), codedWidth_(width), type_(type), tileNumber_(-1)
     { }
 
     Frame(const Configuration &configuration, NV_ENC_PIC_STRUCT type)
@@ -41,6 +45,10 @@ public:
 
     Frame(const Configuration &configuration, NV_ENC_PIC_STRUCT type, int frameNumber)
             : Frame(configuration.height, configuration.width, type, frameNumber)
+    { }
+
+    Frame(const Configuration &configuration, NV_ENC_PIC_STRUCT type, int frameNumber, int tileNumber)
+            : Frame(configuration.height, configuration.width, type, frameNumber, tileNumber)
     { }
 
     Frame(const Frame&) = default;
@@ -63,12 +71,14 @@ public:
             return false;
 
     }
+    int tileNumber() const { return tileNumber_; }
 
 protected:
     const unsigned int height_, width_;
     unsigned int codedHeight_, codedWidth_;
     NV_ENC_PIC_STRUCT type_;
     std::optional<long> frameNumber_;
+    int tileNumber_;
 };
 
 class CudaFrame;
@@ -274,9 +284,8 @@ using CudaFrameReference = lightdb::shared_reference<CudaFrame>;
 class DecodedFrame : public GPUFrame {
 public:
     DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters, int frameNumber, int tileNumber)
-            : GPUFrame(decoder.configuration(), extract_type(parameters), frameNumber), decoder_(decoder), parameters_(parameters),
-              frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
-              tileNumber_(tileNumber)
+            : GPUFrame(decoder.configuration(), extract_type(parameters), frameNumber, tileNumber), decoder_(decoder), parameters_(parameters),
+              frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
     {
         codedWidth_ = frameDimensions_.codedWidth;
         codedHeight_ = frameDimensions_.codedHeight;
@@ -287,8 +296,7 @@ public:
 
     DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters, int frameNumber)
             : GPUFrame(decoder.configuration(), extract_type(parameters), frameNumber), decoder_(decoder), parameters_(parameters),
-            frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
-            tileNumber_(-1)
+            frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
     {
         codedWidth_ = frameDimensions_.codedWidth;
         codedHeight_ = frameDimensions_.codedHeight;
@@ -299,8 +307,7 @@ public:
 
     DecodedFrame(const CudaDecoder& decoder, const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters)
         : GPUFrame(decoder.configuration(), extract_type(parameters)), decoder_(decoder), parameters_(parameters),
-          frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index)),
-          tileNumber_(-1)
+          frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
     {
         codedWidth_ = frameDimensions_.codedWidth;
         codedHeight_ = frameDimensions_.codedHeight;
@@ -320,8 +327,6 @@ public:
 //    unsigned int codedHeight() const override { return frameDimensions_.codedHeight; }
 //    unsigned int codedWidth() const override { return frameDimensions_.codedWidth; }
 
-    int tileNumber() const { return tileNumber_; }
-
 private:
     static NV_ENC_PIC_STRUCT extract_type(const std::shared_ptr<CUVIDPARSERDISPINFO> &parameters) {
         return (parameters == nullptr || parameters->progressive_frame || parameters->repeat_first_field >= 2
@@ -335,7 +340,6 @@ private:
     const std::shared_ptr<CUVIDPARSERDISPINFO> parameters_;
     std::shared_ptr<CudaFrame> cuda_;
     CudaDecoder::DecodedDimensions frameDimensions_;
-    int tileNumber_;
 };
 
 class CudaDecodedFrame: public DecodedFrame, public CudaFrame {

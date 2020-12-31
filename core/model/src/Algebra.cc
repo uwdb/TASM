@@ -15,14 +15,7 @@ namespace lightdb::logical {
         return Catalog::instance().getMultiTiled(name, usesOnlyOneTile);
     }
 
-    LightFieldReference ScanAndRetile(const std::string &name,
-                                  const MetadataSpecification &metadataSpecification,
-                                  unsigned int layoutDuration,
-                                  CrackingStrategy crackingStrategy,
-                                  RetileStrategy retileOnlyIfDifferent,
-                                  std::shared_ptr<RegretAccumulator> regretAccumulator,
-                                  std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager) {
-
+    static std::string RemoveDecorationsFromTileEntry(const std::string &name) {
         // Transform metadataIdentifier.
         std::string metadataIdentifier;
         auto crackedPos = name.find("-cracked");
@@ -32,7 +25,30 @@ namespace lightdb::logical {
             crackedPos = metadataIdentifier.find_last_of("-");
             metadataIdentifier = name.substr(0, crackedPos);
         }
-        auto entry = std::make_shared<catalog::Entry>(Catalog::instance().entry(metadataIdentifier));
+        return metadataIdentifier;
+    }
+
+    LightFieldReference ScanAndRetile(const std::string &name,
+                                  const MetadataSpecification &metadataSpecification,
+                                  unsigned int layoutDuration,
+                                  CrackingStrategy crackingStrategy,
+                                  RetileStrategy retileOnlyIfDifferent,
+                                  std::shared_ptr<RegretAccumulator> regretAccumulator,
+                                  std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager) {
+        return ScanAndRetile(name, RemoveDecorationsFromTileEntry(name), metadataSpecification, layoutDuration, crackingStrategy, retileOnlyIfDifferent, regretAccumulator, tileAroundMoreObjectsManager);
+    }
+
+    LightFieldReference ScanAndRetile(const std::string &name,
+                                      const std::string &originalVideoName,
+                                      const MetadataSpecification &metadataSpecification,
+                                      unsigned int layoutDuration,
+                                      CrackingStrategy crackingStrategy,
+                                      RetileStrategy retileOnlyIfDifferent,
+                                      std::shared_ptr<RegretAccumulator> regretAccumulator,
+                                      std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager) {
+
+        auto metadataIdentifier = RemoveDecorationsFromTileEntry(name);
+        auto entry = std::make_shared<catalog::Entry>(Catalog::instance().entry(originalVideoName));
 
         auto metadataManager = std::make_shared<metadata::MetadataManager>(metadataIdentifier, MetadataSpecification(metadataSpecification, entry->sources()[0].mp4Reader().numberOfSamples()));
 

@@ -697,10 +697,10 @@ namespace lightdb::optimization {
             }
 
             // Add bounding boxes around the detected objects.
-            auto boxed = plan().emplace<physical::GPUMetadataTransform<video::GPURectangleOverlay>>(logical, last, metadataManager->metadataSpecification());
+            auto boxed = plan().emplace<physical::GPUMetadataTransform<video::GPURectangleOverlay>>(logical, last, metadataManager->metadataSpecification(), tileLocationProvider);
 
             // Mask background pixels.
-            auto masked = plan().emplace<physical::GPUMetadataTransform<video::GPUSelectPixels>>(logical, boxed, metadataManager->metadataSpecification());
+            auto masked = plan().emplace<physical::GPUMetadataTransform<video::GPUSelectPixels>>(logical, boxed, metadataManager->metadataSpecification(), tileLocationProvider);
 
             plan().remove_operator(physical_parents[0]);
 

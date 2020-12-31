@@ -37,6 +37,14 @@ namespace lightdb {
                                           RetileStrategy retileOnlyIfDifferent = RetileStrategy::RetileAlways,
                                           std::shared_ptr<RegretAccumulator> regretAccumulator = {},
                                           std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager = {});
+    LightFieldReference ScanAndRetile(const std::string &name,
+                                      const std::string &originalVideoName,
+                                      const MetadataSpecification &metadataSpecification,
+                                      unsigned int layoutDuration,
+                                      CrackingStrategy crackingStrategy,
+                                      RetileStrategy retileOnlyIfDifferent = RetileStrategy::RetileAlways,
+                                      std::shared_ptr<RegretAccumulator> regretAccumulator = {},
+                                      std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager = {});
 
         LightFieldReference ScanByGOP(const std::string &name);
         LightFieldReference Scan(const std::string &name);

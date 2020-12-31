@@ -16,7 +16,7 @@ public:
         { }
 
         CudaFrameReference draw(VideoLock &lock, const CudaFrameReference &input,
-                                const std::vector<Rectangle> &boxes, const unsigned int line_width=2u) const {
+                                const std::vector<Rectangle> &boxes, unsigned int xOffset=0u, unsigned int yOffset=0u, const unsigned int line_width=2u) const {
             auto output = GPUFrameReference::make<CudaFrame>(static_cast<Frame&>(*input));
 
             if (!boxes.size())
@@ -28,7 +28,7 @@ public:
 
             draw(lock,
                  cuda.handle(), cuda.codedHeight(), cuda.codedWidth(), cuda.pitch(),
-                 boxes.data(), boxes.size(), line_width);
+                 boxes.data(), boxes.size(), xOffset, yOffset, line_width);
 
             return output;
         }
@@ -36,6 +36,7 @@ public:
         void draw(VideoLock &lock, CUdeviceptr frame,
                   unsigned int height, unsigned int width, unsigned int pitch,
                   const Rectangle *boxes, const size_t box_count,
+                  unsigned int xOffset, unsigned int yOffset,
                   unsigned int line_width=2u) const {
             CUresult result;
             CUdeviceptr device_boxes;
@@ -47,7 +48,7 @@ public:
 
             try {
                 draw(lock, frame, height, width, pitch,
-                     device_boxes, static_cast<unsigned int>(box_count), line_width);
+                     device_boxes, static_cast<unsigned int>(box_count), xOffset, yOffset, line_width);
             } catch(errors::_GpuCudaRuntimeError&) {
                 if((result = cuMemFree(device_boxes)) != CUDA_SUCCESS)
                     LOG(ERROR) << "Swallowed failed cuMemFree invocation with result " << result;
@@ -61,6 +62,7 @@ public:
         void draw(VideoLock &lock, CUdeviceptr frame,
                   unsigned int height, unsigned int width, unsigned int pitch,
                   CUdeviceptr boxes, unsigned int box_count,
+                  unsigned int xOffset, unsigned int yOffset,
                   unsigned int line_width=2u) const {
             dim3 block(32u, 32u, 1u);
             dim3 grid(width / block.x + 1, height / block.y + 1, box_count);
@@ -68,7 +70,9 @@ public:
             void *args[] = { &frame,
                              &height, &width,
                              &pitch,
-                             &boxes, &box_count, &line_width };
+                             &boxes, &box_count,
+                             &xOffset, &yOffset,
+                             &line_width };
 
             invoke(lock, block, grid, args);
         }

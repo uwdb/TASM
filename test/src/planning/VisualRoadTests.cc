@@ -79,3 +79,14 @@ TEST_F(VisualRoadTestFixture, testDetectAndMask) {
     auto yolo = lightdb::extensibility::Load("yologpu");
     Coordinator().execute(input.Select(selection, yolo).Store("traffic-4k-002-ds2k-masked"));
 }
+
+TEST_F(VisualRoadTestFixture, testCreateTilesAroundPeople) {
+    std::string videoId("traffic-4k-002-ds2k-not-tiled-cracked");
+    DeleteDatabase(videoId);
+
+    // First, detect objects.
+    auto input = ScanMultiTiled(videoId);
+    FrameMetadataSpecification selection(std::make_shared<EntireFrameMetadataElement>(30, 120));
+    auto yolo = lightdb::extensibility::Load("yologpu");
+    Coordinator().execute(input.Select(selection).Map(yolo));
+}

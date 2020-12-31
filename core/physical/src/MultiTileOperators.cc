@@ -41,4 +41,14 @@ void ScanMultiTileOperator::Runtime::preprocess() {
     orderedTileInformationIt_ = orderedTileInformation_.begin();
 }
 
+void ScanMultiTileOperator::Runtime::setUpToScanAllFrames() {
+    allFrames_ = std::make_unique<std::vector<int>>();
+    auto metadataSpecification = physical().metadataManager()->metadataSpecification();
+    for (auto i = metadataSpecification.firstFrame(); i < metadataSpecification.lastFrame(); ++i)
+        allFrames_->push_back(i);
+
+    framesIterator_ = allFrames_->begin();
+    endOfFramesIterator_ = std::upper_bound(allFrames_->begin(), allFrames_->end(), tileLocationProvider_->lastFrameWithLayout());
+}
+
 } // namespace lightdb::physical

@@ -197,6 +197,14 @@ namespace lightdb::logical {
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<TransformedLightField>(visitor); }
 
+        std::shared_ptr<Tasm> tasm() override {
+            for (auto &parent : parents()) {
+                if (parent->tasm())
+                    return parent->tasm();
+            }
+            return nullptr;
+        }
+
     private:
         const functor::UnaryFunctorReference functor_;
     };

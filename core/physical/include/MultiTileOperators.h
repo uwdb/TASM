@@ -113,8 +113,9 @@ public:
     explicit ScanMultiTileOperator(const LightFieldReference &logical,
             std::shared_ptr<metadata::MetadataManager> metadataManager,
             std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider,
-            bool shouldReadEntireGOPs = false)
-        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanMultiTileOperator-init", tileLocationProvider, shouldReadEntireGOPs)),
+            bool shouldReadEntireGOPs = false,
+            bool shouldScanAllFrames = false)
+        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanMultiTileOperator-init", tileLocationProvider, shouldReadEntireGOPs, shouldScanAllFrames)),
         tileNumber_(0),
         metadataManager_(metadataManager),
         tileLocationProvider_(tileLocationProvider)
@@ -151,13 +152,12 @@ private:
         };
 
     public:
-        explicit Runtime(ScanMultiTileOperator &physical, std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider, bool shouldReadEntireGOPs)
+        explicit Runtime(ScanMultiTileOperator &physical, std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider, bool shouldReadEntireGOPs, bool shouldScanAllFrames)
             : runtime::Runtime<ScanMultiTileOperator>(physical),
                     tileNumberForCurrentLayout_(0),
                     tileLocationProvider_(tileLocationProvider),
-                    framesIterator_(physical.metadataManager()->orderedFramesForMetadataOrWithoutMetadata().begin()),
-                    endOfFramesIterator_(physical.metadataManager()->orderedFramesForMetadataOrWithoutMetadata().end()),
                     shouldReadEntireGOPs_(shouldReadEntireGOPs),
+                    shouldScanAllFrames_(shouldScanAllFrames),
                     totalVideoWidth_(0),
                     totalVideoHeight_(0),
                     totalNumberOfPixels_(0),
@@ -168,9 +168,16 @@ private:
                     didSignalEOS_(false),
                     currentTileNumber_(0)
         {
-            endOfFramesIterator_ = std::upper_bound(physical.metadataManager()->orderedFramesForMetadataOrWithoutMetadata().begin(),
-                    physical.metadataManager()->orderedFramesForMetadataOrWithoutMetadata().end(),
-                    tileLocationProvider_->lastFrameWithLayout());
+            if (shouldScanAllFrames_)
+                setUpToScanAllFrames();
+            else {
+                framesIterator_ = physical.metadataManager()->orderedFramesForMetadataOrWithoutMetadata().begin();
+                endOfFramesIterator_ = std::upper_bound(
+                        physical.metadataManager()->orderedFramesForMetadataOrWithoutMetadata().begin(),
+                        physical.metadataManager()->orderedFramesForMetadataOrWithoutMetadata().end(),
+                        tileLocationProvider_->lastFrameWithLayout());
+            }
+
             std::cout << "***numberOfFrames," << tileLocationProvider_->lastFrameWithLayout() + 1 << std::endl;
 //            if (endOfFramesIterator_ != physical.metadataManager()->orderedFramesForMetadata().end())
 //                std::cerr << "WARNING: Video has fewer frames than in object database" << std::endl;
@@ -393,12 +400,17 @@ private:
                 auto tileRect = currentTileLayout_->rectangleForTile(i);
                 tileNumberForCurrentLayoutToFrames_[i].reserve(possibleFrames.size());
                 for (auto frame = possibleFrames.begin(); frame != possibleFrames.end(); ++frame) {
-                    auto &rectanglesForFrame = physical().metadataManager()->rectanglesForFrame(*frame);
-                    bool anyIntersect = std::any_of(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](auto &rectangle) {
-                        return tileRect.intersects(rectangle);
-                    });
-                    if (anyIntersect) {
+                    if (shouldScanAllFrames_) {
                         tileNumberForCurrentLayoutToFrames_[i].push_back(*frame);
+                    } else {
+                        auto &rectanglesForFrame = physical().metadataManager()->rectanglesForFrame(*frame);
+                        bool anyIntersect = std::any_of(rectanglesForFrame.begin(), rectanglesForFrame.end(),
+                                                        [&](auto &rectangle) {
+                                                            return tileRect.intersects(rectangle);
+                                                        });
+                        if (anyIntersect) {
+                            tileNumberForCurrentLayoutToFrames_[i].push_back(*frame);
+                        }
                     }
                 }
             }
@@ -407,11 +419,15 @@ private:
 
 //        Timer sqlTimer_;
 
+        void setUpToScanAllFrames();
+
         unsigned int tileNumberForCurrentLayout_;
         const std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;
         std::vector<int>::const_iterator framesIterator_;
         std::vector<int>::const_iterator endOfFramesIterator_;
         bool shouldReadEntireGOPs_;
+        bool shouldScanAllFrames_;
+        std::unique_ptr<std::vector<int>> allFrames_;
 
         unsigned int totalVideoWidth_;
         unsigned int totalVideoHeight_;

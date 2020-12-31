@@ -634,18 +634,6 @@ namespace lightdb::optimization {
                         }
                     }
 
-                    auto scan = physical_parents[0];
-                    while (scan->parents().size())
-                        scan = scan->parents()[0];
-
-                    auto sourcePath = scan.downcast<physical::ScanSingleFileDecodeReader>().source().filename();
-                    auto catalogEntry = std::prev(sourcePath.end(), 2);
-                    // Create metadata manager.
-                    // Add operator to plan that adds boxes to database.
-                    auto metadataManager = std::make_shared<metadata::MetadataManager>(catalogEntry->string(),
-                                                                                       MetadataSpecification("labels", std::make_shared<AllMetadataElement>()));
-                    auto saveBoxes = plan().emplace<physical::SaveBoxes>(metadataManager, plan().lookup(node), mapped);
-
                     return true;
                 }
             }
@@ -760,7 +748,8 @@ namespace lightdb::optimization {
                         physical_parents[0]->logical(),
                         metadataManager,
                         tileLocationProvider,
-                        node.shouldReadEntireGOPs());
+                        node.shouldReadEntireGOPs(),
+                        node.subsetType() == MetadataSubsetType::MetadataSubsetTypeFrame);
                 bool isDecodingDifferentSizes = !multiTiledLightField.usesOnlyOneTile() && !tileLayoutsManager->hasASingleTile();
                 auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, isDecodingDifferentSizes, tileLayoutsManager->largestWidth(), tileLayoutsManager->largestHeight());
 

@@ -17,6 +17,35 @@ namespace lightdb {
         virtual const std::vector<std::string> &objects() const { static std::vector<std::string> empty; return empty; }
     };
 
+    class EntireFrameMetadataElement : public MetadataElement {
+    public:
+        EntireFrameMetadataElement(unsigned int firstFrame = 0, unsigned int lastFrame = UINT32_MAX)
+            : firstFrame_(firstFrame),
+            lastFrame_(lastFrame)
+        { }
+
+        std::string whereClauseConstraints(bool includeFrameLimits) const override {
+            assert(false);
+            return "";
+        }
+
+        unsigned int firstFrame() const override {
+            return firstFrame_;
+        }
+
+        unsigned int lastFrame() const override {
+            return lastFrame_;
+        }
+
+        void updateLastFrameConstraints(unsigned int lastFrame) override {
+            lastFrame_ = std::min(lastFrame_, lastFrame);
+        }
+
+    private:
+        unsigned int firstFrame_;
+        unsigned int lastFrame_;
+    };
+
     class AllMetadataElement : public MetadataElement {
     public:
         AllMetadataElement(int mod = -1, const std::string &columnName = "label", unsigned int firstFrame = 0, unsigned int lastFrame = UINT32_MAX)
@@ -218,6 +247,9 @@ namespace lightdb {
         {
             metadataElement_->updateLastFrameConstraints(numberOfFrames);
         }
+
+        MetadataSpecification(std::shared_ptr<MetadataElement> metadataElement)
+            : MetadataSpecification("labels", metadataElement) {}
 
         const std::string &tableName() const { return tableName_; }
         unsigned int firstFrame() const { return metadataElement_->firstFrame(); }

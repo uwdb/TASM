@@ -707,6 +707,9 @@ namespace lightdb::optimization {
             // Encode modified tiles.
             auto encoded = plan().emplace<physical::GPUEncodeTilesToCPU>(logical, masked, Codec::hevc());
 
+            // Save modified tiles to disk.
+            auto muxed = plan().emplace<physical::StoreEncodedTiles>(logical, encoded, tileLayoutsManager->entry().path(), Codec::hevc());
+
             plan().remove_operator(physical_parents[0]);
 
             return true;

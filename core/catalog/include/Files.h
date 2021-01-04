@@ -86,5 +86,32 @@ private:
     static constexpr auto separating_string_ = "-";
 };
 
+// TODO: Clean up this + TileFiles.
+class TmpTileFiles {
+public:
+    static std::filesystem::path directoryForTilesInFrames(const std::filesystem::path &path, unsigned int firstFrame, unsigned int lastFrame) {
+        return path / tmp_ / (std::to_string(firstFrame) + separating_string_ + std::to_string(lastFrame));
+    }
+    static std::filesystem::path tileFilename(const std::filesystem::path &directoryPath, unsigned int tileNumber) {
+        return directoryPath / (baseTileFilename(tileNumber) + muxedFilenameExtension());
+    }
+    static std::filesystem::path temporaryTileFilename(const std::filesystem::path &directoryPath, unsigned int tileNumber) {
+        return directoryPath / (baseTileFilename(tileNumber) + temporaryFilenameExtension());
+    }
+    static std::string muxedFilenameExtension() {
+        return ".mp4";
+    }
+    static std::string temporaryFilenameExtension() {
+        return ".hevc";
+    }
+
+private:
+    static std::string baseTileFilename(unsigned int tileNumber) {
+        return "orig-tile-" + std::to_string(tileNumber);
+    }
+    static constexpr auto separating_string_ = "-";
+    static constexpr auto tmp_ = "tmp";
+};
+
 } // namespace lightdb::catalog
 #endif //LIGHTDB_FILES_H

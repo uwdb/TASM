@@ -146,7 +146,7 @@ private:
 
     private:
         int gop(long frameNumber) {
-            return gopLength_ / frameNumber;
+            return frameNumber / gopLength_;
         }
 
         unsigned int gop(const Configuration::FrameRate &framerate) const {
@@ -231,6 +231,70 @@ private:
         const unsigned int encoderId_ = 0u;
         std::list<std::unique_ptr<bytestring>> encodedDataForGOPAndTile_;
         size_t encodedDataLength_;
+    };
+    const Codec codec_;
+};
+
+class StoreEncodedTiles : public PhysicalOperator {
+public:
+    explicit StoreEncodedTiles(const LightFieldReference &logical,
+                                PhysicalOperatorReference &parent,
+                                std::filesystem::path basePath,
+                                const Codec &codec)
+        : PhysicalOperator(logical, {parent}, DeviceType::CPU, runtime::make<Runtime>(*this, "StoreEncodedTiles-init", basePath)),
+        codec_(codec)
+    { }
+
+    const Codec &codec() const { return codec_; }
+
+private:
+    class Runtime: public runtime::UnaryRuntime<StoreEncodedTiles, CPUEncodedFrameData> {
+    public:
+        Runtime(StoreEncodedTiles &physical, std::filesystem::path basePath)
+            : runtime::UnaryRuntime<StoreEncodedTiles, CPUEncodedFrameData>(physical),
+                    basePath_(basePath)
+        { }
+
+        std::optional<physical::MaterializedLightFieldReference> read() override {
+            if (iterator() == iterator().eos())
+                return std::nullopt;
+
+            auto data = iterator()++;
+            int firstFrame;
+            long numberOfFrames;
+            int tileNumber;
+            assert(data.getFirstFrameIndexIfSet(firstFrame));
+            assert(data.getNumberOfFramesIfSet(numberOfFrames));
+            assert(data.getTileNumberIfSet(tileNumber));
+            int lastFrame = firstFrame + numberOfFrames - 1;
+
+            setUpDirectory(firstFrame, lastFrame);
+            auto rawVideoPath = writeRawVideo(firstFrame, lastFrame, tileNumber, data.value());
+            auto muxedVideo = muxVideo(rawVideoPath);
+            return EmptyData(DeviceType::CPU);
+        }
+
+    private:
+        void setUpDirectory(int firstFrame, int lastFrame) {
+            std::filesystem::create_directories(catalog::TmpTileFiles::directoryForTilesInFrames(basePath_, firstFrame, lastFrame));
+        }
+
+        std::filesystem::path writeRawVideo(int firstFrame, int lastFrame, int tileNumber, const bytestring &value) {
+            auto outputDir = catalog::TmpTileFiles::directoryForTilesInFrames(basePath_, firstFrame, lastFrame);
+            auto rawTilePath = catalog::TmpTileFiles::temporaryTileFilename(outputDir, tileNumber);
+            std::ofstream hevc(rawTilePath);
+            hevc.write(value.data(), value.size());
+            return rawTilePath;
+        }
+
+        std::filesystem::path muxVideo(const std::filesystem::path &rawVideoPath) {
+            auto muxedFile = rawVideoPath;
+            muxedFile.replace_extension(catalog::TmpTileFiles::muxedFilenameExtension());
+            video::gpac::mux_media(rawVideoPath, muxedFile, physical().codec());
+            return muxedFile;
+        }
+
+        std::filesystem::path basePath_;
     };
     const Codec codec_;
 };

@@ -135,7 +135,8 @@ namespace lightdb::optimization {
                                 decode,
                                 std::unordered_set<int>(),
                                 configProvider,
-                                node.tileLayoutsManager()->entry().name());
+                                node.tileLayoutsManager()->entry().name(),
+                                gopLength);
                         plan().emplace<physical::Sink>(logical, crack);
                     } else {
                         plan().emplace<physical::Sink>(logical, scan);
@@ -680,11 +681,12 @@ namespace lightdb::optimization {
             auto tileLayoutsManager = multiTiledLightField.tileLayoutsManager();
             auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
 
+            bool shouldReadEntireGOPs = true;
             auto scan = plan().emplace<physical::ScanMultiTileOperator>(
                     physical_parents[0]->logical(),
                     metadataManager,
                     tileLocationProvider,
-                    node.shouldReadEntireGOPs());
+                    shouldReadEntireGOPs);
             bool isDecodingDifferentSizes = !multiTiledLightField.usesOnlyOneTile() && !tileLayoutsManager->hasASingleTile();
             auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, isDecodingDifferentSizes, tileLayoutsManager->largestWidth(), tileLayoutsManager->largestHeight());
 
@@ -701,6 +703,9 @@ namespace lightdb::optimization {
 
             // Mask background pixels.
             auto masked = plan().emplace<physical::GPUMetadataTransform<video::GPUSelectPixels>>(logical, boxed, metadataManager->metadataSpecification(), tileLocationProvider);
+
+            // Encode modified tiles.
+            auto encoded = plan().emplace<physical::GPUEncodeTilesToCPU>(logical, masked, Codec::hevc());
 
             plan().remove_operator(physical_parents[0]);
 

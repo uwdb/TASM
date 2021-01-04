@@ -11,7 +11,8 @@ namespace lightdb {
 class TileEncoder {
 public:
     TileEncoder(EncodeConfiguration encodeConfiguration, GPUContext &context, VideoLock &lock)
-            : encodeConfiguration_(std::move(encodeConfiguration)),
+            : width_(encodeConfiguration.width), height_(encodeConfiguration.height),
+            encodeConfiguration_(std::move(encodeConfiguration)),
               encoder_{context, encodeConfiguration_, lock},
               writer_{encoder_.api()},
               encodeSession_{encoder_, writer_}
@@ -23,6 +24,8 @@ public:
     void flush();
 
 private:
+    unsigned int width_;
+    unsigned int height_;
     EncodeConfiguration encodeConfiguration_;
     VideoEncoder encoder_;
     MemoryEncodeWriter writer_;
@@ -52,6 +55,8 @@ public:
 
     void createEncoderWithConfiguration(unsigned int identifier, unsigned int newWidth, unsigned int newHeight) {
         assert(!idToEncoder_.count(identifier));
+        assert(baseConfiguration_.width >= newWidth);
+        assert(baseConfiguration_.height >= newHeight);
 
         if (availableEncoders_.empty()) {
             createEncoder(baseConfiguration_);

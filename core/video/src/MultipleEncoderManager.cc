@@ -3,6 +3,12 @@
 namespace lightdb {
 
 void TileEncoder::updateConfiguration(unsigned int newWidth, unsigned int newHeight) {
+    if (newWidth == width_ && newHeight == height_)
+        return;
+
+    width_ = newWidth;
+    height_ = newHeight;
+
     NvEncPictureCommand picCommand;
     picCommand.bResolutionChangePending = true;
     picCommand.newWidth = newWidth;

@@ -3,6 +3,8 @@
 
 #include "PhysicalOperators.h"
 
+#include "Gpac.h"
+#include "MultipleEncoderManager.h"
 #include "Tasm.h"
 
 namespace lightdb::physical {
@@ -240,8 +242,9 @@ public:
     explicit StoreEncodedTiles(const LightFieldReference &logical,
                                 PhysicalOperatorReference &parent,
                                 std::filesystem::path basePath,
-                                const Codec &codec)
-        : PhysicalOperator(logical, {parent}, DeviceType::CPU, runtime::make<Runtime>(*this, "StoreEncodedTiles-init", basePath)),
+                                const Codec &codec,
+                                std::shared_ptr<tiles::ModifiedTileTracker> modifiedTileTracker)
+        : PhysicalOperator(logical, {parent}, DeviceType::CPU, runtime::make<Runtime>(*this, "StoreEncodedTiles-init", basePath, modifiedTileTracker)),
         codec_(codec)
     { }
 
@@ -250,10 +253,14 @@ public:
 private:
     class Runtime: public runtime::UnaryRuntime<StoreEncodedTiles, CPUEncodedFrameData> {
     public:
-        Runtime(StoreEncodedTiles &physical, std::filesystem::path basePath)
+        Runtime(StoreEncodedTiles &physical, std::filesystem::path basePath, std::shared_ptr<tiles::ModifiedTileTracker> modifiedTileTracker)
             : runtime::UnaryRuntime<StoreEncodedTiles, CPUEncodedFrameData>(physical),
-                    basePath_(basePath)
-        { }
+                    basePath_(basePath),
+                    modifiedTileTracker_(modifiedTileTracker)
+        {
+            // Remove previous temporary contents.
+            std::filesystem::remove_all(catalog::TmpTileFiles::temporaryDirectory(basePath_));
+        }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if (iterator() == iterator().eos())
@@ -268,20 +275,24 @@ private:
             assert(data.getTileNumberIfSet(tileNumber));
             int lastFrame = firstFrame + numberOfFrames - 1;
 
-            setUpDirectory(firstFrame, lastFrame);
-            auto rawVideoPath = writeRawVideo(firstFrame, lastFrame, tileNumber, data.value());
-            auto muxedVideo = muxVideo(rawVideoPath);
-            return EmptyData(DeviceType::CPU);
+            auto outputDir = setUpDirectory(firstFrame, lastFrame);
+            auto rawVideoPath = writeRawVideo(outputDir, tileNumber, data.value());
+//            auto muxedVideo = muxVideo(rawVideoPath);
+            if (modifiedTileTracker_) {
+                modifiedTileTracker_->modifiedTileInFrames(tileNumber, firstFrame, lastFrame, outputDir);
+            }
+            return CPUEncodedFrameData(data.codec(), data.configuration(), data.geometry(), std::make_unique<bytestring>());
         }
 
     private:
-        void setUpDirectory(int firstFrame, int lastFrame) {
-            std::filesystem::create_directories(catalog::TmpTileFiles::directoryForTilesInFrames(basePath_, firstFrame, lastFrame));
+        std::filesystem::path setUpDirectory(int firstFrame, int lastFrame) {
+            auto framesPath = catalog::TmpTileFiles::directoryForTilesInFrames(basePath_, firstFrame, lastFrame);
+            std::filesystem::create_directories(framesPath);
+            return framesPath;
         }
 
-        std::filesystem::path writeRawVideo(int firstFrame, int lastFrame, int tileNumber, const bytestring &value) {
-            auto outputDir = catalog::TmpTileFiles::directoryForTilesInFrames(basePath_, firstFrame, lastFrame);
-            auto rawTilePath = catalog::TmpTileFiles::temporaryTileFilename(outputDir, tileNumber);
+        std::filesystem::path writeRawVideo(const std::filesystem::path &outputDir, int tileNumber, const bytestring &value) {
+            auto rawTilePath = catalog::TileFiles::temporaryTileFilename(outputDir, tileNumber);
             std::ofstream hevc(rawTilePath);
             hevc.write(value.data(), value.size());
             return rawTilePath;
@@ -289,14 +300,94 @@ private:
 
         std::filesystem::path muxVideo(const std::filesystem::path &rawVideoPath) {
             auto muxedFile = rawVideoPath;
-            muxedFile.replace_extension(catalog::TmpTileFiles::muxedFilenameExtension());
+            muxedFile.replace_extension(catalog::TileFiles::muxedFilenameExtension());
             video::gpac::mux_media(rawVideoPath, muxedFile, physical().codec());
             return muxedFile;
         }
 
         std::filesystem::path basePath_;
+        std::shared_ptr<tiles::ModifiedTileTracker> modifiedTileTracker_;
     };
     const Codec codec_;
+};
+
+class StitchOperator : public PhysicalOperator {
+public:
+    explicit StitchOperator(const LightFieldReference &logical,
+                            PhysicalOperatorReference &parent,
+                            std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider,
+                            unsigned int gopLength,
+                            unsigned int firstFrame,
+                            unsigned int lastFrameExclusive)
+        : PhysicalOperator(logical, {parent}, DeviceType::CPU, runtime::make<Runtime>(*this, "StitchOperator-init", tileLocationProvider, gopLength, firstFrame, lastFrameExclusive))
+    { }
+
+private:
+    class Runtime : public runtime::UnaryRuntime<StitchOperator, CPUEncodedFrameData> {
+        public:
+            Runtime(StitchOperator &physical,
+                    std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider,
+                    unsigned int gopLength,
+                    unsigned int firstFrame,
+                    unsigned int lastFrame)
+                : runtime::UnaryRuntime<StitchOperator, CPUEncodedFrameData>(physical),
+                        tileLocationProvider_(tileLocationProvider),
+                        gopLength_(gopLength),
+                        firstGOP_(gop(firstFrame)),
+                        lastGOP_(gop(lastFrame)),
+                        currentGOP_(firstGOP_),
+                        ppsId_(1),
+                        sentSEIForOneTile_(false),
+                        numberOfStitchedGOPs_(0)
+            { }
+
+        std::optional<physical::MaterializedLightFieldReference> read() override {
+            // Make sure everything is processed/stored.
+            preProcessEverything();
+
+            if (currentGOP_ >= lastGOP_) {
+                std::cout << "**Number of stitched GOPs: " << numberOfStitchedGOPs_ << std::endl;
+                return std::nullopt;
+            }
+
+            auto stitched = stitchGOP(currentGOP_);
+            if (!sentSEIForOneTile_) {
+                ++currentGOP_;
+                ++numberOfStitchedGOPs_;
+            }
+            auto &base = referenceData_->downcast<CPUEncodedFrameData>();
+            return std::make_optional<CPUEncodedFrameData>(base.codec(), base.configuration(), base.geometry(), stitched);
+        }
+
+    private:
+        void preProcessEverything() {
+            while(!all_parent_eos()) {
+                for (auto it = iterators().begin(); it != iterators().end(); ++it) {
+                    if (*it != it->eos()) {
+                        if (!referenceData_)
+                            referenceData_ = std::shared_ptr<MaterializedLightField>(**it);
+                        ++(*it);
+                    }
+                }
+            }
+        }
+
+        int gop(unsigned int frame) { return frame / gopLength_; }
+        std::shared_ptr<bytestring> stitchGOP(int gop);
+        std::shared_ptr<bytestring> getSEI();
+
+        std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;
+        unsigned int gopLength_;
+        unsigned int firstGOP_;
+        unsigned int lastGOP_;
+        unsigned int currentGOP_;
+        unsigned int ppsId_;
+        std::shared_ptr<MaterializedLightField> referenceData_;
+        static constexpr auto seiPath_ = "/home/maureen/lightdb-wip/HomomorphicStitching/scripts/sei.txt";
+        std::shared_ptr<bytestring> sei_;
+        bool sentSEIForOneTile_;
+        unsigned int numberOfStitchedGOPs_;
+    };
 };
 
 } // namespace lightdb::physical

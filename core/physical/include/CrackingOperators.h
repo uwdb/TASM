@@ -18,8 +18,9 @@ public:
             std::unordered_set<int> desiredKeyframes,
             std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider,
             std::string outputEntryName = "",
-            unsigned int gopLength = 0)
-        : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "CrackVideo-init", tileConfigurationProvider)),
+            unsigned int gopLength = 0,
+            bool splitByGOP = false)
+        : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "CrackVideo-init", tileConfigurationProvider, splitByGOP)),
         GPUOperator(parent),
         outputEntryName_(outputEntryName.length() ? outputEntryName : logical.downcast<logical::CrackedLightField>().name()),
         desiredKeyframes_(std::move(desiredKeyframes)),
@@ -39,14 +40,16 @@ public:
 private:
     class Runtime : public runtime::GPURuntime<CrackVideo> {
     public:
-        explicit Runtime(CrackVideo &physical, std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider)
+        explicit Runtime(CrackVideo &physical, std::shared_ptr<tiles::TileConfigurationProvider> tileConfigurationProvider, bool splitByGOP)
             : runtime::GPURuntime<CrackVideo>(physical),
                     geometry_(getGeometry()),
                     tileConfigurationProvider_(tileConfigurationProvider),
                     tileEncodersManager_(EncodeConfiguration((*iterators().front()).downcast<GPUDecodedFrameData>().configuration(), Codec::hevc().nvidiaId().value(), physical.gopLength() ?: 1000), context(), lock()),
                     firstFrameInGroup_(-1),
                     lastFrameInGroup_(-1),
-                    frameNumber_(0)
+                    frameNumber_(0),
+                    currentGOP_(-1),
+                    splitByGOP_(splitByGOP)
 //                    threadPool_(context(), 1)
         { }
 
@@ -82,6 +85,7 @@ private:
                     // If we are scanning the entire file, there won't be frame numbers attached to the decoded frames.
                     frameNumber = frame->getFrameNumber(frameNumber) ? frameNumber : frameNumber_++;
                     auto &tileLayout = tileConfigurationProvider_->tileLayoutForFrame(frameNumber);
+                    auto gop = frameNumber / physical().gopLength();
 
                     // See if the current frame is already the correct layout.
                     // If so, and if there are frames that are currently being encoded, save them to disk.
@@ -116,7 +120,7 @@ private:
                         }
                     }
 
-                    if (tileLayout != currentTileLayout_ || frameNumber != lastFrameInGroup_ + 1) {
+                    if (tileLayout != currentTileLayout_ || frameNumber != lastFrameInGroup_ + 1 || (splitByGOP_ && gop != currentGOP_)) {
                         // Read the data that was flushed from the encoders because it has the rest of the frames that were
                         // encoded with the last configuration.
                         // Only save data if we were actually encoding it.
@@ -128,11 +132,12 @@ private:
                         tilesCurrentlyBeingEncoded_.clear();
 
                         // Only reconfigure the encoders if we will actually be encoding frames.
-                        if (tileLayout != tiles::EmptyTileLayout)
+                        if (tileLayout != tiles::EmptyTileLayout && tileLayout != currentTileLayout_)
                             reconfigureEncodersForNewLayout(tileLayout);
 
                         currentTileLayout_ = tileLayout;
                         firstFrameInGroup_ = frameNumber;
+                        currentGOP_ = gop;
                     }
 
                     // Encode each tile for this frame.
@@ -169,6 +174,8 @@ private:
         int firstFrameInGroup_;
         int lastFrameInGroup_;
         unsigned int frameNumber_;
+        int currentGOP_;
+        bool splitByGOP_;
         std::vector<unsigned int> tilesCurrentlyBeingEncoded_;
 
         // This should actually probably be a list of output streams related to the current tile group's transaction.

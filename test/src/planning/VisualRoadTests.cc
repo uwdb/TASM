@@ -107,9 +107,6 @@ TEST_F(VisualRoadTestFixture, testCreateTilesAroundPeople) {
 
     // Then, do selection on people tiles.
     // Re-do scan so that new tiles are discovered.
-    // The storing does not work.
-    // Check offsets in select.
-    // Should also probably check offsets in detect.
     Coordinator().execute(ScanMultiTiled(videoId).Select(personSelection, yolo).Store("traffic-4k-002-ds2k-tiled-masked"));
 }
 
@@ -127,7 +124,7 @@ TEST_F(VisualRoadTestFixture, testDetectAndMaskAroundPeople) {
 //    Coordinator().execute(input.Select(selection).Map(yolo));
 
     // Then, re-tile around people.
-    PixelsInFrameMetadataSpecification personSelection(std::make_shared<SingleMetadataElement>("label", "person", 30, 120));
+    PixelsInFrameMetadataSpecification personSelection(std::make_shared<SingleMetadataElement>("label", "car", 30, 60));
 //    auto framerate = 30u;
 //    auto retileOp = ScanAndRetile(
 //            videoId,
@@ -139,8 +136,5 @@ TEST_F(VisualRoadTestFixture, testDetectAndMaskAroundPeople) {
 
     // Then, do selection on people tiles.
     // Re-do scan so that new tiles are discovered.
-    // The storing does not work.
-    // Check offsets in select.
-    // Should also probably check offsets in detect.
-    Coordinator().execute(ScanMultiTiled(videoId).Select(personSelection, yolo));
+    Coordinator().execute(ScanMultiTiled(videoId).Select(personSelection, yolo).Save("/home/maureen/masked_videos/traffic.mp4"));
 }

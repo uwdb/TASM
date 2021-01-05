@@ -92,6 +92,10 @@ namespace lightdb::physical {
             : SerializableData(device), value_(std::move(value))
         { }
 
+        SerializedData(DeviceType device, std::shared_ptr<bytestring> value)
+                : SerializableData(device), value_(value)
+        { }
+
         inline MaterializedLightFieldReference ref() const override { return MaterializedLightFieldReference::make<SerializedData>(*this); }
 
     private:
@@ -137,6 +141,12 @@ namespace lightdb::physical {
             geometry_(geometry)
         { }
 
+        FrameData(const DeviceType device, Configuration configuration, GeometryReference geometry, std::shared_ptr<bytestring> value)
+                : SerializedData(device, value),
+                  configuration_(std::move(configuration)),
+                  geometry_(geometry)
+        { }
+
     private:
         const Configuration configuration_;
         const GeometryReference geometry_;
@@ -165,6 +175,13 @@ namespace lightdb::physical {
                 std::unique_ptr<bytestring> value)
                 : FrameData(device, configuration, geometry, std::move(value)),
                 codec_(std::move(codec))
+        { }
+
+        EncodedFrameData(const DeviceType device, Codec codec,
+                         const Configuration &configuration, const GeometryReference &geometry,
+                         std::shared_ptr<bytestring> value)
+                : FrameData(device, configuration, geometry, value),
+                  codec_(std::move(codec))
         { }
 
     public:
@@ -210,6 +227,17 @@ namespace lightdb::physical {
                 firstFrameIndex_(-1),
                 numberOfFrames_(-1),
                 tileNumber_(-1)
+        { }
+
+        explicit CPUEncodedFrameData(const Codec &codec,
+                                     const Configuration &configuration,
+                                     const GeometryReference &geometry,
+                                     std::shared_ptr<bytestring> value)
+                : EncodedFrameData(DeviceType::CPU, codec, configuration, geometry, value),
+                  packet_(),
+                  firstFrameIndex_(-1),
+                  numberOfFrames_(-1),
+                  tileNumber_(-1)
         { }
 
 

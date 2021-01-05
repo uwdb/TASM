@@ -677,6 +677,7 @@ namespace lightdb::optimization {
 
             auto &multiTiledLightField = physical_parents[0].downcast<physical::ScanMultiTilePlaceholderOperator>().multiTiledLightField();
             auto metadataManager = node.metadataManager();
+            auto &metadataSpecification = metadataManager->metadataSpecification();
 
             auto tileLayoutsManager = multiTiledLightField.tileLayoutsManager();
             auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
@@ -699,16 +700,26 @@ namespace lightdb::optimization {
             }
 
             // Add bounding boxes around the detected objects.
-            auto boxed = plan().emplace<physical::GPUMetadataTransform<video::GPURectangleOverlay>>(logical, last, metadataManager->metadataSpecification(), tileLocationProvider);
+            auto boxed = plan().emplace<physical::GPUMetadataTransform<video::GPURectangleOverlay>>(logical, last, metadataSpecification, tileLocationProvider);
 
             // Mask background pixels.
-            auto masked = plan().emplace<physical::GPUMetadataTransform<video::GPUSelectPixels>>(logical, boxed, metadataManager->metadataSpecification(), tileLocationProvider);
+            auto masked = plan().emplace<physical::GPUMetadataTransform<video::GPUSelectPixels>>(logical, boxed, metadataSpecification, tileLocationProvider);
 
             // Encode modified tiles.
             auto encoded = plan().emplace<physical::GPUEncodeTilesToCPU>(logical, masked, Codec::hevc());
 
             // Save modified tiles to disk.
-            auto muxed = plan().emplace<physical::StoreEncodedTiles>(logical, encoded, tileLayoutsManager->entry().path(), Codec::hevc());
+            // Assume that GOP length == fps.
+            auto tiledInfo = video::gpac::load_metadata(tileLocationProvider->locationOfTileForFrame(0, 0),
+                                                        false,
+                                                        {Volume::zero()},
+                                                        {GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples())});
+            auto gopLength = tiledInfo[0].configuration().framerate.fps();
+            auto maskedTileLocationProvider = std::make_shared<tiles::MaskedTileLocationProvider>(tileLocationProvider, gopLength);
+            auto muxed = plan().emplace<physical::StoreEncodedTiles>(logical, encoded, tileLayoutsManager->entry().path(), Codec::hevc(), maskedTileLocationProvider);
+
+            // Stitch tiles.
+            auto stitched = plan().emplace<physical::StitchOperator>(logical, muxed, maskedTileLocationProvider, gopLength, metadataSpecification.firstFrame(), metadataSpecification.lastFrame());
 
             plan().remove_operator(physical_parents[0]);
 

@@ -17,6 +17,7 @@ struct Rectangle {
     unsigned int id;
     unsigned int x, y;
     unsigned int width, height;
+    static const unsigned int alignment = 32;
 
     Rectangle(unsigned int id = 0, unsigned int x = 0, unsigned int y = 0, unsigned int width = 0,
               unsigned int height = 0)
@@ -78,6 +79,15 @@ struct Rectangle {
 
         return *this;
     }
+
+    static unsigned int aligned(unsigned int val) {
+        if (!(val % alignment))
+            return val;
+        return ((val / alignment) + 1) * alignment;
+    }
+
+    unsigned int alignedWidth() const { return aligned(width); }
+    unsigned int alignedHeight() const { return aligned(height); }
 };
 } // namespace lightdb
 #endif //LIGHTDB_BOX_H

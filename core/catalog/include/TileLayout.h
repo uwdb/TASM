@@ -70,6 +70,14 @@ public:
         return std::accumulate(widthsOfColumns_.begin(), widthsOfColumns_.end(), 0);
     }
 
+    unsigned int codedHeight() const {
+        return aligned(totalHeight());
+    }
+
+    unsigned int codedWidth() const {
+        return aligned(totalWidth());
+    }
+
     unsigned int largestWidth() const {
         if (largestWidth_)
             return largestWidth_;
@@ -116,6 +124,11 @@ private:
     unsigned int tileColumnForX(unsigned int x) const;
     unsigned int tileRowForY(unsigned int y) const;
     unsigned int tileNumberForCoordinate(unsigned int x, unsigned int y) const;
+    unsigned int aligned(unsigned int val) const {
+        if (!(val % alignment_))
+            return val;
+        return ((val / alignment_) + 1) * alignment_;
+    }
 
 //    std::string catalogEntryName_;
 //    std::filesystem::path catalogPath_;
@@ -127,6 +140,8 @@ private:
     mutable unsigned int largestWidth_;
     mutable unsigned int largestHeight_;
 //    std::unordered_map<unsigned int, std::filesystem::path> tileToFilePath_;
+
+    static const unsigned int alignment_ = 32u;
 };
 
 static const TileLayout NoTilesLayout(1, 1, {1}, {1});

@@ -66,7 +66,7 @@ void TileLayoutsManager::loadAllTileConfigurations() {
 
     hasASingleTile_ = true;
     for (auto &dir : std::filesystem::directory_iterator(catalogEntryPath)) {
-        if (!dir.is_directory())
+        if (!dir.is_directory() || dir.path().filename() == catalog::TmpTileFiles::tmp())
             continue;
 
         auto dirId = globalDirId++;

@@ -98,7 +98,7 @@ void TileCrackingTransaction::commit() {
         // Mux the outputs to mp4.
         auto muxedFile = output.filename();
         muxedFile.replace_extension(catalog::TileFiles::muxedFilenameExtension());
-        video::gpac::mux_media(output.filename(), muxedFile, output.codec());
+        video::gpac::mux_media(output.filename(), muxedFile, output.codec(), false);
     }
 
     // TODO: write metadata and tile configuration to same file.

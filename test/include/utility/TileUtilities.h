@@ -1,11 +1,13 @@
 #ifndef LIGHTDB_TILEUTILITIES_H
 #define LIGHTDB_TILEUTILITIES_H
 
+#include "Files.h"
+
 static void DeleteTiles(const std::string &catalogEntryName) {
     static std::string basePath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/";
     auto catalogPath = basePath + catalogEntryName;
     for (auto &dir : std::filesystem::directory_iterator(catalogPath)) {
-        if (!dir.is_directory())
+        if (!dir.is_directory() || dir.path().filename() == lightdb::catalog::TmpTileFiles::tmp())
             continue;
 
         auto dirName = dir.path().filename().string();

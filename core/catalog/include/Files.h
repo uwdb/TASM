@@ -53,8 +53,11 @@ public:
     static std::filesystem::path temporaryTileFilename(const Entry &entry, unsigned int tileNumber,
                                                        unsigned int firstFrame,
                                                        unsigned int lastFrame) {
-        return directoryForTilesInFrames(entry, firstFrame, lastFrame) / (baseTileFilename(tileNumber) +
-                temporaryFilenameExtension());
+        return temporaryTileFilename(directoryForTilesInFrames(entry, firstFrame, lastFrame), tileNumber);
+    }
+
+    static std::filesystem::path temporaryTileFilename(const std::filesystem::path &directoryPath, unsigned int tileNumber) {
+        return directoryPath / (baseTileFilename(tileNumber) + temporaryFilenameExtension());
     }
 
     static std::filesystem::path tileFilename(const std::filesystem::path &directoryPath, unsigned int tileNumber) {
@@ -65,6 +68,10 @@ public:
         return ".mp4";
     }
 
+    static std::string temporaryFilenameExtension() {
+        return ".hevc";
+    }
+
     static std::filesystem::path tileMetadataFilename(const Entry &entry, unsigned int firstFrame, unsigned lastFrame) {
         return directoryForTilesInFrames(entry, firstFrame, lastFrame) / tile_metadata_filename_;
     }
@@ -73,10 +80,6 @@ public:
     static unsigned int tileVersionFromPath(const std::filesystem::path &directoryPath);
 
 private:
-    static std::string temporaryFilenameExtension() {
-        return ".hevc";
-    }
-
     static std::string baseTileFilename(unsigned int tileNumber) {
         return "orig-tile-" + std::to_string(tileNumber);
     }
@@ -89,28 +92,30 @@ private:
 // TODO: Clean up this + TileFiles.
 class TmpTileFiles {
 public:
-    static std::filesystem::path directoryForTilesInFrames(const std::filesystem::path &path, unsigned int firstFrame, unsigned int lastFrame) {
-        return path / tmp_ / (std::to_string(firstFrame) + separating_string_ + std::to_string(lastFrame));
-    }
-    static std::filesystem::path tileFilename(const std::filesystem::path &directoryPath, unsigned int tileNumber) {
-        return directoryPath / (baseTileFilename(tileNumber) + muxedFilenameExtension());
-    }
-    static std::filesystem::path temporaryTileFilename(const std::filesystem::path &directoryPath, unsigned int tileNumber) {
-        return directoryPath / (baseTileFilename(tileNumber) + temporaryFilenameExtension());
-    }
-    static std::string muxedFilenameExtension() {
-        return ".mp4";
-    }
-    static std::string temporaryFilenameExtension() {
-        return ".hevc";
+    static std::filesystem::path temporaryDirectory(const std::filesystem::path &path) {
+        return path / tmp_;
     }
 
-private:
-    static std::string baseTileFilename(unsigned int tileNumber) {
-        return "orig-tile-" + std::to_string(tileNumber);
+    static std::filesystem::path directoryForTilesInFrames(const std::filesystem::path &path, unsigned int firstFrame, unsigned int lastFrame) {
+        return temporaryDirectory(path) / (std::to_string(firstFrame) + separating_string_ + std::to_string(lastFrame));
     }
+
+    static std::string tmp() { return tmp_; }
+
+private:
     static constexpr auto separating_string_ = "-";
     static constexpr auto tmp_ = "tmp";
+};
+
+class BlackTileFiles {
+public:
+    static std::filesystem::path pathForTile(const std::filesystem::path &base, unsigned int gopLength, unsigned int width, unsigned int height) {
+        return base /
+                (std::to_string(gopLength) + "_f") /
+                (std::to_string(width) + "_w") /
+                (std::to_string(height) + "_h") /
+                ("t_" + std::to_string(width) + "_" + std::to_string(height) + ".hevc");
+    }
 };
 
 } // namespace lightdb::catalog

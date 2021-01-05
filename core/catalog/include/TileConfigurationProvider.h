@@ -405,6 +405,12 @@ public:
     virtual ~TileLocationProvider() { }
 };
 
+class ModifiedTileTracker {
+public:
+    virtual void modifiedTileInFrames(unsigned int tile, unsigned int firstFrame, unsigned int lastFrame, const std::filesystem::path &gopPath) = 0;
+    virtual ~ModifiedTileTracker() { }
+};
+
 class SingleTileLocationProvider : public TileLocationProvider {
 public:
     SingleTileLocationProvider(std::shared_ptr<const TileLayoutsManager> tileLayoutsManager)
@@ -443,6 +449,72 @@ private:
     std::shared_ptr<const TileLayoutsManager> tileLayoutsManager_;
     mutable std::unordered_map<unsigned int, int> frameToLayoutId_;
     mutable std::recursive_mutex mutex_;
+};
+
+class MaskedTileLocationProvider : public TileLocationProvider, public ModifiedTileTracker {
+public:
+    MaskedTileLocationProvider(std::shared_ptr<TileLocationProvider> originalTiles,
+                                unsigned int gopLength)
+        : originalTiles_(originalTiles),
+        gopLength_(gopLength)
+    {
+        assert(originalTiles_);
+    }
+
+    unsigned int lastFrameWithLayout() const override {
+        return originalTiles_->lastFrameWithLayout();
+    }
+
+    std::filesystem::path locationOfTileForFrame(unsigned int tileNumber, unsigned int frame) const override {
+        auto gop = gopForFrame(frame);
+        {
+            std::scoped_lock lock{mutex_};
+            if (gopToModifiedPath_.count(gop) && gopToModifiedTiles_.at(gop)->count(tileNumber))
+                return catalog::TileFiles::temporaryTileFilename(gopToModifiedPath_.at(gop), tileNumber);
+        }
+
+//        auto originalTile = originalTiles_->locationOfTileForFrame(tileNumber, frame);
+//        originalTile.replace_extension(catalog::TileFiles::temporaryFilenameExtension());
+//        return originalTile;
+
+        // Return path to black tile of correct size.
+        auto tileRect = originalTiles_->tileLayoutForFrame(frame).rectangleForTile(tileNumber);
+        return catalog::BlackTileFiles::pathForTile(blackTilesBasePath_, gopLength_, tileRect.alignedWidth(), tileRect.alignedHeight());
+    }
+
+    const TileLayout &tileLayoutForFrame(unsigned int frame) override {
+        return originalTiles_->tileLayoutForFrame(frame);
+    }
+
+    void modifiedTileInFrames(unsigned int tile, unsigned int firstFrame, unsigned int lastFrame, const std::filesystem::path &gopPath) override {
+        std::scoped_lock lock{mutex_};
+
+        // For now, assume everything is per-GOP.
+        auto gop = gopForFrame(firstFrame);
+        assert(gop == gopForFrame(lastFrame));
+
+        if (gopToModifiedPath_.count(gop)) {
+            assert(gopToModifiedPath_.at(gop) == gopPath);
+        } else {
+            gopToModifiedPath_.emplace(gop, gopPath);
+        }
+
+        if (!gopToModifiedTiles_.count(gop))
+            gopToModifiedTiles_.emplace(gop, new std::unordered_set<int>());
+        gopToModifiedTiles_.at(gop)->insert(tile);
+    }
+
+private:
+    int gopForFrame(unsigned int frame) const {
+        return frame / gopLength_;
+    }
+
+    std::shared_ptr<TileLocationProvider> originalTiles_;
+    std::unordered_map<int, std::filesystem::path> gopToModifiedPath_;
+    std::unordered_map<int, std::unique_ptr<std::unordered_set<int>>> gopToModifiedTiles_;
+    unsigned int gopLength_;
+    mutable std::mutex mutex_;
+    static constexpr auto blackTilesBasePath_ = "/home/maureen/black_tiles";
 };
 
 } // namespace lightdb::tiles

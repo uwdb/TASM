@@ -2,15 +2,15 @@
 // Created by sophi on 4/9/2018.
 //
 
-#ifndef LIGHTDB_STITCHER_H
-#define LIGHTDB_STITCHER_H
+#ifndef LIGHTDB_TILES_TILES_STITCHER_H
+#define LIGHTDB_TILES_TILES_STITCHER_H
 
 #include <string>
 #include <vector>
 #include "Headers.h"
 #include "Context.h"
 
-namespace lightdb {
+namespace lightdb::tiles {
     class Stitcher {
      public:
 
@@ -35,6 +35,6 @@ namespace lightdb {
         //static string kNalDelimiter = static_cast<char>(0x00) + GetNalMarker();
     };
 
-}
+} // namespace lightdb::stitcher
 
-#endif //LIGHTDB_STITCHER_H
+#endif //LIGHTDB_TILES_TILES_STITCHER_H

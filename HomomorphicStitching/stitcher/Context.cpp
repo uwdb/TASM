@@ -4,13 +4,13 @@
 
 #include "Context.h"
 
-namespace lightdb {
+namespace lightdb::tiles {
 
 
     Context::Context(const int *tile_dimensions, const int *video_dimensions, const int *video_display_dimensions,
             bool should_use_uniform_tiles,
-            const std::vector<unsigned long> &heights_of_tiles,
-            const std::vector<unsigned long> &widths_of_tiles,
+            const std::vector<unsigned int> &heights_of_tiles,
+            const std::vector<unsigned int> &widths_of_tiles,
             unsigned int pps_id)
         : should_use_uniform_tiles_(should_use_uniform_tiles),
           heights_of_tiles_(heights_of_tiles),
@@ -34,4 +34,4 @@ namespace lightdb {
         return video_dimensions_;
     }
 
-}
+} // namespace lightdb::tiles

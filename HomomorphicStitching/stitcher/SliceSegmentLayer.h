@@ -2,8 +2,8 @@
 // Created by sophi on 4/11/2018.
 //
 
-#ifndef LIGHTDB_SLICESEGMENTLAYER_H
-#define LIGHTDB_SLICESEGMENTLAYER_H
+#ifndef LIGHTDB_TILES_SLICESEGMENTLAYER_H
+#define LIGHTDB_TILES_SLICESEGMENTLAYER_H
 
 #include <vector>
 #include <string>
@@ -25,7 +25,7 @@ namespace lightdb {
            * @param data The byte stream
            * @param headers The headers associated with this segment
            */
-          SliceSegmentLayer(const Context &context, const bytestring &data, const Headers &headers);
+          SliceSegmentLayer(const tiles::Context &context, const bytestring &data, const Headers &headers);
 
           /**
            * Sets the address of this segment to be address. Should only be called once -
@@ -72,7 +72,7 @@ namespace lightdb {
        * @param data The byte stream
        * @param headers The headers associated with this segment
        */
-      IDRSliceSegmentLayer(const Context &context, const bytestring &data, const Headers &headers);
+      IDRSliceSegmentLayer(const tiles::Context &context, const bytestring &data, const Headers &headers);
     };
 
     class TrailRSliceSegmentLayer : public SliceSegmentLayer {
@@ -84,9 +84,9 @@ namespace lightdb {
        * @param data The byte stream
        * @param headers The headers associated with this segment
        */
-      TrailRSliceSegmentLayer(const Context &context, const bytestring &data, const Headers &headers);
+      TrailRSliceSegmentLayer(const tiles::Context &context, const bytestring &data, const Headers &headers);
 
     };
 }
 
-#endif //LIGHTDB_SLICESEGMENTLAYER_H
+#endif //LIGHTDB_TILES_SLICESEGMENTLAYER_H

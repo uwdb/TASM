@@ -2,8 +2,8 @@
 // Created by sophi on 4/9/2018.
 //
 
-#ifndef LIGHTDB_NAL_H
-#define LIGHTDB_NAL_H
+#ifndef LIGHTDB_TILES_NAL_H
+#define LIGHTDB_TILES_NAL_H
 
 #include <cstddef>
 #include <string>
@@ -24,9 +24,9 @@ namespace lightdb {
          * @param context The context of the Nal
          * @param data The bytes representing the Nal
          */
-        Nal(const Context &context, const bytestring &data);
+        Nal(const tiles::Context &context, const bytestring &data);
         
-        Context GetContext() const;
+        tiles::Context GetContext() const;
         bytestring GetData() const;
         int GetType() const;
         bool IsSequence() const;
@@ -43,7 +43,7 @@ namespace lightdb {
         static const int kForbiddenZeroIndex = 0;
         static const int kForbiddenZeroMask = 0x80;
 
-        Context context_;
+        tiles::Context context_;
         bytestring byte_data_;
         bool is_header_;
         int type_;
@@ -95,7 +95,7 @@ bytestring GetNalMarker();
  * @param data The byte stream
  * @return A Nal with the correct type
  */
-Nal *Load(const Context &context, const bytestring &data);
+Nal *Load(const tiles::Context &context, const bytestring &data);
 
 /**
  * Returns a Nal with type based on the value returned by PeekType on data
@@ -105,10 +105,10 @@ Nal *Load(const Context &context, const bytestring &data);
  * SliceSegmentLayer)
  * @return A Nal with the correct type
  */
-Nal *Load(const Context &context, const bytestring &data, const Headers &headers);
+Nal *Load(const tiles::Context &context, const bytestring &data, const Headers &headers);
 
 static const int kNalHeaderSize = 5;
 static const int kNalMarkerSize = 3;
 }
 
-#endif //LIGHTDB_NAL_H
+#endif //LIGHTDB_TILES_NAL_H

@@ -2,12 +2,12 @@
 // Created by sophi on 5/3/2018.
 //
 
-#ifndef LIGHTDB_CONTEXT_H
-#define LIGHTDB_CONTEXT_H
+#ifndef LIGHTDB_TILES_TILES_CONTEXT_H
+#define LIGHTDB_TILES_TILES_CONTEXT_H
 
 #include <vector>
 
-namespace lightdb {
+namespace lightdb::tiles {
 
     class Context {
     public:
@@ -20,7 +20,7 @@ namespace lightdb {
          * the width
          */
         Context(const int *tile_dimensions, const int *video_dimensions, const int *video_display_dimensions, bool should_use_uniform_tiles,
-                const std::vector<unsigned long> &heights_of_tiles, const std::vector<unsigned long> &widths_of_tiles,
+                const std::vector<unsigned int> &heights_of_tiles, const std::vector<unsigned int> &widths_of_tiles,
                 unsigned int pps_id);
         /**
          *
@@ -39,8 +39,8 @@ namespace lightdb {
         int GetVideoDisplayWidth() const { return video_display_dimensions_[1]; };
         int GetVideoDisplayHeight() const { return video_display_dimensions_[0]; };
 
-        const std::vector<unsigned long> &GetHeightsOfTiles() const { return heights_of_tiles_; }
-        const std::vector<unsigned long> &GetWidthsOfTiles() const { return widths_of_tiles_; }
+        const std::vector<unsigned int > &GetHeightsOfTiles() const { return heights_of_tiles_; }
+        const std::vector<unsigned int> &GetWidthsOfTiles() const { return widths_of_tiles_; }
         bool GetShouldUseUniformTiles() const { return should_use_uniform_tiles_; }
 
         unsigned int GetPPSId() const { return pps_id_; }
@@ -52,12 +52,12 @@ namespace lightdb {
         int video_display_dimensions_[2];
 
         bool should_use_uniform_tiles_;
-        std::vector<unsigned long> heights_of_tiles_;
-        std::vector<unsigned long> widths_of_tiles_;
+        std::vector<unsigned int> heights_of_tiles_;
+        std::vector<unsigned int> widths_of_tiles_;
 
         unsigned int pps_id_;
     };
 
-}
+} // namespace lightdb::tiles
 
-#endif //LIGHTDB_CONTEXT_H
+#endif //LIGHTDB_TILES_TILES_CONTEXT_H

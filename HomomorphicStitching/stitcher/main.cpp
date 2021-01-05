@@ -6,12 +6,12 @@
 #include <cstring>
 
 #include "Context.h"
-#include "Stitcher.h"
+#include "TileStitcher.h"
 
 using std::string;
 using std::vector;
-using lightdb::Context;
-using lightdb::Stitcher;
+using lightdb::tiles::Context;
+using lightdb::tiles::Stitcher;
 
 /* Usage */
 // ./stitcher
@@ -65,8 +65,8 @@ int main(int argc, char *argv[]) {
     bool should_use_uniform_tiles = std::stoi(argv[num_tiles + 9]);
     unsigned int pps_id = 0;
 
-    std::vector<unsigned long> tile_heights;
-    std::vector<unsigned long> tile_widths;
+    std::vector<unsigned int> tile_heights;
+    std::vector<unsigned int> tile_widths;
     if (!should_use_uniform_tiles) {
         pps_id = std::stoi(argv[num_tiles + 10]);
 
@@ -80,8 +80,8 @@ int main(int argc, char *argv[]) {
             tile_widths[i] = std::stoi(argv[num_tiles + 10 + number_of_rows - 1 + 1 + i]);
     }
 
-    Context context(tile_dimensions, video_dimensions, video_display_dimensions, should_use_uniform_tiles, tile_heights, tile_widths, pps_id);
-    Stitcher stitcher(context, tiles);
+    tiles::Context context(tile_dimensions, video_dimensions, video_display_dimensions, should_use_uniform_tiles, tile_heights, tile_widths, pps_id);
+    tiles::Stitcher stitcher(context, tiles);
     bytestring stitched = stitcher.GetStitchedSegments();
 
     std::ofstream ostrm;

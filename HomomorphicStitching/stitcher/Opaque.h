@@ -1,7 +1,7 @@
 
 
-#ifndef LIGHTDB_OPAQUE_H
-#define LIGHTDB_OPAQUE_H
+#ifndef LIGHTDB_TILES_OPAQUE_H
+#define LIGHTDB_TILES_OPAQUE_H
 
 #include <string>
 #include "Nal.h"
@@ -11,7 +11,7 @@ namespace lightdb {
   class Opaque : public Nal {
   public:
 
-      Opaque(const Context &context, const bytestring &data);
+      Opaque(const tiles::Context &context, const bytestring &data);
 
       /**
        *
@@ -23,4 +23,4 @@ namespace lightdb {
 
 }
 
-#endif //LIGHTDB_OPAQUE_H
+#endif //LIGHTDB_TILES_OPAQUE_H

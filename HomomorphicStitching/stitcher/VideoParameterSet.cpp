@@ -14,7 +14,7 @@ using lightdb::utility::BitArray;
 
 namespace lightdb {
 
-    VideoParameterSet::VideoParameterSet(const Context &context, const bytestring &data) : Nal(context, data),
+    VideoParameterSet::VideoParameterSet(const tiles::Context &context, const bytestring &data) : Nal(context, data),
                                                                                            data_(data),
                                                                                            //data_(RemoveEmulationPrevention(data, GetHeaderSize(), data.size())),
                                                                                            profile_size_(GetSizeInBits(VPSMaxSubLayersMinus1())) {

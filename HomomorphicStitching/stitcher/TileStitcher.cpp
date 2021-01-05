@@ -8,7 +8,7 @@
 #include <list>
 #include <algorithm>
 
-#include "Stitcher.h"
+#include "TileStitcher.h"
 #include "Nal.h"
 #include "Context.h"
 #include "SliceSegmentLayer.h"
@@ -22,13 +22,13 @@ using std::list;
 using std::vector;
 using std::string;
 
-namespace lightdb {
+namespace lightdb::tiles {
 
   // TODO: Figure out return type for stitcher, fix the fact that the vector and list are holding
   // nals when they should hold whatever Tile returns, fix the fact that I'm using references
   // in that case, fix the fact that getsequence is called a bunch
 
-    Stitcher::Stitcher(const Context &context, vector<bytestring> &data) : tiles_(data), context_(context), headers_(context_, GetNals(tiles_.front()))  {
+    Stitcher::Stitcher(const tiles::Context &context, vector<bytestring> &data) : tiles_(data), context_(context), headers_(context_, GetNals(tiles_.front()))  {
     }
 
     vector<bytestring> Stitcher::GetNals(const bytestring &tile) {
@@ -206,4 +206,4 @@ namespace lightdb {
 
         return nalUnitBytes;
     }
-}
+} // namespace lightdb::tiles

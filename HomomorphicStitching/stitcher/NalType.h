@@ -2,8 +2,8 @@
 // Created by sophi on 4/14/2018.
 //
 
-#ifndef LIGHTDB_NALTYPE_H
-#define LIGHTDB_NALTYPE_H
+#ifndef LIGHTDB_TILES_NALTYPE_H
+#define LIGHTDB_TILES_NALTYPE_H
 
 namespace lightdb {
 
@@ -85,4 +85,4 @@ namespace lightdb {
     
 }
 
-#endif //LIGHTDB_NALTYPE_H
+#endif //LIGHTDB_TILES_NALTYPE_H

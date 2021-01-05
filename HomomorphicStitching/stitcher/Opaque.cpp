@@ -8,7 +8,7 @@ using std::string;
 
 namespace lightdb {
 
-    Opaque::Opaque(const Context &context, const bytestring &data) : Nal(context, data) {}
+    Opaque::Opaque(const tiles::Context &context, const bytestring &data) : Nal(context, data) {}
 
     bytestring Opaque::GetBytes() const {
         bytestring data = GetData();

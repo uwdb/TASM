@@ -21,7 +21,7 @@ namespace lightdb {
 
     class Headers;
 
-    Nal::Nal(const Context &context, const bytestring &data) : context_(context), byte_data_(data),
+    Nal::Nal(const tiles::Context &context, const bytestring &data) : context_(context), byte_data_(data),
                                                                type_(PeekType(data)), is_header_(IsHeader()) {
         assert (ForbiddenZero() == 0);
     }
@@ -30,7 +30,7 @@ namespace lightdb {
         return byte_data_;
     }
 
-    Context Nal::GetContext() const {
+    tiles::Context Nal::GetContext() const {
         return context_;
     }
 
@@ -93,7 +93,7 @@ namespace lightdb {
     }
 
 
-    Nal *Load(const Context &context, const bytestring &data) {
+    Nal *Load(const tiles::Context &context, const bytestring &data) {
         int type = PeekType(data);
         if (type == NalUnitSPS) {
             return new SequenceParameterSet(context, data);
@@ -108,7 +108,7 @@ namespace lightdb {
         }
     }
 
-    Nal *Load(const Context &context, const bytestring &data, const Headers &headers) {
+    Nal *Load(const tiles::Context &context, const bytestring &data, const Headers &headers) {
         int type = PeekType(data);
         if (type == NalUnitCodedSliceIDRWRADL) {
             return new IDRSliceSegmentLayer(context, data, headers);

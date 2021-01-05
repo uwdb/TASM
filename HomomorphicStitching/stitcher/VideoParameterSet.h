@@ -2,8 +2,8 @@
 // Created by sophi on 4/11/2018.
 //
 
-#ifndef LIGHTDB_VIDEOPARAMETERSET_H
-#define LIGHTDB_VIDEOPARAMETERSET_H
+#ifndef LIGHTDB_TILES_VIDEOPARAMETERSET_H
+#define LIGHTDB_TILES_VIDEOPARAMETERSET_H
 
 #include <string>
 #include <vector>
@@ -21,7 +21,7 @@ namespace lightdb {
          * @param context The context surrounding the Nal
          * @param data The byte stream
          */
-        VideoParameterSet(const Context &context_, const bytestring &data);
+        VideoParameterSet(const tiles::Context &context_, const bytestring &data);
 
         /**
          * Sets the general level IDC value in the byte stream to be value, converting value to a byte
@@ -61,4 +61,4 @@ namespace lightdb {
     };
 }
 
-#endif //LIGHTDB_VIDEOPARAMETERSET_H
+#endif //LIGHTDB_TILES_VIDEOPARAMETERSET_H

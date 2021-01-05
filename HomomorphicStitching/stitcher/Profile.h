@@ -2,8 +2,8 @@
 // Created by sophi on 4/17/2018.
 //
 
-#ifndef LIGHTDB_PROFILE_H
-#define LIGHTDB_PROFILE_H
+#ifndef LIGHTDB_TILES_PROFILE_H
+#define LIGHTDB_TILES_PROFILE_H
 
 namespace lightdb {
 
@@ -19,4 +19,4 @@ namespace lightdb {
 
 }
 
-#endif //LIGHTDB_PROFILE_H
+#endif //LIGHTDB_TILES_PROFILE_H

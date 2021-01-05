@@ -2,8 +2,8 @@
 // Created by sophi on 4/17/2018.
 //
 
-#ifndef LIGHTDB_SEQUENCEPARAMETERSET_H
-#define LIGHTDB_SEQUENCEPARAMETERSET_H
+#ifndef LIGHTDB_TILES_SEQUENCEPARAMETERSET_H
+#define LIGHTDB_TILES_SEQUENCEPARAMETERSET_H
 
 #include <vector>
 #include <string>
@@ -26,7 +26,7 @@ namespace lightdb {
          * @param context The context surrounding the Nal
          * @param data The byte stream
          */
-        SequenceParameterSet(const Context &context, const bytestring &data);
+        SequenceParameterSet(const tiles::Context &context, const bytestring &data);
 
         /**
          * Sets the tile dimensions in the byte stream to be dimensions, unit of measurement being luma samples
@@ -91,4 +91,4 @@ namespace lightdb {
     };
 }
 
-#endif //LIGHTDB_SEQUENCEPARAMETERSET_H
+#endif //LIGHTDB_TILES_SEQUENCEPARAMETERSET_H

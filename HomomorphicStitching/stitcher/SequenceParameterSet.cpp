@@ -24,7 +24,7 @@ using lightdb::utility::BitArray;
 
 namespace lightdb {
 
-    SequenceParameterSet::SequenceParameterSet(const Context &context, const bytestring &data) : Nal(context, data),
+    SequenceParameterSet::SequenceParameterSet(const tiles::Context &context, const bytestring &data) : Nal(context, data),
                                                data_(RemoveEmulationPrevention(data, GetHeaderSize(), data.size())),
                                                metadata_(data_.begin(), data_.begin() + GetHeaderSizeInBits()) {
 
@@ -89,7 +89,7 @@ namespace lightdb {
             return;
 
         // left, right, top, bottom.
-        std::vector<unsigned long> conformanceWindowValues(4);
+        std::vector<unsigned int> conformanceWindowValues(4);
         // Left and top are 0.
         conformanceWindowValues[0] = 0;
         conformanceWindowValues[2] = 0;
@@ -125,11 +125,11 @@ namespace lightdb {
 
         // The dimensions are width first, then height, so we must reverse the
         // order from our height, width
-        vector<unsigned long> new_dimensions(kNumDimensions);
+        vector<unsigned int> new_dimensions(kNumDimensions);
         new_dimensions[1] = dimensions[0];
         new_dimensions[0] = dimensions[1];
 
-        vector<unsigned long> old_dimensions(kNumDimensions);
+        vector<unsigned int> old_dimensions(kNumDimensions);
         old_dimensions[0] = dimensions_[1];
         old_dimensions[1] = dimensions_[0];
 

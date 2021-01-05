@@ -16,7 +16,7 @@ using std::vector;
 
 namespace lightdb {
 
-	Headers::Headers(const Context &context, vector<bytestring> nals) {
+	Headers::Headers(const tiles::Context &context, vector<bytestring> nals) {
 
 		for (int i = 0; i < kNumHeaders; i++) {
 	  		Nal *current_nal = Load(context, nals[i]);

@@ -2,8 +2,8 @@
 // Created by sophi on 4/22/2018.
 //
 
-#ifndef LIGHTDB_EMULATION_H
-#define LIGHTDB_EMULATION_H
+#ifndef LIGHTDB_TILES_EMULATION_H
+#define LIGHTDB_TILES_EMULATION_H
 
 #include <vector>
 
@@ -39,4 +39,4 @@ namespace lightdb {
         bytestring AddEmulationPreventionAndMarker(const utility::BitArray data, const unsigned long start, const unsigned long end);
 
 }
-#endif //LIGHTDB_EMULATION_H
+#endif //LIGHTDB_TILES_EMULATION_H

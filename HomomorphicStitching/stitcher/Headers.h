@@ -2,8 +2,8 @@
 // Created by sophi on 4/10/2018.
 //
 
-#ifndef LIGHTDB_HEADERS_H
-#define LIGHTDB_HEADERS_H
+#ifndef LIGHTDB_TILES_HEADERS_H
+#define LIGHTDB_TILES_HEADERS_H
 
 #include<vector>
 #include<string>
@@ -29,7 +29,7 @@ namespace lightdb {
          * @param context The context of the nals
          * @param nals The byte streams of the nals
          */
-        Headers(const Context &context, std::vector<bytestring> nals);
+        Headers(const tiles::Context &context, std::vector<bytestring> nals);
 
         /**
          *
@@ -66,4 +66,4 @@ namespace lightdb {
     };
 }
 
-#endif //LIGHTDB_HEADERS_H
+#endif //LIGHTDB_TILES_HEADERS_H

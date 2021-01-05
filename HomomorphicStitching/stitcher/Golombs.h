@@ -2,8 +2,8 @@
 // Created by sophi on 5/12/2018.
 //
 
-#ifndef LIGHTDB_GOLOMBS_H
-#define LIGHTDB_GOLOMBS_H
+#ifndef LIGHTDB_TILES_GOLOMBS_H
+#define LIGHTDB_TILES_GOLOMBS_H
 
 #include "BitArray.h"
 #include "BitStream.h"
@@ -15,7 +15,7 @@ namespace lightdb {
          * @param ints The integers to be encoded as ints
          * @returns A BitArray holding the encoded contents
          */
-        utility::BitArray EncodeGolombs(const std::vector<unsigned long> &golombs);
+        utility::BitArray EncodeGolombs(const std::vector<unsigned int> &golombs);
 
         /**
          * Decodes the next golomb in the stream, returning the value as a long
@@ -27,4 +27,4 @@ namespace lightdb {
 
 }
 
-#endif //LIGHTDB_GOLOMBS_H
+#endif //LIGHTDB_TILES_GOLOMBS_H

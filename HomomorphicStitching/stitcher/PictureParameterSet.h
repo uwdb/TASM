@@ -2,8 +2,8 @@
 // Created by sophi on 4/11/2018.
 //
 
-#ifndef LIGHTDB_PICTUREPARAMETERSET_H
-#define LIGHTDB_PICTUREPARAMETERSET_H
+#ifndef LIGHTDB_TILES_PICTUREPARAMETERSET_H
+#define LIGHTDB_TILES_PICTUREPARAMETERSET_H
 
 #include <string>
 #include <vector>
@@ -24,7 +24,7 @@ namespace lightdb {
          * @param context The context surrounding the Nal
          * @param data The byte stream
          */
-        PictureParameterSet(const Context &context, const bytestring &data);
+        PictureParameterSet(const tiles::Context &context, const bytestring &data);
 
         /**
          * Sets the tile dimensions in the byte stream to be dimensions
@@ -69,4 +69,4 @@ namespace lightdb {
     };
 }
 
-#endif //LIGHTDB_PICTUREPARAMETERSET_H
+#endif //LIGHTDB_TILES_PICTUREPARAMETERSET_H

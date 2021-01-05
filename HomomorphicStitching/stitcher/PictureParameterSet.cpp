@@ -20,7 +20,7 @@ using lightdb::utility::BitArray;
 
 namespace lightdb {
 
-    PictureParameterSet::PictureParameterSet(const Context &context, const bytestring &data) : Nal(context, data),
+    PictureParameterSet::PictureParameterSet(const tiles::Context &context, const bytestring &data) : Nal(context, data),
                                              data_(RemoveEmulationPrevention(data, GetHeaderSize(), data.size())),
                                              metadata_(data_.begin(), data_.begin() + GetHeaderSizeInBits()) {
 
@@ -77,7 +77,7 @@ namespace lightdb {
         // The dimensions are width first, then height, so we must reverse the
         // order from our height, width
         // Next comes a one, and then a 1 if the filter is enabled, 0 if not
-        vector<unsigned long> new_dimensions(2);
+        vector<unsigned int> new_dimensions(2);
         new_dimensions[0] = dimensions[1] - 1;
         new_dimensions[1] = dimensions[0] - 1;
 
@@ -89,9 +89,9 @@ namespace lightdb {
             // Need to insert bits for widths and heights of tiles.
             // Need to subtract 1 from every width and height.
             auto widths = GetContext().GetWidthsOfTiles();
-            std::for_each(widths.begin(), widths.end(), [](unsigned long &w) { --w; });
+            std::for_each(widths.begin(), widths.end(), [](unsigned int &w) { --w; });
             auto heights = GetContext().GetHeightsOfTiles();
-            std::for_each(heights.begin(), heights.end(), [](unsigned long &h) { --h; });
+            std::for_each(heights.begin(), heights.end(), [](unsigned int &h) { --h; });
             BitArray tile_width_bits = EncodeGolombs(widths);
             BitArray tile_height_bits = EncodeGolombs(heights);
 

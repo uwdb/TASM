@@ -20,7 +20,7 @@ namespace lightdb {
     size_t GetGolombDecodeSize(BitStream &stream);
     size_t EncodeGolomb(int golomb, BitArray &data, std::list<size_t> *zero_sizes, size_t index);
 
-    BitArray EncodeGolombs(const std::vector<unsigned long> &golombs) {
+    BitArray EncodeGolombs(const std::vector<unsigned int> &golombs) {
         size_t total_size = 0u;
         std::list<size_t> zero_sizes;
 

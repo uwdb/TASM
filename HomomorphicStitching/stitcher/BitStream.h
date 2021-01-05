@@ -2,8 +2,8 @@
 // Created by sophi on 4/11/2018.
 //
 
-#ifndef LIGHTDB_BITSTREAM_H
-#define LIGHTDB_BITSTREAM_H
+#ifndef LIGHTDB_TILES_BITSTREAM_H
+#define LIGHTDB_TILES_BITSTREAM_H
 
 #include <iostream>
 #include <string>
@@ -158,4 +158,4 @@ namespace lightdb {
     }
 }
 
-#endif //LIGHTDB_BITSTREAM_H
+#endif //LIGHTDB_TILES_BITSTREAM_H

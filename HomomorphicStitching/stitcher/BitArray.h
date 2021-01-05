@@ -2,8 +2,8 @@
 // Created by sophi on 4/15/2018.
 //
 
-#ifndef LIGHTDB_BITARRAY_H
-#define LIGHTDB_BITARRAY_H
+#ifndef LIGHTDB_TILES_BITARRAY_H
+#define LIGHTDB_TILES_BITARRAY_H
 
 #include <vector>
 #include <string>
@@ -71,4 +71,4 @@ namespace lightdb {
     }
 }
 
-#endif //LIGHTDB_BITARRAY_H
+#endif //LIGHTDB_TILES_BITARRAY_H

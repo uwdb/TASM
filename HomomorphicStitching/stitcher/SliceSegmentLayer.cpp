@@ -24,7 +24,7 @@ using lightdb::utility::BitArray;
 
 namespace lightdb {
 
-    SliceSegmentLayer::SliceSegmentLayer(const Context &context, const bytestring &data, const Headers &headers) : Nal(context, data),
+    SliceSegmentLayer::SliceSegmentLayer(const tiles::Context &context, const bytestring &data, const Headers &headers) : Nal(context, data),
                                         numberOfAddedBits_(0),
                                          data_(RemoveEmulationPrevention(GetData(), GetHeaderSize(), kMaxHeaderLength)),
                                          headers_(headers),
@@ -116,7 +116,7 @@ namespace lightdb {
 //    }
 
 
-    IDRSliceSegmentLayer::IDRSliceSegmentLayer(const Context &context, const bytestring &data, const Headers &headers) :
+    IDRSliceSegmentLayer::IDRSliceSegmentLayer(const tiles::Context &context, const bytestring &data, const Headers &headers) :
                                                SliceSegmentLayer(context, data, headers) {
 
         //assert(NalUnitCodedSliceBLAWLP <= GetType() <= NalUnitReservedIRAPVCL23);
@@ -137,7 +137,7 @@ namespace lightdb {
         GetBitStream().MarkPosition("end");
     }
 
-    TrailRSliceSegmentLayer:: TrailRSliceSegmentLayer(const Context &context, const bytestring &data, const Headers &headers) :
+    TrailRSliceSegmentLayer:: TrailRSliceSegmentLayer(const tiles::Context &context, const bytestring &data, const Headers &headers) :
                                                       SliceSegmentLayer(context, data, headers) {
 
                 GetBitStream().CollectValue("first_slice_segment_in_pic_flag", 1, true);

@@ -7,6 +7,8 @@
 
 #include<vector>
 #include<string>
+#include <list>
+#include <memory>
 
 #include "Context.h"
 
@@ -29,7 +31,7 @@ namespace lightdb {
          * @param context The context of the nals
          * @param nals The byte streams of the nals
          */
-        Headers(const tiles::Context &context, std::vector<bytestring> nals);
+        Headers(const tiles::Context &context, std::list<std::shared_ptr<bytestring>> nals);
 
         /**
          *

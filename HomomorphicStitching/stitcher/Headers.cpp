@@ -16,10 +16,10 @@ using std::vector;
 
 namespace lightdb {
 
-	Headers::Headers(const tiles::Context &context, vector<bytestring> nals) {
-
-		for (int i = 0; i < kNumHeaders; i++) {
-	  		Nal *current_nal = Load(context, nals[i]);
+	Headers::Headers(const tiles::Context &context, std::list<std::shared_ptr<bytestring>> nals) {
+	    int i = 0;
+		for (auto it = nals.begin(); it != nals.end() && i < kNumHeaders; ++it, ++i) {
+	  		Nal *current_nal = Load(context, **it);
 			assert(current_nal->IsHeader());
             headers_.push_back(current_nal);
             if (current_nal->IsSequence()) {

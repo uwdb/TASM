@@ -27,12 +27,13 @@ namespace lightdb::tiles {
   // TODO: Figure out return type for stitcher, fix the fact that the vector and list are holding
   // nals when they should hold whatever Tile returns, fix the fact that I'm using references
   // in that case, fix the fact that getsequence is called a bunch
-
-    Stitcher::Stitcher(const tiles::Context &context, vector<bytestring> &data) : tiles_(data), context_(context), headers_(context_, GetNals(tiles_.front()))  {
+    template <template<typename> class SequenceContainerType>
+    Stitcher<SequenceContainerType>::Stitcher(const tiles::Context &context, SequenceContainerType<std::unique_ptr<bytestring>> &data) : tiles_(std::move(data)), context_(context), headers_(context_, GetNals(*tiles_.front()))  {
     }
 
-    vector<bytestring> Stitcher::GetNals(const bytestring &tile) {
-        vector<bytestring> nals;
+    template <template<typename> class SequenceContainerType>
+    std::list<std::shared_ptr<bytestring>> Stitcher<SequenceContainerType>::GetNals(const bytestring &tile) {
+        std::list<std::shared_ptr<bytestring>> nals;
         auto zero_count = 0u;
         bool first = true;
         auto start = tile.begin();
@@ -41,7 +42,7 @@ namespace lightdb::tiles {
             if (c == 1 && zero_count >= 3) {
                 if (!first) {
                     // -3, not -4, because the constructor is exclusive [first, last)
-                    nals.push_back(bytestring(start, it - 3));
+                    nals.push_back(std::make_shared<bytestring>(start, it - 3));
                 } else {
                     first = false;
                 }
@@ -53,22 +54,24 @@ namespace lightdb::tiles {
                 zero_count = 0;
             }
         }
-        nals.push_back(bytestring(start, tile.end()));
+        nals.push_back(std::make_shared<bytestring>(start, tile.end()));
         return nals;
     }
 
-    vector<bytestring> Stitcher::GetSegmentNals(const bytestring &tile) {
-        vector<bytestring> nals = GetNals(tile);
-        vector<bytestring> segments;
-        for (vector<bytestring>::const_iterator it = nals.begin() + 1; it != nals.end(); it++) {
-            if (IsSegment(*it)) {
+    template <template<typename> class SequenceContainerType>
+    std::list<std::shared_ptr<bytestring>> Stitcher<SequenceContainerType>::GetSegmentNals(const bytestring &tile) {
+        auto nals = GetNals(tile);
+        std::list<std::shared_ptr<bytestring>> segments;
+        for (auto it = std::next(nals.begin(), 1); it != nals.end(); it++) {
+            if (IsSegment(**it)) {
                 segments.push_back(*it);
             }
         }
         return segments;
     }
 
-    bytestring Stitcher::GetStitchedSegments() {
+    template <template<typename> class SequenceContainerType>
+    std::unique_ptr<bytestring> Stitcher<SequenceContainerType>::GetStitchedSegments() {
         // Update conformance window before dimensions because they come later in the header.
         headers_.GetSequence()->SetConformanceWindow(context_.GetVideoDisplayWidth(), context_.GetVideoCodedWidth(),
                 context_.GetVideoDisplayHeight(), context_.GetVideoCodedHeight());
@@ -82,18 +85,18 @@ namespace lightdb::tiles {
 
         // how expensive is vector copy construction? does it use move?
         unsigned long tile_num = tiles_.size();
-        list<vector<bytestring>> tile_nals;
+        list<list<std::shared_ptr<bytestring>>> tile_nals;
         auto num_segments = 0u;
 
         // First, collect the segment nals from each tile
         for (auto &tile : tiles_) {
-            auto segments = GetSegmentNals(tile);
+            auto segments = GetSegmentNals(*tile);
             tile_nals.push_back(segments);
             num_segments += segments.size();
         }
 
         int tile_index = 0;
-        vector<bytestring> stitched(num_segments);
+        vector<std::shared_ptr<bytestring>> stitched(num_segments);
 
         // Next, insert each segment nal from each tile in the appropriate
         // place in the final vector. If we have 3 tiles with 5 segments each,
@@ -101,46 +104,48 @@ namespace lightdb::tiles {
         // segments for tile 1 will go in index 1, 4, 7, 10, 11, the segments
         // j for tile i will go in index number of tiles * j + i
         for (auto &nals : tile_nals) {
-          // Go through the segment nals for a given tile
-          for (int i = 0; i < nals.size(); i++) {
-            stitched[tile_num * i + tile_index] = nals[i];
-          }
-          // Update the tile index to move to the segment for the next tile
-          tile_index++;
+        // Go through the segment nals for a given tile
+            int i = 0;
+            //          for (int i = 0; i < nals.size(); i++) {
+            for (auto it = nals.begin(); it != nals.end(); ++it, ++i) {
+                stitched[tile_num * i + tile_index] = *it;
+            }
+            // Update the tile index to move to the segment for the next tile
+            tile_index++;
         }
 
-        bytestring result;
+        auto result = std::make_unique<bytestring>();
         auto addresses = headers_.GetSequence()->GetAddresses();
 
         // First, add the header bytes
         auto header_bytes = headers_.GetBytes();
-        result.insert(result.begin(), header_bytes.begin(), header_bytes.end());
+        result->insert(result->begin(), header_bytes.begin(), header_bytes.end());
 
         // Add GetActiveParameterSetsSEI if there is a new PPS / tile layout.
         if (context_.GetPPSId()) {
             auto activeParameterSEIBytes = GetActiveParameterSetsSEI();
-            result.insert(result.end(), activeParameterSEIBytes.begin(), activeParameterSEIBytes.end());
+            result->insert(result->end(), activeParameterSEIBytes.begin(), activeParameterSEIBytes.end());
         }
 
         // Now, add each slice segment
         bool first = true;
-        vector<bytestring>::iterator it = stitched.begin();
+        auto it = stitched.begin();
         while (it != stitched.end()) {
           for (int i = 0; i < tile_num; i++) {
-            SliceSegmentLayer *current_slice = reinterpret_cast<SliceSegmentLayer*>(Load(context_, *it, headers_));
-            if (IsKeyframe(*it)) {
+            SliceSegmentLayer *current_slice = reinterpret_cast<SliceSegmentLayer*>(Load(context_, **it, headers_));
+            if (IsKeyframe(**it)) {
                 if (first) {
                     if (i == tile_num - 1) {
                         first = false;
                     }
                 } else if (i == 0) {
-                    result.insert(result.end(), header_bytes.begin(), header_bytes.end());
+                    result->insert(result->end(), header_bytes.begin(), header_bytes.end());
                 }
             }
             current_slice->SetAddressAndPPSId(addresses[i], context_.GetPPSId());
 //            current_slice->SetPPSId(context_.GetPPSId()); // Call this after setting address to avoid messing up offsets.
             auto slice_bytes = current_slice->GetBytes();
-            result.insert(result.end(), slice_bytes.begin(), slice_bytes.end());
+            result->insert(result->end(), slice_bytes.begin(), slice_bytes.end());
             it++;
           }
         }
@@ -161,7 +166,8 @@ namespace lightdb::tiles {
         return prefixBytes;
     }
 
-    bytestring Stitcher::GetActiveParameterSetsSEI() {
+    template <template<typename> class SequenceContainerType>
+    bytestring Stitcher<SequenceContainerType>::GetActiveParameterSetsSEI() {
         unsigned int payloadType = 129;
         unsigned int payloadSize = 2;
 
@@ -206,4 +212,7 @@ namespace lightdb::tiles {
 
         return nalUnitBytes;
     }
+
+    template class Stitcher<std::vector>;
+    template class Stitcher<std::list>;
 } // namespace lightdb::tiles

@@ -28,7 +28,7 @@ using lightdb::tiles::Stitcher;
 
 int main(int argc, char *argv[]) {
     if (!strcmp(argv[1], "save_active_parameter_sets_sei")) {
-        auto sei = Stitcher::GetActiveParameterSetsSEI();
+        auto sei = Stitcher<std::vector>::GetActiveParameterSetsSEI();
 
         std::ofstream ostrm(argv[2]);
         for (auto c : sei) {
@@ -39,14 +39,14 @@ int main(int argc, char *argv[]) {
     }
 
     int num_tiles = std::stoi(argv[1]);
-    vector<bytestring> tiles(num_tiles);
+    vector<std::unique_ptr<bytestring>> tiles(num_tiles);
     for (int i = 0; i < num_tiles; i++) {
         std::ifstream istrm;
         istrm.open(argv[i + 2]);
         std::stringstream buffer;
         buffer << istrm.rdbuf();
         string tile = buffer.str();
-        tiles[i] = vector<char>(tile.begin(), tile.end());
+        tiles[i] = std::make_unique<vector<char>>(tile.begin(), tile.end());
     }
 
     int tile_dimensions[2];
@@ -80,8 +80,8 @@ int main(int argc, char *argv[]) {
             tile_widths[i] = std::stoi(argv[num_tiles + 10 + number_of_rows - 1 + 1 + i]);
     }
 
-    tiles::Context context(tile_dimensions, video_dimensions, video_display_dimensions, should_use_uniform_tiles, tile_heights, tile_widths, pps_id);
-    tiles::Stitcher stitcher(context, tiles);
+    Context context(tile_dimensions, video_dimensions, video_display_dimensions, should_use_uniform_tiles, tile_heights, tile_widths, pps_id);
+    Stitcher<std::vector> stitcher(context, tiles);
     bytestring stitched = stitcher.GetStitchedSegments();
 
     std::ofstream ostrm;

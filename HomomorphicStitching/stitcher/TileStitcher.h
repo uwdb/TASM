@@ -9,26 +9,28 @@
 #include <vector>
 #include "Headers.h"
 #include "Context.h"
+#include <memory>
 
 namespace lightdb::tiles {
+    template <template<typename> class SequenceContainerType>
     class Stitcher {
      public:
 
         // Note: all that we actually use is gop_size, dimensions, _stitched, tiles, segment_id
         // (for tiles), context (also for tiles + assertions)
-        Stitcher(const Context &context, std::vector<bytestring> &data);
+        Stitcher(const Context &context, SequenceContainerType<std::unique_ptr<bytestring>> &data);
 
         // Should the return type be an array or a vector?
-        bytestring GetStitchedSegments();
+        std::unique_ptr<bytestring> GetStitchedSegments();
 
         static bytestring GetActiveParameterSetsSEI();
 
     private:
 
-        std::vector<bytestring> GetNals(const bytestring &tile);
-        std::vector<bytestring> GetSegmentNals(const bytestring &tile);
+        std::list<std::shared_ptr<bytestring>> GetNals(const bytestring &tile);
+        std::list<std::shared_ptr<bytestring>> GetSegmentNals(const bytestring &tile);
 
-        std::vector<bytestring> tiles_;
+        SequenceContainerType<std::unique_ptr<bytestring>> tiles_;
         Context context_;
         Headers headers_;
 

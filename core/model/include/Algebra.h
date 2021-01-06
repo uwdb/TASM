@@ -65,11 +65,11 @@ namespace lightdb {
             // Specify table name, column name, and column value.
             // For now just support equality.
             // Can create a class, like the ranges, to enable specifying all this.
-            LightFieldReference Select(const FrameMetadataSpecification&);
-            LightFieldReference Select(const PixelMetadataSpecification&, bool shouldCrack=false, bool shouldReadEntireGOPs=false);
-            LightFieldReference Select(const PixelsInFrameMetadataSpecification&);
-            LightFieldReference Select(const PixelsInFrameMetadataSpecification&, functor::UnaryFunctorReference);
-            LightFieldReference Select(const MetadataSpecification&, MetadataSubsetType subsetType = MetadataSubsetTypeFrame, bool shouldCrack = false, bool shouldReadEntireGOPs=false);
+            LightFieldReference Select(const FrameMetadataSpecification&, const lightdb::options<>& = {});
+            LightFieldReference Select(const PixelMetadataSpecification&, bool shouldCrack=false, bool shouldReadEntireGOPs=false, const lightdb::options<>& = {});
+            LightFieldReference Select(const PixelsInFrameMetadataSpecification&, const lightdb::options<>& = {});
+            LightFieldReference Select(const PixelsInFrameMetadataSpecification&, functor::UnaryFunctorReference, const lightdb::options<>& = {});
+            LightFieldReference Select(const MetadataSpecification&, MetadataSubsetType subsetType = MetadataSubsetTypeFrame, bool shouldCrack = false, bool shouldReadEntireGOPs=false, const lightdb::options<>& = {});
             LightFieldReference Select(std::shared_ptr<const FrameSpecification> frameSpecification);
 
 

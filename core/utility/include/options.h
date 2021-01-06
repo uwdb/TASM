@@ -19,6 +19,10 @@ namespace lightdb {
             static constexpr const char* Projection = "Projection";
         };
 
+        struct Metadata {
+            static constexpr const char* MetadataIdentifier = "MetadataId";
+        };
+
 
         std::optional<TValue> get(const TKey& key) const {
             auto value = this->find(key);
@@ -45,6 +49,7 @@ namespace lightdb {
 
     using EncodeOptions = options<>::Encoding;
     using GeometryOptions = options<>::Geometry;
+    using MetadataOptions = options<>::Metadata;
 } // namespace lightdb
 
 #endif //LIGHTDB_OPTIONS_H

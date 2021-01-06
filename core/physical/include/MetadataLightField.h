@@ -172,7 +172,18 @@ namespace lightdb::metadata {
 } // namespace lightdb::metadata
 
 namespace lightdb::logical {
-    class MetadataSubsetLightFieldWithoutSources : public LightField {
+    class DetectorLightField {
+    public:
+        virtual void setDetectionFunctor(functor::UnaryFunctorReference ref) { detectionFunctor_ = std::shared_ptr<functor::naryfunctor<1>>(ref); }
+        virtual const std::shared_ptr<functor::naryfunctor<1>> functor() const { return detectionFunctor_; };
+
+        virtual ~DetectorLightField() { }
+
+    protected:
+        std::shared_ptr<functor::naryfunctor<1>> detectionFunctor_;
+    };
+
+    class MetadataSubsetLightFieldWithoutSources : public LightField, public DetectorLightField {
     public:
         MetadataSubsetLightFieldWithoutSources(const LightFieldReference &lightField,
                                                 const MetadataSpecification &metadataSpecification,
@@ -207,8 +218,8 @@ namespace lightdb::logical {
         bool shouldReadEntireGOPs() const { return shouldReadEntireGOPs_; }
         MetadataSubsetType subsetType() const { return subsetType_; }
 
-        void setDetectionFunctor(functor::UnaryFunctorReference ref) { detectionFunctor_ = std::shared_ptr<functor::naryfunctor<1>>(ref); }
-        const std::shared_ptr<functor::naryfunctor<1>> functor() const { return detectionFunctor_; };
+//        void setDetectionFunctor(functor::UnaryFunctorReference ref) { detectionFunctor_ = std::shared_ptr<functor::naryfunctor<1>>(ref); }
+//        const std::shared_ptr<functor::naryfunctor<1>> functor() const { return detectionFunctor_; };
 
     private:
         const MetadataSpecification metadataSpecification_;
@@ -216,10 +227,10 @@ namespace lightdb::logical {
         std::shared_ptr<metadata::MetadataManager> metadataManager_;
         bool shouldCrack_;
         bool shouldReadEntireGOPs_;
-        std::shared_ptr<functor::naryfunctor<1>> detectionFunctor_;
+//        std::shared_ptr<functor::naryfunctor<1>> detectionFunctor_;
     };
 
-    class MetadataSubsetLightField : public LightField {
+    class MetadataSubsetLightField : public LightField, public DetectorLightField {
     public:
         explicit MetadataSubsetLightField(const LightFieldReference &lightField, const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType, const catalog::Source &source)
             : MetadataSubsetLightField(lightField, metadataSpecification, subsetType, std::vector<catalog::Source>({ source }))

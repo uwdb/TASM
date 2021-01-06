@@ -69,6 +69,17 @@ TEST_F(VisualRoadTestFixture, testDetectOnGPU) {
     Coordinator().execute(mapped);
 }
 
+TEST_F(VisualRoadTestFixture, testDetectAndMaskUntiled) {
+    std::string video("traffic-4k-002-ds2k");
+    auto input = Scan(video);
+    input.downcast<ScannedLightField>().setWillReadEntireEntry(false);
+    auto yolo = lightdb::extensibility::Load("yologpu");
+    PixelsInFrameMetadataSpecification selection("labels",
+                                                 std::make_shared<SingleMetadataElement>("label", "person", 30, 120));
+    std::string metadataId("traffic-4k-002-ds2k-yolo");
+    Coordinator().execute(input.Select(selection, yolo, {{MetadataOptions::MetadataIdentifier, metadataId}}).Save("/home/maureen/masked_videos/untiled.mp4"));
+}
+
 TEST_F(VisualRoadTestFixture, testDetectAndMask) {
     std::string videoId("traffic-4k-002-ds2k-not-tiled-cracked");
     DeleteDatabase(videoId);

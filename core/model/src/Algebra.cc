@@ -122,32 +122,34 @@ namespace lightdb::logical {
         return LightFieldReference::make<SubsetLightField>(this_, volume);
     }
 
-    LightFieldReference Algebra::Select(const FrameMetadataSpecification &frameMetadataSpecification) {
-        return Select(frameMetadataSpecification, MetadataSubsetTypeFrame);
+    LightFieldReference Algebra::Select(const FrameMetadataSpecification &frameMetadataSpecification, const lightdb::options<>& options) {
+        return Select(frameMetadataSpecification, MetadataSubsetTypeFrame, false, false, options);
     }
 
-    LightFieldReference Algebra::Select(const PixelMetadataSpecification &pixelMetadataSpecification, bool shouldCrack, bool shouldReadEntireGOPs) {
-        return Select(pixelMetadataSpecification, MetadataSubsetTypePixel, shouldCrack, shouldReadEntireGOPs);
+    LightFieldReference Algebra::Select(const PixelMetadataSpecification &pixelMetadataSpecification, bool shouldCrack, bool shouldReadEntireGOPs, const lightdb::options<>& options) {
+        return Select(pixelMetadataSpecification, MetadataSubsetTypePixel, shouldCrack, shouldReadEntireGOPs, options);
     }
 
-    LightFieldReference Algebra::Select(const PixelsInFrameMetadataSpecification &pixelsInFrameMetadataSpecification) {
-        return Select(pixelsInFrameMetadataSpecification, MetadataSubsetTypePixelsInFrame);
+    LightFieldReference Algebra::Select(const PixelsInFrameMetadataSpecification &pixelsInFrameMetadataSpecification, const lightdb::options<>& options) {
+        return Select(pixelsInFrameMetadataSpecification, MetadataSubsetTypePixelsInFrame, false, false, options);
     }
 
-    LightFieldReference Algebra::Select(const PixelsInFrameMetadataSpecification &pixelsInFrameMetadataSpecification, functor::UnaryFunctorReference functor) {
-        auto lightField = Select(pixelsInFrameMetadataSpecification, MetadataSubsetTypePixelsInFrame);
-        lightField.downcast<MetadataSubsetLightFieldWithoutSources>().setDetectionFunctor(functor);
+    LightFieldReference Algebra::Select(const PixelsInFrameMetadataSpecification &pixelsInFrameMetadataSpecification, functor::UnaryFunctorReference functor, const lightdb::options<>& options) {
+        auto lightField = Select(pixelsInFrameMetadataSpecification, MetadataSubsetTypePixelsInFrame, false, false, options);
+        lightField.downcast<DetectorLightField>().setDetectionFunctor(functor);
         return lightField;
     }
 
-    LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType, bool shouldCrack, bool shouldReadEntireGOPs) {
+    LightFieldReference Algebra::Select(const MetadataSpecification &metadataSpecification, MetadataSubsetType subsetType, bool shouldCrack, bool shouldReadEntireGOPs, const lightdb::options<>& options) {
         if (this_.is<ExternalLightField>())
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, std::vector<catalog::Source>({ this_.downcast<ExternalLightField>().source() }), std::optional(this_.downcast<ExternalLightField>().source().filename().parent_path()));
         else if (this_.is<ScannedLightField>()) {
             auto &scan = this_.downcast<ScannedLightField>();
             auto metadataIdentifier = scan.entry().name();
             auto gopPos = metadataIdentifier.find("-gop");
-            if (gopPos != std::string::npos)
+            if (options.get(MetadataOptions::MetadataIdentifier).has_value())
+                metadataIdentifier = std::any_cast<std::string>(*options.get(MetadataOptions::MetadataIdentifier));
+            else if (gopPos != std::string::npos)
                 metadataIdentifier = metadataIdentifier.substr(0, gopPos);
             else {
                 gopPos = metadataIdentifier.find("-customGOP");

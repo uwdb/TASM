@@ -516,7 +516,7 @@ private:
     std::unordered_map<int, std::unique_ptr<std::unordered_set<int>>> gopToModifiedTiles_;
     unsigned int gopLength_;
     mutable std::mutex mutex_;
-    static constexpr auto blackTilesBasePath_ = "/home/maureen/black_tiles";
+    static constexpr auto blackTilesBasePath_ = "/home/maureen/lightdb_created_black_tiles";
 };
 
 } // namespace lightdb::tiles

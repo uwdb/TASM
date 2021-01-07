@@ -390,6 +390,58 @@ private:
     };
 };
 
+class GPUCreateBlackTile : public PhysicalOperator, public GPUOperator {
+public:
+    // For now, assume numFrames == framerate.
+    explicit GPUCreateBlackTile(const LightFieldReference &logical,
+                                const execution::GPU &gpu,
+                                Codec codec,
+                                unsigned int width,
+                                unsigned int height,
+                                unsigned int numFrames)
+        : PhysicalOperator(logical, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUCreateBlackTile-init", codec, width, height, numFrames)),
+        GPUOperator(gpu)
+    {
+        if (!codec.nvidiaId().has_value())
+            throw GpuRuntimeError("Requested codec does not have an Nvidia encode id");
+    }
+
+private:
+    class Runtime : public runtime::GPURuntime<GPUCreateBlackTile> {
+    public:
+        explicit Runtime(GPUCreateBlackTile &physical,
+                Codec codec,
+                unsigned int width,
+                unsigned int height,
+                unsigned int numFrames):
+            runtime::GPURuntime<GPUCreateBlackTile>(physical),
+            codec_(codec),
+            width_(width),
+            height_(height),
+            numFrames_(numFrames),
+            done_(false)
+        { }
+
+        std::optional<physical::MaterializedLightFieldReference> read() override {
+            if (done_)
+                return std::nullopt;
+
+            done_ = true;
+            return makeTiles();
+        }
+
+    private:
+        std::optional<physical::MaterializedLightFieldReference> makeTiles();
+        std::pair<CUdeviceptr, size_t> makeFrame();
+
+        const Codec codec_;
+        const unsigned int width_;
+        const unsigned int height_;
+        const unsigned int numFrames_;
+        bool done_;
+    };
+};
+
 } // namespace lightdb::physical
 
 #endif //LIGHTDB_TASMOPERATORS_H

@@ -32,6 +32,7 @@ namespace lightdb {
         class FrameSubsetLightField;
         class MultiTiledLightFieldForRetiling;
         class PredicateLightField;
+        class TileGenerationConfigLightField;
     }
 
     class LightFieldVisitor {
@@ -62,6 +63,7 @@ namespace lightdb {
         virtual void visit(const logical::FrameSubsetLightField &l) { visit((const LightField&)l); }
         virtual void visit(const logical::MultiTiledLightFieldForRetiling &l) { visit((const LightField&)l); }
         virtual void visit(const logical::PredicateLightField &l) { visit((const LightField&)l); }
+        virtual void visit(const logical::TileGenerationConfigLightField &l) { visit((const LightField&)l); }
 
     protected:
         LightFieldVisitor() = default;
@@ -114,6 +116,7 @@ namespace lightdb {
         virtual State visit(const logical::FrameSubsetLightField &l) { return visit((const LightField&)(l)); }
         virtual State visit(const logical::MultiTiledLightFieldForRetiling &l) { return visit((const LightField&)(l)); }
         virtual State visit(const logical::PredicateLightField &l) { return visit((const LightField&)(l)); }
+        virtual State visit(const logical::TileGenerationConfigLightField &l) { return visit((const LightField&)(l)); }
 
         virtual State visit(State state, const LightField &field) { return state + visit(field); }
         virtual State visit(State state, const logical::ConstantLightField &field) { return state + visit(field); }
@@ -141,6 +144,7 @@ namespace lightdb {
         virtual State visit(State state, const logical::FrameSubsetLightField &field) { return state + visit(field); }
         virtual State visit(State state, const logical::MultiTiledLightFieldForRetiling &field) { return state + visit(field); }
         virtual State visit(State state, const logical::PredicateLightField &field) { return state + visit(field); }
+        virtual State visit(State state, const logical::TileGenerationConfigLightField &field) { return state + visit(field); }
 
         class AdaptedVisitor: public LightFieldVisitor {
         public:
@@ -174,6 +178,7 @@ namespace lightdb {
             void visit(const logical::FrameSubsetLightField &field) final { state_ = visitor_.visit(state_, field); }
             void visit(const logical::MultiTiledLightFieldForRetiling &field) final { state_ = visitor_.visit(state_, field); }
             void visit(const logical::PredicateLightField &field) final { state_ = visitor_.visit(state_, field); }
+            void visit(const logical::TileGenerationConfigLightField &field) final { state_ = visitor_.visit(state_, field); }
 
             State result() const { return state_; }
 

@@ -90,6 +90,10 @@ namespace lightdb::logical {
         return LightFieldReference::make<ExternalLightField>(filename, entry, YUVColorSpace::instance(), options);
     }
 
+    LightFieldReference CreateBlackTile(Codec codec, unsigned int width, unsigned int height, unsigned int numFrames) {
+        return LightFieldReference::make<TileGenerationConfigLightField>(codec, width, height, numFrames);
+    }
+
     LightFieldReference Algebra::Save(const std::filesystem::path &filename) {
         return LightFieldReference::make<SavedLightField>(this_, filename);
     }

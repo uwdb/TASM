@@ -53,6 +53,8 @@ namespace lightdb {
         LightFieldReference Load(const std::filesystem::path&, const Volume&, const GeometryReference&,
                                  const lightdb::options<>& = {});
 
+        LightFieldReference CreateBlackTile(Codec codec, unsigned int width, unsigned int height, unsigned int numFrames);
+
         class Algebra: public DefaultMixin {
         public:
             LightFieldReference Select(const Volume&);

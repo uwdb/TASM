@@ -69,4 +69,47 @@ std::shared_ptr<bytestring> StitchOperator::Runtime::stitchGOP(int gop) {
     return stitcher.GetStitchedSegments();
 }
 
+std::optional<MaterializedLightFieldReference> GPUCreateBlackTile::Runtime::makeTiles() {
+    Configuration configuration{width_, height_,
+                                width_, height_,
+                                0,
+                                Configuration::FrameRate(numFrames_),
+                                {0, 0}};
+    GeometryReference geometry = GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples());
+    GPUDecodedFrameData blackFrames(configuration, geometry);
+
+    for (auto i = 0u; i < numFrames_; ++i) {
+        auto cudaInfo = makeFrame();
+        blackFrames.frames().push_back(GPUFrameReference::make<CudaFrame>(Frame(configuration, NV_ENC_PIC_STRUCT_FRAME, i), cudaInfo.first, cudaInfo.second, true));
+    }
+    return {blackFrames};
+}
+
+std::pair<CUdeviceptr, size_t> GPUCreateBlackTile::Runtime::makeFrame() {
+    CUdeviceptr handle;
+    size_t pitch;
+    CUresult result = cuMemAllocPitch(&handle, &pitch, width_, height_ * 3 / 2, 16);
+    assert(result == CUDA_SUCCESS);
+
+    // Set luma to 0.
+    result = cuMemsetD2D8(handle,
+                        pitch,
+                        0,
+                        width_,
+                        height_);
+    assert(result == CUDA_SUCCESS);
+
+    // Set chroma to 128.
+    auto uvOffset = pitch * height_;
+    auto uvHeight = height_ / 2;
+    result = cuMemsetD2D8(handle + uvOffset,
+                          pitch,
+                          128,
+                          width_,
+                          uvHeight);
+    assert(result == CUDA_SUCCESS);
+
+    return std::make_pair(handle, pitch);
+}
+
 } // namespace lightdb::physical

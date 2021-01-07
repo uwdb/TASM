@@ -121,6 +121,10 @@ public:
             : GPUFrame(std::move(frame)), handle_(frame.handle_), pitch_(frame.pitch_), owner_(frame.owner_)
     { frame.owner_ = false; }
 
+    CudaFrame(const Frame &frame, const CUdeviceptr handle, const unsigned int pitch, const bool owner)
+            : GPUFrame(frame), handle_(handle), pitch_(pitch), owner_(owner)
+    { }
+
     ~CudaFrame() override {
         CUresult result;
 
@@ -251,10 +255,6 @@ protected:
 private:
     CudaFrame(const Frame &frame, const std::tuple<CUdeviceptr, unsigned int, bool> tuple)
             : CudaFrame(frame, std::get<0>(tuple), std::get<1>(tuple), std::get<2>(tuple))
-    { }
-
-    CudaFrame(const Frame &frame, const CUdeviceptr handle, const unsigned int pitch, const bool owner)
-            : GPUFrame(frame), handle_(handle), pitch_(pitch), owner_(owner)
     { }
 
     static std::pair<CUdeviceptr, unsigned int> allocate_frame(const Frame &frame)

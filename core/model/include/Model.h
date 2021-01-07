@@ -382,6 +382,33 @@ namespace lightdb::logical {
         const lightdb::options<> options_;
     };
 
+    class TileGenerationConfigLightField : public LightField {
+    public:
+        TileGenerationConfigLightField(Codec codec,
+                unsigned int width,
+                unsigned int height,
+                unsigned int numFrames)
+            : LightField({}, Volume::limits(), YUVColorSpace::instance()),
+            codec_(codec),
+            width_(width),
+            height_(height),
+            numFrames_(numFrames)
+        { }
+
+        const Codec &codec() const { return codec_; }
+        unsigned int width() const { return width_; }
+        unsigned int height() const { return height_; }
+        unsigned int numFrames() const { return numFrames_; }
+
+        void accept(LightFieldVisitor &visitor) override { LightField::accept<TileGenerationConfigLightField>(visitor); }
+
+    private:
+        Codec codec_;
+        unsigned int width_;
+        unsigned int height_;
+        unsigned int numFrames_;
+    };
+
     class MetadataEncodedLightField : public LightField, public OptionContainer<> {
     public:
         MetadataEncodedLightField(LightFieldReference parent,

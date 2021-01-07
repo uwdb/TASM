@@ -66,6 +66,20 @@ namespace lightdb::optimization {
     public:
         using OptimizerRule::OptimizerRule;
 
+        bool visit(const logical::TileGenerationConfigLightField &node) override {
+            if (!plan().has_physical_assignment(node)) {
+
+                plan().emplace<physical::GPUCreateBlackTile>(plan().lookup(node),
+                                                            plan().allocator().gpu(),
+                                                            node.codec(),
+                                                            node.width(),
+                                                            node.height(),
+                                                            node.numFrames());
+                return true;
+            }
+            return false;
+        }
+
         bool visit(const logical::MultiTiledLightFieldForRetiling &node) override {
             if (!plan().has_physical_assignment(node)) {
                 auto framesToRetile = node.metadataManager()->orderedFramesForMetadata();

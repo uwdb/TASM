@@ -479,7 +479,9 @@ public:
 
         // Return path to black tile of correct size.
         auto tileRect = originalTiles_->tileLayoutForFrame(frame).rectangleForTile(tileNumber);
-        return catalog::BlackTileFiles::pathForTile(blackTilesBasePath_, gopLength_, tileRect.alignedWidth(), tileRect.alignedHeight());
+        auto blackTilePath = catalog::BlackTileFiles::pathForTile(blackTilesBasePath_, gopLength_, tileRect.alignedWidth(), tileRect.alignedHeight());
+        std::cout << "Reading black tile from " << blackTilePath << std::endl;
+        return blackTilePath;
     }
 
     const TileLayout &tileLayoutForFrame(unsigned int frame) override {

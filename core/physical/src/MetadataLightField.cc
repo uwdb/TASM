@@ -412,6 +412,8 @@ const std::vector<int> &MetadataManager::orderedFramesForMetadataOrWithoutMetada
     std::unordered_set<int> frames = framesForMetadata();
     const std::unordered_set<int> &framesWithout = framesWithoutMetadata();
     frames.insert(framesWithout.begin(), framesWithout.end());
+
+    std::scoped_lock lock(mutex_);
     orderedFramesForMetadataOrWithoutMetadata_.clear();
     orderedFramesForMetadataOrWithoutMetadata_.reserve(frames.size());
     orderedFramesForMetadataOrWithoutMetadata_.insert(orderedFramesForMetadataOrWithoutMetadata_.begin(), frames.begin(), frames.end());

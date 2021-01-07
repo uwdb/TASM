@@ -3,29 +3,12 @@
 
 #include "Files.h"
 
-static void DeleteTiles(const std::string &catalogEntryName) {
-    static std::string basePath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/";
-    auto catalogPath = basePath + catalogEntryName;
-    for (auto &dir : std::filesystem::directory_iterator(catalogPath)) {
-        if (!dir.is_directory() || dir.path().filename() == lightdb::catalog::TmpTileFiles::tmp())
-            continue;
-
-        auto dirName = dir.path().filename().string();
-        auto lastSep = dirName.rfind("-");
-        auto tileVersion = std::stoul(dirName.substr(lastSep + 1));
-        if (!tileVersion)
-            continue;
-        else
-            std::filesystem::remove_all(dir.path());
-    }
-}
-
 static void DeleteTilesPastNum(const std::string &catalogEntryName, unsigned int maxOriginalTileNum) {
     static std::string basePath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/";
     auto catalogPath = basePath + catalogEntryName;
 
     for (auto &dir : std::filesystem::directory_iterator(catalogPath)) {
-        if (!dir.is_directory())
+        if (!dir.is_directory() || dir.path().filename() == lightdb::catalog::TmpTileFiles::tmp())
             continue;
 
         auto dirName = dir.path().filename().string();
@@ -34,6 +17,10 @@ static void DeleteTilesPastNum(const std::string &catalogEntryName, unsigned int
         if (tileVersion > maxOriginalTileNum)
             std::filesystem::remove_all(dir.path());
     }
+}
+
+static void DeleteTiles(const std::string &catalogEntryName) {
+    DeleteTilesPastNum(catalogEntryName, 0);
 }
 
 static void ResetTileNum(const std::string &catalogEntryName, unsigned int maxOriginalTileNum=0) {

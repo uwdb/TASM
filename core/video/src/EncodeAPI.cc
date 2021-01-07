@@ -1029,6 +1029,8 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
     if (pEncCfg->codec == NV_ENC_HEVC)
     {
         m_stEncodeConfig.encodeCodecConfig.hevcConfig.repeatSPSPPS = 1;
+        m_stEncodeConfig.encodeCodecConfig.hevcConfig.minCUSize = NV_ENC_HEVC_CUSIZE_32x32;
+        m_stEncodeConfig.encodeCodecConfig.hevcConfig.disableDeblockAcrossSliceBoundary = 1;
     }
     else
     {

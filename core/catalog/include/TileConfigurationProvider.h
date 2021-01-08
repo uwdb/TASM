@@ -478,8 +478,14 @@ public:
 //        return originalTile;
 
         // Return path to black tile of correct size.
-        auto tileRect = originalTiles_->tileLayoutForFrame(frame).rectangleForTile(tileNumber);
-        auto blackTilePath = catalog::BlackTileFiles::pathForTile(blackTilesBasePath_, gopLength_, tileRect.alignedWidth(), tileRect.alignedHeight());
+        // If the frame is not tiled, don't use the coded dimensions because we want the conformance window in the header of
+        // the retrieved tile to be correct.
+        auto &tileLayout = originalTiles_->tileLayoutForFrame(frame);
+        auto tileRect = tileLayout.rectangleForTile(tileNumber);
+        bool isSingleTile = tileLayout.numberOfTiles() == 1;
+        auto width = isSingleTile ? tileRect.width : tileRect.alignedWidth();
+        auto height = isSingleTile ? tileRect.height : tileRect.alignedHeight();
+        auto blackTilePath = catalog::BlackTileFiles::pathForTile(blackTilesBasePath_, gopLength_, width, height);
         std::cout << "Reading black tile from " << blackTilePath << std::endl;
         return blackTilePath;
     }

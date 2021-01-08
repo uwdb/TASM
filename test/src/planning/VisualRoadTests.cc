@@ -62,6 +62,20 @@ TEST_F(VisualRoadTestFixture, testCreateBlackTiles) {
             Coordinator().execute(CreateBlackTile(codec, w, h, numFrames).Encode(codec, {{EncodeOptions::GOPSize, numFrames}}).Save(outputPath));
         }
     }
+
+    // Also create tiles for un-tiled 2k and 4k videos.
+    std::vector<std::pair<unsigned int, unsigned int>> dimensions{
+            {1920, 1080},
+            {3840, 1980},
+    };
+    for (auto widthAndHeight : dimensions) {
+        auto w = widthAndHeight.first;
+        auto h = widthAndHeight.second;
+        std::cout << "Creating " << w << " x " << h << " black tile" << std::endl;
+        auto outputPath = catalog::BlackTileFiles::pathForTile(base, numFrames, w, h);
+        std::filesystem::create_directories(outputPath.parent_path());
+        Coordinator().execute(CreateBlackTile(codec, w, h, numFrames).Encode(codec, {{EncodeOptions::GOPSize, numFrames}}).Save(outputPath));
+    }
 }
 
 TEST_F(VisualRoadTestFixture, testSetUpVideoForTiling) {
@@ -160,26 +174,35 @@ TEST_F(VisualRoadTestFixture, testDetectAndMaskAroundPeople) {
     auto yolo = lightdb::extensibility::Load("yologpu");
 
 //    DeleteDatabase(videoId);
-    DeleteTiles(videoId);
-    ResetTileNum(videoId);
+//    DeleteTiles(videoId);
+//    ResetTileNum(videoId);
 
     // First, detect objects.
 //    auto input = ScanMultiTiled(videoId);
 //    FrameMetadataSpecification selection(std::make_shared<EntireFrameMetadataElement>(30, 120));
 //    Coordinator().execute(input.Select(selection).Map(yolo));
 
-    // Then, re-tile around people.
-    PixelsInFrameMetadataSpecification personSelection(std::make_shared<SingleMetadataElement>("label", "person", 30, 60));
-    auto framerate = 30u;
-    auto retileOp = ScanAndRetile(
-            videoId,
-            "traffic-4k-002-ds2k",
-            personSelection,
-            framerate,
-            CrackingStrategy::GroupingExtent);
-    Coordinator().execute(retileOp);
+    std::vector<int> firstFrames{30}; // 60
+    std::vector<int> lastFrames{120}; // 90, 120, 240
+    for (auto first : firstFrames) {
+        for (auto last : lastFrames) {
+            // Then, re-tile around people.
+            PixelsInFrameMetadataSpecification personSelection(
+                    std::make_shared<SingleMetadataElement>("label", "car", first, last));
+//    auto framerate = 30u;
+//    auto retileOp = ScanAndRetile(
+//            videoId,
+//            "traffic-4k-002-ds2k",
+//            personSelection,
+//            framerate,
+//            CrackingStrategy::GroupingExtent);
+//    Coordinator().execute(retileOp);
 
-    // Then, do selection on people tiles.
-    // Re-do scan so that new tiles are discovered.
-    Coordinator().execute(ScanMultiTiled(videoId).Select(personSelection, yolo).Save("/home/maureen/masked_videos/traffic.mp4"));
+            // Then, do selection on people tiles.
+            // Re-do scan so that new tiles are discovered.
+            auto outputPath = "/home/maureen/masked_videos/traffic_car_untiled_" + std::to_string(first) + "_" + std::to_string(last) + ".mp4";
+            std::cout << "Saving to " << outputPath << std::endl;
+            Coordinator().execute(ScanMultiTiled(videoId).Select(personSelection, yolo).Save(outputPath));
+        }
+    }
 }

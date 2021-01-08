@@ -17,10 +17,10 @@ public:
 
         CudaFrameReference draw(VideoLock &lock, const CudaFrameReference &input,
                                 const std::vector<Rectangle> &boxes, unsigned int xOffset=0u, unsigned int yOffset=0u, const unsigned int line_width=2u) const {
-            auto output = GPUFrameReference::make<CudaFrame>(static_cast<Frame&>(*input));
-
             if (!boxes.size())
-                return output;
+                return input;
+
+            auto output = GPUFrameReference::make<CudaFrame>(static_cast<Frame&>(*input));
 
             auto &cuda = output.downcast<CudaFrame>();
 

@@ -17,10 +17,6 @@ public:
         CudaFrameReference select(VideoLock &lock, const CudaFrameReference &input,
                                 const std::vector<Rectangle> &boxes, unsigned int xOffset, unsigned int yOffset) const {
             auto output = GPUFrameReference::make<CudaFrame>(static_cast<Frame&>(*input));
-
-            if (!boxes.size())
-                return output;
-
             auto &cuda = output.downcast<CudaFrame>();
 
             cuda.copy(lock, *input);
@@ -34,10 +30,6 @@ public:
         CudaFrameReference draw(VideoLock &lock, const CudaFrameReference &input,
                 const std::vector<Rectangle> &boxes, unsigned int xOffset, unsigned int yOffset) const {
             auto output = GPUFrameReference::make<CudaFrame>(static_cast<Frame&>(*input));
-
-            if (!boxes.size())
-                return output;
-
             auto &cuda = output.downcast<CudaFrame>();
 
             cuda.copy(lock, *input);
@@ -51,9 +43,14 @@ public:
         void select(VideoLock &lock, CUdeviceptr frame,
                 unsigned int height, unsigned int width, unsigned int pitch,
                 const Rectangle *boxes, const size_t box_count, unsigned int xOffset, unsigned int yOffset) const {
+            // If there are no boxes, we can set everything to black.
+            if (!box_count) {
+                setFrameToBlack(frame, height, width, pitch);
+                return;
+            }
+
             CUresult result;
             CUdeviceptr device_boxes;
-
             if((result = cuMemAlloc(&device_boxes, sizeof(Rectangle) * box_count)) != CUDA_SUCCESS)
                 throw GpuCudaRuntimeError("cuMemAlloc failure", result);
             else if((result = cuMemcpyHtoD(device_boxes, boxes, sizeof(Rectangle) * box_count)) != CUDA_SUCCESS)
@@ -89,6 +86,15 @@ public:
         }
 
     private:
+        void setFrameToBlack(CUdeviceptr frame, unsigned int height, unsigned int width, unsigned int pitch) const {
+            CUresult result = cuMemsetD2D8(frame, pitch, 0, width, height);
+            assert(result == CUDA_SUCCESS);
+
+            auto uvOffset = height * pitch;
+            result = cuMemsetD2D8(frame + uvOffset, pitch, 128, width, height / 2);
+            assert(result == CUDA_SUCCESS);
+        }
+
         constexpr static const char* function_name = "select_pixels";
         constexpr static const char* module_filename = "select_pixels.ptx";
     };

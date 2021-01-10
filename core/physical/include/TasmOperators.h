@@ -442,6 +442,115 @@ private:
     };
 };
 
+class GPUSaveToArray : public PhysicalOperator, public GPUOperator {
+public:
+    explicit GPUSaveToArray(const LightFieldReference &logical,
+            PhysicalOperatorReference &parent,
+            std::filesystem::path basePath)
+        : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUSaveToArray-init", basePath)),
+        GPUOperator(parent)
+    { }
+
+private:
+    class Runtime : public runtime::GPUUnaryRuntime<GPUSaveToArray, GPUDecodedFrameData> {
+    public:
+        static constexpr size_t kDefaultGopSize = 30;
+
+        explicit Runtime(GPUSaveToArray &physical, std::filesystem::path basePath)
+                : runtime::GPUUnaryRuntime<GPUSaveToArray, GPUDecodedFrameData>(physical),
+                    basePath_(basePath),
+                  gopLength_(gop(configuration().framerate)),
+                  currentGOP_(-1),
+                  currentTile_(-1),
+                  firstFrame_(-1),
+                  width_(0),
+                  height_(0),
+                  yuvHandle_(0),
+                  bgrHandle_(0),
+                  packedFloatHandle_(0),
+                  planarHandle_(0)
+        { }
+
+        std::optional<physical::MaterializedLightFieldReference> read() override {
+            std::unique_ptr<std::ofstream> fout;
+            int maxFramesPerGOP = 3;
+            int count = 0;
+            while (iterator() != iterator().eos()) {
+                auto &decoded = *iterator();
+                for (auto &frame : decoded.frames()) {
+                    long frameNumber;
+                    assert(frame->getFrameNumber(frameNumber));
+                    if (gop(frameNumber) != currentGOP_ || frame->tileNumber() != currentTile_) {
+                        if (fout) fout->close();
+                        currentGOP_ = gop(frameNumber);
+                        currentTile_ = frame->tileNumber();
+                        fout = std::make_unique<std::ofstream>(outputFile(currentGOP_, currentTile_, frame->width(), frame->height()),  std::ios::out | std::ios::binary);
+                        count = 0;
+                    }
+
+                    if (count >= maxFramesPerGOP)
+                        continue;
+                    processFrame(frame);
+                    auto pixels = pixelData();
+                    fout->write(reinterpret_cast<const char*>(pixels->data()), pixels->size());
+                    ++count;
+                }
+                ++iterator();
+            }
+            return {};
+        }
+
+
+    private:
+        int gop(long frameNumber) {
+            return frameNumber / gopLength_;
+        }
+
+        unsigned int gop(const Configuration::FrameRate &framerate) const {
+            auto option = logical().is<OptionContainer<>>()
+                          ? logical().downcast<OptionContainer<>>().get_option(EncodeOptions::GOPSize)
+                          : std::nullopt;
+
+            if(option.has_value() && option.value().type() != typeid(unsigned int))
+                throw InvalidArgumentError("Invalid GOP option specified", EncodeOptions::GOPSize);
+            else {
+                return std::any_cast<unsigned int>(option.value_or(
+                        std::make_any<unsigned int>(framerate.denominator() == 1 ? framerate.numerator() : kDefaultGopSize)));
+            }
+        }
+
+        std::filesystem::path outputFile(unsigned int gop, unsigned int tile, unsigned int width, unsigned int height) {
+            auto out = basePath_ / ("gop_" + std::to_string(gop) + "_tile_" + std::to_string(tile) + "_" + std::to_string(width) + "x" + std::to_string(height) + ".npy");
+            std::cout << "Array output path: " << out << std::endl;
+            return out;
+        }
+
+        void allocate(unsigned int width, unsigned int height);
+        void deallocate();
+        void processFrame(GPUFrameReference &frame);
+        std::unique_ptr<std::vector<unsigned char>> pixelData();
+
+        std::filesystem::path basePath_;
+        unsigned int gopLength_;
+        int currentGOP_;
+        int currentTile_;
+        int firstFrame_;
+
+        unsigned int width_;
+        unsigned int height_;
+        const unsigned int channels_ = 3;
+        CUdeviceptr yuvHandle_;
+        size_t yuvPitch_;
+        CUdeviceptr bgrHandle_;
+        size_t bgrPitch_;
+        CUdeviceptr packedFloatHandle_;
+        size_t packedFloatPitch_;
+        CUdeviceptr planarHandle_;
+    };
+
+
+};
+
 } // namespace lightdb::physical
 
 #endif //LIGHTDB_TASMOPERATORS_H

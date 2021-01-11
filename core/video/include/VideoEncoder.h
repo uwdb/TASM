@@ -34,9 +34,21 @@ public:
 
   EncodeAPI &api() { return *api_; }
   const EncodeConfiguration &configuration() const { return configuration_; }
+  void reconfigureEncoder(unsigned int newWidth, unsigned int newHeight) {
+      NvEncPictureCommand picCommand;
+      picCommand.bResolutionChangePending = true;
+      picCommand.newWidth = newWidth;
+      picCommand.newHeight = newHeight;
+
+      auto result = api().NvEncReconfigureEncoder(&picCommand);
+      assert(result == NV_ENC_SUCCESS);
+
+      configuration_.width = newWidth;
+      configuration_.height = newHeight;
+  }
 
 protected:
-    const EncodeConfiguration& configuration_;
+    EncodeConfiguration configuration_;
     GPUContext &context_;
     std::shared_ptr<EncodeAPI> api_;
     VideoLock &lock_;

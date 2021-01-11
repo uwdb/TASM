@@ -9,13 +9,7 @@ void TileEncoder::updateConfiguration(unsigned int newWidth, unsigned int newHei
     width_ = newWidth;
     height_ = newHeight;
 
-    NvEncPictureCommand picCommand;
-    picCommand.bResolutionChangePending = true;
-    picCommand.newWidth = newWidth;
-    picCommand.newHeight = newHeight;
-
-    auto result = encoder_.api().NvEncReconfigureEncoder(&picCommand);
-    assert(result == NV_ENC_SUCCESS);
+    encoder_.reconfigureEncoder(newWidth, newHeight);
 }
 
 std::unique_ptr<bytestring> TileEncoder::getEncodedFrames() {

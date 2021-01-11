@@ -55,8 +55,8 @@ public:
 
     void createEncoderWithConfiguration(unsigned int identifier, unsigned int newWidth, unsigned int newHeight) {
         assert(!idToEncoder_.count(identifier));
-        assert(baseConfiguration_.width >= newWidth);
-        assert(baseConfiguration_.height >= newHeight);
+        assert(baseConfiguration_.max_width >= newWidth);
+        assert(baseConfiguration_.max_height >= newHeight);
 
         if (availableEncoders_.empty()) {
             createEncoder(baseConfiguration_);

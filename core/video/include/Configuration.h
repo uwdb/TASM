@@ -189,7 +189,7 @@ struct DecodeConfiguration: public Configuration {
                         const unsigned int decode_surfaces = 0,
                         const unsigned long creation_flags = cudaVideoCreate_PreferCUVID,
                         const cudaVideoDeinterlaceMode deinterlace_mode = cudaVideoDeinterlaceMode_Weave)
-            : DecodeConfiguration({width, height, max_width, max_height, 0, FrameRate{fps}, {}},
+            : DecodeConfiguration({width, height, max_width, max_height, bitrate, FrameRate{fps}, {}},
                                   codec, chroma_format, output_format, output_surfaces, decode_surfaces,
                                   creation_flags, deinterlace_mode)
     { }

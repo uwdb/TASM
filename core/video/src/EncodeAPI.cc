@@ -911,7 +911,7 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
     }
     memcpy(&m_stEncodeConfig, &stPresetCfg.presetCfg, sizeof(NV_ENC_CONFIG));
 
-    m_stEncodeConfig.gopLength = 60; // pEncCfg->gopLength;
+    m_stEncodeConfig.gopLength = pEncCfg->gopLength;
     m_stEncodeConfig.frameIntervalP = pEncCfg->numB + 1;
     if (pEncCfg->pictureStruct == NV_ENC_PIC_STRUCT_FRAME)
     {
@@ -1345,8 +1345,8 @@ NVENCSTATUS EncodeAPI::NvEncEncodeFrame(EncodeBuffer *pEncodeBuffer, NvEncPictur
 
     encPicParams.inputBuffer = pEncodeBuffer->input_buffer.input_surface;
     encPicParams.bufferFmt = pEncodeBuffer->input_buffer.buffer_format;
-    encPicParams.inputWidth = pEncodeBuffer->encoder.configuration().width;
-    encPicParams.inputHeight = pEncodeBuffer->encoder.configuration().height;
+    encPicParams.inputWidth = pEncodeBuffer->encoder.configuration().max_width;
+    encPicParams.inputHeight = pEncodeBuffer->encoder.configuration().max_height;
     encPicParams.outputBitstream = pEncodeBuffer->output_buffer.bitstreamBuffer;
     encPicParams.completionEvent = pEncodeBuffer->output_buffer.outputEvent;
     encPicParams.inputTimeStamp = m_EncodeIdx; //TODO think about this, should be a sane PTS

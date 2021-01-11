@@ -55,6 +55,8 @@ struct EncodeBuffer
         NVENCSTATUS status;
         CUresult result;
 
+        auto bufferWidth = encoder.configuration().max_width;
+        auto bufferHeight = encoder.configuration().max_height;
         if(encoder.configuration().height % 2 != 0)
             throw InvalidArgumentError("Buffer height must be even", "configuration.height");
         else if(encoder.configuration().width % 2 != 0)
@@ -63,13 +65,13 @@ struct EncodeBuffer
             throw GpuRuntimeError("Encoder not created in API");
         else if((result = cuMemAllocPitch(&input_buffer.NV12devPtr,
                                           (size_t*)&input_buffer.NV12Stride,
-                                          encoder.configuration().width,
-                                          encoder.configuration().height * 3 / 2,
+                                          bufferWidth,
+                                          bufferHeight * 3 / 2,
                                           16)) != CUDA_SUCCESS)
             throw GpuCudaRuntimeError("Call to cuMemAllocPitch failed", result);
         else if((status = encoder.api().NvEncRegisterResource(
                 NV_ENC_INPUT_RESOURCE_TYPE_CUDADEVICEPTR, (void *)input_buffer.NV12devPtr,
-                encoder.configuration().width, encoder.configuration().height,
+                bufferWidth, bufferHeight,
                 input_buffer.NV12Stride, &input_buffer.registered_resource)) != NV_ENC_SUCCESS)
             throw GpuEncodeRuntimeError("Call to api.NvEncRegisterResource failed", status);
         else if((status = encoder.api().NvEncCreateBitstreamBuffer(
@@ -79,8 +81,8 @@ struct EncodeBuffer
 //        FrameWriter::writeUpdate("alloc", input_buffer.NV12devPtr);
 
         input_buffer.buffer_format = NV_ENC_BUFFER_FORMAT_NV12_PL;
-        input_buffer.width = encoder.configuration().width;
-        input_buffer.height = encoder.configuration().height;
+        input_buffer.width = bufferWidth;
+        input_buffer.height = bufferHeight;
         output_buffer.bitstreamBufferSize = size;
         output_buffer.outputEvent = nullptr;
     }

@@ -74,7 +74,7 @@ public:
     int tileNumber() const { return tileNumber_; }
 
 protected:
-    const unsigned int height_, width_;
+    unsigned int height_, width_;
     unsigned int codedHeight_, codedWidth_;
     NV_ENC_PIC_STRUCT type_;
     std::optional<long> frameNumber_;
@@ -287,6 +287,8 @@ public:
             : GPUFrame(decoder.configuration(), extract_type(parameters), frameNumber, tileNumber), decoder_(decoder), parameters_(parameters),
               frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
     {
+        width_ = frameDimensions_.displayWidth;
+        height_ = frameDimensions_.displayHeight;
         codedWidth_ = frameDimensions_.codedWidth;
         codedHeight_ = frameDimensions_.codedHeight;
 //        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
@@ -298,6 +300,8 @@ public:
             : GPUFrame(decoder.configuration(), extract_type(parameters), frameNumber), decoder_(decoder), parameters_(parameters),
             frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
     {
+        width_ = frameDimensions_.displayWidth;
+        height_ = frameDimensions_.displayHeight;
         codedWidth_ = frameDimensions_.codedWidth;
         codedHeight_ = frameDimensions_.codedHeight;
 //        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
@@ -309,6 +313,8 @@ public:
         : GPUFrame(decoder.configuration(), extract_type(parameters)), decoder_(decoder), parameters_(parameters),
           frameDimensions_(decoder_.decodedDimensionsForPicIndex(parameters_->picture_index))
     {
+        width_ = frameDimensions_.displayWidth;
+        height_ = frameDimensions_.displayHeight;
         codedWidth_ = frameDimensions_.codedWidth;
         codedHeight_ = frameDimensions_.codedHeight;
 //        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
@@ -321,8 +327,8 @@ public:
 
     const CudaDecoder &decoder() const { return decoder_; }
     const CUVIDPARSERDISPINFO& parameters() const { return *parameters_; }
-    unsigned int height() const override { return frameDimensions_.displayHeight; }
-    unsigned int width() const override { return frameDimensions_.displayWidth; }
+//    unsigned int height() const override { return frameDimensions_.displayHeight; }
+//    unsigned int width() const override { return frameDimensions_.displayWidth; }
 
 //    unsigned int codedHeight() const override { return frameDimensions_.codedHeight; }
 //    unsigned int codedWidth() const override { return frameDimensions_.codedWidth; }

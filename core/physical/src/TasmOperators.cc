@@ -49,6 +49,7 @@ std::shared_ptr<bytestring> StitchOperator::Runtime::stitchGOP(int gop) {
     }
 
     // First: create context.
+    partTimer_->startSection("Create context");
     int tileDimensions[2] = {static_cast<int>(tileLayout.numberOfRows()), static_cast<int>(tileLayout.numberOfColumns())};
     int videoCodedDimensions[2] = {static_cast<int>(tileLayout.codedHeight()), static_cast<int>(tileLayout.codedWidth())};
     int videoDisplayDimensions[2] = {static_cast<int>(tileLayout.totalHeight()), static_cast<int>(tileLayout.totalWidth())};
@@ -60,6 +61,7 @@ std::shared_ptr<bytestring> StitchOperator::Runtime::stitchGOP(int gop) {
             ToCtbs(tileLayout.heightsOfRows()),
             ToCtbs(tileLayout.widthsOfColumns()),
             ppsId_++);
+    partTimer_->endSection("Create context");
 
     // Respect limits on PPS_ID in HEVC specification.
     if (ppsId_ >= MAX_PPS_ID)
@@ -67,11 +69,22 @@ std::shared_ptr<bytestring> StitchOperator::Runtime::stitchGOP(int gop) {
 
     // Second: read tiles into memory
     std::list<std::unique_ptr<bytestring>> tiles;
-    for (auto i = 0u; i < tileLayout.numberOfTiles(); ++i)
-        tiles.push_back(ReadFile(tileLocationProvider_->locationOfTileForFrame(i, firstFrameOfGOP)));
+    for (auto i = 0u; i < tileLayout.numberOfTiles(); ++i) {
+        partTimer_->startSection("Get path");
+        auto tilePath = tileLocationProvider_->locationOfTileForFrame(i, firstFrameOfGOP);
+        partTimer_->endSection("Get path");
+        partTimer_->startSection("Read tile");
+        tiles.push_back(ReadFile(tilePath));
+        partTimer_->endSection("Read tile");
+    }
 
+    partTimer_->startSection("Create stitcher");
     tiles::Stitcher<std::list> stitcher(context, tiles);
-    return stitcher.GetStitchedSegments();
+    partTimer_->endSection("Create stitcher");
+    partTimer_->startSection("Stitch segments");
+    auto stitchedSegments = stitcher.GetStitchedSegments();
+    partTimer_->endSection("Stitch segments");
+    return stitchedSegments;
 }
 
 std::optional<MaterializedLightFieldReference> GPUCreateBlackTile::Runtime::makeTiles() {

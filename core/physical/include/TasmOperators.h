@@ -343,7 +343,9 @@ private:
                         currentGOP_(firstGOP_),
                         ppsId_(1),
                         sentSEIForOneTile_(false),
-                        numberOfStitchedGOPs_(0)
+                        numberOfStitchedGOPs_(0),
+                        timer_(new Timer()),
+                        partTimer_(new Timer())
             { }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -352,15 +354,19 @@ private:
 
             if (currentGOP_ >= lastGOP_) {
                 std::cout << "**Number of stitched GOPs: " << numberOfStitchedGOPs_ << std::endl;
+                timer_->printAllTimes();
+                partTimer_->printAllTimes();
                 return std::nullopt;
             }
 
+            timer_->startSection("stitch");
             auto stitched = stitchGOP(currentGOP_);
             if (!sentSEIForOneTile_) {
                 ++currentGOP_;
                 ++numberOfStitchedGOPs_;
             }
             auto &base = referenceData_->downcast<CPUEncodedFrameData>();
+            timer_->endSection("stitch");
             return std::make_optional<CPUEncodedFrameData>(base.codec(), base.configuration(), base.geometry(), stitched);
         }
 
@@ -392,6 +398,8 @@ private:
         std::shared_ptr<bytestring> sei_;
         bool sentSEIForOneTile_;
         unsigned int numberOfStitchedGOPs_;
+        std::unique_ptr<Timer> timer_;
+        std::unique_ptr<Timer> partTimer_;
     };
 };
 

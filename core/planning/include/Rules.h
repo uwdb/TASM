@@ -720,7 +720,7 @@ namespace lightdb::optimization {
             auto masked = plan().emplace<physical::GPUMetadataTransform<video::GPUSelectPixels>>(logical, boxed, metadataSpecification, tileLocationProvider);
 
             // Encode modified tiles.
-            auto encoded = plan().emplace<physical::GPUEncodeTilesToCPU>(logical, masked, Codec::hevc());
+            auto encoded = plan().emplace<physical::GPUEncodeTilesToCPU>(logical, masked, Codec::hevc(), tileLocationProvider);
 
             // Save modified tiles to disk.
             // Assume that GOP length == fps.

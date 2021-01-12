@@ -75,8 +75,9 @@ public:
 
     explicit GPUEncodeTilesToCPU(const LightFieldReference &logical,
                                 PhysicalOperatorReference &parent,
-                                Codec codec)
-        : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUEncodeTilesToCPU-init")),
+                                Codec codec,
+                                std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider)
+        : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUEncodeTilesToCPU-init", tileLocationProvider)),
         GPUOperator(parent),
         codec_(codec) {
         if (!codec.nvidiaId().has_value())
@@ -90,8 +91,9 @@ private:
     public:
         // Do we need to make sure the base configuration is big enough for all tiles?
         // Maybe it's not an issue right now because we decode in descending tile size.
-        explicit Runtime(GPUEncodeTilesToCPU &physical)
+        explicit Runtime(GPUEncodeTilesToCPU &physical, std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider)
             : runtime::GPUUnaryRuntime<GPUEncodeTilesToCPU, GPUDecodedFrameData>(physical),
+                    tileLocationProvider_(tileLocationProvider),
                     numberOfEncodedFrames_(0),
                     gopLength_(gop(configuration().framerate)),
                     geometry_(geometry()),
@@ -193,7 +195,8 @@ private:
             currentTile_ = (*currentDataFramesIterator_)->tileNumber();
             assert(currentTile_ != -1);
 
-            encoderManager_.createEncoderWithConfiguration(encoderId_, (*currentDataFramesIterator_)->width(), (*currentDataFramesIterator_)->height());
+            bool isSingleTile = tileLocationProvider_->tileLayoutForFrame(firstFrame_).numberOfTiles() == 1;
+            encoderManager_.createEncoderWithConfiguration(encoderId_, (*currentDataFramesIterator_)->width(), (*currentDataFramesIterator_)->height(), isSingleTile ? std::nullopt : std::make_optional(highQualityQP_));
         }
 
         bool noMoreFramesInCurrentData() {
@@ -220,6 +223,7 @@ private:
             return coalesced;
         }
 
+        std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;
         unsigned long numberOfEncodedFrames_;
         unsigned int gopLength_;
         GeometryReference geometry_;
@@ -233,6 +237,7 @@ private:
         const unsigned int encoderId_ = 0u;
         std::list<std::unique_ptr<bytestring>> encodedDataForGOPAndTile_;
         size_t encodedDataLength_;
+        const unsigned int highQualityQP_ = 20u;
     };
     const Codec codec_;
 };

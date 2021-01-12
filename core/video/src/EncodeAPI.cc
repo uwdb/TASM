@@ -648,6 +648,12 @@ NVENCSTATUS EncodeAPI::NvEncReconfigureEncoder(const NvEncPictureCommand *pEncPi
         reconfigureParams.forceIDR = true;
         reconfigureParams.resetEncoder = true;
 
+        if (pEncPicCommand->bBitrateChangePending && reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.rateControlMode == NV_ENC_PARAMS_RC_CONSTQP) {
+            reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.constQP.qpInterP = pEncPicCommand->quantizationParameter;
+            reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.constQP.qpInterB = pEncPicCommand->quantizationParameter;
+            reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.constQP.qpIntra = pEncPicCommand->quantizationParameter;
+        }
+
 //        memset(&stReconfigParams, 0, sizeof(stReconfigParams));
 //        memcpy(&stReconfigParams.reInitEncodeParams, &m_stCreateEncodeParams, sizeof(m_stCreateEncodeParams));
 //        stReconfigParams.version = NV_ENC_RECONFIGURE_PARAMS_VER;
@@ -1382,7 +1388,7 @@ NVENCSTATUS EncodeAPI::NvEncEncodeFrame(EncodeBuffer *pEncodeBuffer, NvEncPictur
             }
         }
     }
-    
+
     nvStatus = m_pEncodeAPI->nvEncEncodePicture(encodeSessionHandle, &encPicParams);
     if (nvStatus != NV_ENC_SUCCESS && nvStatus != NV_ENC_ERR_NEED_MORE_INPUT)
     {

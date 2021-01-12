@@ -132,7 +132,7 @@ private:
                         tilesCurrentlyBeingEncoded_.clear();
 
                         // Only reconfigure the encoders if we will actually be encoding frames.
-                        if (tileLayout != tiles::EmptyTileLayout && tileLayout != currentTileLayout_)
+                        if (tileLayout != tiles::EmptyTileLayout)
                             reconfigureEncodersForNewLayout(tileLayout);
 
                         currentTileLayout_ = tileLayout;

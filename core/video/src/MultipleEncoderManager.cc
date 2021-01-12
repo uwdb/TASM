@@ -2,14 +2,17 @@
 
 namespace lightdb {
 
-void TileEncoder::updateConfiguration(unsigned int newWidth, unsigned int newHeight) {
-    if (newWidth == width_ && newHeight == height_)
+void TileEncoder::updateConfiguration(unsigned int newWidth, unsigned int newHeight, unsigned int newQuantizationParameter) {
+    if (newWidth == width_
+                && newHeight == height_
+                && newQuantizationParameter == quantizationParameter_)
         return;
 
     width_ = newWidth;
     height_ = newHeight;
+    quantizationParameter_ = newQuantizationParameter;
 
-    encoder_.reconfigureEncoder(newWidth, newHeight);
+    encoder_.reconfigureEncoder(newWidth, newHeight, newQuantizationParameter);
 }
 
 std::unique_ptr<bytestring> TileEncoder::getEncodedFrames() {

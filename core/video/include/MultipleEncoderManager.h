@@ -4,6 +4,7 @@
 #include "EncodeWriter.h"
 #include "VideoEncoder.h"
 #include "VideoEncoderSession.h"
+#include "Configuration.h"
 #include <queue>
 
 namespace lightdb {
@@ -11,14 +12,14 @@ namespace lightdb {
 class TileEncoder {
 public:
     TileEncoder(EncodeConfiguration encodeConfiguration, GPUContext &context, VideoLock &lock)
-            : width_(encodeConfiguration.width), height_(encodeConfiguration.height),
+            : width_(encodeConfiguration.width), height_(encodeConfiguration.height), quantizationParameter_(encodeConfiguration.quantization.quantizationParameter),
             encodeConfiguration_(std::move(encodeConfiguration)),
               encoder_{context, encodeConfiguration_, lock},
               writer_{encoder_.api()},
               encodeSession_{encoder_, writer_}
     { }
 
-    void updateConfiguration(unsigned int newWidth, unsigned int newHeight);
+    void updateConfiguration(unsigned int newWidth, unsigned int newHeight, unsigned int quantizationParameter);
     std::unique_ptr<bytestring> getEncodedFrames();
     void encodeFrame(Frame &frame, unsigned int top, unsigned int left, bool isKeyframe);
     void flush();
@@ -26,6 +27,7 @@ public:
 private:
     unsigned int width_;
     unsigned int height_;
+    unsigned int quantizationParameter_;
     EncodeConfiguration encodeConfiguration_;
     VideoEncoder encoder_;
     MemoryEncodeWriter writer_;
@@ -53,7 +55,7 @@ public:
         return encoder->getEncodedFrames();
     }
 
-    void createEncoderWithConfiguration(unsigned int identifier, unsigned int newWidth, unsigned int newHeight) {
+    void createEncoderWithConfiguration(unsigned int identifier, unsigned int newWidth, unsigned int newHeight, std::optional<unsigned int> qp = {}) {
         assert(!idToEncoder_.count(identifier));
         assert(baseConfiguration_.max_width >= newWidth);
         assert(baseConfiguration_.max_height >= newHeight);
@@ -66,7 +68,7 @@ public:
         idToEncoder_.emplace(identifier, availableEncoders_.front());
         availableEncoders_.pop();
 
-        idToEncoder_.at(identifier)->updateConfiguration(newWidth, newHeight);
+        idToEncoder_.at(identifier)->updateConfiguration(newWidth, newHeight, qp.value_or(baseConfiguration_.quantization.quantizationParameter));
     }
 
     void encodeFrameForIdentifier(unsigned int identifier, Frame &frame, unsigned int top, unsigned int left, bool isKeyframe) {

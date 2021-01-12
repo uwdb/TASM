@@ -29,7 +29,7 @@ namespace lightdb::tiles {
   // in that case, fix the fact that getsequence is called a bunch
     template <template<typename> class SequenceContainerType>
     Stitcher<SequenceContainerType>::Stitcher(const tiles::Context &context, SequenceContainerType<std::unique_ptr<bytestring>> &data) : tiles_(std::move(data)), context_(context), headers_(context_, GetNals(*tiles_.front()))  {
-        std::cout << "Created stitcher for " << context_.GetTileDimensions()[1] << " x " << context_.GetTileDimensions()[0] << " tile layout" << std::endl;
+//        std::cout << "Created stitcher for " << context_.GetTileDimensions()[1] << " x " << context_.GetTileDimensions()[0] << " tile layout" << std::endl;
     }
 
     template <template<typename> class SequenceContainerType>

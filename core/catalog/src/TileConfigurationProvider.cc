@@ -213,6 +213,14 @@ const TileLayout &GroupingExtentsTileConfigurationProvider::tileLayoutForFrame(u
 
 }
 
+static const int buffer = 32;
+int LowerBuffer(int val) {
+    return std::max(0, val - buffer);
+}
+int UpperBuffer(int val, int max) {
+    return std::min(max, val + buffer);
+}
+
 const TileLayout &GroupingTileConfigurationProvider::tileLayoutForFrame(unsigned int frame) {
     unsigned int tileGroupForFrame = frame / tileGroupDuration_;
     if (tileGroupToTileLayout_.count(tileGroupForFrame))
@@ -224,15 +232,15 @@ const TileLayout &GroupingTileConfigurationProvider::tileLayoutForFrame(unsigned
 
     // Compute horizontal and vertical intervals for all of the rectangles.
     std::vector<Interval<int>> horizontalIntervals(rectanglesForGroup.size());
-    std::transform(rectanglesForGroup.begin(), rectanglesForGroup.end(), horizontalIntervals.begin(), [](Rectangle &rect) {
-        return Interval<int>(rect.x, rect.x + rect.width);
+    std::transform(rectanglesForGroup.begin(), rectanglesForGroup.end(), horizontalIntervals.begin(), [&](Rectangle &rect) {
+        return Interval<int>(LowerBuffer(rect.x), UpperBuffer(rect.x + rect.width, frameWidth_));
     });
     std::sort(horizontalIntervals.begin(), horizontalIntervals.end());
     auto tileWidths = horizontalIntervals.size() ? tileDimensions(horizontalIntervals, 256, frameWidth_) : std::vector<unsigned int>({ frameWidth_ });
 
     std::vector<Interval<int>> verticalIntervals(rectanglesForGroup.size());
-    std::transform(rectanglesForGroup.begin(), rectanglesForGroup.end(), verticalIntervals.begin(), [](Rectangle &rect) {
-        return Interval<int>(rect.y, rect.y + rect.height);
+    std::transform(rectanglesForGroup.begin(), rectanglesForGroup.end(), verticalIntervals.begin(), [&](Rectangle &rect) {
+        return Interval<int>(LowerBuffer(rect.y), UpperBuffer(rect.y + rect.height, frameHeight_));
     });
     std::sort(verticalIntervals.begin(), verticalIntervals.end());
     auto tileHeights = verticalIntervals.size() ? tileDimensions(verticalIntervals, 136, frameHeight_) : std::vector<unsigned int>({ frameHeight_ });

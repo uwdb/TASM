@@ -34,11 +34,14 @@ public:
 
   EncodeAPI &api() { return *api_; }
   const EncodeConfiguration &configuration() const { return configuration_; }
-  void reconfigureEncoder(unsigned int newWidth, unsigned int newHeight) {
+  void reconfigureEncoder(unsigned int newWidth, unsigned int newHeight, unsigned int quantizationParameter) {
       NvEncPictureCommand picCommand;
       picCommand.bResolutionChangePending = true;
       picCommand.newWidth = newWidth;
       picCommand.newHeight = newHeight;
+
+      picCommand.bBitrateChangePending = true;
+      picCommand.quantizationParameter = quantizationParameter;
 
       auto result = api().NvEncReconfigureEncoder(&picCommand);
       assert(result == NV_ENC_SUCCESS);

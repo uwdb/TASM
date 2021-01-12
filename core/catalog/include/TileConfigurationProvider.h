@@ -486,7 +486,7 @@ public:
         auto width = isSingleTile ? tileRect.width : tileRect.alignedWidth();
         auto height = isSingleTile ? tileRect.height : tileRect.alignedHeight();
         auto blackTilePath = catalog::BlackTileFiles::pathForTile(blackTilesBasePath_, gopLength_, width, height);
-        std::cout << "Reading black tile from " << blackTilePath << std::endl;
+//        std::cout << "Reading black tile from " << blackTilePath << std::endl;
         return blackTilePath;
     }
 

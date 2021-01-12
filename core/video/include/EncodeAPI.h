@@ -43,6 +43,7 @@ typedef struct _NvEncPictureCommand
 
     uint32_t newBitrate;
     uint32_t newVBVSize;
+    uint32_t quantizationParameter;
 
     uint32_t  intraRefreshDuration;
 

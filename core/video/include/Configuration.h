@@ -94,6 +94,7 @@ struct EncodeConfiguration: public Configuration
                         const EncodeCodec codec,
                         const unsigned int gop_length,
                         const NV_ENC_PARAMS_RC_MODE rateControlMode=NV_ENC_PARAMS_RC_CONSTQP,
+                        const unsigned int quantization_parameter=28,
                         const unsigned int b_frames=0,
                         const NV_ENC_BUFFER_FORMAT input_format=NV_ENC_BUFFER_FORMAT_NV12,
                         const NV_ENC_PIC_STRUCT picture_struct=NV_ENC_PIC_STRUCT_FRAME,
@@ -105,7 +106,7 @@ struct EncodeConfiguration: public Configuration
                                 codec, NV_ENC_PRESET_DEFAULT_GUID,
                                 //configuration.framerate,
                                 gop_length, configuration.bitrate,
-                                rateControlMode, b_frames, input_format, picture_struct,
+                                rateControlMode, quantization_parameter, b_frames, input_format, picture_struct,
                                 i_qfactor, b_qfactor, i_qoffset, b_qoffset)
     { }
 
@@ -114,6 +115,7 @@ struct EncodeConfiguration: public Configuration
                         const std::string &preset,
                         const unsigned int gop_length,
                         const NV_ENC_PARAMS_RC_MODE rateControlMode=NV_ENC_PARAMS_RC_CONSTQP,
+                        const unsigned int quantization_parameter=28,
                         const unsigned int b_frames=0,
                         const NV_ENC_BUFFER_FORMAT input_format=NV_ENC_BUFFER_FORMAT_NV12,
                         const NV_ENC_PIC_STRUCT picture_struct=NV_ENC_PIC_STRUCT_FRAME,
@@ -125,7 +127,7 @@ struct EncodeConfiguration: public Configuration
                                 codec, EncodeAPI::GetPresetGUID(preset.c_str(), codec),
                                 //configuration.framerate,
                                 gop_length, configuration.bitrate,
-                                rateControlMode, b_frames, input_format, picture_struct,
+                                rateControlMode, quantization_parameter, b_frames, input_format, picture_struct,
                                 i_qfactor, b_qfactor, i_qoffset, b_qoffset)
     { }
 
@@ -133,6 +135,7 @@ struct EncodeConfiguration: public Configuration
                         const EncodeCodec codec, GUID preset, //const Configuration::FrameRate &fps,
                         const unsigned int gop_length, const size_t bitrate,
                         const NV_ENC_PARAMS_RC_MODE rateControlMode=NV_ENC_PARAMS_RC_CONSTQP,
+                        const unsigned int quantization_parameter=28,
                         const unsigned int b_frames=0,
                         const NV_ENC_BUFFER_FORMAT input_format=NV_ENC_BUFFER_FORMAT_NV12,
                         const NV_ENC_PIC_STRUCT picture_struct=NV_ENC_PIC_STRUCT_FRAME,
@@ -148,7 +151,7 @@ struct EncodeConfiguration: public Configuration
             numB(b_frames),
             pictureStruct(picture_struct),
             videoBufferingVerifier{},
-            quantization{28, "", rateControlMode, i_qfactor, b_qfactor, i_qoffset, b_qoffset},
+            quantization{quantization_parameter, "", rateControlMode, i_qfactor, b_qfactor, i_qoffset, b_qoffset},
             intraRefresh{false, 0, 0},
             flags{false, false, false, false}
     { }

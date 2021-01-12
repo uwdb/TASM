@@ -462,12 +462,12 @@ TEST_F(VisitorTestFixture, testWorkloadCostEstimation) {
         auto height = videoData.height;
 
         std::vector<std::pair<unsigned int, std::shared_ptr<tiles::TileConfigurationProvider>>> uniformConfigurations{
-            std::make_pair(2, std::make_shared<tiles::UniformTileconfigurationProvider<2, 2>>(width, height)),
-            std::make_pair(3, std::make_shared<tiles::UniformTileconfigurationProvider<3, 3>>(width, height)),
-            std::make_pair(4, std::make_shared<tiles::UniformTileconfigurationProvider<4, 4>>(width, height)),
-            std::make_pair(5, std::make_shared<tiles::UniformTileconfigurationProvider<5, 5>>(width, height)),
-            std::make_pair(6, std::make_shared<tiles::UniformTileconfigurationProvider<6, 6>>(width, height)),
-            std::make_pair(7, std::make_shared<tiles::UniformTileconfigurationProvider<7, 8>>(width, height)),
+            std::make_pair(2, std::make_shared<tiles::UniformTileconfigurationProvider>(2, 2, width, height)),
+            std::make_pair(3, std::make_shared<tiles::UniformTileconfigurationProvider>(3, 3, width, height)),
+            std::make_pair(4, std::make_shared<tiles::UniformTileconfigurationProvider>(4, 4, width, height)),
+            std::make_pair(5, std::make_shared<tiles::UniformTileconfigurationProvider>(5, 5, width, height)),
+            std::make_pair(6, std::make_shared<tiles::UniformTileconfigurationProvider>(6, 6, width, height)),
+            std::make_pair(7, std::make_shared<tiles::UniformTileconfigurationProvider>(7, 8, width, height)),
         };
 
         PixelMetadataSpecification selection("labels", std::make_shared<SingleMetadataElement>("label", videoData.object));

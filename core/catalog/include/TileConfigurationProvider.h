@@ -233,23 +233,23 @@ private:
     std::unique_ptr<TileLayout> layout_;
 };
 
-template <int Rows, int Columns>
 class UniformTileconfigurationProvider: public TileConfigurationProvider {
 public:
-    UniformTileconfigurationProvider(unsigned int totalWidth, unsigned int totalHeight)
-        : widthPerColumn_(totalWidth / Columns),
-        heightPerRow_(totalHeight / Rows)
+    UniformTileconfigurationProvider(int columns, int rows, unsigned int totalWidth, unsigned int totalHeight)
+        : rows_(rows), columns_(columns),
+        widthPerColumn_(totalWidth / columns_),
+        heightPerRow_(totalHeight / rows_)
     {}
 
     unsigned int maximumNumberOfTiles() override {
-        return Columns * Rows;
+        return columns_ * rows_;
     }
 
     const TileLayout &tileLayoutForFrame(unsigned int frame) override {
         if (layoutPtr)
             return *layoutPtr;
 
-        layoutPtr = std::make_unique<TileLayout>(Columns, Rows, std::vector<unsigned int>(Columns, widthPerColumn_), std::vector<unsigned int>(Rows, heightPerRow_));
+        layoutPtr = std::make_unique<TileLayout>(columns_, rows_, std::vector<unsigned int>(columns_, widthPerColumn_), std::vector<unsigned int>(rows_, heightPerRow_));
         return *layoutPtr;
     }
 
@@ -269,6 +269,8 @@ private:
         return dimensions;
     }
 
+    int rows_;
+    int columns_;
     unsigned int widthPerColumn_;
     unsigned int heightPerRow_;
     std::unique_ptr<TileLayout> layoutPtr;

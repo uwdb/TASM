@@ -190,7 +190,8 @@ namespace lightdb::logical {
                                                 MetadataSubsetType subsetType,
                                                 std::string metadataIdentifier,
                                                 bool shouldCrack = false,
-                                                bool shouldReadEntireGOPs = false)
+                                                bool shouldReadEntireGOPs = false,
+                                                const lightdb::options<>& options= {})
                 : LightField(lightField),
                 metadataSpecification_(metadataSpecification),
                 subsetType_(subsetType),
@@ -200,7 +201,9 @@ namespace lightdb::logical {
         {
             // Transform metadataIdentifier.
             auto crackedPos = metadataIdentifier.find("-cracked");
-            if (crackedPos != std::string::npos) {
+            if (options.get(MetadataOptions::MetadataIdentifier).has_value())
+                metadataIdentifier = std::any_cast<std::string>(*options.get(MetadataOptions::MetadataIdentifier));
+            else if (crackedPos != std::string::npos) {
                 metadataIdentifier = metadataIdentifier.substr(0, crackedPos);
             } else {
                 crackedPos = metadataIdentifier.find_last_of("-");

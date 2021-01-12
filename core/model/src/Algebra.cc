@@ -169,7 +169,7 @@ namespace lightdb::logical {
             return LightFieldReference::make<MetadataSubsetLightField>(this_, metadataSpecification, subsetType, scan.sources(), std::optional(scan.entry().name()));
         } else if (this_.is<ScannedMultiTiledLightField>()) {
             auto &scan = this_.downcast<ScannedMultiTiledLightField>();
-            return LightFieldReference::make<MetadataSubsetLightFieldWithoutSources>(this_, metadataSpecification, subsetType, scan.tileLayoutsManager()->entry().name(), shouldCrack, shouldReadEntireGOPs);
+            return LightFieldReference::make<MetadataSubsetLightFieldWithoutSources>(this_, metadataSpecification, subsetType, scan.tileLayoutsManager()->entry().name(), shouldCrack, shouldReadEntireGOPs, options);
         } else
             assert(false);
     }

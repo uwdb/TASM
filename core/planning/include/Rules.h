@@ -1399,28 +1399,7 @@ namespace lightdb::optimization {
                     }
                 } else if (node.crackingStrategy() == CrackingStrategy::Uniform) {
                     layoutDuration = fps;
-                    if (node.uniformDimensionsCols() == 2 && node.uniformDimensionsRows() == 2)
-                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<2, 2>>(width, height);
-                    else if (node.uniformDimensionsCols() == 3 && node.uniformDimensionsRows() == 3)
-                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<3, 3>>(width, height);
-                    else if (node.uniformDimensionsCols() == 4 && node.uniformDimensionsRows() == 4)
-                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<4, 4>>(width, height);
-                    else if (node.uniformDimensionsCols() == 5 && node.uniformDimensionsRows() == 5)
-                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<5, 5>>(width, height);
-                    else if (node.uniformDimensionsCols() == 6 && node.uniformDimensionsRows() == 6)
-                        tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<6, 6>>(width, height);
-                    else if (node.uniformDimensionsRows() == 7) {
-                        if (node.uniformDimensionsCols() == 7)
-                            tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<7, 7>>(width, height);
-                        else if (node.uniformDimensionsCols() == 8)
-                            tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<7, 8>>(width, height);
-                        else if (node.uniformDimensionsCols() == 9)
-                            tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<7, 9>>(width, height);
-                        else if (node.uniformDimensionsCols() == 10)
-                            tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider<7, 10>>(width, height);
-                    }
-                    else
-                        assert(false);
+                    tileConfig = std::make_shared<tiles::UniformTileconfigurationProvider>(node.uniformDimensionsCols(), node.uniformDimensionsRows(), width, height);
                 } else if (node.crackingStrategy() == CrackingStrategy::OneTile) {
                     tileConfig = std::make_shared<tiles::SingleTileConfigurationProvider>(width, height);
                 } else if (node.crackingStrategy() == CrackingStrategy::ROI) {

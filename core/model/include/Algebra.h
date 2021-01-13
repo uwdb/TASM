@@ -104,7 +104,8 @@ namespace lightdb {
                                                 bool encodeTiles=true);
             LightFieldReference StoreCrackedUniform(const std::string &name,
                                                 unsigned int uniformDimensionsCols,
-                                                unsigned int uniformDimensionsRows);
+                                                unsigned int uniformDimensionsRows,
+                                                const lightdb::options<>& = {});
             LightFieldReference StoreCrackedROI(const std::string &name, ROI roi);
             LightFieldReference PrepareForCracking(const std::string &name, unsigned int layoutDuration = 0, const lightdb::options<>& = {});
 

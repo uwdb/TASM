@@ -214,11 +214,14 @@ namespace lightdb::logical {
 
     LightFieldReference Algebra::StoreCrackedUniform(const std::string &name,
                                                   unsigned int uniformDimensionsCols,
-                                                    unsigned int uniformDimensionsRows) {
+                                                    unsigned int uniformDimensionsRows,
+                                                    const lightdb::options<> &options) {
         return LightFieldReference::make<CrackedLightField>(this_, name, catalog::Catalog::instance(),
                 CrackingStrategy::Uniform,
                 uniformDimensionsCols,
-                uniformDimensionsRows);
+                uniformDimensionsRows,
+                true,
+                options);
     }
 
     LightFieldReference Algebra::StoreCrackedROI(const std::string &name, ROI roi) {

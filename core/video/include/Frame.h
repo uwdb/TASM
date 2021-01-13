@@ -289,8 +289,8 @@ public:
     {
         width_ = frameDimensions_.displayWidth;
         height_ = frameDimensions_.displayHeight;
-        codedWidth_ = frameDimensions_.codedWidth;
-        codedHeight_ = frameDimensions_.codedHeight;
+        codedWidth_ = width_; //frameDimensions_.codedWidth;
+        codedHeight_ = height_; //frameDimensions_.codedHeight;
 //        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
         // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
         // with that.
@@ -302,8 +302,8 @@ public:
     {
         width_ = frameDimensions_.displayWidth;
         height_ = frameDimensions_.displayHeight;
-        codedWidth_ = frameDimensions_.codedWidth;
-        codedHeight_ = frameDimensions_.codedHeight;
+        codedWidth_ = width_; //frameDimensions_.codedWidth;
+        codedHeight_ = height_; //frameDimensions_.codedHeight;
 //        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
         // It would be preferable for this to hold onto a shared reference to the mapped frame, and then create cuda frame
         // with that.
@@ -315,8 +315,8 @@ public:
     {
         width_ = frameDimensions_.displayWidth;
         height_ = frameDimensions_.displayHeight;
-        codedWidth_ = frameDimensions_.codedWidth;
-        codedHeight_ = frameDimensions_.codedHeight;
+        codedWidth_ = width_; //frameDimensions_.codedWidth;
+        codedHeight_ = height_; //frameDimensions_.codedHeight;
 //        cuda(); // Hack so that unmap will get called when cuda frame is destroyed.
     }
 

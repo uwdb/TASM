@@ -25,8 +25,9 @@ include_directories(${LIGHTDB_CORE_INCLUDE_DIRS})
 #link_directories("${PP_DIR}/bin/")
 
 # Get test source files
-file(GLOB_RECURSE LIGHTDB_TEST_SOURCES "src/*VisitorTests.cc" "src/*KeyframePlacementTests.cc" "src/*UnknownWorkloadTests.cc" "src/*CreateLayoutsTest.cc"
-        "src/*BlazeItTests.cc"
+file(GLOB_RECURSE LIGHTDB_TEST_SOURCES
+#        "src/*VisitorTests.cc" "src/*KeyframePlacementTests.cc" "src/*UnknownWorkloadTests.cc" "src/*CreateLayoutsTest.cc"
+#        "src/*BlazeItTests.cc"
 #        "src/*PredicateTests.cc"
         "src/*VisualRoadTests.cc")
 message("LIGHTDB_TEST_SOURCES: ${LIGHTDB_TEST_SOURCES}")

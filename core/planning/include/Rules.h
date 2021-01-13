@@ -731,13 +731,13 @@ namespace lightdb::optimization {
 //            plan().emplace<physical::GPUSaveToArray>(logical, last, "/home/maureen/masked_videos/numpy");
 
             // Add bounding boxes around the detected objects.
-//            auto boxed = plan().emplace<physical::GPUMetadataTransform<video::GPURectangleOverlay>>(logical, last, metadataSpecification, tileLocationProvider);
+            auto boxed = plan().emplace<physical::GPUMetadataTransform<video::GPURectangleOverlay>>(logical, last, metadataSpecification, tileLocationProvider);
 
             // Mask background pixels.
 //            auto masked = plan().emplace<physical::GPUMetadataTransform<video::GPUSelectPixels>>(logical, boxed, metadataSpecification, tileLocationProvider);
 
             // Encode modified tiles.
-            auto encoded = plan().emplace<physical::GPUEncodeTilesToCPU>(logical, last, Codec::hevc(), tileLocationProvider);
+            auto encoded = plan().emplace<physical::GPUEncodeTilesToCPU>(logical, boxed, Codec::hevc(), tileLocationProvider);
 
             // Save modified tiles to disk.
             // Assume that GOP length == fps.

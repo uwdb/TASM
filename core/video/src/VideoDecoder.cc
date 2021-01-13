@@ -61,8 +61,8 @@ void CudaDecoder::mapFrame(CUVIDPARSERDISPINFO *frame, CUVIDEOFORMAT format) {
         m.dstMemoryType = CU_MEMORYTYPE_DEVICE;
         m.dstDevice = newHandle;
         m.dstPitch = pitchOfPreallocatedFrameArrays_;
-        m.WidthInBytes = format.coded_width;
-        m.Height = format.coded_height * 3 / 2;
+        m.WidthInBytes = width;
+        m.Height = height * 3 / 2;
         result = cuMemcpy2D(&m);
         assert(result == CUDA_SUCCESS);
 

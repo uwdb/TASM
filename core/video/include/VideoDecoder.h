@@ -178,8 +178,10 @@ public:
       reconfigParams.display_area.right = newFormat->display_area.right;
       reconfigParams.display_area.bottom = newFormat->display_area.bottom;
 
-      reconfigParams.ulTargetWidth = newFormat->coded_width;
-      reconfigParams.ulTargetHeight = newFormat->coded_height;
+      unsigned int newDisplayWidth = newFormat->display_area.right - newFormat->display_area.left;
+      unsigned int newDisplayHeight = newFormat->display_area.bottom - newFormat->display_area.top;
+      reconfigParams.ulTargetWidth = newDisplayWidth;
+      reconfigParams.ulTargetHeight = newDisplayHeight;
 
       reconfigParams.ulNumDecodeSurfaces = newFormat->min_num_decode_surfaces;
 
@@ -188,8 +190,6 @@ public:
       nvtxNameOsThread(std::hash<std::thread::id>()(std::this_thread::get_id()), "DECODE");
 
       // Include old width/new width old, height/new height in message.
-      unsigned int newDisplayWidth = newFormat->display_area.right - newFormat->display_area.left;
-      unsigned int newDisplayHeight = newFormat->display_area.bottom - newFormat->display_area.top;
       std::stringstream markMessage;
       markMessage << "ReconfigureDecoder width: " << oldDisplayWidth << "->" << newDisplayWidth << ", equals-coded: " << (newDisplayWidth == newFormat->coded_width)
                     << ", height: " << oldDisplayHeight << "->" << newDisplayHeight << ", equals-coded: " << (newDisplayHeight == newFormat->coded_height);

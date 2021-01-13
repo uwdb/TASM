@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <gtest/gtest.h>
 
+#include "ThreadPool.h"
+
 using namespace lightdb;
 using namespace lightdb::logical;
 using namespace lightdb::optimization;
@@ -205,4 +207,8 @@ TEST_F(VisualRoadTestFixture, testDetectAndMaskAroundPeople) {
             Coordinator().execute(ScanMultiTiled(videoId).Select(personSelection, yolo).Save(outputPath));
         }
     }
+}
+
+TEST_F(VisualRoadTestFixture, testLoadPrefix) {
+    Coordinator().execute(Load("/home/maureen/masked_videos/traffic-4k-002-ds2k-prefix.mp4", Volume::zero(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples())).PrepareForCracking("prefix-retiled", 30));
 }

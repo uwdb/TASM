@@ -80,9 +80,21 @@ namespace lightdb::optimization {
             return false;
         }
 
+        static std::vector<int> OrderedFrames(int first, int last) {
+            auto numFrames = last - first + 1;
+            std::vector<int> frames(numFrames);
+            for (auto i = 0u; i < numFrames; ++i)
+                frames[i] = first + i;
+            return frames;
+        }
+
         bool visit(const logical::MultiTiledLightFieldForRetiling &node) override {
             if (!plan().has_physical_assignment(node)) {
-                auto framesToRetile = node.metadataManager()->orderedFramesForMetadata();
+                auto retileAllFramesOption = node.get_option(RetileOptions::RetileAllFrames);
+                bool retileAllFrames = std::any_cast<bool>(retileAllFramesOption.value_or(std::make_any<bool>(false)));
+                auto framesToRetile = retileAllFrames ?
+                                        OrderedFrames(node.metadataManager()->metadataSpecification().firstFrame(), node.metadataManager()->metadataSpecification().lastFrame()) :
+                                        node.metadataManager()->orderedFramesForMetadata();
                 auto locationProvider = std::make_shared<tiles::SingleTileLocationProvider>(node.tileLayoutsManager());
 
                 int gopLength = node.entry()->sources()[0].configuration().framerate.fps();
@@ -144,13 +156,16 @@ namespace lightdb::optimization {
                     if (framesWithDifferentLayout.size()) {
                         auto gpu = plan().allocator().gpu();
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
+                        auto splitByGOPOption = node.get_option(RetileOptions::SplitByGOP);
+                        bool splitByGOP = std::any_cast<bool>(splitByGOPOption.value_or(std::make_any<bool>(false)));
                         auto crack = plan().emplace<physical::CrackVideo>(
                                 logical,
                                 decode,
                                 std::unordered_set<int>(),
                                 configProvider,
                                 node.tileLayoutsManager()->entry().name(),
-                                gopLength);
+                                gopLength,
+                                splitByGOP);
                         plan().emplace<physical::Sink>(logical, crack);
                     } else {
                         plan().emplace<physical::Sink>(logical, scan);
@@ -1408,13 +1423,16 @@ namespace lightdb::optimization {
                     assert(false);
                 }
 
+                auto splitByGOPOption = node.get_option(RetileOptions::SplitByGOP);
+                bool splitByGOP = std::any_cast<bool>(splitByGOPOption.value_or(std::make_any<bool>(false)));
                 auto crack = plan().emplace<physical::CrackVideo>(
                                  logical,
                                  physical_parents[0],
                                  keyframes,
                                  tileConfig,
                                  "",
-                                 layoutDuration);
+                                 layoutDuration,
+                                 splitByGOP);
                 // TODO: Add encode & store for each tile.
 
 //                auto encode = plan().emplace<physical::GPUEncodeToCPU>(logical, physical_parents[0], Codec::hevc());

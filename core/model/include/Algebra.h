@@ -36,7 +36,8 @@ namespace lightdb {
                                           CrackingStrategy crackingStrategy,
                                           RetileStrategy retileOnlyIfDifferent = RetileStrategy::RetileAlways,
                                           std::shared_ptr<RegretAccumulator> regretAccumulator = {},
-                                          std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager = {});
+                                          std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager = {},
+                                          const lightdb::options<>& = {});
     LightFieldReference ScanAndRetile(const std::string &name,
                                       const std::string &originalVideoName,
                                       const MetadataSpecification &metadataSpecification,
@@ -44,7 +45,8 @@ namespace lightdb {
                                       CrackingStrategy crackingStrategy,
                                       RetileStrategy retileOnlyIfDifferent = RetileStrategy::RetileAlways,
                                       std::shared_ptr<RegretAccumulator> regretAccumulator = {},
-                                      std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager = {});
+                                      std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager = {},
+                                      const lightdb::options<>& = {});
 
         LightFieldReference ScanByGOP(const std::string &name);
         LightFieldReference Scan(const std::string &name);
@@ -104,7 +106,7 @@ namespace lightdb {
                                                 unsigned int uniformDimensionsCols,
                                                 unsigned int uniformDimensionsRows);
             LightFieldReference StoreCrackedROI(const std::string &name, ROI roi);
-            LightFieldReference PrepareForCracking(const std::string &name, unsigned int layoutDuration = 0);
+            LightFieldReference PrepareForCracking(const std::string &name, unsigned int layoutDuration = 0, const lightdb::options<>& = {});
 
             LightFieldReference Save(const std::filesystem::path&);
             LightFieldReference Sink();

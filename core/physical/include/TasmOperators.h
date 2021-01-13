@@ -195,8 +195,7 @@ private:
             currentTile_ = (*currentDataFramesIterator_)->tileNumber();
             assert(currentTile_ != -1);
 
-            bool isSingleTile = tileLocationProvider_->tileLayoutForFrame(firstFrame_).numberOfTiles() == 1;
-            encoderManager_.createEncoderWithConfiguration(encoderId_, (*currentDataFramesIterator_)->width(), (*currentDataFramesIterator_)->height(), isSingleTile ? std::nullopt : std::make_optional(highQualityQP_));
+            encoderManager_.createEncoderWithConfiguration(encoderId_, (*currentDataFramesIterator_)->width(), (*currentDataFramesIterator_)->height(), std::nullopt);
         }
 
         bool noMoreFramesInCurrentData() {

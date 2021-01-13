@@ -34,8 +34,9 @@ namespace lightdb::logical {
                                   CrackingStrategy crackingStrategy,
                                   RetileStrategy retileOnlyIfDifferent,
                                   std::shared_ptr<RegretAccumulator> regretAccumulator,
-                                  std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager) {
-        return ScanAndRetile(name, RemoveDecorationsFromTileEntry(name), metadataSpecification, layoutDuration, crackingStrategy, retileOnlyIfDifferent, regretAccumulator, tileAroundMoreObjectsManager);
+                                  std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager,
+                                  const lightdb::options<> &options) {
+        return ScanAndRetile(name, RemoveDecorationsFromTileEntry(name), metadataSpecification, layoutDuration, crackingStrategy, retileOnlyIfDifferent, regretAccumulator, tileAroundMoreObjectsManager, options);
     }
 
     LightFieldReference ScanAndRetile(const std::string &name,
@@ -45,7 +46,8 @@ namespace lightdb::logical {
                                       CrackingStrategy crackingStrategy,
                                       RetileStrategy retileOnlyIfDifferent,
                                       std::shared_ptr<RegretAccumulator> regretAccumulator,
-                                      std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager) {
+                                      std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager,
+                                      const lightdb::options<> &options) {
 
         auto metadataIdentifier = RemoveDecorationsFromTileEntry(name);
         auto entry = std::make_shared<catalog::Entry>(Catalog::instance().entry(originalVideoName));
@@ -54,7 +56,8 @@ namespace lightdb::logical {
 
         auto lightField = Catalog::instance().getMultiTiledForRetiling(name);
         lightField.downcast<logical::MultiTiledLightFieldForRetiling>().setProperties(
-                metadataManager, crackingStrategy, layoutDuration, entry, retileOnlyIfDifferent);
+                metadataManager, crackingStrategy, layoutDuration, entry, retileOnlyIfDifferent,
+                options);
 
         if (regretAccumulator)
             lightField.downcast<logical::MultiTiledLightFieldForRetiling>().setRegretAccumulator(regretAccumulator);
@@ -224,13 +227,15 @@ namespace lightdb::logical {
                 roi);
     }
 
-    LightFieldReference Algebra::PrepareForCracking(const std::string &name, unsigned int layoutDuration) {
+    LightFieldReference Algebra::PrepareForCracking(const std::string &name, unsigned int layoutDuration, const lightdb::options<> &options) {
         return LightFieldReference::make<CrackedLightField>(this_, name, catalog::Catalog::instance(),
                 std::nullopt,
                 Codec::hevc(),
                 nullptr,
                 layoutDuration,
-                CrackingStrategy::OneTile);
+                CrackingStrategy::OneTile,
+                true,
+                options);
     }
 
     LightFieldReference Algebra::Sink() {

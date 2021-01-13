@@ -23,6 +23,11 @@ namespace lightdb {
             static constexpr const char* MetadataIdentifier = "MetadataId";
         };
 
+        struct Retile {
+            static constexpr const char* SplitByGOP = "SplitByGOP";
+            static constexpr const char* RetileAllFrames = "RetileAllFrames";
+        };
+
 
         std::optional<TValue> get(const TKey& key) const {
             auto value = this->find(key);
@@ -50,6 +55,7 @@ namespace lightdb {
     using EncodeOptions = options<>::Encoding;
     using GeometryOptions = options<>::Geometry;
     using MetadataOptions = options<>::Metadata;
+    using RetileOptions = options<>::Retile;
 } // namespace lightdb
 
 #endif //LIGHTDB_OPTIONS_H

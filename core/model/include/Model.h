@@ -23,6 +23,7 @@
 #include "MetadataLightField.h"
 #include <iostream>
 #include <TileConfigurationProvider.h>
+#include "options.h"
 
 namespace lightdb::logical {
     class ConstantLightField : public LightField {
@@ -247,7 +248,7 @@ namespace lightdb::logical {
         bool usesOnlyOneTile_;
     };
 
-    class MultiTiledLightFieldForRetiling : public LightField {
+    class MultiTiledLightFieldForRetiling : public LightField, public OptionContainer<> {
     public:
         explicit MultiTiledLightFieldForRetiling(std::shared_ptr<tiles::TileLayoutsManager> tileLayoutsManager)
             : LightField({}, Volume::limits(), YUVColorSpace::instance()),
@@ -270,7 +271,8 @@ namespace lightdb::logical {
                 CrackingStrategy crackingStrategy,
                 unsigned int layoutDuration,
                 std::shared_ptr<catalog::Entry> entry,
-                RetileStrategy retileStrategy) {
+                RetileStrategy retileStrategy,
+                lightdb::options<> options) {
             retileStrategy_ = retileStrategy;
 
             metadataManager_ = metadataManager;
@@ -294,6 +296,7 @@ namespace lightdb::logical {
                 default:
                     assert(false);
             }
+            options_ = options;
         }
 
         const std::shared_ptr<const tiles::TileLayoutsManager> tileLayoutsManager() const { return tileLayoutsManager_; }
@@ -303,6 +306,8 @@ namespace lightdb::logical {
         RetileStrategy retileStrategy() const { return retileStrategy_; }
         std::shared_ptr<RegretAccumulator> regretAccumulator() const { return regretAccumulator_; }
         std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager() const { return tileAroundMoreObjectsManager_; }
+
+        const lightdb::options<>& options() const override {return options_; }
 
         void accept(LightFieldVisitor &visitor) override { LightField::accept<MultiTiledLightFieldForRetiling>(visitor); }
 
@@ -314,6 +319,7 @@ namespace lightdb::logical {
         RetileStrategy retileStrategy_;
         std::shared_ptr<RegretAccumulator> regretAccumulator_;
         std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager_;
+        lightdb::options<> options_;
     };
 
     class ScannedTiledLightField : public LightField, public StreamBackedLightField {
@@ -500,7 +506,7 @@ namespace lightdb::logical {
         const catalog::Catalog catalog_;
     };
 
-    class CrackedLightField : public StoredLightField {
+    class CrackedLightField : public StoredLightField, public OptionContainer<> {
 //        using StoredLightField::StoredLightField;
 
     public:
@@ -512,14 +518,16 @@ namespace lightdb::logical {
                           std::shared_ptr<metadata::MetadataManager> metadataManager=nullptr,
                           unsigned int layoutDuration=0,
                           CrackingStrategy crackingStrategy=CrackingStrategy::None,
-                          bool encodeTiles=true)
+                          bool encodeTiles=true,
+                          const lightdb::options<> &options={})
             : StoredLightField(source, name, catalog, geometry, codec),
               metadataManager_(metadataManager),
               layoutDuration_(layoutDuration),
               crackingStrategy_(crackingStrategy),
               uniformDimensionsCols_(0),
               uniformDimensionsRows_(0),
-              encodeTiles_(encodeTiles)
+              encodeTiles_(encodeTiles),
+              options_(options)
         { }
 
         CrackedLightField(const LightFieldReference &source,
@@ -528,13 +536,15 @@ namespace lightdb::logical {
                 CrackingStrategy crackingStrategy,
                 unsigned int uniformDimensionsCols,
                 unsigned int uniformDimensionsRows,
-                bool encodeTiles=true)
+                bool encodeTiles=true,
+                const lightdb::options<> &options={})
             : StoredLightField(source, name, catalog, {}, Codec::hevc()),
               layoutDuration_(0),
               crackingStrategy_(crackingStrategy),
               uniformDimensionsCols_(uniformDimensionsCols),
               uniformDimensionsRows_(uniformDimensionsRows),
-              encodeTiles_(encodeTiles)
+              encodeTiles_(encodeTiles),
+              options_(options)
         {
             assert(crackingStrategy_ == CrackingStrategy::Uniform);
         }
@@ -544,12 +554,14 @@ namespace lightdb::logical {
                 const catalog::Catalog &catalog,
                 CrackingStrategy crackingStrategy,
                 ROI roi,
-                bool encodeTiles=true)
+                bool encodeTiles=true,
+                const lightdb::options<> &options={})
             : StoredLightField(source, name, catalog, {}, Codec::hevc()),
             layoutDuration_(0),
             crackingStrategy_(crackingStrategy),
             roi_(roi),
-            encodeTiles_(encodeTiles)
+            encodeTiles_(encodeTiles),
+            options_(options)
         {
             assert(crackingStrategy_ == CrackingStrategy::ROI);
         }
@@ -573,6 +585,8 @@ namespace lightdb::logical {
 
         bool shouldEncodeTiles() const { return encodeTiles_; }
 
+        const lightdb::options<> &options() const override { return options_; }
+
         void accept(LightFieldVisitor &visitor) override { LightField::accept<CrackedLightField>(visitor); }
 
     private:
@@ -583,6 +597,7 @@ namespace lightdb::logical {
         unsigned int uniformDimensionsRows_;
         ROI roi_;
         bool encodeTiles_;
+        lightdb::options<> options_;
     };
 
     class SavedLightField : public LightField {

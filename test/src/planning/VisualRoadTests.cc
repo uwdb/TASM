@@ -81,11 +81,11 @@ TEST_F(VisualRoadTestFixture, testCreateBlackTiles) {
 }
 
 TEST_F(VisualRoadTestFixture, testSetUpVideoForTiling) {
-    std::string videoPath("/home/maureen/masked_videos/cropped_traffic-4k-002-ds2k.mp4");
-    std::string storedName("traffic-4k-002-ds2k-cropped-cracked");
+//    std::string videoPath("/home/maureen/masked_videos/cropped_traffic-4k-002-ds2k.mp4");
+    std::string storedName("traffic-4k-002-ds2k-not-tiled-cracked");
     unsigned int framerate = 30;
-    auto input = Load(videoPath, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
-    Coordinator().execute(input.PrepareForCracking(storedName, framerate));
+//    auto input = Load(videoPath, Volume::limits(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples()));
+    Coordinator().execute(Scan("traffic-4k-002-ds2k").PrepareForCracking(storedName, framerate, {{RetileOptions::SplitByGOP, true}}));
 }
 
 TEST_F(VisualRoadTestFixture, testDetectRunYolo) {
@@ -172,7 +172,10 @@ TEST_F(VisualRoadTestFixture, testCreateTilesAroundPeople) {
 }
 
 TEST_F(VisualRoadTestFixture, testDetectAndMaskAroundPeople) {
-    std::string videoId("traffic-4k-002-ds2k-not-tiled-cracked");
+    const int MAX_TILES = 900;
+//    std::string videoId("traffic-4k-002-ds2k-not-tiled-cracked");
+    std::string metadataId("traffic-4k-002-ds2k-not-tiled");
+    std::string videoId("traffic-4k-002-ds2k-0_1800-3x3");
     auto yolo = lightdb::extensibility::Load("yologpu");
 
 //    DeleteDatabase(videoId);
@@ -184,31 +187,62 @@ TEST_F(VisualRoadTestFixture, testDetectAndMaskAroundPeople) {
 //    FrameMetadataSpecification selection(std::make_shared<EntireFrameMetadataElement>(30, 120));
 //    Coordinator().execute(input.Select(selection).Map(yolo));
 
-    std::vector<int> firstFrames{30}; // 60
-    std::vector<int> lastFrames{120}; // 90, 120, 240
-    for (auto first : firstFrames) {
-        for (auto last : lastFrames) {
-            // Then, re-tile around people.
-            PixelsInFrameMetadataSpecification personSelection(
-                    std::make_shared<SingleMetadataElement>("label", "car", first, last));
-//    auto framerate = 30u;
-//    auto retileOp = ScanAndRetile(
-//            videoId,
-//            "traffic-4k-002-ds2k",
-//            personSelection,
-//            framerate,
-//            CrackingStrategy::GroupingExtent);
-//    Coordinator().execute(retileOp);
+    std::vector<std::pair<int, int>> frames {
+//            {0, 30},
+            {1800*0, 1800*1},
+//            {1800*1, 1800*2},
+//            {1800*2, 1800*3},
+//            {1800*3, 1800*4},
+    };
+    for (auto firstLast : frames) {
+//        DeleteTilesPastNum(videoId, MAX_TILES);
+//        ResetTileNum(videoId, MAX_TILES);
 
-            // Then, do selection on people tiles.
-            // Re-do scan so that new tiles are discovered.
-            auto outputPath = "/home/maureen/masked_videos/traffic_car_untiled_" + std::to_string(first) + "_" + std::to_string(last) + ".mp4";
-            std::cout << "Saving to " << outputPath << std::endl;
-            Coordinator().execute(ScanMultiTiled(videoId).Select(personSelection, yolo).Save(outputPath));
-        }
+        auto first = firstLast.first;
+        auto last = firstLast.second;
+        PixelsInFrameMetadataSpecification selection(
+                std::make_shared<SingleMetadataElement>("label", "car", first, last));
+        std::filesystem::path outputPath;
+
+//        outputPath = "/home/maureen/masked_videos/traffic_car_boxed_untiled_" + std::to_string(first) + "_" + std::to_string(last) + ".mp4";
+//        std::cout << "Saving to " << outputPath << std::endl;
+//        Coordinator().execute(ScanMultiTiled(videoId).Select(selection, yolo)); //.Save(outputPath));
+
+        // Then, re-tile around cars.
+//        auto framerate = 30u;
+//        auto retileOp = ScanAndRetile(
+//                videoId,
+//                "traffic-4k-002-ds2k",
+//                selection,
+//                framerate,
+//                CrackingStrategy::SmallTiles,
+//                RetileStrategy::RetileIfDifferent,
+//                {}, {},
+//                {{RetileOptions::SplitByGOP, true}});
+//        Coordinator().execute(retileOp);
+
+        // Then, do selection on people tiles.
+        // Re-do scan so that new tiles are discovered.
+        outputPath = "/home/maureen/masked_videos/traffic_car_boxed_uniform_stitched_" + std::to_string(first) + "_" + std::to_string(last) + ".mp4";
+        std::cout << "Saving to " << outputPath << std::endl;
+        Coordinator().execute(ScanMultiTiled(videoId).Select(selection, yolo, {{MetadataOptions::MetadataIdentifier, metadataId}}).Save(outputPath));
     }
 }
 
 TEST_F(VisualRoadTestFixture, testLoadPrefix) {
     Coordinator().execute(Load("/home/maureen/masked_videos/traffic-4k-002-ds2k-prefix.mp4", Volume::zero(), GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples())).PrepareForCracking("prefix-retiled", 30));
+}
+
+TEST_F(VisualRoadTestFixture, testTilePrefix) {
+    Coordinator().execute(
+        Load(
+            "/home/maureen/masked_videos/traffic-4k-002-ds2k-0_1800.mp4",
+            Volume::zero(),
+            GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples())
+        ).StoreCrackedUniform(
+            "traffic-4k-002-ds2k-0_1800-3x3",
+            3, 3,
+            {{RetileOptions::SplitByGOP, true}}
+        )
+    );
 }

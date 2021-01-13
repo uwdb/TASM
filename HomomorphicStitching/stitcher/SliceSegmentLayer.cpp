@@ -129,7 +129,7 @@ namespace lightdb {
         GetBitStream().SkipExponentialGolomb();
         GetBitStream().SkipBits(2);
         GetBitStream().SkipExponentialGolomb();
-//        GetBitStream().SkipBits(1); // I think this is slice_loop_filter_across_slices_enabled_flag.
+        GetBitStream().SkipBits(1); // I think this is slice_loop_filter_across_slices_enabled_flag.
         GetBitStream().MarkPosition("entry_point_offset");
         GetBitStream().SkipEntryPointOffsets(headers.GetPicture()->HasEntryPointOffsets());
         GetBitStream().CollectValue("trailing_one", 1, true);
@@ -152,7 +152,7 @@ namespace lightdb {
                 GetBitStream().SkipBits(1, headers.GetPicture()->CabacInitPresentFlag());
                 GetBitStream().SkipExponentialGolomb();
                 GetBitStream().SkipExponentialGolomb();
-//                GetBitStream().SkipBits(1); // I think this is slice_loop_filter_across_slices_enabled_flag
+                GetBitStream().SkipBits(1); // I think this is slice_loop_filter_across_slices_enabled_flag
                 GetBitStream().MarkPosition("entry_point_offset");
                 GetBitStream().SkipEntryPointOffsets(headers.GetPicture()->HasEntryPointOffsets());
                 GetBitStream().CollectValue("trailing_one", 1, true);

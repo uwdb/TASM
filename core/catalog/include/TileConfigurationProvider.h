@@ -475,21 +475,21 @@ public:
                 return catalog::TileFiles::temporaryTileFilename(gopToModifiedPath_.at(gop), tileNumber);
         }
 
-//        auto originalTile = originalTiles_->locationOfTileForFrame(tileNumber, frame);
-//        originalTile.replace_extension(catalog::TileFiles::temporaryFilenameExtension());
-//        return originalTile;
+        auto originalTile = originalTiles_->locationOfTileForFrame(tileNumber, frame);
+        originalTile.replace_extension(catalog::TileFiles::temporaryFilenameExtension());
+        return originalTile;
 
         // Return path to black tile of correct size.
         // If the frame is not tiled, don't use the coded dimensions because we want the conformance window in the header of
         // the retrieved tile to be correct.
-        auto &tileLayout = originalTiles_->tileLayoutForFrame(frame);
-        auto tileRect = tileLayout.rectangleForTile(tileNumber);
-        bool isSingleTile = tileLayout.numberOfTiles() == 1;
-        auto width = isSingleTile ? tileRect.width : tileRect.alignedWidth();
-        auto height = isSingleTile ? tileRect.height : tileRect.alignedHeight();
-        auto blackTilePath = catalog::BlackTileFiles::pathForTile(blackTilesBasePath_, gopLength_, width, height);
-//        std::cout << "Reading black tile from " << blackTilePath << std::endl;
-        return blackTilePath;
+//        auto &tileLayout = originalTiles_->tileLayoutForFrame(frame);
+//        auto tileRect = tileLayout.rectangleForTile(tileNumber);
+//        bool isSingleTile = tileLayout.numberOfTiles() == 1;
+//        auto width = isSingleTile ? tileRect.width : tileRect.alignedWidth();
+//        auto height = isSingleTile ? tileRect.height : tileRect.alignedHeight();
+//        auto blackTilePath = catalog::BlackTileFiles::pathForTile(blackTilesBasePath_, gopLength_, width, height);
+////        std::cout << "Reading black tile from " << blackTilePath << std::endl;
+//        return blackTilePath;
     }
 
     const TileLayout &tileLayoutForFrame(unsigned int frame) override {

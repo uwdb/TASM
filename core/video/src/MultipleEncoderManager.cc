@@ -12,7 +12,7 @@ void TileEncoder::updateConfiguration(unsigned int newWidth, unsigned int newHei
     height_ = newHeight;
     quantizationParameter_ = newQuantizationParameter;
 
-    encoder_.reconfigureEncoder(newWidth, newHeight, newQuantizationParameter);
+    encoder_.reconfigureEncoder(newWidth, newHeight);
 }
 
 std::unique_ptr<bytestring> TileEncoder::getEncodedFrames() {

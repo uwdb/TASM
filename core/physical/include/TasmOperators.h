@@ -236,7 +236,6 @@ private:
         const unsigned int encoderId_ = 0u;
         std::list<std::unique_ptr<bytestring>> encodedDataForGOPAndTile_;
         size_t encodedDataLength_;
-        const unsigned int highQualityQP_ = 20u;
     };
     const Codec codec_;
 };

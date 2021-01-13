@@ -648,11 +648,11 @@ NVENCSTATUS EncodeAPI::NvEncReconfigureEncoder(const NvEncPictureCommand *pEncPi
         reconfigureParams.forceIDR = true;
         reconfigureParams.resetEncoder = true;
 
-        if (pEncPicCommand->bBitrateChangePending && reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.rateControlMode == NV_ENC_PARAMS_RC_CONSTQP) {
-            reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.constQP.qpInterP = pEncPicCommand->quantizationParameter;
-            reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.constQP.qpInterB = pEncPicCommand->quantizationParameter;
-            reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.constQP.qpIntra = pEncPicCommand->quantizationParameter;
-        }
+//        if (pEncPicCommand->bBitrateChangePending && reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.rateControlMode == NV_ENC_PARAMS_RC_CONSTQP) {
+//            reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.constQP.qpInterP = pEncPicCommand->quantizationParameter;
+//            reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.constQP.qpInterB = pEncPicCommand->quantizationParameter;
+//            reconfigureParams.reInitEncodeParams.encodeConfig->rcParams.constQP.qpIntra = pEncPicCommand->quantizationParameter;
+//        }
 
 //        memset(&stReconfigParams, 0, sizeof(stReconfigParams));
 //        memcpy(&stReconfigParams.reInitEncodeParams, &m_stCreateEncodeParams, sizeof(m_stCreateEncodeParams));
@@ -1035,8 +1035,8 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
     if (pEncCfg->codec == NV_ENC_HEVC)
     {
         m_stEncodeConfig.encodeCodecConfig.hevcConfig.repeatSPSPPS = 1;
-        m_stEncodeConfig.encodeCodecConfig.hevcConfig.minCUSize = NV_ENC_HEVC_CUSIZE_32x32;
-        m_stEncodeConfig.encodeCodecConfig.hevcConfig.disableDeblockAcrossSliceBoundary = 1;
+//        m_stEncodeConfig.encodeCodecConfig.hevcConfig.minCUSize = NV_ENC_HEVC_CUSIZE_32x32;
+//        m_stEncodeConfig.encodeCodecConfig.hevcConfig.disableDeblockAcrossSliceBoundary = 1;
     }
     else
     {

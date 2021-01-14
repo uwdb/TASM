@@ -21,6 +21,7 @@
 #include "Distribution.h"
 #include "WorkloadCostEstimator.h"
 #include "RegretAccumulator.h"
+#include "VideoStats.h"
 
 using namespace lightdb;
 using namespace lightdb::logical;
@@ -32,41 +33,6 @@ static unsigned int NUM_QUERIES = 200;
 static unsigned int WORKLOAD_NUM = 3;
 
 static float WINDOW_FRACTION = 0.25;
-
-static std::unordered_map<std::string, std::pair<unsigned int, unsigned int>> videoToDimensions{
-//        {"traffic-2k-001", {1920, 1080}},
-//        {"car-pov-2k-001-shortened", {1920, 1080}},
-//        {"traffic-4k-000", {3840, 1980}},
-//        {"traffic-4k-002", {3840, 1980}},
-        {"traffic-2k-001", {1920, 1080}},
-        {"car-pov-2k-000-shortened", {1920, 1080}},
-        {"car-pov-2k-001-shortened", {1920, 1080}},
-        {"traffic-4k-002-ds2k", {1920, 1080}},
-        {"traffic-4k-000", {3840, 1980}},
-        {"traffic-4k-002", {3840, 1980}},
-        {"narrator", {4096, 2160}},
-        {"market_all", {4096, 2160}},
-        {"square_with_fountain", {4096, 2160}},
-        {"street_night_view", {4096, 2160}},
-        {"river_boat", {4096, 2160}},
-        {"Netflix_BoxingPractice", {4096, 2160}},
-        {"Netflix_FoodMarket2", {4096, 2160}},
-        {"seeking", {1920, 1080}},
-        {"tennis", {1920, 1080}},
-        {"birdsincage", {1920, 1080}},
-        {"crowdrun", {1920, 1080}},
-        {"elfuente1", {1920, 1080}},
-        {"elfuente2", {1920, 1080}},
-        {"oldtown", {1920, 1080}},
-        {"red_kayak", {1920, 1080}},
-        {"touchdown_pass", {1920, 1080}},
-        {"park_joy_2k", {1920, 1080}},
-        {"park_joy_4k", {3840, 2160}},
-        {"Netflix_ToddlerFountain", {4096, 2160}},
-        {"Netflix_Narrator", {4096, 2160}},
-        {"Netflix_FoodMarket", {4096, 2160}},
-        {"Netflix_DrivingPOV", {4096, 2160}},
-};
 
 static std::unordered_map<std::string, unsigned int> videoToProbabilitySeed {
 //        {"traffic-2k-001", 8},
@@ -209,77 +175,6 @@ std::unordered_map<std::string, std::vector<unsigned int>> videoToQueryDurations
         {"Netflix_DrivingPOV", {1}}
 };
 
-
-std::unordered_map<std::string, unsigned int> videoToNumFrames{
-//        {"traffic-2k-001", 27001},
-//        {"car-pov-2k-001-shortened", 17102},
-//        {"traffic-4k-000", 27001},
-//        {"traffic-4k-002", 27001},
-        {"traffic-2k-001", 27001},
-        {"car-pov-2k-000-shortened", 15302},
-        {"car-pov-2k-001-shortened", 17102},
-        {"traffic-4k-002-ds2k", 27001},
-        {"traffic-4k-000", 27001},
-        {"traffic-4k-002", 27001},
-        {"narrator", 1228},
-        {"market_all", 2487},
-        {"square_with_fountain", 840},
-        {"street_night_view", 1380},
-        {"river_boat", 2817},
-        {"Netflix_BoxingPractice", 254},
-        {"Netflix_FoodMarket2", 300},
-        {"seeking", 150},
-        {"tennis", 120},
-        {"birdsincage", 180},
-        {"crowdrun", 150},
-        {"elfuente1", 180},
-        {"elfuente2", 180},
-        {"oldtown", 150},
-        {"red_kayak", 571},
-        {"touchdown_pass", 571},
-        {"park_joy_2k", 500},
-        {"park_joy_4k", 500},
-        {"Netflix_ToddlerFountain", 1199},
-        {"Netflix_Narrator", 300},
-        {"Netflix_FoodMarket", 600},
-        {"Netflix_DrivingPOV", 1199},
-};
-
-std::unordered_map<std::string, unsigned int> videoToFramerate{
-//        {"traffic-2k-001", 27001},
-//        {"car-pov-2k-001-shortened", 17102},
-//        {"traffic-4k-000", 27001},
-//        {"traffic-4k-002", 27001},
-        {"traffic-2k-001", 30},
-        {"car-pov-2k-000-shortened", 30},
-        {"car-pov-2k-001-shortened", 30},
-        {"traffic-4k-002-ds2k", 30},
-        {"traffic-4k-000", 30},
-        {"traffic-4k-002", 30},
-        {"narrator", 60},
-        {"market_all", 60},
-        {"square_with_fountain", 60},
-        {"street_night_view", 60},
-        {"river_boat", 60},
-        {"Netflix_BoxingPractice", 60},
-        {"Netflix_FoodMarket2", 60},
-        {"seeking", 25},
-        {"tennis", 24},
-        {"birdsincage", 30},
-        {"crowdrun", 25},
-        {"elfuente1", 30},
-        {"elfuente2", 30},
-        {"oldtown", 25},
-        {"red_kayak", 30},
-        {"touchdown_pass", 30},
-        {"park_joy_2k", 50},
-        {"park_joy_4k", 50},
-        {"Netflix_ToddlerFountain", 60},
-        {"Netflix_Narrator", 60},
-        {"Netflix_FoodMarket", 60},
-        {"Netflix_DrivingPOV", 60},
-};
-
 std::unordered_map<std::string, unsigned int> videoToStartForWindow{
 //        {"traffic-2k-001", 27001},
 //        {"car-pov-2k-001-shortened", 17102},
@@ -312,7 +207,7 @@ public:
 class UniformFrameGenerator : public FrameGenerator {
 public:
     UniformFrameGenerator(const std::string &video, unsigned int duration)
-        : startingFrameDistribution_(0, videoToNumFrames.at(video) - (duration * videoToFramerate.at(video)) - 1)
+        : startingFrameDistribution_(0, VideoToNumFrames.at(video) - (duration * VideoToFramerate.at(video)) - 1)
     {}
 
     int nextFrame(std::default_random_engine &generator) override {
@@ -326,7 +221,7 @@ private:
 class ZipfFrameGenerator : public FrameGenerator {
 public:
     ZipfFrameGenerator(const std::string &video, unsigned int duration) {
-        auto maxFrame = videoToNumFrames.at(video) - (duration * videoToFramerate.at(video)) - 1;
+        auto maxFrame = VideoToNumFrames.at(video) - (duration * VideoToFramerate.at(video)) - 1;
 //        MetadataSpecification selection("labels",
 //                std::make_shared<AllMetadataElement>("label", 0, maxFrame));
 //        metadata::MetadataManager metadataManager(video, selection);
@@ -349,9 +244,9 @@ class WindowUniformFrameGenerator : public FrameGenerator {
 public:
     WindowUniformFrameGenerator(const std::string &video, unsigned int duration, double windowFraction)
     {
-//        int firstFrame = videoToNumFrames.at(video) * videoToStartForWindow.at(video) / 100.0;
-        int numFrames = videoToNumFrames.at(video) * windowFraction;
-        int lastFrame = numFrames - (duration * videoToFramerate.at(video)) - 1;
+//        int firstFrame = VideoToNumFrames.at(video) * videoToStartForWindow.at(video) / 100.0;
+        int numFrames = VideoToNumFrames.at(video) * windowFraction;
+        int lastFrame = numFrames - (duration * VideoToFramerate.at(video)) - 1;
 
         startingFrameDistribution_ = std::make_unique<std::uniform_int_distribution<int>>(0, lastFrame);
     }
@@ -388,8 +283,8 @@ class VRWorkload1Generator : public WorkloadGenerator {
 public:
     VRWorkload1Generator(const std::string &video, const std::vector<std::string> &objects, unsigned int duration, std::default_random_engine *generator,
             std::unique_ptr<FrameGenerator> startingFrameDistribution)
-            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
-              generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))  //startingFrameDistribution_(0, videoToNumFrames.at(video_) - numberOfFramesInDuration_ - 1)
+            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * VideoToFramerate.at(video)),
+              generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))  //startingFrameDistribution_(0, VideoToNumFrames.at(video_) - numberOfFramesInDuration_ - 1)
     { }
 
     std::shared_ptr<PixelMetadataSpecification> getNextQuery(unsigned int queryNum, std::string *outQueryObject = nullptr) override {
@@ -427,7 +322,7 @@ class VRWorkload2Generator : public WorkloadGenerator {
 public:
     VRWorkload2Generator(const std::string &video, const std::vector<std::vector<std::string>> &objects, unsigned int numberOfQueries, unsigned int duration,
             std::default_random_engine *generator, std::unique_ptr<FrameGenerator> startingFrameDistribution)
-            : video_(video), objects_(objects), totalNumberOfQueries_(numberOfQueries), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
+            : video_(video), objects_(objects), totalNumberOfQueries_(numberOfQueries), numberOfFramesInDuration_(duration * VideoToFramerate.at(video)),
               generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))
     {
         assert(objects_.size() == 2);
@@ -474,7 +369,7 @@ class VRWorkload3Generator : public WorkloadGenerator {
 public:
     VRWorkload3Generator(const std::string &video, const std::vector<std::vector<std::string>> &objects, unsigned int duration, std::default_random_engine *generator,
                          std::unique_ptr<FrameGenerator> startingFrameDistribution)
-            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
+            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * VideoToFramerate.at(video)),
               generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution)),
               probabilityGenerator_(42), probabilityDistribution_(0.0, 1.0)
     {
@@ -539,7 +434,7 @@ class VRWorkload5Generator : public WorkloadGenerator {
 public:
     VRWorkload5Generator(const std::string &video, const std::vector<std::vector<std::string>> &objects, unsigned int duration, std::default_random_engine *generator,
                          std::unique_ptr<FrameGenerator> startingFrameDistribution)
-            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
+            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * VideoToFramerate.at(video)),
               generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution)),
               probabilityGenerator_(42), probabilityDistribution_(0.0, 1.0)
     {
@@ -594,8 +489,8 @@ class VRWorkload6Generator : public WorkloadGenerator {
 public:
     VRWorkload6Generator(const std::string &video, const std::vector<std::vector<std::string>> &objects, unsigned int duration, std::default_random_engine *generator,
                          std::unique_ptr<FrameGenerator> startingFrameDistribution)
-            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
-              generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))  //startingFrameDistribution_(0, videoToNumFrames.at(video_) - numberOfFramesInDuration_ - 1)
+            : video_(video), objects_(objects), numberOfFramesInDuration_(duration * VideoToFramerate.at(video)),
+              generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))  //startingFrameDistribution_(0, VideoToNumFrames.at(video_) - numberOfFramesInDuration_ - 1)
     {
         assert(objects_.size() == 2);
     }
@@ -609,7 +504,7 @@ public:
             lastFrame = firstFrame + numberOfFramesInDuration_;
 
             // A little less than 50% because queries in the middle are favored towards object 0.
-            auto objects = firstFrame < 0.44 * WINDOW_FRACTION * videoToNumFrames.at(video_) ? objects_[0] : objects_[1];
+            auto objects = firstFrame < 0.44 * WINDOW_FRACTION * VideoToNumFrames.at(video_) ? objects_[0] : objects_[1];
 
             auto metadataElement = MetadataElementForObjects(objects, firstFrame, lastFrame);
 
@@ -641,7 +536,7 @@ class VRWorkload4Generator : public WorkloadGenerator {
 public:
     VRWorkload4Generator(const std::string &video, const std::vector<std::string> &objects, unsigned int numberOfQueries, unsigned int duration, std::default_random_engine *generator,
                          std::unique_ptr<FrameGenerator> startingFrameDistribution)
-            : video_(video), objects_(objects), totalNumberOfQueries_(numberOfQueries), numberOfFramesInDuration_(duration * videoToFramerate.at(video)),
+            : video_(video), objects_(objects), totalNumberOfQueries_(numberOfQueries), numberOfFramesInDuration_(duration * VideoToFramerate.at(video)),
               generator_(generator), startingFrameDistribution_(std::move(startingFrameDistribution))
     {
         assert(objects_.size() == 2);
@@ -949,7 +844,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundWorkloadObjects) {
 
                 // First, tile around all of the objects in the video.
 //        auto catalogName = tileAroundAllObjects(video);
-                auto catalogName = video + "-cracked-" + workloadObjects + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video)) + "-yolo";
+                auto catalogName = video + "-cracked-" + workloadObjects + "-smalltiles-duration" + std::to_string(VideoToFramerate.at(video)) + "-yolo";
 
                 for (auto duration : videoToQueryDurations.at(video)) {
                     std::default_random_engine generator(videoToProbabilitySeed.at(video));
@@ -1066,7 +961,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundAllDetectedObjects) {
 
                 // First, tile around all of the objects in the video.
 //        auto catalogName = tileAroundAllObjects(video);
-                auto catalogName = video + "-cracked-" + "all_objects" + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video)); // + "-yolo";
+                auto catalogName = video + "-cracked-" + "all_objects" + "-smalltiles-duration" + std::to_string(VideoToFramerate.at(video)); // + "-yolo";
 
                 for (auto duration : videoToQueryDurations.at(video)) {
                     std::default_random_engine generator(videoToProbabilitySeed.at(video));
@@ -1183,7 +1078,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundKNNDetections) {
 
                 // First, tile around all of the objects in the video.
 //        auto catalogName = tileAroundAllObjects(video);
-                auto catalogName = video + "-cracked-" + "KNN" + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video)); // + "-yolo";
+                auto catalogName = video + "-cracked-" + "KNN" + "-smalltiles-duration" + std::to_string(VideoToFramerate.at(video)); // + "-yolo";
 
                 for (auto duration : videoToQueryDurations.at(video)) {
                     std::default_random_engine generator(videoToProbabilitySeed.at(video));
@@ -1318,7 +1213,7 @@ TEST_F(UnknownWorkloadTestFixture, testPrepareForRetiling) {
     };
 
     for (const auto &video : videos) {
-        Coordinator().execute(Scan(video).PrepareForCracking(video + "-cracked", videoToFramerate.at(video)));
+        Coordinator().execute(Scan(video).PrepareForCracking(video + "-cracked", VideoToFramerate.at(video)));
     }
 }
 
@@ -1486,7 +1381,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAllObjectsAroundQuery) {
                             auto retileOp = ScanAndRetile(
                                     catalogName,
                                     queriedObjectsSelection,
-                                    videoToFramerate.at(video),
+                                    VideoToFramerate.at(video),
                                     CrackingStrategy::SmallTiles);
                             Coordinator().execute(retileOp);
                         }
@@ -2034,13 +1929,13 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
                     if (workloadNum == 5 && video == "traffic-4k-000")
                         continue;
 
-                    auto videoDimensions = videoToDimensions.at(video);
+                    auto videoDimensions = VideoToDimensions.at(video);
                     std::string catalogName = video + "-cracked";
                     for (auto duration : videoToQueryDurations.at(video)) {
 
                         auto regretAccumulator = std::make_shared<TASMRegretAccumulator>(
                                 video,
-                                videoDimensions.first, videoDimensions.second, videoToFramerate.at(video),
+                                videoDimensions.first, videoDimensions.second, VideoToFramerate.at(video),
                                 threshold);
 
                         std::default_random_engine generator(videoToProbabilitySeed.at(video));
@@ -2079,7 +1974,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
                                 auto retileOp = ScanAndRetile(
                                         catalogName,
                                         *selection,
-                                        videoToFramerate.at(video),
+                                        VideoToFramerate.at(video),
                                         CrackingStrategy::SmallTiles,
                                         RetileStrategy::RetileBasedOnRegret,
                                         regretAccumulator);
@@ -2176,14 +2071,14 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
                     if (workloadNum == 5 && video == "traffic-4k-000")
                         continue;
 
-                    auto videoDimensions = videoToDimensions.at(video);
+                    auto videoDimensions = VideoToDimensions.at(video);
 //                    std::string catalogName = video + "-cracked";
-                    auto catalogName = video + "-cracked-" + "KNN" + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video));
+                    auto catalogName = video + "-cracked-" + "KNN" + "-smalltiles-duration" + std::to_string(VideoToFramerate.at(video));
                     for (auto duration : videoToQueryDurations.at(video)) {
 
                         auto regretAccumulator = std::make_shared<TASMRegretAccumulator>(
                                 video,
-                                videoDimensions.first, videoDimensions.second, videoToFramerate.at(video),
+                                videoDimensions.first, videoDimensions.second, VideoToFramerate.at(video),
                                 threshold);
 
                         std::default_random_engine generator(videoToProbabilitySeed.at(video));
@@ -2222,7 +2117,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
                                 auto retileOp = ScanAndRetile(
                                         catalogName,
                                         *selection,
-                                        videoToFramerate.at(video),
+                                        VideoToFramerate.at(video),
                                         CrackingStrategy::SmallTiles,
                                         RetileStrategy::RetileBasedOnRegret,
                                         regretAccumulator);
@@ -2319,14 +2214,14 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
                     if (workloadNum == 5 && video == "traffic-4k-000")
                         continue;
 
-                    auto videoDimensions = videoToDimensions.at(video);
+                    auto videoDimensions = VideoToDimensions.at(video);
 //                    std::string catalogName = video + "-cracked";
-                    auto catalogName = video + "-cracked-" + "all_objects" + "-smalltiles-duration" + std::to_string(videoToFramerate.at(video));
+                    auto catalogName = video + "-cracked-" + "all_objects" + "-smalltiles-duration" + std::to_string(VideoToFramerate.at(video));
                     for (auto duration : videoToQueryDurations.at(video)) {
 
                         auto regretAccumulator = std::make_shared<TASMRegretAccumulator>(
                                 video,
-                                videoDimensions.first, videoDimensions.second, videoToFramerate.at(video),
+                                videoDimensions.first, videoDimensions.second, VideoToFramerate.at(video),
                                 threshold);
 
                         std::default_random_engine generator(videoToProbabilitySeed.at(video));
@@ -2365,7 +2260,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAfterAccumulatingR
                                 auto retileOp = ScanAndRetile(
                                         catalogName,
                                         *selection,
-                                        videoToFramerate.at(video),
+                                        VideoToFramerate.at(video),
                                         CrackingStrategy::SmallTiles,
                                         RetileStrategy::RetileBasedOnRegret,
                                         regretAccumulator);
@@ -2436,13 +2331,13 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAroundMoreObjects)
                 if (workloadNum == 5 && video == "traffic-4k-000")
                     continue;
 
-                auto videoDimensions = videoToDimensions.at(video);
+                auto videoDimensions = VideoToDimensions.at(video);
                 std::string catalogName = video + "-cracked";
                 for (auto duration : videoToQueryDurations.at(video)) {
 
                     auto reTileManager = std::make_shared<TestTileAroundMoreObjectsManager>(
                             video,
-                            videoDimensions.first, videoDimensions.second, videoToFramerate.at(video));
+                            videoDimensions.first, videoDimensions.second, VideoToFramerate.at(video));
 
                     std::default_random_engine generator(videoToProbabilitySeed.at(video));
 
@@ -2480,7 +2375,7 @@ TEST_F(UnknownWorkloadTestFixture, testWorkloadTileAroundQueryAroundMoreObjects)
                             auto retileOp = ScanAndRetile(
                                     catalogName,
                                     *selection,
-                                    videoToFramerate.at(video),
+                                    VideoToFramerate.at(video),
                                     CrackingStrategy::SmallTiles,
                                     RetileStrategy::RetileAroundMoreObjects,
                                     {}, reTileManager);

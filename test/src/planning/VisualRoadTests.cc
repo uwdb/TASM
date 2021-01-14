@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <gtest/gtest.h>
 
-#include "ThreadPool.h"
+#include "StatsCollector.h"
 
 using namespace lightdb;
 using namespace lightdb::logical;
@@ -191,7 +191,7 @@ TEST_F(VisualRoadTestFixture, testDetectAndMaskAroundPeople) {
 //            {0, 30},
 //            {0, 60},
             {1800*0, 1800*1},
-            {1800*1, 1800*2},
+//            {1800*1, 1800*2},
 //            {1800*2, 1800*3},
 //            {1800*3, 1800*4},
 //            {1800*4, 1800*5},
@@ -212,14 +212,17 @@ TEST_F(VisualRoadTestFixture, testDetectAndMaskAroundPeople) {
 
         auto first = firstLast.first;
         auto last = firstLast.second;
+        std::string qid(std::to_string(first) + "_" + std::to_string(last));
         PixelsInFrameMetadataSpecification selection(
                 std::make_shared<SingleMetadataElement>("label", "car", first, last));
         std::filesystem::path outputPath;
 
+        StatsCollector::instance().setUpNewQuery(qid, "untiled", "select");
         outputPath = "/home/maureen/masked_videos/traffic_car_boxed_untiled_" + std::to_string(first) + "_" + std::to_string(last) + ".mp4";
         std::cout << "Saving to " << outputPath << std::endl;
         Coordinator().execute(ScanMultiTiled(videoId).Select(selection, yolo).Save(outputPath));
 
+        StatsCollector::instance().setUpNewQuery(qid, "untiled_optimized", "select");
         outputPath = "/home/maureen/masked_videos/traffic_car_boxed_untiled_optimized_" + std::to_string(first) + "_" + std::to_string(last) + ".mp4";
         std::cout << "Saving to " << outputPath << std::endl;
         Coordinator().execute(ScanMultiTiled(videoId).Select(
@@ -227,23 +230,29 @@ TEST_F(VisualRoadTestFixture, testDetectAndMaskAroundPeople) {
                 ).Save(outputPath));
 
         // Then, re-tile around cars.
-//        auto framerate = 30u;
-//        auto retileOp = ScanAndRetile(
-//                videoId,
-//                "traffic-4k-002-ds2k",
-//                selection,
-//                framerate,
-//                CrackingStrategy::SmallTiles,
-//                RetileStrategy::RetileIfDifferent,
-//                {}, {},
-//                {{RetileOptions::SplitByGOP, true}});
-//        Coordinator().execute(retileOp);
+        StatsCollector::instance().setUpNewQuery(qid, "tiled", "crack");
+        auto framerate = 30u;
+        auto retileOp = ScanAndRetile(
+                videoId,
+                "traffic-4k-002-ds2k",
+                selection,
+                framerate,
+                CrackingStrategy::SmallTiles,
+                RetileStrategy::RetileIfDifferent,
+                {}, {},
+                {{RetileOptions::SplitByGOP, true}});
+        Coordinator().execute(retileOp);
 
         // Then, do selection on people tiles.
         // Re-do scan so that new tiles are discovered.
-//        outputPath = "/home/maureen/masked_videos/traffic_car_boxed_stitched_" + std::to_string(first) + "_" + std::to_string(last) + ".mp4";
-//        std::cout << "Saving to " << outputPath << std::endl;
-//        Coordinator().execute(ScanMultiTiled(videoId).Select(selection, yolo, {{MetadataOptions::MetadataIdentifier, metadataId}}).Save(outputPath));
+        StatsCollector::instance().setQueryComponent("select");
+        outputPath = "/home/maureen/masked_videos/traffic_car_boxed_stitched_" + std::to_string(first) + "_" + std::to_string(last) + ".mp4";
+        std::cout << "Saving to " << outputPath << std::endl;
+        Coordinator().execute(ScanMultiTiled(videoId).Select(selection, yolo, {{MetadataOptions::MetadataIdentifier, metadataId}}).Save(outputPath));
+
+        std::ofstream stats("/home/maureen/results/visualroad_experiments/test.csv");
+        auto csv = StatsCollector::instance().toCSV();
+        stats.write(csv.data(), csv.length());
     }
 }
 

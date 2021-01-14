@@ -31,6 +31,7 @@
 #include "extension.h"
 #include "TasmOperators.h"
 #include "SelectPixelsKernel.h"
+#include "RegretAccumulator.h"
 
 namespace lightdb::optimization {
     class ChooseMaterializedScans : public OptimizerRule {

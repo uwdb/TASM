@@ -210,47 +210,38 @@ namespace lightdb::hevc {
         { }
 
         const bytestring &updatedSegmentHeader(const bytestring &segment, bool &isKeyframe) {
-            isKeyframe = IsKeyframe(segment);
-            auto current = Load(context_, segment, headers_);
-            current.SetAddressAndPPSId(address_, context_.GetPPSId());
-            pFrameHeaderBytes_ = std::move(current.GetBytes());
-            numberOfBytesInPFrameHeader_ = current.getEnd() / 8;
-            return pFrameHeaderBytes_;
-//            if (IsKeyframe(segment)) {
-//                // Do it normal because header is different.
-//                // Also reset the pFrameHeaderBytes for the new GOP.
-//                pFrameHeaderBytes_.clear();
-//
-//                auto current = Load(context_, segment, headers_);
-//                current.SetAddressAndPPSId(address_, context_.GetPPSId());
-//                iFrameBytes_ = std::move(current.GetBytes());
-//
-//                isKeyframe = true;
-//                return iFrameBytes_;
-//            } else if (!pFrameHeaderBytes_.size()) {
-//                // Load the next segment and extract its header bytes.
-//                auto pFrame = Load(context_, segment, headers_);
-//                auto addedBits = pFrame.SetAddressAndPPSId(address_, context_.GetPPSId());
-//
-//                offsetOfPicOrder_ = pFrame.originalOffsetOfPicOrderCnt();
-////                if (address_)
-////                    offsetOfPicOrder_ += sizeOfAddress_; // The address is only added if it's not the first segment.
-//                offsetOfPicOrder_ += addedBits;
-//
-//
-//                // TODO: This doesn't account for whether GetHeaderBytes() adds emulation prevention bytes.
-//                pFrameHeaderBytes_ = std::move(pFrame.GetHeaderBytes());
-//                assert(!(pFrame.getEnd() % 8));
-//                numberOfBytesInPFrameHeader_ = pFrame.getEnd() / 8;
-//                pFrameNumber_ = 1;
-//
-//                return pFrameHeaderBytes_;
-//            } else {
-//                // Update pic_order_lsb.
-//                ++pFrameNumber_;
-//                updatePicOrderInPFrameBytes();
-//                return pFrameHeaderBytes_;
-//            }
+            isKeyframe = false;
+            if (IsKeyframe(segment)) {
+                // Do it normal because header is different.
+                // Also reset the pFrameHeaderBytes for the new GOP.
+                pFrameHeaderBytes_.clear();
+
+                auto current = Load(context_, segment, headers_);
+                current.SetAddressAndPPSId(address_, context_.GetPPSId());
+                iFrameBytes_ = std::move(current.GetBytes());
+
+                isKeyframe = true;
+                return iFrameBytes_;
+            } else if (!pFrameHeaderBytes_.size()) {
+                // Load the next segment and extract its header bytes.
+                auto pFrame = Load(context_, segment, headers_);
+                auto numberOfAddedBitsBeforePicOrder = pFrame.SetAddressAndPPSId(address_, context_.GetPPSId());
+
+                offsetOfPicOrder_ = pFrame.originalOffsetOfPicOrderCnt() + numberOfAddedBitsBeforePicOrder;
+
+                // TODO: This doesn't account for whether GetHeaderBytes() adds emulation prevention bytes.
+                pFrameHeaderBytes_ = std::move(pFrame.GetHeaderBytes());
+                assert(!(pFrame.getEnd() % 8));
+                numberOfBytesInPFrameHeader_ = pFrame.getEnd() / 8;
+                pFrameNumber_ = 1;
+
+                return pFrameHeaderBytes_;
+            } else {
+                // Update pic_order_lsb.
+                ++pFrameNumber_;
+                updatePicOrderInPFrameBytes();
+                return pFrameHeaderBytes_;
+            }
         }
 
         unsigned int offsetIntoOriginalPFrameData() const {

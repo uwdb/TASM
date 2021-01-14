@@ -7,6 +7,8 @@
 namespace lightdb::hevc {
 
     unsigned long SliceSegmentLayer::SetAddressAndPPSId(const size_t address, const unsigned int pps_id) {
+        unsigned long numberOfAddedBitsBeforePicOrder_ = 0;
+
         address_ = address;
         // Make sure it's byte aligned
         assert (metadata_.GetValue("end") % 8 == 0);
@@ -26,6 +28,7 @@ namespace lightdb::hevc {
             // Note that BitArray has to convert the address to binary and pad it
             header_bits.Insert(metadata_.GetValue("address_offset"), address, address_length);
             numberOfAddedBits_ += address_length;
+            numberOfAddedBitsBeforePicOrder_ += address_length;
         }
 
         if (!headers_.GetPicture()->HasEntryPointOffsets()) {
@@ -46,7 +49,9 @@ namespace lightdb::hevc {
             auto new_encoded_pps_id = EncodeGolombs({pps_id});
 
             header_bits.Replace(current_pps_id_offset, current_pps_id_offset + size_of_current_encoded_pps_id, new_encoded_pps_id);
-            numberOfAddedBits_ += new_encoded_pps_id.size() - size_of_current_encoded_pps_id;
+            auto addedBits = new_encoded_pps_id.size() - size_of_current_encoded_pps_id;
+            numberOfAddedBits_ += addedBits;
+            numberOfAddedBitsBeforePicOrder_ += addedBits;
         }
 
         header_bits.ByteAlign();
@@ -62,7 +67,7 @@ namespace lightdb::hevc {
         move(data_.begin() + header_end, data_.end(), new_data.begin() + header_bits.size());
         data_ = new_data;
 
-        return numberOfAddedBits_;
+        return numberOfAddedBitsBeforePicOrder_;
     }
 
     void SliceSegmentLayer::InsertPicOutputFlag(bool value) {

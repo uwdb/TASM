@@ -205,7 +205,7 @@ namespace lightdb::hevc {
             } else {
                 result->insert(result->end(), headerData.begin(), headerData.end());
                 //  TODO: compensate for size containing header nals / emulation bytes.
-//                result->insert(result->end(), segmentDataIterators[i]->begin() + updaters[i].offsetIntoOriginalPFrameData(), segmentDataIterators[i]->end());
+                result->insert(result->end(), segmentDataIterators[i]->begin() + updaters[i].offsetIntoOriginalPFrameData(), segmentDataIterators[i]->end());
             }
             ++segmentDataIterators[i];
           }

@@ -76,6 +76,10 @@ public:
         idToEncoder_.at(identifier)->encodeFrame(frame, top, left, isKeyframe);
     }
 
+    bool hasEncoder(unsigned int identifier) {
+        return idToEncoder_.count(identifier);
+    }
+
 private:
     void createEncoder(EncodeConfiguration configuration) {
         auto newEncoder = std::make_shared<TileEncoder>(configuration, context_, lock_);

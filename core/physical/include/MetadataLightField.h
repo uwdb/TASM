@@ -183,7 +183,7 @@ namespace lightdb::logical {
         std::shared_ptr<functor::naryfunctor<1>> detectionFunctor_;
     };
 
-    class MetadataSubsetLightFieldWithoutSources : public LightField, public DetectorLightField {
+    class MetadataSubsetLightFieldWithoutSources : public LightField, public DetectorLightField, public OptionContainer<> {
     public:
         MetadataSubsetLightFieldWithoutSources(const LightFieldReference &lightField,
                                                 const MetadataSpecification &metadataSpecification,
@@ -197,7 +197,8 @@ namespace lightdb::logical {
                 subsetType_(subsetType),
 //                metadataManager_(std::make_shared<metadata::MetadataManager>(metadataIdentifier, metadataSpecification_)),
                 shouldCrack_(shouldCrack),
-                shouldReadEntireGOPs_(shouldReadEntireGOPs)
+                shouldReadEntireGOPs_(shouldReadEntireGOPs),
+                options_(options)
         {
             // Transform metadataIdentifier.
             auto crackedPos = metadataIdentifier.find("-cracked");
@@ -221,6 +222,14 @@ namespace lightdb::logical {
         bool shouldReadEntireGOPs() const { return shouldReadEntireGOPs_; }
         MetadataSubsetType subsetType() const { return subsetType_; }
 
+        bool shouldReadAllFrames() const {
+            return std::any_cast<bool>(
+                    options_.get(ScanOptions::ReadAllFrames).value_or(
+                            std::make_any<bool>(false)));
+        }
+
+        const lightdb::options<>& options() const override {return options_; }
+
 //        void setDetectionFunctor(functor::UnaryFunctorReference ref) { detectionFunctor_ = std::shared_ptr<functor::naryfunctor<1>>(ref); }
 //        const std::shared_ptr<functor::naryfunctor<1>> functor() const { return detectionFunctor_; };
 
@@ -231,6 +240,7 @@ namespace lightdb::logical {
         bool shouldCrack_;
         bool shouldReadEntireGOPs_;
 //        std::shared_ptr<functor::naryfunctor<1>> detectionFunctor_;
+        const lightdb::options<> options_;
     };
 
     class MetadataSubsetLightField : public LightField, public DetectorLightField {

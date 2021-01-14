@@ -711,12 +711,20 @@ namespace lightdb::optimization {
             auto tileLayoutsManager = multiTiledLightField.tileLayoutsManager();
             auto tileLocationProvider = std::make_shared<tiles::SingleTileLocationProvider>(tileLayoutsManager);
 
+            bool videoDoesNotRequireStitching = node.shouldReadAllFrames()
+                                                    && std::any_cast<bool>(
+                                                            node.get_option(ScanOptions::IsReadingUntiledVideo).value_or(
+                                                            std::make_any<bool>(false)));
+
             bool shouldReadEntireGOPs = true;
+            // If we aren't stitching the video, read the frames in-order to ensure the output video is in the correct order.
             auto scan = plan().emplace<physical::ScanMultiTileOperator>(
                     physical_parents[0]->logical(),
                     metadataManager,
                     tileLocationProvider,
-                    shouldReadEntireGOPs);
+                    shouldReadEntireGOPs,
+                    node.shouldReadAllFrames(),
+                    videoDoesNotRequireStitching);
             bool isDecodingDifferentSizes = !multiTiledLightField.usesOnlyOneTile() && !tileLayoutsManager->hasASingleTile();
             auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, isDecodingDifferentSizes, tileLayoutsManager->largestWidth(), tileLayoutsManager->largestHeight());
 
@@ -737,20 +745,29 @@ namespace lightdb::optimization {
 //            auto masked = plan().emplace<physical::GPUMetadataTransform<video::GPUSelectPixels>>(logical, boxed, metadataSpecification, tileLocationProvider);
 
             // Encode modified tiles.
-            auto encoded = plan().emplace<physical::GPUEncodeTilesToCPU>(logical, boxed, Codec::hevc(), tileLocationProvider);
+            // Don't split by GOP if we are processing a single tile that doesn't need stitching.
+            auto encoded = plan().emplace<physical::GPUEncodeTilesToCPU>(logical, boxed, Codec::hevc(), tileLocationProvider, !videoDoesNotRequireStitching);
 
-            // Save modified tiles to disk.
-            // Assume that GOP length == fps.
-            auto tiledInfo = video::gpac::load_metadata(tileLocationProvider->locationOfTileForFrame(0, 0),
-                                                        false,
-                                                        {Volume::zero()},
-                                                        {GeometryReference::make<EquirectangularGeometry>(EquirectangularGeometry::Samples())});
-            auto gopLength = tiledInfo[0].configuration().framerate.fps();
-            auto maskedTileLocationProvider = std::make_shared<tiles::MaskedTileLocationProvider>(tileLocationProvider, gopLength);
-            auto muxed = plan().emplace<physical::StoreEncodedTiles>(logical, encoded, tileLayoutsManager->entry().path(), Codec::hevc(), maskedTileLocationProvider);
+            if (!videoDoesNotRequireStitching) {
+                // Save modified tiles to disk.
+                // Assume that GOP length == fps.
+                auto tiledInfo = video::gpac::load_metadata(tileLocationProvider->locationOfTileForFrame(0, 0),
+                                                            false,
+                                                            {Volume::zero()},
+                                                            {GeometryReference::make<EquirectangularGeometry>(
+                                                                    EquirectangularGeometry::Samples())});
+                auto gopLength = tiledInfo[0].configuration().framerate.fps();
+                auto maskedTileLocationProvider = std::make_shared<tiles::MaskedTileLocationProvider>(
+                        tileLocationProvider, gopLength);
+                auto muxed = plan().emplace<physical::StoreEncodedTiles>(logical, encoded,
+                                                                         tileLayoutsManager->entry().path(),
+                                                                         Codec::hevc(), maskedTileLocationProvider);
 
-            // Stitch tiles.
-            auto stitched = plan().emplace<physical::StitchOperator>(logical, muxed, maskedTileLocationProvider, gopLength, metadataSpecification.firstFrame(), metadataSpecification.lastFrame());
+                // Stitch tiles.
+                auto stitched = plan().emplace<physical::StitchOperator>(logical, muxed, maskedTileLocationProvider,
+                                                                         gopLength, metadataSpecification.firstFrame(),
+                                                                         metadataSpecification.lastFrame());
+            }
 
             plan().remove_operator(physical_parents[0]);
 
@@ -794,12 +811,15 @@ namespace lightdb::optimization {
 //                plan().remove_operator(physical_parents[0]);
 //                return true;
 
+                bool shouldReadAllFrames = node.subsetType() == MetadataSubsetType::MetadataSubsetTypeFrame
+                                            || node.shouldReadAllFrames();
+
                 auto scan = plan().emplace<physical::ScanMultiTileOperator>(
                         physical_parents[0]->logical(),
                         metadataManager,
                         tileLocationProvider,
                         node.shouldReadEntireGOPs(),
-                        node.subsetType() == MetadataSubsetType::MetadataSubsetTypeFrame);
+                        shouldReadAllFrames);
                 bool isDecodingDifferentSizes = !multiTiledLightField.usesOnlyOneTile() && !tileLayoutsManager->hasASingleTile();
                 auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu, isDecodingDifferentSizes, tileLayoutsManager->largestWidth(), tileLayoutsManager->largestHeight());
 

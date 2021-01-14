@@ -114,8 +114,10 @@ public:
             std::shared_ptr<metadata::MetadataManager> metadataManager,
             std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider,
             bool shouldReadEntireGOPs = false,
-            bool shouldScanAllFrames = false)
-        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanMultiTileOperator-init", tileLocationProvider, shouldReadEntireGOPs, shouldScanAllFrames)),
+            bool shouldScanAllFrames = false,
+            bool shouldReadFramesInOrder = false)
+        : PhysicalOperator(logical, DeviceType::CPU, runtime::make<Runtime>(*this, "ScanMultiTileOperator-init", tileLocationProvider,
+                shouldReadEntireGOPs, shouldScanAllFrames, shouldReadFramesInOrder)),
         tileNumber_(0),
         metadataManager_(metadataManager),
         tileLocationProvider_(tileLocationProvider)
@@ -152,7 +154,8 @@ private:
         };
 
     public:
-        explicit Runtime(ScanMultiTileOperator &physical, std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider, bool shouldReadEntireGOPs, bool shouldScanAllFrames)
+        explicit Runtime(ScanMultiTileOperator &physical, std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider,
+                bool shouldReadEntireGOPs, bool shouldScanAllFrames, bool shouldReadFramesInOrder)
             : runtime::Runtime<ScanMultiTileOperator>(physical),
                     tileNumberForCurrentLayout_(0),
                     tileLocationProvider_(tileLocationProvider),
@@ -183,7 +186,7 @@ private:
 //                std::cerr << "WARNING: Video has fewer frames than in object database" << std::endl;
             Timer timer;
             timer.startSection("preprocess");
-            preprocess();
+            preprocess(shouldReadFramesInOrder);
             timer.endSection("preprocess");
             timer.printAllTimes();
             std::cout << "done" << std::endl;
@@ -293,7 +296,7 @@ private:
         }
 
     private:
-        void preprocess();
+        void preprocess(bool shouldReadFramesInOrder);
 
         void setUpNextEncodedFrameReader() {
             if (orderedTileInformationIt_ == orderedTileInformation_.end()) {

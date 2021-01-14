@@ -28,6 +28,11 @@ namespace lightdb {
             static constexpr const char* RetileAllFrames = "RetileAllFrames";
         };
 
+        struct Scan {
+            static constexpr const char* ReadAllFrames = "ReadAll";
+            static constexpr const char* IsReadingUntiledVideo = "ReadingUntiled";
+        };
+
 
         std::optional<TValue> get(const TKey& key) const {
             auto value = this->find(key);
@@ -56,6 +61,7 @@ namespace lightdb {
     using GeometryOptions = options<>::Geometry;
     using MetadataOptions = options<>::Metadata;
     using RetileOptions = options<>::Retile;
+    using ScanOptions = options<>::Scan;
 } // namespace lightdb
 
 #endif //LIGHTDB_OPTIONS_H

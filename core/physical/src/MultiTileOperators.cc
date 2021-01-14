@@ -6,7 +6,7 @@
 
 namespace lightdb::physical {
 
-void ScanMultiTileOperator::Runtime::preprocess() {
+void ScanMultiTileOperator::Runtime::preprocess(bool shouldReadFramesInOrder) {
     // Get all tiles, frames that have to be read.
     // Keep track of dimensions for each tile.
 
@@ -35,7 +35,8 @@ void ScanMultiTileOperator::Runtime::preprocess() {
     }
 
     // Sort so that similar-sized tiles are nearby in processing order.
-    std::sort(orderedTileInformation_.begin(), orderedTileInformation_.end());
+    if (!shouldReadFramesInOrder)
+        std::sort(orderedTileInformation_.begin(), orderedTileInformation_.end());
 //    std::reverse(orderedTileInformation_.begin(), orderedTileInformation_.end()); // Sort by descending dimensions.
 
     orderedTileInformationIt_ = orderedTileInformation_.begin();

@@ -76,8 +76,9 @@ public:
     explicit GPUEncodeTilesToCPU(const LightFieldReference &logical,
                                 PhysicalOperatorReference &parent,
                                 Codec codec,
-                                std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider)
-        : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUEncodeTilesToCPU-init", tileLocationProvider)),
+                                std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider,
+                                bool splitByGOP = true)
+        : PhysicalOperator(logical, {parent}, DeviceType::GPU, runtime::make<Runtime>(*this, "GPUEncodeTilesToCPU-init", tileLocationProvider, splitByGOP)),
         GPUOperator(parent),
         codec_(codec) {
         if (!codec.nvidiaId().has_value())
@@ -91,9 +92,10 @@ private:
     public:
         // Do we need to make sure the base configuration is big enough for all tiles?
         // Maybe it's not an issue right now because we decode in descending tile size.
-        explicit Runtime(GPUEncodeTilesToCPU &physical, std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider)
+        explicit Runtime(GPUEncodeTilesToCPU &physical, std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider, bool splitByGOP)
             : runtime::GPUUnaryRuntime<GPUEncodeTilesToCPU, GPUDecodedFrameData>(physical),
                     tileLocationProvider_(tileLocationProvider),
+                    splitByGOP_(splitByGOP),
                     numberOfEncodedFrames_(0),
                     gopLength_(gop(configuration().framerate)),
                     geometry_(geometry()),
@@ -115,7 +117,7 @@ private:
             updateGOPTileAndEncoder();
             bool hitNewGOP = false;
             int numberOfFrames = 0;
-            while (!hitNewGOP && iterator() != iterator().eos()) {
+            while ((!hitNewGOP || !splitByGOP_) && iterator() != iterator().eos()) {
                 auto &decoded = *iterator();
                 for (auto &frameIt = currentDataFramesIterator_; frameIt != decoded.frames().end(); frameIt++) {
                     long frameNumber;
@@ -123,7 +125,7 @@ private:
                     int tile = (*frameIt)->tileNumber();
                     assert(tile != -1);
 
-                    if (gop(frameNumber) != currentGOP_ || tile != currentTile_) {
+                    if ((splitByGOP_ && gop(frameNumber) != currentGOP_) || tile != currentTile_) {
                         hitNewGOP = true;
                         break;
                     }
@@ -138,10 +140,12 @@ private:
                     ++iterator();
                     currentDataFramesIteratorIsValid_ = false;
                     setUpFrameIterator();
+                    if (!splitByGOP_)
+                        break;
                 }
             }
 
-            readEncoder(true);
+            readEncoder(splitByGOP_ || iterator() == iterator().eos());
             auto encodedData = std::make_optional<CPUEncodedFrameData>(physical().codec(), currentConfiguration_, geometry_, coalescedEncodedData());
             encodedData->setFirstFrameIndexAndNumberOfFrames(firstFrame_, numberOfFrames);
             encodedData->setTileNumber(currentTile_);
@@ -195,7 +199,8 @@ private:
             currentTile_ = (*currentDataFramesIterator_)->tileNumber();
             assert(currentTile_ != -1);
 
-            encoderManager_.createEncoderWithConfiguration(encoderId_, (*currentDataFramesIterator_)->width(), (*currentDataFramesIterator_)->height(), std::nullopt);
+            if (!encoderManager_.hasEncoder(encoderId_))
+                encoderManager_.createEncoderWithConfiguration(encoderId_, (*currentDataFramesIterator_)->width(), (*currentDataFramesIterator_)->height(), std::nullopt);
         }
 
         bool noMoreFramesInCurrentData() {
@@ -223,6 +228,7 @@ private:
         }
 
         std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;
+        bool splitByGOP_;
         unsigned long numberOfEncodedFrames_;
         unsigned int gopLength_;
         GeometryReference geometry_;

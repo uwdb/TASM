@@ -6,6 +6,8 @@
 #include "Gpac.h"
 #include "MultipleEncoderManager.h"
 #include "Tasm.h"
+#include "StatsCollector.h"
+#include "Display.h"
 
 namespace lightdb::physical {
 
@@ -42,6 +44,7 @@ private:
                 auto data = this->iterator()++;
                 GPUDecodedFrameData output{data.configuration(), data.geometry()};
 
+                GLOBAL_TIMER.startSection(type());
                 auto specification = this->physical().specification();
                 for (auto &frame : data.frames()) {
                     long frameNumber;
@@ -55,6 +58,7 @@ private:
                             *tasm_->getMetadata("", specification, frameNumber),
                             tileRectangle.x, tileRectangle.y));
                 }
+                GLOBAL_TIMER.endSection(type());
                 return {output};
             } else {
                 return {};
@@ -62,6 +66,8 @@ private:
         }
 
     private:
+        std::string type() const { return demangle(typeid(Transform).name()); }
+
         Transform transform_;
         std::shared_ptr<Tasm> tasm_;
         std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;
@@ -110,9 +116,11 @@ private:
         std::optional<physical::MaterializedLightFieldReference> read() override {
             if (iterator() == iterator().eos()) {
                 std::cout << "** Encoded " << numberOfEncodedFrames_ << " frames\n";
+                StatsCollector::instance().addStat("GPUEncodeTilesToCPU-num-frames-encoded", numberOfEncodedFrames_);
                 return std::nullopt;
             }
 
+            GLOBAL_TIMER.startSection("GPUEncodeTilesToCPU");
             setUpFrameIterator();
             updateGOPTileAndEncoder();
             bool hitNewGOP = false;
@@ -149,6 +157,7 @@ private:
             auto encodedData = std::make_optional<CPUEncodedFrameData>(physical().codec(), currentConfiguration_, geometry_, coalescedEncodedData());
             encodedData->setFirstFrameIndexAndNumberOfFrames(firstFrame_, numberOfFrames);
             encodedData->setTileNumber(currentTile_);
+            GLOBAL_TIMER.endSection("GPUEncodeTilesToCPU");
             return encodedData;
         }
 
@@ -276,6 +285,7 @@ private:
                 return std::nullopt;
 
             auto data = iterator()++;
+            GLOBAL_TIMER.startSection("StoreEncodedTiles");
             int firstFrame;
             long numberOfFrames;
             int tileNumber;
@@ -290,6 +300,7 @@ private:
             if (modifiedTileTracker_) {
                 modifiedTileTracker_->modifiedTileInFrames(tileNumber, firstFrame, lastFrame, outputDir);
             }
+            GLOBAL_TIMER.endSection("StoreEncodedTiles");
             return CPUEncodedFrameData(data.codec(), data.configuration(), data.geometry(), std::make_unique<bytestring>());
         }
 
@@ -358,19 +369,24 @@ private:
 
             if (currentGOP_ >= lastGOP_) {
                 std::cout << "**Number of stitched GOPs: " << numberOfStitchedGOPs_ << std::endl;
+                StatsCollector::instance().addStat("num-stitched-gops", numberOfStitchedGOPs_);
                 timer_->printAllTimes();
                 partTimer_->printAllTimes();
+                timer_->shareWithStatsCollector();
+                partTimer_->shareWithStatsCollector();
                 return std::nullopt;
             }
 
-            timer_->startSection("stitch");
+            GLOBAL_TIMER.startSection("StitchOperator");
+            timer_->startSection("StitchGOP");
             auto stitched = stitchGOP(currentGOP_);
-            timer_->endSection("stitch");
+            timer_->endSection("StitchGOP");
             if (!sentSEIForOneTile_) {
                 ++currentGOP_;
                 ++numberOfStitchedGOPs_;
             }
             auto &base = referenceData_->downcast<CPUEncodedFrameData>();
+            GLOBAL_TIMER.endSection("StitchOperator");
             return std::make_optional<CPUEncodedFrameData>(base.codec(), base.configuration(), base.geometry(), stitched);
         }
 

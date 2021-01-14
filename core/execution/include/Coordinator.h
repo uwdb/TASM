@@ -9,6 +9,7 @@
 
 #include "timer.h"
 #include <iostream>
+#include "StatsCollector.h"
 
 namespace lightdb::execution {
 
@@ -84,8 +85,10 @@ public:
 
         timer.endSection("query");
         std::cout << "ANALYSIS query took " << timer.totalTimeInMillis("query") << " ms\n";
+        StatsCollector::instance().addRuntime("query", timer.totalTimeInMillis("query"));
 
         GLOBAL_TIMER.printAllTimes();
+        GLOBAL_TIMER.shareWithStatsCollector();
         RECONFIGURE_DECODER_TIMER.printAllTimes();
         READ_FROM_NEW_FILE_TIMER.printAllTimes();
     }

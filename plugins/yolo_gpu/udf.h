@@ -4,6 +4,7 @@
 #include "Functor.h"
 #include "Frame.h"
 #include "Tasm.h"
+#include "timer.h"
 
 #include <yolo_v2_class.hpp>
 
@@ -73,6 +74,9 @@ class YOLOGPU: public lightdb::functor::unaryfunctor {
         CUdeviceptr packedFloatHandle_;
         size_t packedFloatPitch_;
         CUdeviceptr resizedPlanarHandle_;
+
+        lightdb::Timer totalTimer_;
+        lightdb::Timer componentTimer_;
     };
 public:
     YOLOGPU() : lightdb::functor::unaryfunctor("YOLOGPU", GPU()) { }

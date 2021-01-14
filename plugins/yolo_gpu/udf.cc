@@ -7,6 +7,7 @@
 #include <nppi_arithmetic_and_logical_operations.h>
 #include <fstream>
 #include <ostream>
+#include "StatsCollector.h"
 
 using namespace lightdb;
 
@@ -32,16 +33,22 @@ std::vector<std::string> YOLOGPU::GPU::objects_names_from_file(const std::string
 void YOLOGPU::GPU::handlePostCreation(const std::shared_ptr<void> &arg) {
     tasm_ = std::static_pointer_cast<Tasm>(arg);
     numFramesDetected_ = 0;
+    totalTimer_.reset();
+    componentTimer_.reset();
 }
 
 void YOLOGPU::GPU::handleAllDataHasBeenProcessed() {
     std::cout << "Ran YOLO on " << numFramesDetected_ << " frames" << std::endl;
+    StatsCollector::instance().addStat("num_yolo_frames", numFramesDetected_);
+    totalTimer_.shareWithStatsCollector();
+    componentTimer_.shareWithStatsCollector();
 }
 
 shared_reference<LightField> YOLOGPU::GPU::operator()(LightField &input) {
     auto &data = dynamic_cast<physical::GPUDecodedFrameData&>(input);
     physical::GPUDecodedFrameData output(data.configuration(), data.geometry());
 
+    totalTimer_.startSection("RunYOLO");
     for (auto &frame : data.frames()) {
         long frameNumber = 0;
         assert(frame->getFrameNumber(frameNumber));
@@ -51,10 +58,15 @@ shared_reference<LightField> YOLOGPU::GPU::operator()(LightField &input) {
             continue;
 
         ++numFramesDetected_;
+        componentTimer_.startSection("PreprocessYOLO");
         preprocessFrame(frame);
+        componentTimer_.endSection("PreprocessYOLO");
+        componentTimer_.startSection("DetectYOLO");
         detectFrame(frameNumber);
+        componentTimer_.endSection("DetectYOLO");
     }
 
+    totalTimer_.endSection("RunYOLO");
     return shared_reference<physical::GPUDecodedFrameData>(data);
 }
 

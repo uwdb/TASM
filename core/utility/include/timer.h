@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <iostream>
+#include "StatsCollector.h"
 
 namespace lightdb {
 class Timer {
@@ -56,6 +57,11 @@ public:
         for (auto it = operatorToExecutionTime_.begin(); it != operatorToExecutionTime_.end(); it++) {
             std::cout << "ANALYSIS " << it->first << " took " << toMillis_(it->second) << " ms" << std::endl;
         }
+    }
+
+    void shareWithStatsCollector() const {
+        for (auto it = operatorToExecutionTime_.begin(); it != operatorToExecutionTime_.end(); it++)
+            StatsCollector::instance().addRuntime(it->first, toMillis_(it->second));
     }
 
     void reset() {

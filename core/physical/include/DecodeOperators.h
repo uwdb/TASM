@@ -110,6 +110,7 @@ private:
             else {
                 GLOBAL_TIMER.endSection("GPUDecodeFromCPU");
                 std::cout << "ANALYSIS: num-frames-from-decoder " << numberOfFramesDecoded_ << std::endl;
+                StatsCollector::instance().addStat("num-frames-from-decoder", numberOfFramesDecoded_);
                 return std::nullopt;
             }
         }

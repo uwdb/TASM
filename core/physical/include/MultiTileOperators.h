@@ -4,7 +4,7 @@
 #include "PhysicalOperators.h"
 
 #include "Gpac.h"
-
+#include "StatsCollector.h"
 
 namespace lightdb::physical {
 
@@ -190,6 +190,7 @@ private:
             timer.endSection("preprocess");
             timer.printAllTimes();
             std::cout << "done" << std::endl;
+            timer.shareWithStatsCollector();
         }
 
         std::optional<physical::MaterializedLightFieldReference> read() override {
@@ -219,6 +220,12 @@ private:
                 std::cout << "ANALYSIS: num-frames-decoded " << totalNumberOfFrames_ << std::endl;
                 std::cout << "ANALYSIS: num-bytes-decoded " << totalNumberOfBytes_ << std::endl;
                 std::cout << "ANALYSIS: num-tiles-read " << numberOfTilesRead_ << std::endl;
+
+                StatsCollector::instance().addStat("num-pixels-decoded", totalNumberOfPixels_) ;
+                StatsCollector::instance().addStat("num-keyframes-decoded", totalNumberOfIFrames_);
+                StatsCollector::instance().addStat("num-frames-decoded", totalNumberOfFrames_);
+                StatsCollector::instance().addStat("num-bytes-decoded", totalNumberOfBytes_);
+                StatsCollector::instance().addStat("num-tiles-read", numberOfTilesRead_);
                 return {};
             }
 

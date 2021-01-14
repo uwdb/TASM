@@ -44,7 +44,10 @@ std::shared_ptr<bytestring> StitchOperator::Runtime::stitchGOP(int gop) {
             return getSEI();
         } else {
             sentSEIForOneTile_ = false;
-            return ReadFile(tileLocationProvider_->locationOfTileForFrame(0, firstFrameOfGOP));
+            partTimer_->startSection("ReadFile");
+            auto returnVal = ReadFile(tileLocationProvider_->locationOfTileForFrame(0, firstFrameOfGOP));
+            partTimer_->endSection("ReadFile");
+            return returnVal;
         }
     }
 
@@ -67,13 +70,17 @@ std::shared_ptr<bytestring> StitchOperator::Runtime::stitchGOP(int gop) {
 
     // Second: read tiles into memory
     std::vector<bytestring> tiles;
+    partTimer_->startSection("ReadFile");
     for (auto i = 0u; i < tileLayout.numberOfTiles(); ++i) {
         auto tilePath = tileLocationProvider_->locationOfTileForFrame(i, firstFrameOfGOP);
         tiles.push_back(*ReadFile(tilePath));
     }
+    partTimer_->endSection("ReadFile");
 
+    partTimer_->startSection("GetStitchedSegments");
     hevc::Stitcher stitcher(context, tiles);
     auto stitchedSegments = stitcher.GetStitchedSegments();
+    partTimer_->endSection("GetStitchedSegments");
     return std::move(stitchedSegments);
 }
 

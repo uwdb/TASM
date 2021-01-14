@@ -359,12 +359,12 @@ private:
 
             timer_->startSection("stitch");
             auto stitched = stitchGOP(currentGOP_);
+            timer_->endSection("stitch");
             if (!sentSEIForOneTile_) {
                 ++currentGOP_;
                 ++numberOfStitchedGOPs_;
             }
             auto &base = referenceData_->downcast<CPUEncodedFrameData>();
-            timer_->endSection("stitch");
             return std::make_optional<CPUEncodedFrameData>(base.codec(), base.configuration(), base.geometry(), stitched);
         }
 

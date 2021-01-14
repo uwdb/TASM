@@ -51,6 +51,8 @@ namespace lightdb::hevc {
          * being the width
          */
         void SetDimensions(const std::pair<unsigned int, unsigned int> &dimensions);
+        void SetConformanceWindow(unsigned int displayWidth, unsigned int codedWidth,
+                                  unsigned int displayHeight, unsigned int codedHeight);
 
         /**
          *

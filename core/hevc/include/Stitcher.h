@@ -50,6 +50,8 @@ namespace lightdb::hevc {
 
         SliceSegmentLayer loadPFrameSegment(bytestring &data);
 
+        std::shared_ptr<bytestring> GetActiveParameterSetsSEI();
+
      private:
 
         /**
@@ -77,6 +79,7 @@ namespace lightdb::hevc {
         const StitchContext context_;
         const Headers headers_;
         std::vector<std::vector<std::unique_ptr<Nal>>> formattedNals_;
+        std::shared_ptr<bytestring> activeParameterSetsSEI_;
     };
 
     class IdenticalFrameRetriever {

@@ -82,11 +82,79 @@ namespace lightdb::hevc {
         }
     }
 
+    std::shared_ptr<bytestring> GetPrefixSEINut() {
+        auto marker = Nal::GetNalMarker();
+        std::shared_ptr<bytestring> prefixBytes(new bytestring(marker.begin(), marker.end()));
+        unsigned int prefixType = 39;
+        auto prefixByte = prefixType << 1;
+
+    //        unsigned int nuh_layer_id = 0;
+        unsigned int nuh_temporal_id_plus1 = 1;
+
+        prefixBytes->insert(prefixBytes->end(), prefixByte);
+        prefixBytes->insert(prefixBytes->end(), nuh_temporal_id_plus1);
+
+        return prefixBytes;
+    }
+
+    std::shared_ptr<bytestring> Stitcher::Stitcher::GetActiveParameterSetsSEI() {
+        if (activeParameterSetsSEI_)
+            return activeParameterSetsSEI_;
+
+        unsigned int payloadType = 129;
+        unsigned int payloadSize = 2;
+
+        unsigned int active_video_parameter_set_id = 0;
+        unsigned int self_contained_cvs_flag = 0;
+        unsigned int no_parameter_set_update_flag = 0;
+        unsigned int num_sps_ids_minus1 = 0;
+        unsigned int active_seq_parameter_set_id = 0;
+        unsigned int layer_sps_idx = 0;
+
+        BitArray payloadBits(8);
+        payloadBits.SetByte(0, payloadType);
+
+        payloadBits.Insert(payloadBits.size(), payloadSize, 8);
+        payloadBits.Insert(payloadBits.size(), active_video_parameter_set_id, 4);
+        payloadBits.Insert(payloadBits.size(), self_contained_cvs_flag, 1);
+        payloadBits.Insert(payloadBits.size(), no_parameter_set_update_flag, 1);
+
+        BitArray numSpsIdsMinus1Bits = EncodeGolombs({ num_sps_ids_minus1 });
+        payloadBits.insert(payloadBits.end(), numSpsIdsMinus1Bits.begin(), numSpsIdsMinus1Bits.end());
+
+        BitArray activeSeqParameterSetBits = EncodeGolombs({ active_seq_parameter_set_id });
+        payloadBits.insert(payloadBits.end(), activeSeqParameterSetBits.begin(), activeSeqParameterSetBits.end());
+
+        BitArray layerSpsIdxBits = EncodeGolombs({ layer_sps_idx });
+        payloadBits.insert(payloadBits.end(), layerSpsIdxBits.begin(), layerSpsIdxBits.end());
+
+        payloadBits.Insert(payloadBits.size(), 1, 1); // Payload bits I guess?
+        payloadBits.ByteAlignWithoutRemoval();
+
+        payloadBits.Insert(payloadBits.size(), 1, 1); // 1-bit of RBSP trailing bits.
+        payloadBits.ByteAlignWithoutRemoval();
+
+        // Convert to bytes.
+        auto numberOfBytes = payloadBits.size() / 8;
+        bytestring payloadBytes(numberOfBytes);
+        for (auto i = 0u; i < numberOfBytes; i++)
+            payloadBytes[i] = payloadBits.GetByte(i);
+
+        auto activeParameterSetsSEI_ = GetPrefixSEINut();
+        activeParameterSetsSEI_->insert(activeParameterSetsSEI_->end(), payloadBytes.begin(), payloadBytes.end());
+
+        return activeParameterSetsSEI_;
+    }
+
     std::unique_ptr<bytestring> Stitcher::GetStitchedSegments() {
+        headers_.GetSequence()->SetConformanceWindow(context_.GetVideoDisplayWidth(), context_.GetVideoCodedWidth(),
+                                                     context_.GetVideoDisplayHeight(), context_.GetVideoCodedHeight());
         headers_.GetSequence()->SetDimensions(context_.GetVideoDimensions());
         headers_.GetSequence()->SetGeneralLevelIDC(120);
         headers_.GetVideo()->SetGeneralLevelIDC(120);
         headers_.GetPicture()->SetTileDimensions(context_.GetTileDimensions());
+        // Set PPS_Id after setting tile dimensions to avoid issues with the offsets changing.
+        headers_.GetPicture()->SetPPSId(context_.GetPPSId());
 
         auto numberOfTiles = tile_nals_.size();
         std::list<std::list<bytestring>> segment_nals;
@@ -112,23 +180,32 @@ namespace lightdb::hevc {
         }
 
         std::unique_ptr<bytestring> result(new bytestring);
-        result->reserve(header_bytes.size() * num_keyframes + num_bytes);
+        auto seiSize = context_.GetPPSId() ? GetActiveParameterSetsSEI()->size() : 0;
+        result->reserve(header_bytes.size() * num_keyframes + num_bytes + seiSize);
 
         auto it = segment_nals.front().begin();
+        bool first = true;
         while (it != segment_nals.front().end()) {
           for (auto i = 0u; i < numberOfTiles; i++) {
             bool isKeyframe = false;
             auto &headerData = updaters[i].updatedSegmentHeader(*segmentDataIterators[i], isKeyframe);
             if (isKeyframe) {
-                if (!i)
+                if (!i) {
                     result->insert(result->end(), header_bytes.begin(), header_bytes.end());
+
+                    if (first && context_.GetPPSId()) {
+                        first = false;
+                        auto activeParameterSEIBytes = GetActiveParameterSetsSEI();
+                        result->insert(result->end(), activeParameterSEIBytes->begin(), activeParameterSEIBytes->end());
+                    }
+                }
 
                 // For keyframes, insert all of the data.
                 result->insert(result->end(), headerData.begin(), headerData.end());
             } else {
                 result->insert(result->end(), headerData.begin(), headerData.end());
                 //  TODO: compensate for size containing header nals / emulation bytes.
-                result->insert(result->end(), segmentDataIterators[i]->begin() + updaters[i].offsetIntoOriginalPFrameData(), segmentDataIterators[i]->end());
+//                result->insert(result->end(), segmentDataIterators[i]->begin() + updaters[i].offsetIntoOriginalPFrameData(), segmentDataIterators[i]->end());
             }
             ++segmentDataIterators[i];
           }

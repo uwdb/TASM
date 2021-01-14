@@ -14,7 +14,8 @@ namespace lightdb::hevc {
         PictureParameterSetMetadata(BitStream metadata)
             : metadata_(metadata)
         {
-            metadata_.SkipExponentialGolomb();
+            metadata_.MarkPosition("pps_pic_parameter_set_id_offset");
+            metadata_.CollectGolomb("pps_pic_parameter_set_id");
             metadata_.SkipExponentialGolomb();
             metadata_.SkipBits(1); // dependent_slice_segments_enabled_flag
             metadata_.MarkPosition("output_flag_present_flag_offset");
@@ -135,6 +136,8 @@ namespace lightdb::hevc {
         bool HasOutputFlagPresentFlagEnabled();
 
         inline PictureParameterSetMetadata pictureParameterSetMetadata() const { return ppsMetadata_; }
+
+        void SetPPSId(unsigned int pps_id);
 
     private:
         unsigned long getMetadataValue(const std::string &key) const {

@@ -23,7 +23,9 @@ namespace lightdb::hevc {
         metadata_.CollectGolomb("width");
         metadata_.CollectGolomb("height");
         metadata_.CollectValue("conformance_window_flag");
+        metadata_.MarkPosition("conformance_window_values");
         metadata_.SkipExponentialGolombs("conformance_window_flag", 4);
+        metadata_.MarkPosition("after_conformance_window");
         metadata_.SkipExponentialGolomb();
         metadata_.SkipExponentialGolomb();
         metadata_.CollectGolomb("log2_max_pic_order_cnt_lsb_minus4");
@@ -83,6 +85,38 @@ namespace lightdb::hevc {
         CalculateSizes();
     }
 
+    void SequenceParameterSet::SetConformanceWindow(unsigned int displayWidth, unsigned int codedWidth,
+                                                    unsigned int displayHeight, unsigned int codedHeight) {
+        if (displayWidth == codedWidth && displayHeight == codedHeight)
+            return;
+
+        // left, right, top, bottom.
+        std::vector<unsigned long> conformanceWindowValues(4);
+        // Left and top are 0.
+        conformanceWindowValues[0] = 0;
+        conformanceWindowValues[2] = 0;
+
+        // Calculate right and bottom.
+        conformanceWindowValues[1] = (codedWidth - displayWidth) / 2;
+        conformanceWindowValues[3] = (codedHeight - displayHeight) / 2;
+
+        BitArray encodedConformanceWindow = EncodeGolombs(conformanceWindowValues);
+        auto start =getMetadataValue("conformance_window_values");
+
+        if (getMetadataValue("conformance_window_flag")) {
+            auto end = getMetadataValue("after_conformance_window");
+            data_.Replace(start, end, encodedConformanceWindow);
+            data_.ByteAlign();
+        } else {
+            // Also set conformance_window_flag to 1.
+            *(data_.begin() + start - 1) = true;
+
+            data_.insert(std::next(data_.begin(), start), encodedConformanceWindow.begin(),
+                         encodedConformanceWindow.end());
+            data_.ByteAlign();
+        }
+    }
+
     void SequenceParameterSet::CalculateSizes() {
         auto min_cb_log2_size = getMetadataValue("log2_min_luma_coding_block_size_minus3") + 3;
 
@@ -109,17 +143,62 @@ namespace lightdb::hevc {
                 GetContext().GetTileDimensions().second);
 
         addresses_.clear();
+
         auto tile_dimensions = GetContext().GetTileDimensions();
+        auto num_vertical_tiles = tile_dimensions.first;
+        auto num_horizontal_tiles = tile_dimensions.second;
+
+        bool using_uniform_tiles = GetContext().GetShouldUseUniformTiles();
+        auto cumulative_row_height = 0u;
         auto row = 0u;
         while (row < tile_dimensions.first) {
+            if (row > 0) {
+                // Increment cumulative_row_height.
+                auto previous_row = row - 1;
+                auto row_height = using_uniform_tiles
+                                  ? row * pic_height_in_ctbs_y / num_vertical_tiles -
+                                    previous_row * pic_height_in_ctbs_y / num_vertical_tiles // From page 27 in HEVC specification.
+                                  : GetContext().GetHeightsOfTiles()[previous_row];
+                cumulative_row_height += row_height;
+            }
+
+
             auto col = 0u;
+            auto total_width = 0u;
             while (col < tile_dimensions.second) {
-                addresses_.push_back(delta_x * (col % tile_dimensions.second) + delta_y * row);
+                if (col > 0) {
+                    auto previous_col = col - 1;
+                    auto col_width = using_uniform_tiles
+                                     ? col * pic_width_in_ctbs_y / num_horizontal_tiles -
+                                       previous_col * pic_width_in_ctbs_y / num_horizontal_tiles
+                                     : GetContext().GetWidthsOfTiles()[col - 1];
+
+                    total_width += col_width;
+//                    if (!using_uniform_tiles)
+//                        total_width += GetContext().GetWidthsOfTiles()[col - 1];
+//                    else
+//                        total_width += delta_x;
+                }
+                addresses_.push_back(total_width + pic_width_in_ctbs_y * cumulative_row_height);
                 col++;
             }
+
             row++;
         }
+
         assert(addresses_.size() == tile_dimensions.first * tile_dimensions.second);
+
+//        auto tile_dimensions = GetContext().GetTileDimensions();
+//        auto row = 0u;
+//        while (row < tile_dimensions.first) {
+//            auto col = 0u;
+//            while (col < tile_dimensions.second) {
+//                addresses_.push_back(delta_x * (col % tile_dimensions.second) + delta_y * row);
+//                col++;
+//            }
+//            row++;
+//        }
+//        assert(addresses_.size() == tile_dimensions.first * tile_dimensions.second);
     }
 }; //namespace lightdb::hevc
 

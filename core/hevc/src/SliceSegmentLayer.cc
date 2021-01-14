@@ -6,7 +6,7 @@
 
 namespace lightdb::hevc {
 
-    void SliceSegmentLayer::SetAddress(const size_t address) {
+    unsigned long SliceSegmentLayer::SetAddressAndPPSId(const size_t address, const unsigned int pps_id) {
         address_ = address;
         // Make sure it's byte aligned
         assert (metadata_.GetValue("end") % 8 == 0);
@@ -25,6 +25,7 @@ namespace lightdb::hevc {
         if (address) {
             // Note that BitArray has to convert the address to binary and pad it
             header_bits.Insert(metadata_.GetValue("address_offset"), address, address_length);
+            numberOfAddedBits_ += address_length;
         }
 
         if (!headers_.GetPicture()->HasEntryPointOffsets()) {
@@ -34,9 +35,22 @@ namespace lightdb::hevc {
             }
             // Insert a 0 as an exponential golomb, meaning the one bit '1'
             header_bits.Insert(location, 1, 1);
+            ++numberOfAddedBits_;
+        }
+
+        // Now do PPS setting.
+        auto current_pps_id = metadata_.GetValue("slice_pic_parameter_set_id");
+        if (current_pps_id != pps_id) {
+            auto size_of_current_encoded_pps_id = EncodeGolombs({current_pps_id}).size();
+            auto current_pps_id_offset = metadata_.GetValue("slice_pic_parameter_set_id_offset");
+            auto new_encoded_pps_id = EncodeGolombs({pps_id});
+
+            header_bits.Replace(current_pps_id_offset, current_pps_id_offset + size_of_current_encoded_pps_id, new_encoded_pps_id);
+            numberOfAddedBits_ += new_encoded_pps_id.size() - size_of_current_encoded_pps_id;
         }
 
         header_bits.ByteAlign();
+        assert(!(header_bits.size() % 8));
 
         // Keep track of where the updated end of header is.
         metadata_.SetValue("updated-end-bits", header_bits.size());
@@ -47,6 +61,8 @@ namespace lightdb::hevc {
         move(header_bits.begin(), header_bits.end(), new_data.begin());
         move(data_.begin() + header_end, data_.end(), new_data.begin() + header_bits.size());
         data_ = new_data;
+
+        return numberOfAddedBits_;
     }
 
     void SliceSegmentLayer::InsertPicOutputFlag(bool value) {
@@ -90,7 +106,8 @@ namespace lightdb::hevc {
         : SliceSegmentLayerMetadata(metadata, headersMetadata) {
         GetBitStream().CollectValue("first_slice_segment_in_pic_flag", 1, true);
         GetBitStream().SkipBits(1); // no_output_of_prior_pics_flag
-        GetBitStream().SkipExponentialGolomb(); // slice_pic_parameter_set_id
+        GetBitStream().MarkPosition("slice_pic_parameter_set_id_offset");
+        GetBitStream().CollectGolomb("slice_pic_parameter_set_id");
         GetBitStream().MarkPosition("address_offset");
         GetBitStream().SkipExponentialGolomb(); // slice_type
         GetBitStream().MarkPosition("pic_output_flag_offset");
@@ -113,7 +130,8 @@ namespace lightdb::hevc {
     TrailRSliceSegmentLayerMetadata::TrailRSliceSegmentLayerMetadata(lightdb::BitStream &metadata, lightdb::hevc::HeadersMetadata headersMetadata)
         : SliceSegmentLayerMetadata(metadata, headersMetadata) {
         GetBitStream().CollectValue("first_slice_segment_in_pic_flag", 1, true);
-        GetBitStream().SkipExponentialGolomb(); // slice_pic_parameter_set_id
+        GetBitStream().MarkPosition("slice_pic_parameter_set_id_offset");
+        GetBitStream().CollectGolomb("slice_pic_parameter_set_id");
         GetBitStream().MarkPosition("address_offset");
         GetBitStream().SkipExponentialGolomb(); // slice_type
         GetBitStream().MarkPosition("pic_output_flag_offset");

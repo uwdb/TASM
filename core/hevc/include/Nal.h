@@ -115,7 +115,7 @@ namespace lightdb::hevc {
         /**
          * @return A string representing a nal marker
          */
-        inline bytestring GetNalMarker() {
+        static inline bytestring GetNalMarker() {
             return bytestring{0, 0, 1};
         }
 

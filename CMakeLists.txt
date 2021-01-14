@@ -118,11 +118,6 @@ set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${SQLITE3_LIBRARY})
 
 include_directories(/usr/local/cudnn/include)
 
-# Build stitcher library.
-add_subdirectory(HomomorphicStitching/stitcher)
-include_directories(HomomorphicStitching)
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} stitcherlib)
-
 # Build LightDB library
 add_subdirectory(core)
 

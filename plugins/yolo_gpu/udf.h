@@ -77,6 +77,7 @@ class YOLOGPU: public lightdb::functor::unaryfunctor {
 
         lightdb::Timer totalTimer_;
         lightdb::Timer componentTimer_;
+        static const unsigned int propagate_ = 3;
     };
 public:
     YOLOGPU() : lightdb::functor::unaryfunctor("YOLOGPU", GPU()) { }

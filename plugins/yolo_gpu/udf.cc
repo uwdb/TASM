@@ -49,6 +49,7 @@ shared_reference<LightField> YOLOGPU::GPU::operator()(LightField &input) {
     physical::GPUDecodedFrameData output(data.configuration(), data.geometry());
 
     totalTimer_.startSection("RunYOLO");
+    int lastYOLOFrame = -1;
     for (auto &frame : data.frames()) {
         long frameNumber = 0;
         assert(frame->getFrameNumber(frameNumber));
@@ -57,13 +58,18 @@ shared_reference<LightField> YOLOGPU::GPU::operator()(LightField &input) {
         if (tasm_ && tasm_->detectionHasBeenRunOnFrame("", frameNumber))
             continue;
 
+        // Check whether we propagated detections from a previous frame.
+        if (lastYOLOFrame >= 0 && frameNumber - lastYOLOFrame < propagate_)
+            continue;
+
         ++numFramesDetected_;
+        lastYOLOFrame = frameNumber;
         componentTimer_.startSection("PreprocessYOLO");
         preprocessFrame(frame);
         componentTimer_.endSection("PreprocessYOLO");
-        componentTimer_.startSection("DetectYOLO");
+//        componentTimer_.startSection("DetectYOLO");
         detectFrame(frameNumber);
-        componentTimer_.endSection("DetectYOLO");
+//        componentTimer_.endSection("DetectYOLO");
     }
 
     totalTimer_.endSection("RunYOLO");
@@ -132,23 +138,29 @@ static float scaled(int value, int downsampled, int upsampled) {
 
 void YOLOGPU::GPU::detectFrame(long frameNumber) {
     // Detection runs on the resized, planar image.
+    componentTimer_.startSection("DetectYOLO");
     std::vector<bbox_t> predictions = detector_->detect_gpu(reinterpret_cast<float *>(resizedPlanarHandle_), inputWidth_, inputHeight_, threshold_);
+    componentTimer_.endSection("DetectYOLO");
 
+    componentTimer_.startSection("AddMetadata");
+    std::list<lightdb::Tasm::MetadataInfo> metadata;
     for (const auto &prediction : predictions) {
         if (prediction.prob <= minProb_)
             continue;
         auto &label = objectNames_[prediction.obj_id];
 //        std::cout << "Detected " << label << " with prob " << prediction.prob << " on frame " << prediction.frames_counter << std::endl;
 
-        if (tasm_)
-            tasm_->addMetadata("", label, frameNumber,
-                               static_cast<int>(scaled(prediction.x, inputWidth_, width_)),
-                               static_cast<int>(scaled(prediction.y, inputHeight_, height_)),
-                                static_cast<int>(scaled(prediction.w, inputWidth_, width_)),
-                                static_cast<int>(scaled(prediction.h, inputHeight_, height_)));
+        metadata.emplace_back<lightdb::Tasm::MetadataInfo>({"", label, frameNumber,
+                           static_cast<int>(scaled(prediction.x, inputWidth_, width_)),
+                           static_cast<int>(scaled(prediction.y, inputHeight_, height_)),
+                           static_cast<int>(scaled(prediction.w, inputWidth_, width_)),
+                           static_cast<int>(scaled(prediction.h, inputHeight_, height_))});
     }
-    if (tasm_)
-        tasm_->markDetectionHasBeenRunOnFrame("", frameNumber);
+    if (tasm_) {
+        tasm_->addMetadata(metadata, {frameNumber, frameNumber+propagate_});
+//        tasm_->markDetectionHasBeenRunOnFrame("", frameNumber);
+    }
+    componentTimer_.endSection("AddMetadata");
 }
 
 void YOLOGPU::GPU::allocate(unsigned int width, unsigned int height) {

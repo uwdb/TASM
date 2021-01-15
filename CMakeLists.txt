@@ -75,13 +75,6 @@ set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${GPAC_LIBRARIES})
 find_library(SQLITE3_LIBRARY sqlite3)
 set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${SQLITE3_LIBRARY})
 
-# Enable testing
-option(ENABLE_TESTS "Enable tests" ON)
-if (${ENABLE_TESTS})
-  enable_testing()
-  add_subdirectory(test)
-endif()
-
 file(GLOB TASM_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/tasm/*/include")
 
 add_subdirectory(tasm)

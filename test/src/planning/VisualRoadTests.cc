@@ -29,8 +29,11 @@ protected:
 };
 
 void DeleteDatabase(std::string id) {
-    std::string dbPath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/" + id + ".db";
-    remove(dbPath.c_str());
+    std::vector<std::string> extensions{ ".db", ".db-wal", ".db-shm" };
+    for (auto &ext : extensions) {
+        std::string dbPath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/" + id + ext;
+        remove(dbPath.c_str());
+    }
 }
 
 const unsigned int QUERY_DURATION = 60;
@@ -43,11 +46,11 @@ std::vector<std::vector<std::string>> QUERY_OBJECTS{
 };
 std::vector<std::string> VIDEOS{
     "traffic-2k-001",
-//    "traffic-4k-002-ds2k",
-//    "car-pov-2k-000-shortened",
-//    "car-pov-2k-001-shortened",
-//    "traffic-4k-000",
-//    "traffic-4k-002"
+    "traffic-4k-002-ds2k",
+    "car-pov-2k-000-shortened",
+    "car-pov-2k-001-shortened",
+    "traffic-4k-000",
+    "traffic-4k-002"
 };
 // TODO: Double check these.
 std::unordered_map<std::string, unsigned int> VideoToMaxTile {
@@ -107,13 +110,21 @@ std::string OutputVideoName(const std::string &label, unsigned int first, unsign
     return "/home/maureen/masked_videos/" + label + "_" + (stitched ? "stitched" : "untiled") + "_" + std::to_string(first) + "_" + std::to_string(last) + ".mp4";
 }
 
+void SetUpOutFile(std::filesystem::path path) {
+    if (std::filesystem::exists(path))
+        std::filesystem::rename(path, path.string() + ".orig");
+}
+
 TEST_F(VisualRoadTestFixture, testRunWorkloadWithNoTiling) {
-    std::ofstream out(StatsFile("UniformWorkloadWithNoTiling.csv"));
+    auto outPath = StatsFile("UniformWorkloadWithNoTiling.csv");
+    SetUpOutFile(outPath);
+    std::ofstream out(outPath);
     for (const auto &video : VIDEOS) {
         auto yolo = lightdb::extensibility::Load("yologpu");
         auto videoId = TiledName(video);
+        auto metadataId = videoId + "-untiled";
         // Delete the past object detections.
-        DeleteDatabase(videoId);
+        DeleteDatabase(metadataId);
 
         // Delete past tilings of this video.
         DeleteTilesPastNum(videoId, VideoToMaxTile.at(video));
@@ -139,7 +150,7 @@ TEST_F(VisualRoadTestFixture, testRunWorkloadWithNoTiling) {
                     ScanMultiTiled(
                             videoId
                     ).Select(
-                            *selection, yolo, {{MetadataOptions::MetadataIdentifier, videoId}, {ScanOptions::ReadAllFrames, true}, {ScanOptions::IsReadingUntiledVideo, true}}
+                            *selection, yolo, {{MetadataOptions::MetadataIdentifier, metadataId}, {ScanOptions::ReadAllFrames, true}, {ScanOptions::IsReadingUntiledVideo, true}}
                     ).Save(
                             OutputVideoName(object, selection->firstFrame(), selection->lastFrame(), false)
                     )
@@ -149,10 +160,12 @@ TEST_F(VisualRoadTestFixture, testRunWorkloadWithNoTiling) {
             out.flush();
         }
     }
-//    WriteStatsToFile("UniformWorkloadWithNoTiling.csv");
 }
 
 TEST_F(VisualRoadTestFixture, testRunWorkloadWithTiling) {
+    auto outPath = StatsFile("UniformWorkloadWithTiling.csv");
+    SetUpOutFile(outPath);
+    std::ofstream out(outPath);
     for (const auto &video : VIDEOS) {
         auto yolo = lightdb::extensibility::Load("yologpu");
         auto videoId = TiledName(video);
@@ -210,9 +223,11 @@ TEST_F(VisualRoadTestFixture, testRunWorkloadWithTiling) {
                             {{RetileOptions::SplitByGOP, true}}
                             )
                     );
+            auto csv = StatsCollector::instance().toCSV();
+            out.write(csv.data(), csv.length());
+            out.flush();
         }
     }
-//    WriteStatsToFile("UniformWorkloadWithTiling.csv");
 }
 
 TEST_F(VisualRoadTestFixture, testDebug) {

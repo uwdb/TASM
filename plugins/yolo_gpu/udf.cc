@@ -59,7 +59,7 @@ shared_reference<LightField> YOLOGPU::GPU::operator()(LightField &input) {
             continue;
 
         // Check whether we propagated detections from a previous frame.
-        if (lastYOLOFrame >= 0 && frameNumber - lastYOLOFrame < propagate_)
+        if (lastYOLOFrame >= 0 && lastYOLOFrame < frameNumber && frameNumber - lastYOLOFrame < propagate_)
             continue;
 
         ++numFramesDetected_;

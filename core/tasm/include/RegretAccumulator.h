@@ -27,12 +27,14 @@ public:
 class TASMRegretAccumulator : public RegretAccumulator {
 public:
     TASMRegretAccumulator(const std::string &video, unsigned int width, unsigned int height, unsigned int gopLength,
-                          double threshold)
+                          double threshold,
+                          bool readEntireGOPs = false)
             : video_(video),
               width_(width),
               height_(height),
               gopLength_(gopLength),
               threshold_(threshold),
+              readEntireGOPs_(readEntireGOPs),
               queryIteration_(0) {
         gopSizeInPixels_ = width * height * gopLength;
         gopTilingCost_ = estimateCostToEncodeGOP(gopSizeInPixels_);
@@ -73,6 +75,7 @@ public:
         if (maxRegret > threshold_ * gopTilingCost_) {
             layoutIdentifier = labelWithMaxRegret;
             std::cout << video_ << ": Retile GOP " << gop << " to " << layoutIdentifier << std::endl;
+            StatsCollector::instance().addStat("retile-gop-" + std::to_string(gop), layoutIdentifier);
             return true;
         } else {
             return false;
@@ -156,13 +159,13 @@ private:
 
         unsigned int sawMultipleLayouts;
 
-        WorkloadCostEstimator noTilesLayoutEstimator(noTilesConfiguration_, *workload, gopLength_, 0, 0, 0);
+        WorkloadCostEstimator noTilesLayoutEstimator(noTilesConfiguration_, *workload, gopLength_, 0, 0, 0, readEntireGOPs_);
         std::unique_ptr<std::unordered_map<unsigned int, CostElements>> noTilesCosts(
                 new std::unordered_map<unsigned int, CostElements>());
         noTilesLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, noTilesCosts.get());
 
         for (const auto &layoutId : layouts) {
-            WorkloadCostEstimator proposedLayoutEstimator(idToConfig_.at(layoutId), *workload, gopLength_, 0, 0, 0);
+            WorkloadCostEstimator proposedLayoutEstimator(idToConfig_.at(layoutId), *workload, gopLength_, 0, 0, 0, readEntireGOPs_);
             std::unique_ptr<std::unordered_map<unsigned int, CostElements>> proposedCosts(
                     new std::unordered_map<unsigned int, CostElements>());
             proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
@@ -233,6 +236,7 @@ private:
     unsigned int gopLength_;
 
     double threshold_;
+    bool readEntireGOPs_;
     std::vector<std::string> labels_;
     std::unordered_map<std::string, std::shared_ptr<tiles::TileConfigurationProvider>> idToConfig_;
     long long int gopSizeInPixels_;

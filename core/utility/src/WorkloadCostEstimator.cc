@@ -63,7 +63,7 @@ std::pair<int, CostElements> WorkloadCostEstimator::estimateCostForNextGOP(std::
         if (maxFrameOverlappingTile[i] < 0)
             continue;
 
-        unsigned int numTiles = maxFrameOverlappingTile[i] - keyframe + 1;
+        unsigned int numTiles = readEntireGOPS_ ? gopLength_ : maxFrameOverlappingTile[i] - keyframe + 1;
         totalNumTiles += numTiles;
         totalNumPixels += layoutForGOP.rectangleForTile(i).area() * numTiles;
     }

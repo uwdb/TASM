@@ -117,6 +117,7 @@ namespace lightdb::metadata {
             addMetadata(label, frame, x, y, w, h);
         }
         void addMetadata(const std::string &label, int frame, int x1, int y1, int width, int height);
+        void addMetadata(const std::list<MetadataInfo> &metadataInfo, std::pair<int, int> firstLastFrame);
 
         static std::unordered_set<int> idealKeyframesForFrames(const std::vector<int> &orderedFrames);
 

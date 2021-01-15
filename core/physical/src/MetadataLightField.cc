@@ -199,6 +199,7 @@ namespace lightdb::metadata {
         std::scoped_lock lock(mutex_);
         int openResult = sqlite3_open_v2(dbPath_.c_str(), &db_, SQLITE_OPEN_READWRITE, NULL);
         assert(openResult == SQLITE_OK);
+        sqlite3_exec(db_, "PRAGMA journal_mode=WAL;", 0, 0, 0);
 
         // Prepare insert statement.
         std::string query = "INSERT INTO labels (label, frame, x, y, width, height) VALUES (?, ?, ?, ?, ?, ?)";
@@ -337,8 +338,20 @@ void MetadataManager::addMetadata(const std::string &label, int frame, int x1, i
     ASSERT_SQLITE_OK(sqlite3_bind_int(insertStmt_, 5, width));
     ASSERT_SQLITE_OK(sqlite3_bind_int(insertStmt_, 6, height));
 
-    ASSERT_SQLITE_DONE(sqlite3_step(insertStmt_));
+    auto result = sqlite3_step(insertStmt_);
+    assert(result == SQLITE_DONE);
     sqlite3_reset(insertStmt_);
+}
+
+void MetadataManager::addMetadata(const std::list<MetadataInfo> &metadataInfo, std::pair<int, int> firstLastFrame) {
+    sqlite3_exec(db_, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+    for (int f = firstLastFrame.first; f < firstLastFrame.second; ++f) {
+        for (const auto &m : metadataInfo)
+            addMetadata(m.label, f, m.x1, m.y1, m.w, m.h);
+
+        markDetectionHasBeenRunOnFrame(videoIdentifier_, f);
+    }
+    sqlite3_exec(db_, "END TRANSACTION;", NULL, NULL, NULL);
 }
 
 const std::vector<int> &MetadataManager::orderedFramesForMetadata() {

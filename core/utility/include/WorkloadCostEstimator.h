@@ -56,7 +56,8 @@ public:
         unsigned int gopLength,
         double pixelCostWeight,
         double tileCostWeight,
-        double decodeCostWeight)
+        double decodeCostWeight,
+        bool readEntireGOPs = false)
         : tileLayoutProvider_(tileLayoutProvider),
         workload_(std::move(workload)),
         gopLength_(gopLength),
@@ -64,7 +65,8 @@ public:
         totalNumberOfTiles_(0),
         pixelCostWeight_(pixelCostWeight),
         tileCostWeight_(tileCostWeight),
-        decodingStrategyWeight_(decodeCostWeight) {
+        decodingStrategyWeight_(decodeCostWeight),
+        readEntireGOPS_(readEntireGOPs) {
 //        Not including decode strategy: coef: [1.49791333e-06 1.24557786e-01]
 //        With decode strategy: coef: [1.49375947e-06 1.33864548e-01 3.69633770e+03]
     }
@@ -114,6 +116,8 @@ private:
     double pixelCostWeight_;
     double tileCostWeight_;
     double decodingStrategyWeight_;
+
+    bool readEntireGOPS_;
 
     std::unique_ptr<Rectangle> firstTileDimensions_;
 };

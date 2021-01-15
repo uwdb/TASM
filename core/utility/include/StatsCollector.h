@@ -16,7 +16,8 @@ public:
         return instance_.value();
     }
 
-    void setUpNewQuery(const std::string &qid, const std::string &variant, const std::string &component) {
+    void setUpNewQuery(const std::string &video, unsigned int qid, const std::string &variant, const std::string &component) {
+        video_ = video;
         qid_ = qid;
         variant_ = variant;
         component_ = component;
@@ -27,17 +28,22 @@ public:
     }
 
     void addRuntime(const std::string &key, unsigned long duration) {
-        stats_.emplace_back<Row>({qid_, variant_, component_, key, 1, std::to_string(duration)});
+        stats_.emplace_back<Row>({video_, qid_, variant_, component_, key, 1, std::to_string(duration)});
     }
 
     void addStat(const std::string &key, unsigned long value) {
-        stats_.emplace_back<Row>({qid_, variant_, component_, key, 0, std::to_string(value)});
+        stats_.emplace_back<Row>({video_, qid_, variant_, component_, key, 0, std::to_string(value)});
     }
 
-    std::string toCSV() const {
+    void addStat(const std::string &key, const std::string &value) {
+        stats_.emplace_back<Row>({video_, qid_, variant_, component_, key, 0, value});
+    }
+
+    std::string toCSV() {
         std::stringstream sstream;
         for (auto &row : stats_) {
-            sstream << row.qid << sep_
+            sstream << row.video << sep_
+                    << row.qid << sep_
                     << row.variant << sep_
                     << row.component << sep_
                     << row.key << sep_
@@ -45,23 +51,24 @@ public:
                     << row.value
                     << "\n";
         }
+        stats_.clear();
         return sstream.str();
     }
 
 private:
     struct Row {
-        std::string qid;
+        std::string video;
+        unsigned int qid;
         std::string variant;
         std::string component;
         std::string key;
         unsigned int isRuntime;
         std::string value;
-
-
     };
 
     static std::optional<StatsCollector> instance_;
-    std::string qid_;
+    std::string video_;
+    unsigned int qid_;
     std::string variant_;
     std::string component_;
     std::list<Row> stats_;

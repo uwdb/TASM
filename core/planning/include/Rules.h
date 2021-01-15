@@ -99,6 +99,8 @@ namespace lightdb::optimization {
                 auto locationProvider = std::make_shared<tiles::SingleTileLocationProvider>(node.tileLayoutsManager());
 
                 int gopLength = node.entry()->sources()[0].configuration().framerate.fps();
+                auto splitByGOPOption = node.get_option(RetileOptions::SplitByGOP);
+                bool splitByGOP = std::any_cast<bool>(splitByGOPOption.value_or(std::make_any<bool>(false)));
 
                 if (node.retileStrategy() == logical::RetileStrategy::RetileIfDifferent || node.retileStrategy() == logical::RetileStrategy::RetileAlways) {
                     auto configProvider = node.tileConfigurationProvider();
@@ -157,8 +159,6 @@ namespace lightdb::optimization {
                     if (framesWithDifferentLayout.size()) {
                         auto gpu = plan().allocator().gpu();
                         auto decode = plan().emplace<physical::GPUDecodeFromCPU>(logical, scan, gpu);
-                        auto splitByGOPOption = node.get_option(RetileOptions::SplitByGOP);
-                        bool splitByGOP = std::any_cast<bool>(splitByGOPOption.value_or(std::make_any<bool>(false)));
                         auto crack = plan().emplace<physical::CrackVideo>(
                                 logical,
                                 decode,
@@ -196,28 +196,6 @@ namespace lightdb::optimization {
                         unsigned int sawMultipleLayouts;
                         currentLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, currentCosts.get());
                         node.regretAccumulator()->addRegretForQuery(workload, currentCosts);
-
-//                        for (const auto &layoutId : node.regretAccumulator()->layoutIdentifiers()) {
-//                            WorkloadCostEstimator proposedLayoutEstimator(
-//                                    node.regretAccumulator()->configurationProviderForIdentifier(layoutId),
-//                                    *workload, gopLength, pixelCostWeight, tileCostWeight, 0);
-//
-//                            std::unique_ptr<std::unordered_map<unsigned int, CostElements>> proposedCosts(
-//                                    new std::unordered_map<unsigned int, CostElements>());
-//
-//                            proposedLayoutEstimator.estimateCostForQuery(0, sawMultipleLayouts, proposedCosts.get());
-//
-//                            assert(currentCosts->size() == proposedCosts->size());
-//
-//                            for (auto curIt = currentCosts->begin(); curIt != currentCosts->end(); ++curIt) {
-//                                auto curCosts = curIt->second;
-//                                auto possibleCosts = proposedCosts->at(curIt->first);
-//                                double regret = pixelCostWeight *
-//                                                (long long int) (curCosts.numPixels - possibleCosts.numPixels) +
-//                                                tileCostWeight * (int) (curCosts.numTiles - possibleCosts.numTiles);
-//                                node.regretAccumulator()->addRegretToGOP(curIt->first, regret, layoutId);
-//                            }
-//                        }
 
                         // Find the various layouts to retile to.
                         std::unordered_map<unsigned int, std::string> gopToLayoutId;
@@ -274,8 +252,9 @@ namespace lightdb::optimization {
                                 decode,
                                 std::unordered_set<int>(),
                                 tileConfig,
-                                node.tileLayoutsManager()->entry().name()
-                                );
+                                node.tileLayoutsManager()->entry().name(),
+                                gopLength,
+                                splitByGOP);
                         plan().emplace<physical::Sink>(logical, crack);
                     }
                 }

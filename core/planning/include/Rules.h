@@ -737,14 +737,14 @@ namespace lightdb::optimization {
                                                             {GeometryReference::make<EquirectangularGeometry>(
                                                                     EquirectangularGeometry::Samples())});
                 auto gopLength = tiledInfo[0].configuration().framerate.fps();
-                auto maskedTileLocationProvider = std::make_shared<tiles::MaskedTileLocationProvider>(
-                        tileLocationProvider, gopLength);
-                auto muxed = plan().emplace<physical::StoreEncodedTiles>(logical, encoded,
-                                                                         tileLayoutsManager->entry().path(),
-                                                                         Codec::hevc(), maskedTileLocationProvider);
+//                auto maskedTileLocationProvider = std::make_shared<tiles::MaskedTileLocationProvider>(
+//                        tileLocationProvider, gopLength);
+//                auto muxed = plan().emplace<physical::StoreEncodedTiles>(logical, encoded,
+//                                                                         tileLayoutsManager->entry().path(),
+//                                                                         Codec::hevc(), maskedTileLocationProvider);
 
                 // Stitch tiles.
-                auto stitched = plan().emplace<physical::StitchOperator>(logical, muxed, maskedTileLocationProvider,
+                auto stitched = plan().emplace<physical::StitchOperator>(logical, encoded, tileLocationProvider,
                                                                          gopLength, metadataSpecification.firstFrame(),
                                                                          metadataSpecification.lastFrame());
             }

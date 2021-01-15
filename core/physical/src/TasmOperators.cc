@@ -31,6 +31,20 @@ std::shared_ptr<bytestring> StitchOperator::Runtime::getSEI() {
     return sei_;
 }
 
+std::shared_ptr<std::vector<std::shared_ptr<bytestring>>> StitchOperator::Runtime::dataForGOP(int gop) {
+    auto gopData = materializedData_[gop];
+    if (!gopData)
+        gopData = std::make_shared<std::vector<std::shared_ptr<bytestring>>>(tileLocationProvider_->tileLayoutForFrame(gop * gopLength_).numberOfTiles());
+    for (auto i = 0u; i < gopData->size(); ++i) {
+        if (!(*gopData)[i]) {
+            auto originalTilePath = tileLocationProvider_->locationOfTileForFrame(i, gop * gopLength_);
+            originalTilePath.replace_extension(catalog::TileFiles::temporaryFilenameExtension());
+            (*gopData)[i] = std::move(ReadFile(originalTilePath));
+        }
+    }
+    return gopData;
+}
+
 std::shared_ptr<bytestring> StitchOperator::Runtime::stitchGOP(int gop) {
     // First, get tile layout for the current GOP.
     auto firstFrameOfGOP = gop * gopLength_;
@@ -45,9 +59,10 @@ std::shared_ptr<bytestring> StitchOperator::Runtime::stitchGOP(int gop) {
         } else {
             sentSEIForOneTile_ = false;
             partTimer_->startSection("ReadFile");
-            auto returnVal = ReadFile(tileLocationProvider_->locationOfTileForFrame(0, firstFrameOfGOP));
+            auto returnVal = dataForGOP(gop);
             partTimer_->endSection("ReadFile");
-            return returnVal;
+            assert(returnVal->size() == 1);
+            return returnVal->front();
         }
     }
 
@@ -69,16 +84,12 @@ std::shared_ptr<bytestring> StitchOperator::Runtime::stitchGOP(int gop) {
         ppsId_ = 1;
 
     // Second: read tiles into memory
-    std::vector<bytestring> tiles;
     partTimer_->startSection("ReadFile");
-    for (auto i = 0u; i < tileLayout.numberOfTiles(); ++i) {
-        auto tilePath = tileLocationProvider_->locationOfTileForFrame(i, firstFrameOfGOP);
-        tiles.push_back(*ReadFile(tilePath));
-    }
+    auto tiles = dataForGOP(gop);
     partTimer_->endSection("ReadFile");
 
     partTimer_->startSection("GetStitchedSegments");
-    hevc::Stitcher stitcher(context, tiles);
+    hevc::Stitcher stitcher(context, *tiles);
     auto stitchedSegments = stitcher.GetStitchedSegments();
     partTimer_->endSection("GetStitchedSegments");
     return std::move(stitchedSegments);

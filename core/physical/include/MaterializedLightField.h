@@ -77,6 +77,7 @@ namespace lightdb::physical {
     class SerializedData: public SerializableData {
     public:
         const bytestring& value() override { return *value_; }
+        std::shared_ptr<bytestring> value_ptr() { return value_; }
 
     protected:
         SerializedData(DeviceType device, const bytestring &value)

@@ -39,6 +39,10 @@ namespace lightdb::hevc {
                 : context_(std::move(context)), headers_(context_, GetNals(data).front())
         { }
 
+        Stitcher(StitchContext context, std::vector<std::shared_ptr<bytestring>> &data)
+                : context_(std::move(context)), headers_(context_, GetNals(data).front())
+        { }
+
         /**
          *
          * @return A bytestring with all tiles passed into the constructor stitched together
@@ -60,6 +64,8 @@ namespace lightdb::hevc {
          * vector is a nal for tha tile
          */
         const std::vector<std::list<bytestring>> &GetNals(std::vector<bytestring> &data);
+
+        const std::vector<std::list<bytestring>> &GetNals(std::vector<std::shared_ptr<bytestring>> &data);
 
         /**
          * Returns the nals that are segments for a given tile. Note that this moves the corresponding nal from the tile_nals_ field, rendering the

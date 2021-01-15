@@ -40,6 +40,39 @@ namespace lightdb::hevc {
         return tile_nals_;
     }
 
+const std::vector<std::list<bytestring>> &Stitcher::GetNals(std::vector<std::shared_ptr<bytestring>> &data) {
+    tile_nals_.resize(data.size());
+    auto index = 0u;
+    for (auto &tile : data) {
+        auto zero_count = 0u;
+        auto first = true;
+        auto start = tile->begin();
+        for (auto it = tile->begin(); it != tile->end(); it++) {
+            auto c = static_cast<unsigned char>(*it);
+            // We found the nal marker "0001"
+            if (c == 1 && zero_count >= 3) {
+                // Since each stream will start with 0001, the first segment will always be empty,
+                // so we want to just discard it
+                if (!first) {
+                    // -3, not -4, because the constructor is exclusive [first, last)
+                    tile_nals_[index].push_back(move(bytestring(make_move_iterator(start), make_move_iterator(it - 3))));
+                } else {
+                    first = false;
+                }
+                zero_count = 0;
+                start = it + 1;
+            } else if (c == 0) {
+                zero_count++;
+            } else {
+                zero_count = 0;
+            }
+        }
+        tile_nals_[index].push_back(move(bytestring(make_move_iterator(start), make_move_iterator(tile->end()))));
+        ++index;
+    }
+    return tile_nals_;
+}
+
     std::list<bytestring> Stitcher::GetSegmentNals(const unsigned long tile_num, unsigned long *num_bytes, unsigned long *num_keyframes, bool first) {
         auto &nals = tile_nals_[tile_num];
         std::list<bytestring> segments;

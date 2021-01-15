@@ -392,20 +392,26 @@ private:
 
     private:
         void preProcessEverything() {
-            while(!all_parent_eos()) {
-                for (auto it = iterators().begin(); it != iterators().end(); ++it) {
-                    if (*it != it->eos()) {
-                        if (!referenceData_)
-                            referenceData_ = std::shared_ptr<MaterializedLightField>(**it);
-                        ++(*it);
-                    }
+            while (iterator() != iterator().eos()) {
+                if (!referenceData_)
+                    referenceData_ = std::shared_ptr<MaterializedLightField>(**iterators().begin());
+                auto data = iterator()++;
+                int firstFrame;
+                int tileNumber;
+                assert(data.getFirstFrameIndexIfSet(firstFrame));
+                assert(data.getTileNumberIfSet(tileNumber));
+                auto gopNum = gop(firstFrame);
+                if (!materializedData_.count(gopNum)) {
+                    materializedData_[gopNum] = std::make_shared<std::vector<std::shared_ptr<bytestring>>>(tileLocationProvider_->tileLayoutForFrame(firstFrame).numberOfTiles());
                 }
+                (*materializedData_[gopNum])[tileNumber] = data.value_ptr();
             }
         }
 
         int gop(unsigned int frame) { return frame / gopLength_; }
         std::shared_ptr<bytestring> stitchGOP(int gop);
         std::shared_ptr<bytestring> getSEI();
+        std::shared_ptr<std::vector<std::shared_ptr<bytestring>>> dataForGOP(int gop);
 
         std::shared_ptr<tiles::TileLocationProvider> tileLocationProvider_;
         unsigned int gopLength_;
@@ -420,6 +426,7 @@ private:
         unsigned int numberOfStitchedGOPs_;
         std::unique_ptr<Timer> timer_;
         std::unique_ptr<Timer> partTimer_;
+        std::unordered_map<int, std::shared_ptr<std::vector<std::shared_ptr<bytestring>>>> materializedData_;
     };
 };
 

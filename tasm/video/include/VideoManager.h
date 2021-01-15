@@ -41,7 +41,7 @@ public:
                                           std::shared_ptr<MetadataSelection> metadataSelection,
                                           std::shared_ptr<TemporalSelection> temporalSelection,
                                           std::shared_ptr<SemanticIndex> semanticIndex,
-                                          SelectStrategy selectStrategy);
+                                          SelectStrategy selectStrategy=SelectStrategy::Objects);
 
     void retileVideoBasedOnRegret(const std::string &video);
 

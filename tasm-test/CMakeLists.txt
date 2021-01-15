@@ -1,6 +1,6 @@
 enable_testing()
 
-#include(${PROJECT_SOURCE_DIR}/cmake/gtest.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/gtest.cmake)
 
 file(GLOB TASM_TEST_INCLUDE_DIRS "include/*")
 include_directories(${TASM_TEST_INCLUDE_DIRS})

@@ -201,9 +201,13 @@ namespace lightdb::metadata {
         assert(openResult == SQLITE_OK);
         sqlite3_exec(db_, "PRAGMA journal_mode=WAL;", 0, 0, 0);
 
+        const char *createIndex = "CREATE INDEX IF NOT EXISTS video_index ON labels (frame, label)";
+        auto result = sqlite3_exec(db_, createIndex, NULL, NULL, NULL);
+        assert(result == SQLITE_OK);
+
         // Prepare insert statement.
         std::string query = "INSERT INTO labels (label, frame, x, y, width, height) VALUES (?, ?, ?, ?, ?, ?)";
-        auto result = sqlite3_prepare_v2(db_, query.c_str(), query.length(), &insertStmt_, nullptr);
+        result = sqlite3_prepare_v2(db_, query.c_str(), query.length(), &insertStmt_, nullptr);
         ASSERT_SQLITE_OK(result);
 
         // Check whether the detected table exists. If it doesn't, for backwards compatibility we'll assume detection ran on all frames.

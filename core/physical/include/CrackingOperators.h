@@ -45,6 +45,7 @@ private:
                     geometry_(getGeometry()),
                     tileConfigurationProvider_(tileConfigurationProvider),
                     tileEncodersManager_(EncodeConfiguration((*iterators().front()).downcast<GPUDecodedFrameData>().configuration(), Codec::hevc().nvidiaId().value(), physical.gopLength() ?: 1000), context(), lock()),
+                    currentTileLayout_(tiles::EmptyTileLayout),
                     firstFrameInGroup_(-1),
                     lastFrameInGroup_(-1),
                     frameNumber_(0),

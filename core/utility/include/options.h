@@ -26,6 +26,7 @@ namespace lightdb {
         struct Retile {
             static constexpr const char* SplitByGOP = "SplitByGOP";
             static constexpr const char* RetileAllFrames = "RetileAllFrames";
+            static constexpr const char* ObjectBuffer = "ObjectBuffer";
         };
 
         struct Scan {

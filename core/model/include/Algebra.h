@@ -101,7 +101,8 @@ namespace lightdb {
                                                 const MetadataSpecification * const metadataSpecification=nullptr,
                                                 unsigned int layoutDuration=0,
                                                 CrackingStrategy crackingStrategy=CrackingStrategy::None,
-                                                bool encodeTiles=true);
+                                                bool encodeTiles=true,
+                                                const lightdb::options<>& = {});
             LightFieldReference StoreCrackedUniform(const std::string &name,
                                                 unsigned int uniformDimensionsCols,
                                                 unsigned int uniformDimensionsRows,

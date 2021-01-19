@@ -193,6 +193,7 @@ namespace lightdb::metadata {
                 ? lightdb::associations::VideoPathToLabelsPath.at(videoIdentifier_)
                 : "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/" + videoIdentifier_ + ".db";
 
+        std::cout << "Opening database at " << dbPath_ << std::endl;
         if (!std::filesystem::exists(dbPath_))
             createDatabase();
 
@@ -233,9 +234,13 @@ namespace lightdb::metadata {
         std::scoped_lock lock(mutex_);
 
         ASSERT_SQLITE_OK(sqlite3_finalize(insertStmt_));
-        ASSERT_SQLITE_OK(sqlite3_finalize(detectedStmt_));
-        ASSERT_SQLITE_OK(sqlite3_finalize(detectedOnFrameStmt_));
-        ASSERT_SQLITE_OK(sqlite3_finalize(markDetectedStmt_));
+
+        if (hasDetectedTable_) {
+            ASSERT_SQLITE_OK(sqlite3_finalize(detectedStmt_));
+
+            ASSERT_SQLITE_OK(sqlite3_finalize(detectedOnFrameStmt_));
+            ASSERT_SQLITE_OK(sqlite3_finalize(markDetectedStmt_));
+        }
 
         int closeResult = sqlite3_close(db_);
         assert(closeResult == SQLITE_OK);

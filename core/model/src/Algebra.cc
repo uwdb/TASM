@@ -15,11 +15,13 @@ namespace lightdb::logical {
         return Catalog::instance().getMultiTiled(name, usesOnlyOneTile);
     }
 
-    static std::string RemoveDecorationsFromTileEntry(const std::string &name) {
+    static std::string RemoveDecorationsFromTileEntry(const std::string &name, const lightdb::options<> &options={}) {
         // Transform metadataIdentifier.
         std::string metadataIdentifier;
         auto crackedPos = name.find("-cracked");
-        if (crackedPos != std::string::npos) {
+        if (options.get(MetadataOptions::MetadataIdentifier).has_value()) {
+            metadataIdentifier = std::any_cast<std::string>(*options.get(MetadataOptions::MetadataIdentifier));
+        } else if (crackedPos != std::string::npos) {
             metadataIdentifier = name.substr(0, crackedPos);
         } else {
             crackedPos = metadataIdentifier.find_last_of("-");
@@ -49,7 +51,7 @@ namespace lightdb::logical {
                                       std::shared_ptr<TileAroundMoreObjectsManager> tileAroundMoreObjectsManager,
                                       const lightdb::options<> &options) {
 
-        auto metadataIdentifier = RemoveDecorationsFromTileEntry(name);
+        auto metadataIdentifier = RemoveDecorationsFromTileEntry(name, options);
         auto entry = std::make_shared<catalog::Entry>(Catalog::instance().entry(originalVideoName));
 
         auto metadataManager = std::make_shared<metadata::MetadataManager>(metadataIdentifier, MetadataSpecification(metadataSpecification, entry->sources()[0].mp4Reader().numberOfSamples()));
@@ -196,7 +198,8 @@ namespace lightdb::logical {
                                               const MetadataSpecification * const metadataSpecification,
                                               unsigned int layoutDuration,
                                               CrackingStrategy crackingStrategy,
-                                              bool encodeTiles) {
+                                              bool encodeTiles,
+                                              const lightdb::options<> &options) {
         std::shared_ptr<metadata::MetadataManager> metadataManager_;
         if (metadataIdentifier.length()) {
             assert(metadataSpecification);
@@ -209,7 +212,8 @@ namespace lightdb::logical {
                 metadataManager_,
                 layoutDuration,
                 crackingStrategy,
-                encodeTiles);
+                encodeTiles,
+                options);
     }
 
     LightFieldReference Algebra::StoreCrackedUniform(const std::string &name,

@@ -1403,7 +1403,8 @@ namespace lightdb::optimization {
                                 node.layoutDuration(),
                                 node.metadataManager(),
                                 width,
-                                height);
+                                height,
+                                node.get_option(RetileOptions::ObjectBuffer));
                     } else if (node.crackingStrategy() == CrackingStrategy::GroupingExtent) {
                         tileConfig = std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(
                                 node.layoutDuration(),

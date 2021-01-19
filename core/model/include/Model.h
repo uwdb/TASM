@@ -284,7 +284,8 @@ namespace lightdb::logical {
                             layoutDuration,
                             metadataManager,
                             tileLayoutsManager_->totalWidth(),
-                            tileLayoutsManager_->totalHeight());
+                            tileLayoutsManager_->totalHeight(),
+                            options.get(RetileOptions::ObjectBuffer));
                     break;
                 case CrackingStrategy::GroupingExtent:
                     tileConfigurationProvider_ = std::make_shared<tiles::GroupingExtentsTileConfigurationProvider>(

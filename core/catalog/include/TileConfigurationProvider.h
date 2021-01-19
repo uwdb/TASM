@@ -310,12 +310,16 @@ public:
     GroupingTileConfigurationProvider(unsigned int tileGroupDuration,
                                         std::shared_ptr<const metadata::MetadataManager> metadataManager,
                                         unsigned int frameWidth,
-                                        unsigned int frameHeight)
+                                        unsigned int frameHeight,
+                                        std::optional<std::any> buffer={})
         : tileGroupDuration_(tileGroupDuration),
           metadataManager_(metadataManager),
           frameWidth_(frameWidth),
-          frameHeight_(frameHeight)
-    { }
+          frameHeight_(frameHeight),
+          buffer_(std::any_cast<int>(buffer.value_or(std::make_any<int>(32))))
+    {
+        std::cout << "Creating config with buffer " << buffer_ << std::endl;
+    }
 
     unsigned int maximumNumberOfTiles() override {
         return 0;
@@ -331,6 +335,7 @@ private:
     unsigned int frameWidth_;
     unsigned int frameHeight_;
     std::unordered_map<unsigned int, TileLayout> tileGroupToTileLayout_;
+    const int buffer_;
 };
 
 // TODO: Should this have a TileConfigurationProvider that uses the available possible tile layouts

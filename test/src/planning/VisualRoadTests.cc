@@ -306,6 +306,43 @@ TEST_F(VisualRoadTestFixture, testRunWorkloadWithDetectionAndTilingBefore) {
     }
 }
 
+static void RemoveTiledVideo(const std::string &tiledName) {
+    static std::string basePath = "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/";
+    std::filesystem::remove_all(basePath + tiledName);
+}
+
+TEST_F(VisualRoadTestFixture, testMeasureTilingTime) {
+    auto outPath = StatsFile("TileAroundObjectsTilingTimeWithIndex.csv");
+    SetUpOutFile(outPath);
+    std::ofstream out(outPath);
+    std::vector<int> buffers{0};
+    for (const auto &video : VIDEOS) {
+        auto videoId = TiledName(video);
+        for (auto &metadataId : {video}) {
+            for (auto buffer : buffers) {
+                std::cout << "Video: " << video << std::endl;
+                std::cout << "Metadata ID: " << metadataId << std::endl;
+                std::cout << "Buffer: " << buffer << std::endl;
+
+                {
+                    std::string storedName = videoId + "-with-index";
+                    RemoveTiledVideo(storedName);
+
+                    StatsCollector::instance().setUpNewQuery(video, 0, "pre-tile-with-index", "crack");
+                    MetadataSpecification metadataSpecification("labels", std::make_shared<AllMetadataElement>());
+                    auto input = Scan(video);
+                    Coordinator().execute(
+                            input.StoreCracked(
+                                    storedName, video, &metadataSpecification, VideoToFramerate.at(video), CrackingStrategy::SmallTiles));
+                    auto csv = StatsCollector::instance().toCSV();
+                    out.write(csv.data(), csv.length());
+                    out.flush();
+                }
+            }
+        }
+    }
+}
+
 TEST_F(VisualRoadTestFixture, testRunWorkloadWithTilingAfter) {
     auto outPath = StatsFile("UniformWorkloadWithTilingAfter.csv");
     SetUpOutFile(outPath);

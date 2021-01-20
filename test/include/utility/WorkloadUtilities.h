@@ -38,6 +38,23 @@ private:
     unsigned int framerate_;
 };
 
+class ZipfFrameGenerator : public FrameGenerator {
+public:
+    ZipfFrameGenerator(const std::string &video, unsigned int duration, int totalFrames, int framerate)
+        : framerate_(framerate) {
+        auto maxStartingSecond = totalFrames / framerate - duration;
+        distribution_ = std::make_unique<ZipfDistribution>(maxStartingSecond, 1.0);
+    }
+
+    int nextFrame(std::default_random_engine &generator) override {
+        return (*distribution_)(generator) * framerate_;
+    }
+
+private:
+    std::unique_ptr<ZipfDistribution> distribution_;
+    unsigned int framerate_;
+};
+
 template<typename MetadataSpecificationType>
 class UniformRandomObjectWorkloadGenerator : public WorkloadGenerator<MetadataSpecificationType> {
 public:

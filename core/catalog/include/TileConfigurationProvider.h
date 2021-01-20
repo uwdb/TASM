@@ -318,7 +318,7 @@ public:
           frameHeight_(frameHeight),
           buffer_(std::any_cast<int>(buffer.value_or(std::make_any<int>(32))))
     {
-        std::cout << "Creating config with buffer " << buffer_ << std::endl;
+//        std::cout << "Creating config with buffer " << buffer_ << std::endl;
     }
 
     unsigned int maximumNumberOfTiles() override {

@@ -67,14 +67,14 @@ std::string TiledName(const std::string &video) {
     return video + "-vr";
 }
 
-template <typename MetadataSpecificationType>
+template <typename MetadataSpecificationType, typename FrameGeneratorType>
 std::unique_ptr<utility::WorkloadGenerator<MetadataSpecificationType>> GetGenerator(const std::string &video, std::default_random_engine *generator) {
     return std::make_unique<utility::UniformRandomObjectWorkloadGenerator<MetadataSpecificationType>>(
             video,
             QUERY_OBJECTS,
             QUERY_DURATION,
             generator,
-            std::make_unique<utility::UniformFrameGenerator>(video, QUERY_DURATION, VideoToNumFrames.at(video), VideoToFramerate.at(video)),
+            std::make_unique<FrameGeneratorType>(video, QUERY_DURATION, VideoToNumFrames.at(video), VideoToFramerate.at(video)),
 //            std::make_unique<utility::UniformFrameGenerator>(video, QUERY_DURATION, 300, VideoToFramerate.at(video)),
             VideoToFramerate.at(video));
 }
@@ -133,7 +133,7 @@ TEST_F(VisualRoadTestFixture, testRunWorkloadWithNoTiling) {
 
         // Get workload generator.
         std::default_random_engine generator(SEED);
-        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification>(video, &generator);
+        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification, utility::UniformFrameGenerator>(video, &generator);
 
         for (auto i = 0u; i < NUM_QUERIES; ++i) {
             std::string object;
@@ -179,7 +179,7 @@ TEST_F(VisualRoadTestFixture, testRunWorkloadWithTiling) {
 
         // Get workload generator.
         std::default_random_engine generator(SEED);
-        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification>(video, &generator);
+        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification, utility::UniformFrameGenerator>(video, &generator);
 
         auto videoDimensions = VideoToDimensions.at(video);
         bool readEntireGOPs = true;
@@ -275,7 +275,7 @@ TEST_F(VisualRoadTestFixture, testRunWorkloadWithDetectionAndTilingBefore) {
 
         // Get workload generator.
         std::default_random_engine generator(SEED);
-        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification>(video, &generator);
+        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification, utility::UniformFrameGenerator>(video, &generator);
 
         auto videoDimensions = VideoToDimensions.at(video);
         for (auto i = 0u; i < NUM_QUERIES; ++i) {
@@ -302,6 +302,290 @@ TEST_F(VisualRoadTestFixture, testRunWorkloadWithDetectionAndTilingBefore) {
             auto csv = StatsCollector::instance().toCSV();
             out.write(csv.data(), csv.length());
             out.flush();
+        }
+    }
+}
+
+void WriteStats(std::ofstream &out) {
+    auto csv = StatsCollector::instance().toCSV();
+    out.write(csv.data(), csv.length());
+    out.flush();
+}
+
+TEST_F(VisualRoadTestFixture, testRunWorkloadWithZipfDistributionAndRegretTiling) {
+    auto outPath = StatsFile("ZipfWorkloadWithRegretTiling.csv");
+    SetUpOutFile(outPath);
+    std::ofstream out(outPath);
+    for (const auto &video : VIDEOS) {
+        auto yolo = lightdb::extensibility::Load("yologpu");
+        auto videoId = TiledName(video);
+
+        // Delete past tilings of this video.
+        DeleteTilesPastNum(videoId, VideoToMaxTile.at(video));
+        ResetTileNum(videoId, VideoToMaxTile.at(video));
+
+        // Get workload generator.
+        std::default_random_engine generator(SEED);
+        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification, utility::ZipfFrameGenerator>(video, &generator);
+
+        // Create regret accumulator.
+        auto videoDimensions = VideoToDimensions.at(video);
+        bool readEntireGOPs = true;
+        auto regretAccumulator = std::make_shared<TASMRegretAccumulator>(
+                videoId,
+                videoDimensions.first, videoDimensions.second, VideoToFramerate.at(video),
+                REGRET_THRESHOLD,
+                readEntireGOPs);
+
+        for (auto i = 0u; i < NUM_QUERIES; ++i) {
+            std::string object;
+            auto selection = queryGenerator->getNextQuery(i, &object);
+
+            std::cout << "Video " << video << std::endl;
+            std::cout << "Query-object " << object << std::endl;
+            std::cout << "Iteration " << i << std::endl;
+            std::cout << "First-frame " << selection->firstFrame() << std::endl;
+            std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+
+            {
+                StatsCollector::instance().setUpNewQuery(video, i, "tiling", "select");
+                AddQueryStats(selection, object);
+                Coordinator().execute(
+                        ScanMultiTiled(
+                                videoId
+                        ).Select(
+                                *selection, yolo, {{MetadataOptions::MetadataIdentifier, videoId}}
+                        ).Save(
+                                OutputVideoName(object, selection->firstFrame(), selection->lastFrame(), true)
+                        )
+                );
+                WriteStats(out);
+            }
+            {
+                StatsCollector::instance().setQueryComponent("crack");
+                Coordinator().execute(
+                        ScanAndRetile(
+                                videoId,
+                                video,
+                                *selection,
+                                VideoToFramerate.at(video),
+                                CrackingStrategy::SmallTiles,
+                                RetileStrategy::RetileBasedOnRegret,
+                                regretAccumulator,
+                                {},
+                                {{RetileOptions::SplitByGOP, true}}
+                        )
+                );
+                WriteStats(out);
+            }
+        }
+    }
+}
+
+TEST_F(VisualRoadTestFixture, testRunWorkloadWithZipfDistributionAndDetectionAndRegretTiling) {
+    auto outPath = StatsFile("ZipfWorkloadWithDetectionAndRegretTiling.csv");
+    SetUpOutFile(outPath);
+    std::ofstream out(outPath);
+    for (const auto &video : VIDEOS) {
+        auto yolo = lightdb::extensibility::Load("yologpu");
+        auto videoId = TiledName(video);
+
+        // Delete past object detections.
+        std::string metadataId = videoId + "-clean";
+        DeleteDatabase(metadataId);
+
+        // Delete past tilings of this video.
+        DeleteTilesPastNum(videoId, VideoToMaxTile.at(video));
+        ResetTileNum(videoId, VideoToMaxTile.at(video));
+
+        // Get workload generator.
+        std::default_random_engine generator(SEED);
+        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification, utility::ZipfFrameGenerator>(video, &generator);
+
+        // Create regret accumulator.
+        auto videoDimensions = VideoToDimensions.at(video);
+        bool readEntireGOPs = true;
+        auto regretAccumulator = std::make_shared<TASMRegretAccumulator>(
+                videoId,
+                videoDimensions.first, videoDimensions.second, VideoToFramerate.at(video),
+                REGRET_THRESHOLD,
+                readEntireGOPs);
+
+        for (auto i = 0u; i < NUM_QUERIES; ++i) {
+            std::string object;
+            auto selection = queryGenerator->getNextQuery(i, &object);
+
+            std::cout << "Video " << video << std::endl;
+            std::cout << "Query-object " << object << std::endl;
+            std::cout << "Iteration " << i << std::endl;
+            std::cout << "First-frame " << selection->firstFrame() << std::endl;
+            std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+
+            {
+                StatsCollector::instance().setUpNewQuery(video, i, "tiling-detect-regret", "select");
+                AddQueryStats(selection, object);
+                Coordinator().execute(
+                        ScanMultiTiled(
+                                videoId
+                        ).Select(
+                                *selection, yolo, {{MetadataOptions::MetadataIdentifier, metadataId}}
+                        ).Save(
+                                OutputVideoName(object, selection->firstFrame(), selection->lastFrame(), true)
+                        )
+                );
+                WriteStats(out);
+            }
+            {
+                StatsCollector::instance().setQueryComponent("crack");
+                Coordinator().execute(
+                        ScanAndRetile(
+                                videoId,
+                                video,
+                                *selection,
+                                VideoToFramerate.at(video),
+                                CrackingStrategy::SmallTiles,
+                                RetileStrategy::RetileBasedOnRegret,
+                                regretAccumulator,
+                                {},
+                                {{RetileOptions::SplitByGOP, true},
+                                 {MetadataOptions::MetadataIdentifier, metadataId}}
+                        )
+                );
+                WriteStats(out);
+            }
+        }
+    }
+}
+
+TEST_F(VisualRoadTestFixture, testRunWorkloadWithZipfDistributionNoTiling) {
+    auto outPath = StatsFile("ZipfWorkloadWithNoTiling.csv");
+    SetUpOutFile(outPath);
+    std::ofstream out(outPath);
+    for (const auto &video : VIDEOS) {
+        auto yolo = lightdb::extensibility::Load("yologpu");
+        auto videoId = TiledName(video);
+
+        // Delete the past object detections.
+//        DeleteDatabase(videoId);
+
+        // Delete past tilings of this video.
+        DeleteTilesPastNum(videoId, VideoToMaxTile.at(video));
+        ResetTileNum(videoId, VideoToMaxTile.at(video));
+
+        // Get workload generator.
+        std::default_random_engine generator(SEED);
+        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification, utility::ZipfFrameGenerator>(video, &generator);
+
+        for (auto i = 0u; i < NUM_QUERIES; ++i) {
+            std::string object;
+            auto selection = queryGenerator->getNextQuery(i, &object);
+
+            std::cout << "Video " << video << std::endl;
+            std::cout << "Query-object " << object << std::endl;
+            std::cout << "Iteration " << i << std::endl;
+            std::cout << "First-frame " << selection->firstFrame() << std::endl;
+            std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+
+            StatsCollector::instance().setUpNewQuery(video, i, "untiled", "select");
+            AddQueryStats(selection, object);
+            Coordinator().execute(
+                    ScanMultiTiled(
+                            videoId
+                    ).Select(
+                            *selection, yolo, {{MetadataOptions::MetadataIdentifier, videoId}, {ScanOptions::ReadAllFrames, true}, {ScanOptions::IsReadingUntiledVideo, true}}
+                    ).Save(
+                            OutputVideoName(object, selection->firstFrame(), selection->lastFrame(), false)
+                    )
+            );
+            WriteStats(out);
+        }
+    }
+}
+
+TEST_F(VisualRoadTestFixture, testRunWorkloadWithZipfDistributionWithDetectNoTiling) {
+    auto outPath = StatsFile("ZipfWorkloadWithNoTilingWithDetect.csv");
+    SetUpOutFile(outPath);
+    std::ofstream out(outPath);
+    for (const auto &video : VIDEOS) {
+        auto yolo = lightdb::extensibility::Load("yologpu");
+        auto videoId = TiledName(video);
+
+        // Delete past object detections.
+        std::string metadataId = videoId + "-clean";
+        DeleteDatabase(metadataId);
+
+        // Delete past tilings of this video.
+        DeleteTilesPastNum(videoId, VideoToMaxTile.at(video));
+        ResetTileNum(videoId, VideoToMaxTile.at(video));
+
+        // Get workload generator.
+        std::default_random_engine generator(SEED);
+        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification, utility::ZipfFrameGenerator>(video, &generator);
+
+        for (auto i = 0u; i < NUM_QUERIES; ++i) {
+            std::string object;
+            auto selection = queryGenerator->getNextQuery(i, &object);
+
+            std::cout << "Video " << video << std::endl;
+            std::cout << "Query-object " << object << std::endl;
+            std::cout << "Iteration " << i << std::endl;
+            std::cout << "First-frame " << selection->firstFrame() << std::endl;
+            std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+
+            StatsCollector::instance().setUpNewQuery(video, i, "untiled-detect", "select");
+            AddQueryStats(selection, object);
+            Coordinator().execute(
+                    ScanMultiTiled(
+                            videoId
+                    ).Select(
+                            *selection, yolo, {{MetadataOptions::MetadataIdentifier, metadataId}}
+                    ).Save(
+                            OutputVideoName(object, selection->firstFrame(), selection->lastFrame(), false)
+                    )
+            );
+            WriteStats(out);
+        }
+    }
+}
+
+TEST_F(VisualRoadTestFixture, testRunWorkloadWithZipfDistributionNoTilingMatchingQueryPlan) {
+    auto outPath = StatsFile("ZipfWorkloadWithNoTilingMatchingQueryPlan.csv");
+    SetUpOutFile(outPath);
+    std::ofstream out(outPath);
+    for (const auto &video : VIDEOS) {
+        auto yolo = lightdb::extensibility::Load("yologpu");
+        auto videoId = TiledName(video);
+
+        // Delete past tilings of this video.
+        DeleteTilesPastNum(videoId, VideoToMaxTile.at(video));
+        ResetTileNum(videoId, VideoToMaxTile.at(video));
+
+        // Get workload generator.
+        std::default_random_engine generator(SEED);
+        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification, utility::ZipfFrameGenerator>(video, &generator);
+
+        for (auto i = 0u; i < NUM_QUERIES; ++i) {
+            std::string object;
+            auto selection = queryGenerator->getNextQuery(i, &object);
+
+            std::cout << "Video " << video << std::endl;
+            std::cout << "Query-object " << object << std::endl;
+            std::cout << "Iteration " << i << std::endl;
+            std::cout << "First-frame " << selection->firstFrame() << std::endl;
+            std::cout << "Last-frame " << selection->lastFrame() << std::endl;
+
+            StatsCollector::instance().setUpNewQuery(video, i, "untiled-full-query-plan", "select");
+            AddQueryStats(selection, object);
+            Coordinator().execute(
+                    ScanMultiTiled(
+                            videoId
+                    ).Select(
+                            *selection, yolo, {{MetadataOptions::MetadataIdentifier, videoId}}
+                    ).Save(
+                            OutputVideoName(object, selection->firstFrame(), selection->lastFrame(), false)
+                    )
+            );
+            WriteStats(out);
         }
     }
 }
@@ -359,7 +643,7 @@ TEST_F(VisualRoadTestFixture, testRunWorkloadWithTilingAfter) {
 
         // Get workload generator.
         std::default_random_engine generator(SEED);
-        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification>(video, &generator);
+        auto queryGenerator = GetGenerator<PixelsInFrameMetadataSpecification, utility::UniformFrameGenerator>(video, &generator);
 
         auto videoDimensions = VideoToDimensions.at(video);
         bool readEntireGOPs = true;

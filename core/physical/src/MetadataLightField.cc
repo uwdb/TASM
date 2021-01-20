@@ -193,7 +193,7 @@ namespace lightdb::metadata {
                 ? lightdb::associations::VideoPathToLabelsPath.at(videoIdentifier_)
                 : "/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/" + videoIdentifier_ + ".db";
 
-        std::cout << "Opening database at " << dbPath_ << std::endl;
+//        std::cout << "Opening database at " << dbPath_ << std::endl;
         if (!std::filesystem::exists(dbPath_))
             createDatabase();
 

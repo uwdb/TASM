@@ -159,14 +159,14 @@ std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForQuery(sq
     return rectangles;
 }
 
-void SemanticIndexOG::openDatabase(const std::experimental::filesystem::path &dbPath) {
+void SemanticIndexWH::openDatabase(const std::experimental::filesystem::path &dbPath) {
     if (!std::experimental::filesystem::exists(dbPath))
         createDatabase(dbPath);
     else
         ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE, NULL));
 }
 
-void SemanticIndexOG::createDatabase(const std::experimental::filesystem::path &dbPath) {
+void SemanticIndexWH::createDatabase(const std::experimental::filesystem::path &dbPath) {
     ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL));
 
     const char *createTable = "CREATE TABLE labels (" \
@@ -185,21 +185,21 @@ void SemanticIndexOG::createDatabase(const std::experimental::filesystem::path &
     }
 }
 
-void SemanticIndexOG::closeDatabase() {
+void SemanticIndexWH::closeDatabase() {
     ASSERT_SQLITE_OK(sqlite3_close(db_));
 }
 
-void SemanticIndexOG::initializeStatements() {
+void SemanticIndexWH::initializeStatements() {
     // addMetadataStmt_
     std::string query = "INSERT INTO labels (label, frame, x, y, width, height) VALUES (?, ?, ?, ?, ?, ?)";
     ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &addMetadataStmt_, nullptr));
 }
 
-void SemanticIndexOG::destroyStatements() {
+void SemanticIndexWH::destroyStatements() {
     ASSERT_SQLITE_OK(sqlite3_finalize(addMetadataStmt_));
 }
 
-void SemanticIndexOG::addMetadata(
+void SemanticIndexWH::addMetadata(
         const std::string &video,
         const std::string &label,
         unsigned int frame,
@@ -218,7 +218,7 @@ void SemanticIndexOG::addMetadata(
     ASSERT_SQLITE_OK(sqlite3_reset(addMetadataStmt_));
 }
 
-std::unique_ptr<std::vector<int>> SemanticIndexOG::orderedFramesForSelection(
+std::unique_ptr<std::vector<int>> SemanticIndexWH::orderedFramesForSelection(
         const std::string &video,
         std::shared_ptr<MetadataSelection> metadataSelection,
         std::shared_ptr<TemporalSelection> temporalSelection) {
@@ -243,7 +243,7 @@ std::unique_ptr<std::vector<int>> SemanticIndexOG::orderedFramesForSelection(
     return frames;
 }
 
-std::unique_ptr<std::list<Rectangle>> SemanticIndexOG::rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame, unsigned int maxWidth, unsigned int maxHeight) {
+std::unique_ptr<std::list<Rectangle>> SemanticIndexWH::rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame, unsigned int maxWidth, unsigned int maxHeight) {
     std::string query = "SELECT frame, x, y, width, height FROM labels WHERE " + metadataSelection->labelConstraints() + " AND frame = ?";
     sqlite3_stmt *select;
     ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
@@ -252,7 +252,7 @@ std::unique_ptr<std::list<Rectangle>> SemanticIndexOG::rectanglesForFrame(const 
     return rectanglesForQuery(select, maxWidth, maxHeight);
 }
 
-std::unique_ptr<std::list<Rectangle>> SemanticIndexOG::rectanglesForFrames(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int firstFrameInclusive, int lastFrameExclusive) {
+std::unique_ptr<std::list<Rectangle>> SemanticIndexWH::rectanglesForFrames(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int firstFrameInclusive, int lastFrameExclusive) {
     std::string query = "SELECT frame, x, y, width, height FROM labels WHERE " + metadataSelection->labelConstraints() + " AND frame >= ? AND frame < ?";
     sqlite3_stmt *select;
     ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
@@ -262,7 +262,7 @@ std::unique_ptr<std::list<Rectangle>> SemanticIndexOG::rectanglesForFrames(const
     return rectanglesForQuery(select);
 }
 
-std::unique_ptr<std::list<Rectangle>> SemanticIndexOG::rectanglesForQuery(sqlite3_stmt *select, unsigned int maxWidth, unsigned int maxHeight) {
+std::unique_ptr<std::list<Rectangle>> SemanticIndexWH::rectanglesForQuery(sqlite3_stmt *select, unsigned int maxWidth, unsigned int maxHeight) {
     auto rectangles = std::make_unique<std::list<Rectangle>>();
     int result;
     while ((result = sqlite3_step(select)) == SQLITE_ROW) {

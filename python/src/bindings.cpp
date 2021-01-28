@@ -48,7 +48,7 @@ BOOST_PYTHON_MODULE(_tasm) {
 
     class_<tasm::TASM, boost::noncopyable>("BaseTASM", no_init);
 
-    def("tasm_from_db", &tasm::python::tasmFromOG, return_value_policy<manage_new_object>());
+    def("tasm_from_db", &tasm::python::tasmFromWH, return_value_policy<manage_new_object>());
     def("set_resources_path", &tasm::python::setCatalogPath);
 
     class_<tasm::python::PythonTASM, std::shared_ptr<tasm::python::PythonTASM>, bases<tasm::TASM>, boost::noncopyable>("TASM")

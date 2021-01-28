@@ -14,8 +14,8 @@ namespace tasm {
 class TASM {
 public:
     enum class IndexType {
-        New,
-        OG,
+        XY,
+        WH,
     };
 
     TASM()
@@ -27,7 +27,7 @@ public:
     {}
 
     TASM(std::experimental::filesystem::path dbPath, IndexType indexType)
-        : semanticIndex_(indexType == IndexType::OG ? new SemanticIndexOG(dbPath) : new SemanticIndexSQLite(dbPath))
+        : semanticIndex_(indexType == IndexType::WH ? new SemanticIndexWH(dbPath) : new SemanticIndexSQLite(dbPath))
     {}
 
     TASM(const TASM&) = delete;

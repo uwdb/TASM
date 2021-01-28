@@ -53,8 +53,8 @@ public:
         : TASM()
     {}
 
-    PythonTASM(const std::string ogDBPath, TASM::IndexType indexType)
-        : TASM(ogDBPath, indexType)
+    PythonTASM(const std::string dbPath, TASM::IndexType indexType)
+        : TASM(dbPath, indexType)
     {}
 
     void addBulkMetadataFromList(boost::python::list metadataInfo) {
@@ -132,8 +132,8 @@ public:
 
 };
 
-PythonTASM *tasmFromOG(const std::string &ogDBPath) {
-    return new PythonTASM(ogDBPath, TASM::IndexType::OG);
+PythonTASM *tasmFromWH(const std::string &whDBPath) {
+    return new PythonTASM(whDBPath, TASM::IndexType::WH);
 }
 
 void setCatalogPath(const std::string &resourcesPath) {

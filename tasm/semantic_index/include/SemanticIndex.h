@@ -104,9 +104,9 @@ protected:
     sqlite3_stmt *addMetadataStmt_;
 };
 
-class SemanticIndexOG : public SemanticIndexSQLite {
+class SemanticIndexWH : public SemanticIndexSQLite {
 public:
-    SemanticIndexOG(std::experimental::filesystem::path dbPath) {
+    SemanticIndexWH(std::experimental::filesystem::path dbPath) {
         openDatabase(dbPath);
         initializeStatements();
     }

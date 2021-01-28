@@ -30,6 +30,12 @@ private:
     std::experimental::filesystem::path catalogPath_;
 };
 
+namespace files {
+static std::experimental::filesystem::path PathForVideo(const std::string &video) {
+    return CatalogConfiguration::CatalogPath() / video;
+}
+} // namespace tasm::files
+
 class Video {
 public:
     Video(const std::experimental::filesystem::path &path)
@@ -48,7 +54,7 @@ private:
 class TiledEntry {
 public:
     TiledEntry(const std::string &name, const std::string &metadataIdentifier = "")
-            : TiledEntry(name, CatalogConfiguration::CatalogPath() / name, metadataIdentifier)
+            : TiledEntry(name, files::PathForVideo(name), metadataIdentifier)
     {}
 
     TiledEntry(const std::string &name, const std::experimental::filesystem::path &path, const std::string &metadataIdentifier = "")

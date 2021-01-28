@@ -1,4 +1,5 @@
 #include "Tasm.h"
+#include "Video.h"
 #include <gtest/gtest.h>
 #include "sqlite3.h"
 
@@ -70,8 +71,21 @@ TEST_F(TasmTestFixture, testSelectDifferentPath) {
 }
 
 TEST_F(TasmTestFixture, testTileBird) {
+    std::experimental::filesystem::path path("testLabels.db");
+    std::experimental::filesystem::remove(path);
+
     tasm::TASM tasm;
-    tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-not-forced", "birdsincage", "bird", false);
+    std::string video("birdsincage");
+    std::string label("bird");
+    for (int i = 0; i < 10; ++i)
+        tasm.addMetadata(video, label, i, 0, 0, 100, 100);
+
+    tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-not-forced", video, label, false);
+    tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-forced", video, label, true);
+
+    std::experimental::filesystem::remove_all(tasm::files::PathForVideo("birdsincage-not-forced"));
+    std::experimental::filesystem::remove_all(tasm::files::PathForVideo("birdsincage-forced"));
+    std::experimental::filesystem::remove(path);
 }
 
 TEST_F(TasmTestFixture, testTileElFuente1) {

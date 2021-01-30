@@ -36,7 +36,7 @@ TEST_F(VideoManagerTestFixture, testSelect) {
     std::experimental::filesystem::remove(labels);
     auto semanticIndex = std::make_shared<SemanticIndexSQLite>(labels);
 
-    std::string video("red10");
+    std::string video("red10-2x2");
     std::string label("fish");
     for (int i = 0; i < 10; ++i)
         semanticIndex->addMetadata(video, label, i, 5, 5, 20, 100);
@@ -45,6 +45,7 @@ TEST_F(VideoManagerTestFixture, testSelect) {
     std::shared_ptr<TemporalSelection> temporalSelection;
 
     VideoManager manager;
+    manager.storeWithUniformLayout("/home/maureen/red102k.mp4", "red10-2x2", 2, 2);
     manager.select(video, video, metadataSelection, temporalSelection, semanticIndex);
 
     std::experimental::filesystem::remove(labels);

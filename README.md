@@ -2,6 +2,11 @@
 
 Prototype implementation of TASM, which is a tile-based storage manager video analytics. See the [paper](https://arxiv.org/abs/2006.02958) for more details.
 
+# Building
+`mkdir build; cd build`  
+`cmake -DCMAKE_BUILD_TYPE=Debug ..`  
+`make`  
+
 # Example usage
 
 - After building TASM, `cd <build>/python` to ensure python can find the library.

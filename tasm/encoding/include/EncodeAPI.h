@@ -2,9 +2,9 @@
 #define TASM_ENCODEAPI_H
 
 #include "nvEncodeAPI.h"
-#include "nvUtils.h"
 #include <cuda.h>
 #include <cassert>
+#include <cstring>
 #include <functional>
 
 class GPUContext;
@@ -23,6 +23,14 @@ struct MotionEstimationBuffer;
 #include <string.h>
 #define NVENCAPI
 #endif
+
+inline bool operator==(const GUID &guid1, const GUID &guid2) {
+    return !memcmp(&guid1, &guid2, sizeof(GUID));
+}
+
+inline bool operator!=(const GUID &guid1, const GUID &guid2) {
+    return !(guid1 == guid2);
+}
 
 #define DEFAULT_I_QFACTOR -0.8f
 #define DEFAULT_B_QFACTOR 1.25f
@@ -86,7 +94,7 @@ protected:
     GUID                                                 codecGUID;
 
     NV_ENCODE_API_FUNCTION_LIST*                         m_pEncodeAPI;
-    HINSTANCE                                            m_hinstLib;
+    void                                                 *m_hinstLib;
     FrameEncodedHandler                                  *frameEncodedHandler;
     MotionEstimationEncodedHandler                       *motionEstimationEncodedHandler;
     EncodeSessionHandle                                  *encodeSessionHandle;

@@ -4,6 +4,8 @@ Prototype implementation of TASM, which is a tile-based storage manager video an
 
 # Example usage
 
+- After building TASM, `cd <build>/python` to ensure python can find the library.
+
 ```
 import tasm
 

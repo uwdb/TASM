@@ -1,4 +1,4 @@
-project(LightDB)
+project(Tasm)
 cmake_minimum_required(VERSION 3.10)
 
 SET(BOOST_MIN_VERSION "1.64.0")
@@ -53,7 +53,7 @@ include_directories(SYSTEM ${PYTHON_INCLUDE_DIRS})
 
 find_package(Boost 1.64 COMPONENTS python filesystem system REQUIRED)
 include_directories(SYSTEM ${Boost_INCLUDE_DIR})
-set(LIGHTDB_LIB_DEPENDENCIES ${LIGHTDB_LIB_DEPENDENCIES} ${Boost_LIBRARIES})
+set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${Boost_LIBRARIES})
 
 find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVFORMAT AVUTIL SWSCALE)
 include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
@@ -63,7 +63,7 @@ set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${FFMPEG_LIBRARIES})
 find_package(Protobuf REQUIRED)
 include_directories(${PROTOBUF_INCLUDE_DIR})
 include_directories(SYSTEM ${CMAKE_BINARY_DIR}/protobuf)
-set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${Protobuf_LIBRARIES} lightdb_protobuf)
+set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${Protobuf_LIBRARIES} tasm_protobuf)
 add_subdirectory(protobuf)
 
 find_package (Glog REQUIRED)

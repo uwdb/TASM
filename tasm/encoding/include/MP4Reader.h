@@ -95,7 +95,7 @@ public:
 private:
     void setUpGFIsomFile() {
         file_ = gf_isom_open(filename_.c_str(), GF_ISOM_OPEN_READ, nullptr);
-        u32 flags = GF_ISOM_NALU_EXTRACT_INBAND_PS_FLAG | GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG;
+        GF_ISONaluExtractMode flags = GF_ISOM_NALU_EXTRACT_ANNEXB_FLAG;
         // I think the ANNEXB flag adds AUD NALS.
         auto result = gf_isom_set_nalu_extract_mode(file_, 1, flags);
         assert(result == GF_OK);

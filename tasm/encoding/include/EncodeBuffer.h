@@ -25,7 +25,7 @@ struct EncodeOutputBuffer
 {
     unsigned int          bitstreamBufferSize;
     NV_ENC_OUTPUT_PTR     bitstreamBuffer;
-    HANDLE                outputEvent;
+    void                  *outputEvent;
     bool                  waitOnEvent;
     bool                  EOSFlag;
 };

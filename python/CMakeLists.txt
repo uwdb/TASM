@@ -13,9 +13,9 @@ target_link_libraries(_tasm ${Boost_LIBRARIES} ${Python3_LIBRARIES} ${TASM_LIB_D
 
 # Suppress prefix "lib" because Python does not allow this prefix
 set_target_properties(_tasm PROPERTIES PREFIX "")
-set_target_properties(_tasm PROPERTIES LIBRARY_OUTPUT_DIRECTORY tasm)
+set_target_properties(_tasm PROPERTIES LIBRARY_OUTPUT_DIRECTORY python_package/tasm)
 # Set target architectures.
 set_property(TARGET _tasm PROPERTY CUDA_ARCHITECTURES OFF)
 
-file(COPY tasm DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY python_package DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 

@@ -2,7 +2,7 @@ FROM ubuntu:18.04
 MAINTAINER Maureen Daum "mdaum@cs.washington.edu"
 
 ARG CUDA_URL=https://developer.nvidia.com/compute/cuda/9.0/Prod/local_installers/cuda_9.0.176_384.81_linux-run
-ARG GPAC_URL=https://github.com/gpac/gpac/archive/v1.0.1.tar.gz
+ARG GPAC_URL=https://github.com/gpac/gpac/archive/v0.7.1.tar.gz
 ARG INTEL_REPOSITORY_URL=https://apt.repos.intel.com/setup/intelproducts.list
 ARG INTEL_KEY_URL=https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
 ARG CMAKE_KEY_URL=https://apt.kitware.com/keys/kitware-archive-latest.asc
@@ -40,9 +40,6 @@ RUN apt-get install \
       protobuf-compiler \
       libgoogle-glog-dev \
       libgtest-dev \
-      libavcodec-dev \
-      libavformat-dev \
-      libavdevice-dev \
       nvidia-384 \
       git \
       python3-dev \
@@ -50,7 +47,15 @@ RUN apt-get install \
       sqlite3 \
       libsqlite3-dev \
       vim \
-      less
+      less \
+      software-properties-common
+
+RUN add-apt-repository ppa:jonathonf/ffmpeg-4 && \
+    apt-get update && \
+    apt install -y ffmpeg \
+      libavcodec-dev \
+      libavformat-dev \
+      libavdevice-dev
 
 # Install GPAC
 RUN wget $GPAC_URL -q -O gpac.tar.gz && \

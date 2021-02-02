@@ -7,4 +7,4 @@ ENV NVIDIA_DRIVER_CAPABILITIES compute,utility,video
 COPY . /tasm
 
 RUN mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
-RUN cd python
+WORKDIR /tasm/build/python

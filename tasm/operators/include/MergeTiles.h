@@ -10,6 +10,25 @@ namespace tasm {
 class SemanticDataManager;
 class TileLayoutProvider;
 
+class TransformToRGB : public Operator<GPUDecodedFrameData> {
+public:
+    TransformToRGB(
+            std::shared_ptr<ConfigurationOperator<GPUDecodedFrameData>> parent
+    )
+        : isComplete_(false),
+        parent_(parent)
+    { }
+
+    bool isComplete() override { return isComplete_; }
+    std::optional<GPUDecodedFrameData> next() override;
+
+private:
+    bool isComplete_;
+    std::shared_ptr<ConfigurationOperator<GPUDecodedFrameData>> parent_;
+
+    static const unsigned int numChannels_ = 4;
+};
+
 class MergeTilesOperator : public Operator<GPUPixelDataContainer> {
 public:
     MergeTilesOperator(

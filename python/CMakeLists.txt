@@ -3,7 +3,8 @@ add_library(_tasm SHARED src/bindings.cpp)
 find_package(Python3 COMPONENTS Development)
 include_directories(${Python3_INCLUDE_DIRS})
 
-find_package(Boost 1.64 COMPONENTS python numpy filesystem system REQUIRED)
+find_package(Boost 1.75 REQUIRED COMPONENTS python36 numpy36)
+message("Python directories: ${Boost_INCLUDE_DIR} ${Boost_LIBRARIES} ${Python3_LIBRARIES}")
 include_directories(${Boost_INCLUDE_DIR})
 
 include_directories(${TASM_INCLUDE_DIRS} include)

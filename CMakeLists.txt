@@ -1,8 +1,6 @@
 project(Tasm)
 cmake_minimum_required(VERSION 3.10)
 
-SET(BOOST_MIN_VERSION "1.64.0")
-
 # Set the cmake Module path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 

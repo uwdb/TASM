@@ -1,4 +1,5 @@
-from _tasm import *
+# TODO: actually install this library.
+from tasm._tasm import *
 
 def numpy_array(self):
     return self.array().reshape(self.height(), self.width(), -1)[:,:,:3]

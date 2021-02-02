@@ -40,14 +40,17 @@ RUN apt-get install \
       protobuf-compiler \
       libgoogle-glog-dev \
       libgtest-dev \
-      libopencv-dev \
       libavcodec-dev \
       libavformat-dev \
       libavdevice-dev \
-      libboost1.65-all-dev \
       nvidia-384 \
       git \
-      python3-dev
+      python3-dev \
+      python3-pip \
+      sqlite3 \
+      libsqlite3-dev \
+      vim \
+      less
 
 # Install GPAC
 RUN wget $GPAC_URL -q -O gpac.tar.gz && \
@@ -71,5 +74,18 @@ RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 100 --slave /u
 # Set gcc-6 to be the compiler for cuda
 RUN ln -s /usr/bin/gcc-6 /usr/local/cuda/bin/gcc
 RUN ln -s /usr/bin/g++-6 /usr/local/cuda/bin/g++6
+
+RUN pip3 install numpy matplotlib
+
+# Install boost python
+RUN cd /usr/src && \
+    wget --no-verbose https://dl.bintray.com/boostorg/release/1.75.0/source/boost_1_75_0.tar.gz && \
+    tar xzf boost_1_75_0.tar.gz && \
+    cd boost_1_75_0 && \
+    ./bootstrap.sh --with-python=$(which python3) && \
+    ./b2 install && \
+    ldconfig && \
+    cd / && \
+    rm -r /usr/src
 
 WORKDIR ./tasm

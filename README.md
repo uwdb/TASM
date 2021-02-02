@@ -2,7 +2,13 @@
 
 Prototype implementation of TASM, which is a tile-based storage manager video analytics. See the [paper](https://arxiv.org/abs/2006.02958) for more details.
 
+# Building Docker container
+`docker build -t tasm/environment -f docker/Dockerfile.environment  .`  
+`docker build -t tasm/tasm -f docker/Dockerfile .`  
+`docker run --rm -it --runtime=nvidia --name tasm tasm/tasm:latest /bin/bash`  
+
 # Example usage
+`python3`  
 
 ```
 import tasm

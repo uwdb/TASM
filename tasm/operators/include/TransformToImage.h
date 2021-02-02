@@ -16,17 +16,8 @@ public:
             : parent_(parent),
             maxWidth_(maxWidth),
             maxHeight_(maxHeight),
-            isComplete_(false),
-            tmpImage_(0),
-            tmpImagePitch_(numChannels_ * maxWidth_) {}
-
-    ~TransformToImage() override {
-        if (!tmpImage_)
-            return;
-
-        auto result = cuMemFree(tmpImage_);
-        assert(result == CUDA_SUCCESS);
-    }
+            isComplete_(false)
+     {}
 
     bool isComplete() override { return isComplete_; }
     std::optional<std::unique_ptr<std::vector<ImagePtr>>> next() override;
@@ -37,9 +28,7 @@ private:
     unsigned int maxHeight_;
     bool isComplete_;
 
-    CUdeviceptr tmpImage_;
     static const unsigned int numChannels_ = 4;
-    unsigned int tmpImagePitch_;
 };
 
 } // namespace tasm

@@ -136,15 +136,16 @@ std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
     configuration->maxHeight = maxHeight;
 
     std::shared_ptr<GPUDecodeFromCPU> decode(new GPUDecodeFromCPU(scan, *configuration, gpuContext_, lock_, maxWidth, maxHeight));
+    auto toRGB = std::make_shared<TransformToRGB>(decode);
 
     // Transform tiles to pixel blobs.
     std::shared_ptr<Operator<GPUPixelDataContainer>> mergeOperator;
     if (selectStrategy == SelectStrategy::Objects) {
         std::cout << "Merging pixels to recover objects" << std::endl;
-        mergeOperator = std::make_shared<MergeTilesOperator>(decode, semanticDataManager, tileLocationProvider);
+        mergeOperator = std::make_shared<MergeTilesOperator>(toRGB, semanticDataManager, tileLocationProvider);
     } else {
         std::cout << "Returning raw tiles" << std::endl;
-        mergeOperator = std::make_shared<TilesToPixelsOperator>(decode);
+        mergeOperator = std::make_shared<TilesToPixelsOperator>(toRGB);
     }
 
     // Transform pixels to RGB images.

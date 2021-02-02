@@ -141,8 +141,8 @@ bool VideoDecoder::reconfigureDecoderIfNecessary(CUVIDEOFORMAT *newFormat) {
     reconfigParams.display_area.right = newFormat->display_area.right;
     reconfigParams.display_area.bottom = newFormat->display_area.bottom;
 
-    reconfigParams.ulTargetWidth = newFormat->coded_width;
-    reconfigParams.ulTargetHeight = newFormat->coded_height;
+    reconfigParams.ulTargetWidth = newFormat->display_area.right - newFormat->display_area.left;
+    reconfigParams.ulTargetHeight = newFormat->display_area.bottom - newFormat->display_area.top;
 
     reconfigParams.ulNumDecodeSurfaces = newFormat->min_num_decode_surfaces;
 

@@ -185,10 +185,15 @@ public:
         copy(lock, {lumaPlaneParameters, chromaPlaneParameters});
     }
 
-protected:
+    CudaFrame(const Frame &frame, const CUdeviceptr handle, const unsigned int pitch, const bool owner)
+            : GPUFrame(frame), handle_(handle), pitch_(pitch), owner_(owner)
+    { }
+
     CudaFrame(const Frame &frame, const std::pair<CUdeviceptr, unsigned int> pair)
             : CudaFrame(frame, pair.first, pair.second, false)
     { }
+
+protected:
 
     void copy(VideoLock &lock, const CUDA_MEMCPY2D &parameters) {
         CUresult result;
@@ -212,10 +217,6 @@ protected:
 private:
     CudaFrame(const Frame &frame, const std::tuple<CUdeviceptr, unsigned int, bool> tuple)
             : CudaFrame(frame, std::get<0>(tuple), std::get<1>(tuple), std::get<2>(tuple))
-    { }
-
-    CudaFrame(const Frame &frame, const CUdeviceptr handle, const unsigned int pitch, const bool owner)
-            : GPUFrame(frame), handle_(handle), pitch_(pitch), owner_(owner)
     { }
 
     static std::pair<CUdeviceptr, unsigned int> allocate_frame(const Frame &frame)
@@ -263,6 +264,8 @@ public:
     {
     }
 
+    DecodedFrame(const DecodedFrame &other, const CUdeviceptr handle, unsigned int pitch, bool owner);
+
     DecodedFrame(const DecodedFrame&) = default;
     DecodedFrame(DecodedFrame &&other) noexcept = default;
 
@@ -288,7 +291,7 @@ private:
     }
 
     const VideoDecoder &decoder_;
-    const std::shared_ptr<CUVIDPARSERDISPINFO> parameters_;
+    std::shared_ptr<CUVIDPARSERDISPINFO> parameters_;
     std::shared_ptr<CudaFrame> cuda_;
     VideoDecoder::DecodedDimensions frameDimensions_;
     int tileNumber_;
@@ -298,6 +301,10 @@ class CudaDecodedFrame: public DecodedFrame, public CudaFrame {
 public:
     explicit CudaDecodedFrame(const DecodedFrame &frame)
             : DecodedFrame(frame), CudaFrame(frame, map_frame(frame))
+    { }
+
+    explicit CudaDecodedFrame(const DecodedFrame &frame, const CUdeviceptr handle, unsigned int pitch, bool owner)
+            : DecodedFrame(frame), CudaFrame(frame, handle, pitch, owner)
     { }
 
     CudaDecodedFrame(CudaDecodedFrame &) noexcept = delete;

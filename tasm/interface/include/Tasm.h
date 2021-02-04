@@ -18,8 +18,8 @@ public:
         LegacyWH,
     };
 
-    TASM()
-        : semanticIndex_(new SemanticIndexSQLite())
+    TASM(bool inMemory = false)
+        : semanticIndex_(inMemory ? new SemanticIndexSQLiteInMemory() : new SemanticIndexSQLite())
     {}
 
     TASM(std::experimental::filesystem::path dbPath)

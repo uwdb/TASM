@@ -29,12 +29,7 @@ TEST_F(VideoManagerTestFixture, testScan) {
 }
 
 TEST_F(VideoManagerTestFixture, testSelect) {
-    std::experimental::filesystem::path labels = "testLabels.db";
-
-    // Delete DB at path.
-    // Better would be to use an in-memory db for the tests.
-    std::experimental::filesystem::remove(labels);
-    auto semanticIndex = std::make_shared<SemanticIndexSQLite>(labels);
+    auto semanticIndex = std::make_shared<SemanticIndexSQLiteInMemory>();
 
     std::string video("red10-2x2");
     std::string label("fish");
@@ -47,15 +42,10 @@ TEST_F(VideoManagerTestFixture, testSelect) {
     VideoManager manager;
     manager.storeWithUniformLayout("/home/maureen/red102k.mp4", "red10-2x2", 2, 2);
     manager.select(video, video, metadataSelection, temporalSelection, semanticIndex);
-
-    std::experimental::filesystem::remove(labels);
 }
 
 TEST_F(VideoManagerTestFixture, testAccumulateRegret) {
-    std::experimental::filesystem::path labels = "testLabels.db";
-
-    std::experimental::filesystem::remove(labels);
-    auto semanticIndex = std::make_shared<SemanticIndexSQLite>(labels);
+    auto semanticIndex = std::make_shared<SemanticIndexSQLiteInMemory>();
 
     std::string video("birdsincage-regret");
     std::string metadataIdentifier("birdsincage");

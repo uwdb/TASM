@@ -9,17 +9,18 @@
 namespace tasm {
 
 void SemanticIndexSQLite::openDatabase(const std::experimental::filesystem::path &dbPath) {
-    if (!std::experimental::filesystem::exists(dbPath))
-        createDatabase(dbPath);
-    else
-        ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE, NULL));
+    if (!std::experimental::filesystem::exists(dbPath)) {
+      ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL));
+      createTable();
+    } else {
+      ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE, NULL));
+    }
 
     return;
 }
 
-void SemanticIndexSQLite::createDatabase(const std::experimental::filesystem::path &dbPath) {
-    ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL));
 
+void SemanticIndexSQLite::createTable() {
     const char *createTable = "CREATE TABLE labels (" \
                                 "video text not null, " \
                                 "label text not null, " \
@@ -161,16 +162,21 @@ std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForQuery(sq
     return rectangles;
 }
 
-void SemanticIndexWH::openDatabase(const std::experimental::filesystem::path &dbPath) {
-    if (!std::experimental::filesystem::exists(dbPath))
-        createDatabase(dbPath);
-    else
-        ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE, NULL));
+void SemanticIndexSQLiteInMemory::openDatabase(const std::experimental::filesystem::path &dbPath) {
+    ASSERT_SQLITE_OK(sqlite3_open(":memory:", &db_));
+    createTable();
 }
 
-void SemanticIndexWH::createDatabase(const std::experimental::filesystem::path &dbPath) {
-    ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL));
+void SemanticIndexWH::openDatabase(const std::experimental::filesystem::path &dbPath) {
+    if (!std::experimental::filesystem::exists(dbPath)) {
+        ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL));
+        createTable();
+    } else {
+        ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE, NULL));
+    }
+}
 
+void SemanticIndexWH::createTable() {
     const char *createTable = "CREATE TABLE labels (" \
                                 "label text not null, " \
                                 "frame int not null, " \

@@ -23,11 +23,7 @@ TEST_F(SemanticIndexTestFixture, testCreateDB) {
 }
 
 TEST_F(SemanticIndexTestFixture, testSelectOrderedFrames) {
-    std::experimental::filesystem::path labels = "testLabels.db";
-
-    // Delete DB at path.
-    std::experimental::filesystem::remove(labels);
-    SemanticIndexSQLite semanticIndex(labels);
+    SemanticIndexSQLiteInMemory semanticIndex;
 
     std::string video("video");
     std::string label("fish");
@@ -53,16 +49,10 @@ TEST_F(SemanticIndexTestFixture, testSelectOrderedFrames) {
     fishFrames = semanticIndex.orderedFramesForSelection(video, selectFish, rangeSelect);
     expectedFrames = std::vector<int>{3, 4, 5, 6, 7, 8};
     assert(*fishFrames == expectedFrames);
-
-    std::experimental::filesystem::remove(labels);
 }
 
 TEST_F(SemanticIndexTestFixture, testSelectRectanglesForFrame) {
-    std::experimental::filesystem::path labels = "testLabels.db";
-
-    // Delete DB at path.
-    std::experimental::filesystem::remove(labels);
-    SemanticIndexSQLite semanticIndex(labels);
+    SemanticIndexSQLiteInMemory semanticIndex;
 
     std::string video("video");
     std::string label("fish");
@@ -81,6 +71,4 @@ TEST_F(SemanticIndexTestFixture, testSelectRectanglesForFrame) {
     // Ordering isn't guaranteed.
     assert(fishFrames->front() == Rectangle(1, 0, 0, 0, 0));
     assert(fishFrames->back() == Rectangle(1, 1, 0, 0, 0));
-
-    std::experimental::filesystem::remove(labels);
 }

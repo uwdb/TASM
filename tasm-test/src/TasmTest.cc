@@ -47,34 +47,22 @@ TEST_F(TasmTestFixture, testAddMetadata) {
 }
 
 TEST_F(TasmTestFixture, testScan) {
-    std::experimental::filesystem::path path("testLabels.db");
-    std::experimental::filesystem::remove(path);
-
-    tasm::TASM tasm(path);
+    tasm::TASM tasm(true);
     tasm.addMetadata("red10", "red", 0, 0, 0, 100, 100);
 
 //    tasm.storeWithUniformLayout("/home/maureen/red102k.mp4", "red10-2x2", 2, 2);
 
-    std::experimental::filesystem::remove(path);
 }
 
 TEST_F(TasmTestFixture, testSelectDifferentPath) {
-    std::experimental::filesystem::path path("testLabels.db");
-    std::experimental::filesystem::remove(path);
-
-    tasm::TASM tasm(path);
+    tasm::TASM tasm(true);
     tasm.addMetadata("red10", "red", 0, 0, 0, 100, 100);
 
     tasm.select("red10-2x2", "red", "red10");
-
-    std::experimental::filesystem::remove(path);
 }
 
 TEST_F(TasmTestFixture, testTileBird) {
-    std::experimental::filesystem::path path("testLabels.db");
-    std::experimental::filesystem::remove(path);
-
-    tasm::TASM tasm;
+    tasm::TASM tasm(true);
     std::string video("birdsincage");
     std::string label("bird");
     for (int i = 0; i < 10; ++i)
@@ -85,16 +73,15 @@ TEST_F(TasmTestFixture, testTileBird) {
 
     std::experimental::filesystem::remove_all(tasm::files::PathForVideo("birdsincage-not-forced"));
     std::experimental::filesystem::remove_all(tasm::files::PathForVideo("birdsincage-forced"));
-    std::experimental::filesystem::remove(path);
 }
 
 TEST_F(TasmTestFixture, testTileElFuente1) {
-    tasm::TASM tasm;
+    tasm::TASM tasm(true);
     tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/ElFuente1_hevc.mp4", "elfuente1-not-forced", "elfuente1", "person", false);
 }
 
 TEST_F(TasmTestFixture, testSelectBird) {
-    tasm::TASM tasm;
+    tasm::TASM tasm(true);
     auto selection = tasm.select("birdsincage-bird", "bird", "birdsincage");
     ImagePtr next;
     auto count = 0u;

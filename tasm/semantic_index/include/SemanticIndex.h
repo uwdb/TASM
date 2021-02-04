@@ -93,7 +93,7 @@ protected:
     virtual std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0);
 
     virtual void openDatabase(const std::experimental::filesystem::path &dbPath);
-    virtual void createDatabase(const std::experimental::filesystem::path &dbPath);
+    virtual void createTable();
     virtual void closeDatabase();
     virtual void initializeStatements();
     virtual void destroyStatements();
@@ -102,6 +102,17 @@ protected:
 
     // Statements.
     sqlite3_stmt *addMetadataStmt_;
+};
+
+class SemanticIndexSQLiteInMemory : public SemanticIndexSQLite {
+public:
+    SemanticIndexSQLiteInMemory() {
+        openDatabase("");
+        initializeStatements();
+    }
+
+protected:
+    void openDatabase(const std::experimental::filesystem::path &dbPath) override;
 };
 
 class SemanticIndexWH : public SemanticIndexSQLite {
@@ -132,7 +143,7 @@ protected:
     std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0) override;
 
     void openDatabase(const std::experimental::filesystem::path &dbPath) override;
-    void createDatabase(const std::experimental::filesystem::path &dbPath) override;
+    void createTable() override;
     void closeDatabase() override;
     void initializeStatements() override;
     void destroyStatements() override;

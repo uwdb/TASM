@@ -92,6 +92,10 @@ void VideoManager::retileVideoBasedOnRegret(const std::string &videoName) {
     for (auto it = gopToLayouts->begin(); it != gopToLayouts->end(); ++it)
         frames->push_back(it->first * gopLength);
 
+    // Sort the frames because currently the way we scan goes in order of keyframes.
+    // That should probably get more flexible, but for now sorting is easy.
+    std::sort(frames->begin(), frames->end());
+
     retileVideo(video, frames, std::make_shared<ConglomerationTileConfigurationProvider>(std::move(gopToLayouts), gopLength), videoName);
 }
 

@@ -17,10 +17,7 @@ public:
             throw std::runtime_error("No CUDA devices were found");
         else if((result = cuCtxGetCurrent(&context_)) != CUDA_SUCCESS)
             throw std::runtime_error("Call to cuCtxGetCurrent failed: " + std::to_string(result));
-        else if(context_ != nullptr) {
-            std::cerr << "Case where cuCtxGetCurrent returns non-null." << std::endl;
-            assert(false);
-        } else if((result = cuDeviceGet(&device_, deviceId)) != CUDA_SUCCESS)
+        else if((result = cuDeviceGet(&device_, deviceId)) != CUDA_SUCCESS)
             throw std::runtime_error(std::string("Call to cuDeviceGet failed for device ") + std::to_string(deviceId) + ": " + std::to_string(result));
         else if((result = cuCtxCreate(&context_, CU_CTX_SCHED_AUTO, device_)) != CUDA_SUCCESS)
             throw std::runtime_error(std::string("Call to cuCtxCreate failed for device ") + std::to_string(deviceId) + ": " + std::to_string(result));

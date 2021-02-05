@@ -92,7 +92,7 @@ std::unique_ptr<std::vector<int>> SemanticIndexSQLite::orderedFramesForSelection
         const std::string &video,
         std::shared_ptr<MetadataSelection> metadataSelection,
         std::shared_ptr<TemporalSelection> temporalSelection) {
-    std::string query = "SELECT frame FROM labels WHERE video = ? AND " + metadataSelection->labelConstraints();
+    std::string query = "SELECT DISTINCT frame FROM labels WHERE video = ? AND " + metadataSelection->labelConstraints();
     if (temporalSelection)
         query += " AND " + temporalSelection->frameConstraints();
     query += " ORDER BY frame ASC";
@@ -228,7 +228,7 @@ std::unique_ptr<std::vector<int>> SemanticIndexWH::orderedFramesForSelection(
         const std::string &video,
         std::shared_ptr<MetadataSelection> metadataSelection,
         std::shared_ptr<TemporalSelection> temporalSelection) {
-    std::string query = "SELECT frame FROM labels WHERE " + metadataSelection->labelConstraints();
+    std::string query = "SELECT DISTINCT frame FROM labels WHERE " + metadataSelection->labelConstraints();
     if (temporalSelection)
         query += " AND " + temporalSelection->frameConstraints();
     query += " ORDER BY frame ASC";

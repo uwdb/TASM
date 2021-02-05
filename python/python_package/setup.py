@@ -13,6 +13,8 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/maureendaum/TASM",
     packages=setuptools.find_packages(),
+    package_dir={'tasm': 'tasm'},
+    package_data={'tasm': ['*.so']},
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",

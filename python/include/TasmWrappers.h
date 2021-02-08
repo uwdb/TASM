@@ -111,8 +111,30 @@ public:
 
     SelectionResults pythonSelectTiles(const std::string &video,
                                         const std::string &metadataIdentifier,
-                                        const std::string &label) {
+                                        const std::string &label,
+                                        unsigned int firstFrameInclusive,
+                                        unsigned int lastFrameExclusive) {
+        return SelectionResults(selectTiles(video, label, firstFrameInclusive, lastFrameExclusive, metadataIdentifier));
+    }
+
+    SelectionResults pythonSelectTiles(const std::string &video,
+                                       const std::string &metadataIdentifier,
+                                       const std::string &label) {
         return SelectionResults(selectTiles(video, label, metadataIdentifier));
+    }
+
+    SelectionResults pythonSelectFrames(const std::string &video,
+                                        const std::string &metadataIdentifier,
+                                        const std::string &label) {
+        return SelectionResults(selectFrames(video, label, metadataIdentifier));
+    }
+
+    SelectionResults pythonSelectFrames(const std::string &video,
+                                        const std::string &metadataIdentifier,
+                                        const std::string &label,
+                                        unsigned int firstFrameInclusive,
+                                        unsigned int lastFrameExclusive) {
+        return SelectionResults(selectFrames(video, label, firstFrameInclusive, lastFrameExclusive, metadataIdentifier));
     }
 
     void pythonActivateRegretBasedTilingForVideo(const std::string &video) {

@@ -5,13 +5,13 @@
 #include <sstream>
 #include <cstring>
 
-#include "Context.h"
+#include "StitchContext.h"
 #include "Stitcher.h"
 
 using std::string;
 using std::vector;
-using lightdb::Context;
-using lightdb::Stitcher;
+using stitching::StitchContext;
+using stitching::Stitcher;
 
 /* Usage */
 // ./stitcher
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
         auto sei = Stitcher::GetActiveParameterSetsSEI();
 
         std::ofstream ostrm(argv[2]);
-        for (auto c : sei) {
+        for (auto c : *sei) {
             ostrm << c;
         }
         ostrm.close();
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     }
 
     int num_tiles = std::stoi(argv[1]);
-    vector<bytestring> tiles(num_tiles);
+    vector<vector<char>> tiles(num_tiles);
     for (int i = 0; i < num_tiles; i++) {
         std::ifstream istrm;
         istrm.open(argv[i + 2]);
@@ -49,24 +49,24 @@ int main(int argc, char *argv[]) {
         tiles[i] = vector<char>(tile.begin(), tile.end());
     }
 
-    int tile_dimensions[2];
-    int video_dimensions[2];
-    int video_display_dimensions[2];
+    std::pair<unsigned int, unsigned int> tile_dimensions;
+    std::pair<unsigned int, unsigned int> video_dimensions;
+    std::pair<unsigned int, unsigned int> video_display_dimensions;
     int number_of_rows = std::stoi(argv[num_tiles + 2]);
     int number_of_columns = std::stoi(argv[num_tiles + 3]);
-    tile_dimensions[0] = number_of_rows;
-    tile_dimensions[1] = number_of_columns;
-    video_dimensions[0] = std::stoi(argv[num_tiles + 4]);
-    video_dimensions[1] = std::stoi(argv[num_tiles + 5]);
-    video_display_dimensions[0] = std::stoi(argv[num_tiles + 6]);
-    video_display_dimensions[1] = std::stoi(argv[num_tiles + 7]);
+    tile_dimensions.first = number_of_rows;
+    tile_dimensions.second = number_of_columns;
+    video_dimensions.first = std::stoi(argv[num_tiles + 4]);
+    video_dimensions.second = std::stoi(argv[num_tiles + 5]);
+    video_display_dimensions.first = std::stoi(argv[num_tiles + 6]);
+    video_display_dimensions.second = std::stoi(argv[num_tiles + 7]);
 
     // See if uniform tiles should be used.
     bool should_use_uniform_tiles = std::stoi(argv[num_tiles + 9]);
     unsigned int pps_id = 0;
 
-    std::vector<unsigned long> tile_heights;
-    std::vector<unsigned long> tile_widths;
+    std::vector<unsigned int> tile_heights;
+    std::vector<unsigned int> tile_widths;
     if (!should_use_uniform_tiles) {
         pps_id = std::stoi(argv[num_tiles + 10]);
 
@@ -80,13 +80,13 @@ int main(int argc, char *argv[]) {
             tile_widths[i] = std::stoi(argv[num_tiles + 10 + number_of_rows - 1 + 1 + i]);
     }
 
-    Context context(tile_dimensions, video_dimensions, video_display_dimensions, should_use_uniform_tiles, tile_heights, tile_widths, pps_id);
+    StitchContext context(tile_dimensions, video_dimensions, video_display_dimensions, should_use_uniform_tiles, tile_heights, tile_widths, pps_id);
     Stitcher stitcher(context, tiles);
-    bytestring stitched = stitcher.GetStitchedSegments();
+    auto stitched = stitcher.GetStitchedSegments();
 
     std::ofstream ostrm;
     ostrm.open(argv[num_tiles + 8]);
-    for (auto c : stitched) {
+    for (auto c : *stitched) {
         ostrm << c;
     }
     ostrm.close();

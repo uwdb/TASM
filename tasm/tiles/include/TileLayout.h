@@ -108,6 +108,14 @@ public:
         return intersectingRectangleIds;
     }
 
+    unsigned int codedHeight() const {
+        return aligned(totalHeight());
+    }
+
+    unsigned int codedWidth() const {
+        return aligned(totalWidth());
+    }
+
 protected:
     unsigned int tileColumnForX(unsigned int x) const;
 
@@ -122,6 +130,14 @@ protected:
 
     mutable unsigned int largestWidth_;
     mutable unsigned int largestHeight_;
+
+private:
+    unsigned int aligned(unsigned int val) const {
+        if (!(val % alignment_))
+            return val;
+        return ((val / alignment_) + 1) * alignment_;
+    }
+    static const unsigned int alignment_ = 32u;
 };
 
 static const TileLayout EmptyTileLayout(0, 0, std::vector<unsigned int>(), std::vector<unsigned int>());

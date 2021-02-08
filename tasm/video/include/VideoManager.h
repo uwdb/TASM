@@ -17,6 +17,7 @@ class Video;
 enum class SelectStrategy{
     Objects,
     Tiles,
+    Frames,
 };
 
 class VideoManager {

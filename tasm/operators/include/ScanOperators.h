@@ -41,7 +41,7 @@ class ScanFramesFromFileDecodeReader : public ConfigurationOperator<CPUEncodedFr
 public:
     ScanFramesFromFileDecodeReader(std::shared_ptr<Video> video, std::shared_ptr<std::vector<int>> framesToRead, bool shouldReadEntireGOPS=false)
         : video_(video), framesToRead_(framesToRead), shouldReadEntireGOPs_(shouldReadEntireGOPS),
-        frameReader_(video_->path(), *framesToRead_, 0, shouldReadEntireGOPs_),
+        frameReader_(video_->path(), framesToRead_, 0, shouldReadEntireGOPs_),
         isComplete_(false), numberOfFramesRead_(0) {}
 
     std::optional<CPUEncodedFrameDataPtr> next() override {

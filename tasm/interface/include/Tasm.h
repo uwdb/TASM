@@ -76,6 +76,28 @@ public:
         return select(video, label, std::shared_ptr<TemporalSelection>(), metadataIdentifier, SelectStrategy::Tiles);
     }
 
+    virtual std::unique_ptr<ImageIterator> selectTiles(const std::string &video,
+                                                       const std::string &label,
+                                                       unsigned int firstFrameInclusive,
+                                                       unsigned int lastFrameExclusive,
+                                                       const std::string &metadataIdentifier = "") {
+        return select(video, label, std::make_shared<RangeTemporalSelection>(firstFrameInclusive, lastFrameExclusive), metadataIdentifier, SelectStrategy::Tiles);
+    }
+
+    virtual std::unique_ptr<ImageIterator> selectFrames(const std::string &video,
+            const std::string &label,
+            const std::string &metadataIdentifier = "") {
+        return select(video, label, std::shared_ptr<TemporalSelection>(), metadataIdentifier, SelectStrategy::Frames);
+    }
+
+    virtual std::unique_ptr<ImageIterator> selectFrames(const std::string &video,
+                                                        const std::string &label,
+                                                        unsigned int firstFrameInclusive,
+                                                        unsigned int lastFrameExclusive,
+                                                        const std::string &metadataIdentifier = "") {
+        return select(video, label, std::make_shared<RangeTemporalSelection>(firstFrameInclusive, lastFrameExclusive), metadataIdentifier, SelectStrategy::Frames);
+    }
+
     void retileVideoBasedOnRegret(const std::string &video) {
         videoManager_.retileVideoBasedOnRegret(video);
     }

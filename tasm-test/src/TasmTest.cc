@@ -103,3 +103,13 @@ TEST_F(TasmTestFixture, testSelectBird) {
     }
     assert(count == 360);
 }
+
+TEST_F(TasmTestFixture, testScanBirdsFullFrame) {
+    tasm::TASM tasm("/home/maureen/home_videos/birds_tasm.db", TASM::IndexType::XY);
+    auto selection = tasm.selectFrames("birds-birds", "bird", 0, 5, "birds");
+    auto count = 0u;
+    ImagePtr next;
+    while ((next = selection->next()))
+        ++count;
+    std::cout << "Tiled vid: retrieved " << count << " frames" << std::endl;
+}

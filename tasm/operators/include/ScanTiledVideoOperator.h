@@ -7,6 +7,7 @@
 #include "Rectangle.h"
 #include "SemanticDataManager.h"
 #include "TileLocationProvider.h"
+#include "StitchContext.h"
 
 namespace tasm {
 
@@ -35,8 +36,8 @@ public:
 private:
     void preprocess();
     void setUpNextEncodedFrameReader();
-    std::vector<int> nextGroupOfFramesWithTheSameLayoutAndFromTheSameFile(std::vector<int>::const_iterator &frameIt, std::vector<int>::const_iterator &endIt);
-    std::unique_ptr<std::unordered_map<unsigned int, std::vector<int>>> filterToTileFramesThatContainObject(std::vector<int> &possibleFrames);
+    std::shared_ptr<std::vector<int>> nextGroupOfFramesWithTheSameLayoutAndFromTheSameFile(std::vector<int>::const_iterator &frameIt, std::vector<int>::const_iterator &endIt);
+    std::unique_ptr<std::unordered_map<unsigned int, std::shared_ptr<std::vector<int>>>> filterToTileFramesThatContainObject(std::shared_ptr<std::vector<int>> possibleFrames);
 
     bool isComplete_;
     std::shared_ptr<TiledEntry> entry_;
@@ -64,7 +65,7 @@ private:
         int tileNumber;
         unsigned int width;
         unsigned int height;
-        std::vector<int> framesToRead;
+        std::shared_ptr<std::vector<int>> framesToRead;
         unsigned int frameOffsetInFile;
         Rectangle tileRect;
 
@@ -84,6 +85,50 @@ private:
     std::vector<TileInformation> orderedTileInformation_;
     std::vector<TileInformation>::const_iterator orderedTileInformationIt_;
     unsigned int currentTileArea_;
+};
+
+class ScanFullFramesFromTiledVideoOperator : public Operator<CPUEncodedFrameDataPtr> {
+public:
+    ScanFullFramesFromTiledVideoOperator(
+            std::shared_ptr<TiledEntry> entry,
+            std::shared_ptr<SemanticDataManager> semanticDataManager,
+            std::shared_ptr<TileLocationProvider> tileLocationProvider)
+                : isComplete_(false),
+                entry_(entry),
+                semanticDataManager_(semanticDataManager),
+                tileLocationProvider_(tileLocationProvider),
+                didSignalEOS_(false),
+                frameIt_(semanticDataManager_->orderedFrames().begin()),
+                endFrameIt_(semanticDataManager_->orderedFrames().end()),
+                ppsId_(1),
+                  fullFrameConfig_(fullFrameConfig())
+    { }
+
+    bool isComplete() override { return isComplete_; }
+    std::optional<CPUEncodedFrameDataPtr> next() override;
+
+    const Configuration &configuration() { return *fullFrameConfig_; }
+private:
+    void setUpNextEncodedFrameReaders();
+    GOPReaderPacket stitchedDataForNextGOP();
+    std::experimental::filesystem::path pathForFrame(int frame) {
+        return tileLocationProvider_->locationOfTileForFrame(0, frame).parent_path();
+    }
+    std::unique_ptr<Configuration> fullFrameConfig();
+
+    bool isComplete_;
+    std::shared_ptr<TiledEntry> entry_;
+    std::shared_ptr<SemanticDataManager> semanticDataManager_;
+    std::shared_ptr<TileLocationProvider> tileLocationProvider_;
+    bool didSignalEOS_;
+    std::vector<int>::const_iterator frameIt_;
+    std::vector<int>::const_iterator endFrameIt_;
+
+    std::vector<std::unique_ptr<EncodedFrameReader>> currentEncodedFrameReaders_;
+    std::unique_ptr<stitching::StitchContext> currentContext_;
+    unsigned int ppsId_;
+
+    std::unique_ptr<Configuration> fullFrameConfig_;
 };
 
 } // namespace tasm

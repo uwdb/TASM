@@ -16,6 +16,10 @@ tasm::python::SelectionResults (tasm::python::PythonTASM::*selectAll)(const std:
 tasm::python::SelectionResults (tasm::python::PythonTASM::*selectRangeWithMetadataID)(const std::string&, const std::string&, const std::string&, unsigned int, unsigned int) = &tasm::python::PythonTASM::pythonSelect;
 tasm::python::SelectionResults (tasm::python::PythonTASM::*selectEqualWithMetadataID)(const std::string&, const std::string&, const std::string&, unsigned int) = &tasm::python::PythonTASM::pythonSelect;
 tasm::python::SelectionResults (tasm::python::PythonTASM::*selectAllWithMetadataID)(const std::string&, const std::string&, const std::string&) = &tasm::python::PythonTASM::pythonSelect;
+tasm::python::SelectionResults (tasm::python::PythonTASM::*selectAllTiles)(const std::string&, const std::string&, const std::string&) = &tasm::python::PythonTASM::pythonSelectTiles;
+tasm::python::SelectionResults (tasm::python::PythonTASM::*selectRangeTiles)(const std::string&, const std::string&, const std::string&, unsigned int, unsigned int) = &tasm::python::PythonTASM::pythonSelectTiles;
+tasm::python::SelectionResults (tasm::python::PythonTASM::*selectAllFrames)(const std::string&, const std::string&, const std::string&) = &tasm::python::PythonTASM::pythonSelectFrames;
+tasm::python::SelectionResults (tasm::python::PythonTASM::*selectRangeFrames)(const std::string&, const std::string&, const std::string&, unsigned int, unsigned int) = &tasm::python::PythonTASM::pythonSelectFrames;
 void (tasm::python::PythonTASM::*storeForceNonUniformLayout)(const std::string&, const std::string&, const std::string&, const std::string&) = &tasm::python::PythonTASM::pythonStoreWithNonUniformLayout;
 void (tasm::python::PythonTASM::*storeDoNotForceNonUniformLayout)(const std::string&, const std::string&, const std::string&, const std::string&, bool) = &tasm::python::PythonTASM::pythonStoreWithNonUniformLayout;
 void (tasm::python::PythonTASM::*activateRegretBasedTilingWithoutMetadataIdentifier)(const std::string&) = &tasm::python::PythonTASM::pythonActivateRegretBasedTilingForVideo;
@@ -64,7 +68,10 @@ BOOST_PYTHON_MODULE(_tasm) {
         .def("select", selectRangeWithMetadataID)
         .def("select", selectEqualWithMetadataID)
         .def("select", selectAllWithMetadataID)
-        .def("select_tiles", &tasm::python::PythonTASM::pythonSelectTiles)
+        .def("select_tiles", selectAllTiles)
+        .def("select_tiles", selectRangeTiles)
+        .def("select_frames", selectAllFrames)
+        .def("select_frames", selectRangeFrames)
         .def("activate_regret_based_tiling", activateRegretBasedTilingWithMetadataIdentifier)
         .def("activate_regret_based_tiling", activateRegretBasedTilingWithoutMetadataIdentifier)
         .def("activate_regret_based_tiling", activateRegretBasedTilingWithThreshold)

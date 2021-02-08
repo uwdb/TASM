@@ -240,10 +240,10 @@ class EncodedFrameReader {
 public:
     // Assume frames is sorted.
     // Frames is in global frame numbers (e.g. starting from frameOffsetInFile, not 0).
-    explicit EncodedFrameReader(std::experimental::filesystem::path filename, std::vector<int> frames, int frameOffsetInFile = 0, bool shouldReadEntireGOPs=false)
-            : filename_(std::move(filename)),
+    explicit EncodedFrameReader(const std::experimental::filesystem::path &filename, std::shared_ptr<std::vector<int>> frames, int frameOffsetInFile = 0, bool shouldReadEntireGOPs=false)
+            : filename_(filename),
               mp4Reader_(filename_),
-              frames_(std::move(frames)),
+              frames_(frames),
               numberOfSamplesRead_(0),
               shouldReadFramesExactly_(false),
               frameOffsetInFile_(frameOffsetInFile),
@@ -251,35 +251,35 @@ public:
     {
         // Update frames to be 0-indexed.
         if (frameOffsetInFile) {
-            std::for_each(frames_.begin(), frames_.end(), [&](auto &frame) {
+            std::for_each(frames_->begin(), frames_->end(), [&](auto &frame) {
                 frame -= frameOffsetInFile;
             });
         }
 
-        frameIterator_ = frames_.begin(); // In global frame numbers.
+        frameIterator_ = frames_->begin(); // In global frame numbers.
         keyframeIterator_ = mp4Reader_.keyframeNumbers().begin(); // 0-indexed.
     }
 
     void setNewFileWithSameKeyframes(const std::experimental::filesystem::path &newFilename) {
         mp4Reader_.setNewFileWithSameKeyframes(newFilename);
 
-        frameIterator_ = frames_.begin();
+        frameIterator_ = frames_->begin();
         keyframeIterator_ = mp4Reader_.keyframeNumbers().begin();
     }
 
-    void setNewFileWithSameKeyframesButNewFrames(const std::experimental::filesystem::path &newFilename, std::vector<int> frames, int frameOffsetInFile) {
+    void setNewFileWithSameKeyframesButNewFrames(const std::experimental::filesystem::path &newFilename, std::shared_ptr<std::vector<int>> frames, int frameOffsetInFile) {
         filename_ = newFilename;
         mp4Reader_.setNewFileWithSameKeyframes(newFilename);
-        frames_ = std::move(frames);
+        frames_ = frames;
         frameOffsetInFile_ = frameOffsetInFile;
 
         if (frameOffsetInFile) {
-            std::for_each(frames_.begin(), frames_.end(), [&](auto &frame) {
+            std::for_each(frames_->begin(), frames_->end(), [&](auto &frame) {
                 frame -= frameOffsetInFile;
             });
         }
 
-        frameIterator_ = frames_.begin();
+        frameIterator_ = frames_->begin();
         keyframeIterator_ = mp4Reader_.keyframeNumbers().begin();
     }
 
@@ -288,20 +288,20 @@ public:
         globalFramesIterator_ = globalFrames_.begin();
     }
 
-    void setNewFrames(std::vector<int> frames) {
-        frames_ = std::move(frames);
-        frameIterator_ = frames_.begin();
+    void setNewFrames(std::shared_ptr<std::vector<int>> frames) {
+        frames_ = frames;
+        frameIterator_ = frames_->begin();
     }
 
     void setShouldReadFramesExactly(bool shouldReadFramesExactly) {
         shouldReadFramesExactly_ = shouldReadFramesExactly;
     }
 
-    bool isEos() const { return frameIterator_ == frames_.end(); }
+    bool isEos() const { return frameIterator_ == frames_->end(); }
 
     std::optional<GOPReaderPacket> read() {
         // If we are reading all of the frames, return the frames for the next GOP.
-        if (frameIterator_ == frames_.end())
+        if (frameIterator_ == frames_->end())
             return {};
 
         // Unideal, but frames_ is 0-indexed, but keyframes are 1-indexed because they are sample numbers.
@@ -312,7 +312,7 @@ public:
             firstSampleToRead = MP4Reader::frameNumberToSampleNumber(*frameIterator_);
 
             auto lastFrameIndex = *frameIterator_++;
-            while (frameIterator_ != frames_.end() && *frameIterator_ == lastFrameIndex + 1)
+            while (frameIterator_ != frames_->end() && *frameIterator_ == lastFrameIndex + 1)
                 lastFrameIndex = *frameIterator_++;
 
             lastSampleToRead = MP4Reader::frameNumberToSampleNumber(*std::prev(frameIterator_));
@@ -329,7 +329,7 @@ public:
                 firstFrame = *frameIterator_;
 
             if (!haveMoreKeyframes())
-                frameIterator_ = frames_.end();
+                frameIterator_ = frames_->end();
             else {
                 while (haveMoreFrames() && *frameIterator_ < *keyframeIterator_)
                     frameIterator_++;
@@ -375,7 +375,7 @@ public:
 //    }
 
 private:
-    bool haveMoreFrames() const { return frameIterator_ != frames_.end(); }
+    bool haveMoreFrames() const { return frameIterator_ != frames_->end(); }
     bool haveMoreKeyframes() const { return keyframeIterator_ != mp4Reader_.keyframeNumbers().end(); }
     bool haveMoreGlobalFrames() const { return globalFramesIterator_ != globalFrames_.end(); }
 
@@ -386,7 +386,7 @@ private:
 
     std::experimental::filesystem::path filename_;
     MP4Reader mp4Reader_;
-    std::vector<int> frames_;
+    std::shared_ptr<std::vector<int>> frames_;
     std::vector<int>::iterator frameIterator_;
     std::vector<int>::const_iterator keyframeIterator_;
     unsigned int numberOfSamplesRead_;

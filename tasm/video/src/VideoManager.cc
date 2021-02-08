@@ -122,12 +122,14 @@ std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
     std::shared_ptr<TiledVideoManager> tiledVideoManager(new TiledVideoManager(entry));
     auto tileLocationProvider = std::make_shared<SingleTileLocationProvider>(tiledVideoManager);
     auto semanticDataManager = std::make_shared<SemanticDataManager>(semanticIndex, metadataIdentifier, metadataSelection, temporalSelection, tiledVideoManager->totalWidth(), tiledVideoManager->totalHeight());
-    auto scan = std::make_shared<ScanTiledVideoOperator>(entry, semanticDataManager, tileLocationProvider);
 
-    // Set up decode. Specify largest tile dimensions which are required to successfully reconfigure the decoder.
+    std::shared_ptr<Operator<CPUEncodedFrameDataPtr>> scan;
+    std::shared_ptr<TileLayoutProvider> tileLayoutProvider = tileLocationProvider;
+
+    // Set up default configuration info.
     auto maxWidth = tiledVideoManager->largestWidth();
     auto maxHeight = tiledVideoManager->largestHeight();
-
+    // Specify largest tile dimensions which are required to successfully reconfigure the decoder.
     // The maximum dimensions were set based on display dimensions; make sure they are big enough to handle larger coded dimensions.
     static const unsigned int CodedDimension = 32;
     if (maxWidth % CodedDimension)
@@ -135,18 +137,34 @@ std::unique_ptr<ImageIterator> VideoManager::select(const std::string &video,
     if (maxHeight % CodedDimension)
         maxHeight = (maxHeight / CodedDimension + 1) * CodedDimension;
 
-    auto configuration = video::GetConfiguration(tileLocationProvider->locationOfTileForFrame(0, 0));
-    configuration->maxWidth = maxWidth;
-    configuration->maxHeight = maxHeight;
+    auto configuration = *video::GetConfiguration(tileLocationProvider->locationOfTileForFrame(0, 0));
+    configuration.maxWidth = maxWidth;
+    configuration.maxHeight = maxHeight;
 
-    std::shared_ptr<GPUDecodeFromCPU> decode(new GPUDecodeFromCPU(scan, *configuration, gpuContext_, lock_, maxWidth, maxHeight));
+    if (selectStrategy == SelectStrategy::Frames) {
+        auto scanFullFrames = std::make_shared<ScanFullFramesFromTiledVideoOperator>(entry, semanticDataManager, tileLocationProvider);
+        scan = scanFullFrames;
+
+        // Create a layout provider for the full frame.
+        auto layout = tileLocationProvider->tileLayoutForFrame(0);
+        tileLayoutProvider = std::make_shared<SingleTileConfigurationProvider>(layout->totalWidth(), layout->totalHeight());
+
+        // Use the full frame configuration.
+        configuration = scanFullFrames->configuration();
+        maxWidth = configuration.maxWidth;
+        maxHeight = configuration.maxHeight;
+    } else {
+        scan = std::make_shared<ScanTiledVideoOperator>(entry, semanticDataManager, tileLocationProvider);
+    }
+
+    std::shared_ptr<GPUDecodeFromCPU> decode(new GPUDecodeFromCPU(scan, configuration, gpuContext_, lock_, maxWidth, maxHeight));
     auto toRGB = std::make_shared<TransformToRGB>(decode);
 
     // Transform tiles to pixel blobs.
     std::shared_ptr<Operator<GPUPixelDataContainer>> mergeOperator;
     if (selectStrategy == SelectStrategy::Objects) {
         std::cout << "Merging pixels to recover objects" << std::endl;
-        mergeOperator = std::make_shared<MergeTilesOperator>(toRGB, semanticDataManager, tileLocationProvider);
+        mergeOperator = std::make_shared<MergeTilesOperator>(toRGB, semanticDataManager, tileLayoutProvider);
     } else {
         std::cout << "Returning raw tiles" << std::endl;
         mergeOperator = std::make_shared<TilesToPixelsOperator>(toRGB);

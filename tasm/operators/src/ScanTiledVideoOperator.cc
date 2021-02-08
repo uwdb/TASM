@@ -1,8 +1,12 @@
 #include "ScanTiledVideoOperator.h"
 
 #include "VideoConfiguration.h"
+#include "Stitcher.h"
 
 namespace tasm {
+
+static const unsigned int MAX_PPS_ID = 64;
+static const unsigned int ALIGNMENT = 32;
 
 void ScanTiledVideoOperator::preprocess() {
     auto frameIt = semanticDataManager_->orderedFrames().cbegin();
@@ -12,7 +16,7 @@ void ScanTiledVideoOperator::preprocess() {
         auto tileToFrames = filterToTileFramesThatContainObject(possibleFramesToRead);
 
         for (auto tileNumberIt = tileToFrames->begin(); tileNumberIt != tileToFrames->end(); ++tileNumberIt) {
-            if (tileNumberIt->second.empty())
+            if (tileNumberIt->second->empty())
                 continue;
             auto rectangleForTile = currentTileLayout_->rectangleForTile(tileNumberIt->first);
             orderedTileInformation_.emplace_back<TileInformation>(
@@ -30,7 +34,7 @@ void ScanTiledVideoOperator::preprocess() {
     orderedTileInformationIt_ = orderedTileInformation_.begin();
 }
 
-std::vector<int> ScanTiledVideoOperator::nextGroupOfFramesWithTheSameLayoutAndFromTheSameFile(std::vector<int>::const_iterator &frameIt, std::vector<int>::const_iterator &endIt) {
+std::shared_ptr<std::vector<int>> ScanTiledVideoOperator::nextGroupOfFramesWithTheSameLayoutAndFromTheSameFile(std::vector<int>::const_iterator &frameIt, std::vector<int>::const_iterator &endIt) {
     assert(frameIt != endIt);
 
     auto fakeTileNumber = 0;
@@ -45,10 +49,11 @@ std::vector<int> ScanTiledVideoOperator::nextGroupOfFramesWithTheSameLayoutAndFr
         totalVideoHeight_ = currentTileLayout_->totalHeight();
     }
 
-    std::vector<int> framesWithSamePathAndConfiguration({ *frameIt++ });
+    auto framesWithSamePathAndConfiguration = std::make_shared<std::vector<int>>();
+    framesWithSamePathAndConfiguration->push_back(*frameIt++);
     while (frameIt != endIt) {
         if (tileLocationProvider_->locationOfTileForFrame(fakeTileNumber, *frameIt) == *currentTilePath_)
-            framesWithSamePathAndConfiguration.push_back(*frameIt++);
+            framesWithSamePathAndConfiguration->push_back(*frameIt++);
         else
             break;
     }
@@ -56,8 +61,8 @@ std::vector<int> ScanTiledVideoOperator::nextGroupOfFramesWithTheSameLayoutAndFr
     return framesWithSamePathAndConfiguration;
 }
 
-std::unique_ptr<std::unordered_map<unsigned int, std::vector<int>>> ScanTiledVideoOperator::filterToTileFramesThatContainObject(std::vector<int> &possibleFrames) {
-    auto tileNumberToFrames = std::make_unique<std::unordered_map<unsigned int, std::vector<int>>>();
+std::unique_ptr<std::unordered_map<unsigned int, std::shared_ptr<std::vector<int>>>> ScanTiledVideoOperator::filterToTileFramesThatContainObject(std::shared_ptr<std::vector<int>> possibleFrames) {
+    auto tileNumberToFrames = std::make_unique<std::unordered_map<unsigned int, std::shared_ptr<std::vector<int>>>>();
 
     // currentTileLayout is set in nextGroupOfFramesWithTheSameLayoutAndFromTheSameFile().
     if (currentTileLayout_->numberOfTiles() == 1) {
@@ -67,14 +72,16 @@ std::unique_ptr<std::unordered_map<unsigned int, std::vector<int>>> ScanTiledVid
 
     for (auto i = 0u; i < currentTileLayout_->numberOfTiles(); ++i) {
         auto tileRect = currentTileLayout_->rectangleForTile(i);
-        (*tileNumberToFrames)[i].reserve(possibleFrames.size());
-        for (auto frame = possibleFrames.begin(); frame != possibleFrames.end(); ++frame) {
+        if (!tileNumberToFrames->count(i))
+            (*tileNumberToFrames)[i] = std::make_shared<std::vector<int>>();
+        (*tileNumberToFrames)[i]->reserve(possibleFrames->size());
+        for (auto frame = possibleFrames->begin(); frame != possibleFrames->end(); ++frame) {
             auto &rectanglesForFrame = semanticDataManager_->rectanglesForFrame(*frame);
             bool anyIntersect = std::any_of(rectanglesForFrame.begin(), rectanglesForFrame.end(), [&](auto &rectangle) {
                 return tileRect.intersects(rectangle);
             });
             if (anyIntersect) {
-                (*tileNumberToFrames)[i].push_back(*frame);
+                (*tileNumberToFrames)[i]->push_back(*frame);
             }
         }
     }
@@ -152,6 +159,139 @@ std::optional<CPUEncodedFrameDataPtr> ScanTiledVideoOperator::next() {
     data->setTileNumber(currentTileNumber_);
 
     return {data};
+}
+
+static std::vector<unsigned int> ToCtbs(const std::vector<unsigned int> &pixelVals) {
+    std::vector<unsigned int> ctbs(pixelVals.size() - 1);
+    std::transform(pixelVals.begin(), std::prev(pixelVals.end(), 1), ctbs.begin(), [](auto &v) { return std::ceil(v / ALIGNMENT); });
+    return ctbs;
+}
+
+void ScanFullFramesFromTiledVideoOperator::setUpNextEncodedFrameReaders() {
+    currentEncodedFrameReaders_.clear();
+    if (frameIt_ == endFrameIt_)
+        return;
+
+    // Get the group of frames with the same layout.
+    auto frames = std::make_shared<std::vector<int>>();
+    frames->push_back(*frameIt_);
+    auto pathOfNextFrameGroup = pathForFrame(*frameIt_++);
+    while (frameIt_ != endFrameIt_) {
+        if (pathForFrame(*frameIt_) == pathOfNextFrameGroup)
+            frames->push_back(*frameIt_++);
+    }
+
+    // Create a reader for each tile.
+    auto frame = frames->front();
+    auto layout = tileLocationProvider_->tileLayoutForFrame(frame);
+    for (auto t = 0u; t < layout->numberOfTiles(); ++t) {
+        auto tilePath = TileFiles::tileFilename(pathOfNextFrameGroup, t);
+        currentEncodedFrameReaders_.push_back(std::make_unique<EncodedFrameReader>(
+                tilePath,
+                frames,
+                tileLocationProvider_->frameOffsetInTileFile(tilePath),
+                false));
+    }
+
+    // Create the context for this layout.
+    std::pair<unsigned int, unsigned int> tileDimensions{layout->numberOfRows(), layout->numberOfColumns()};
+    std::pair<unsigned int, unsigned int> videoCodedDimensions{layout->codedHeight(), layout->codedWidth()};
+    std::pair<unsigned int, unsigned int> videoDisplayDimensions{layout->totalHeight(), layout->totalWidth()};
+    bool shouldUseUniformTiles = false;
+    currentContext_ = std::make_unique<stitching::StitchContext>(tileDimensions,
+                                videoCodedDimensions,
+                                videoDisplayDimensions,
+                                shouldUseUniformTiles,
+                                ToCtbs(layout->heightsOfRows()),
+                                ToCtbs(layout->widthsOfColumns()),
+                                ppsId_++);
+    if (ppsId_ >= MAX_PPS_ID)
+        ppsId_ = 1;
+}
+
+GOPReaderPacket ScanFullFramesFromTiledVideoOperator::stitchedDataForNextGOP() {
+    // Load the data for each tile.
+    std::vector<std::shared_ptr<std::vector<char>>> dataForGOP;
+    int numberOfFrames = -1;
+    int firstFrameIndex = -1;
+    for (auto &reader : currentEncodedFrameReaders_) {
+        auto gopPacket = reader->read();
+        assert(gopPacket.has_value());
+        dataForGOP.push_back(std::shared_ptr(std::move(gopPacket->data())));
+        if (numberOfFrames == -1) {
+            numberOfFrames = gopPacket->numberOfFrames();
+            firstFrameIndex = gopPacket->firstFrameIndex();
+        } else {
+            assert(gopPacket->numberOfFrames() == numberOfFrames);
+            assert(gopPacket->firstFrameIndex() == firstFrameIndex);
+        }
+    }
+    // Reset readers if we're done reading from this tile layout.
+    bool doneReadingThisBatch = std::all_of(currentEncodedFrameReaders_.begin(), currentEncodedFrameReaders_.end(),
+            [] (const auto &reader) { return reader->isEos(); });
+    if (doneReadingThisBatch) {
+        assert(!std::any_of(currentEncodedFrameReaders_.begin(), currentEncodedFrameReaders_.end(),
+                [] (const auto &reader) { return !reader->isEos(); }));
+        currentEncodedFrameReaders_.clear();
+    }
+
+    // Stitch the data for the different GOPs.
+    stitching::Stitcher stitcher(*currentContext_, dataForGOP);
+    return GOPReaderPacket(stitcher.GetStitchedSegments(), firstFrameIndex, numberOfFrames);
+}
+
+std::optional<CPUEncodedFrameDataPtr> ScanFullFramesFromTiledVideoOperator::next() {
+    if (isComplete_)
+        return {};
+
+    if (didSignalEOS_) {
+        isComplete_ = true;
+        return {};
+    }
+
+    // Set up frame readers for next group of frames with the same layout.
+    if (currentEncodedFrameReaders_.empty()) {
+        setUpNextEncodedFrameReaders();
+
+        // If the readers list is still empty after the set up call, then we are done reading frames.
+        // Flush the decoder.
+        if (currentEncodedFrameReaders_.empty()) {
+            didSignalEOS_ = true;
+            CUVIDSOURCEDATAPACKET packet;
+            memset(&packet, 0, sizeof(packet));
+            packet.flags = CUVID_PKT_ENDOFSTREAM;
+            Configuration configuration;
+            return std::make_shared<CPUEncodedFrameData>(
+                    configuration,
+                    DecodeReaderPacket(packet));
+        }
+    }
+
+    // Stitch data for all tiles for this GOP.
+    auto packet = stitchedDataForNextGOP();
+    unsigned long flags = 0;
+    auto data = std::make_shared<CPUEncodedFrameData>(*fullFrameConfig_, DecodeReaderPacket(*packet.data(), flags));
+    data->setFirstFrameIndexAndNumberOfFrames(packet.firstFrameIndex(), packet.numberOfFrames());
+    // Hardcode tile number 0 because we're simulating a 1x1 tile layout.
+    data->setTileNumber(0);
+
+    return {data};
+}
+
+std::unique_ptr<Configuration> ScanFullFramesFromTiledVideoOperator::fullFrameConfig() {
+    auto firstTileConfig = tasm::video::GetConfiguration(tileLocationProvider_->locationOfTileForFrame(0, 0));
+    auto layout = tileLocationProvider_->tileLayoutForFrame(0);
+    auto fullFrameConfig = std::make_unique<Configuration>(
+            layout->totalWidth(),
+            layout->totalHeight(),
+            layout->codedWidth(),
+            layout->codedHeight(),
+            layout->codedWidth(),
+            layout->codedHeight(),
+            firstTileConfig->frameRate,
+            firstTileConfig->codec,
+            0);
+    return fullFrameConfig;
 }
 
 } // namespace tasm

@@ -75,8 +75,13 @@ set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${GPAC_LIBRARIES})
 find_library(SQLITE3_LIBRARY sqlite3)
 set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} ${SQLITE3_LIBRARY})
 
+# Homomorphic stitching.
+set(TASM_LIB_DEPENDENCIES ${TASM_LIB_DEPENDENCIES} homomorphic_stitching)
+set(STITCHING_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/homomorphic_stitching/include)
+
 file(GLOB TASM_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/tasm/*/include")
 
+add_subdirectory(homomorphic_stitching)
 add_subdirectory(tasm)
 add_subdirectory(python)
 enable_testing()

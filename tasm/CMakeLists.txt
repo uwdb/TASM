@@ -1,7 +1,7 @@
 # Include header directories.
 #file(GLOB TASM_INCLUDE_DIRS "*/include")
-message("Include dirs: ${TASM_INCLUDE_DIRS}")
-include_directories(${TASM_INCLUDE_DIRS})
+message("Include dirs: ${TASM_INCLUDE_DIRS} ${STITCHING_INCLUDE_DIRS}")
+include_directories(${TASM_INCLUDE_DIRS} ${STITCHING_INCLUDE_DIRS})
 
 # Add sources.
 file(GLOB TASM_SOURCE_DIRS "*/src")

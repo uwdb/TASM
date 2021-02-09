@@ -5,7 +5,21 @@ Prototype implementation of TASM, which is a tile-based storage manager video an
 # Building Docker container
 `docker build -t tasm/environment -f docker/Dockerfile.environment  .`  
 `docker build -t tasm/tasm -f docker/Dockerfile .`  
-`docker run --rm -it --runtime=nvidia --name tasm tasm/tasm:latest /bin/bash`  
+
+# Running the example notebook in the Docker container
+By default, the Docker container opens to the `python/Examples` directory, which comes with a notebook that walks through
+the basics of interacting with TASM. 
+
+On the machine with a GPU:   
+1. `docker run --rm -it --runtime=nvidia -p 8890:8890 --name tasm tasm/tasm:latest /bin/bash`  
+2. `jupyter notebook --ip 0.0.0.0 --port 8890 --allow-root &` (in the Docker environment)
+ 
+On the machine where you want to interact with the notebook
+(e.g., the Docker container is running on a remote machine, but you want to view the notebook locally):  
+- Note: I've only tried this on Mac through XQuartz  
+1. `ssh -X -L 8890:127.0.0.1:8890 <user>@<host>`
+2. Paste the link from the `jupyter notebook` command into a web browser
+
 
 # Example usage
 `python3`  

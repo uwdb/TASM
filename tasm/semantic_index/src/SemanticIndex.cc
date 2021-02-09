@@ -162,11 +162,6 @@ std::unique_ptr<std::list<Rectangle>> SemanticIndexSQLite::rectanglesForQuery(sq
     return rectangles;
 }
 
-void SemanticIndexSQLiteInMemory::openDatabase(const std::experimental::filesystem::path &dbPath) {
-    ASSERT_SQLITE_OK(sqlite3_open(":memory:", &db_));
-    createTable();
-}
-
 void SemanticIndexWH::openDatabase(const std::experimental::filesystem::path &dbPath) {
     if (!std::experimental::filesystem::exists(dbPath)) {
         ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL));

@@ -7,7 +7,7 @@ Prototype implementation of TASM, which is a tile-based storage manager video an
 `docker build -t tasm/tasm -f docker/Dockerfile .`  
 
 # Running the example notebook in the Docker container
-By default, the Docker container opens to the `python/Examples` directory, which comes with a notebook that walks through
+By default, the Docker container opens to the `python/Examples` directory which comes with a notebook that walks through
 the basics of interacting with TASM. 
 
 On the machine with a GPU:   

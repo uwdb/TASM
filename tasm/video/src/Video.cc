@@ -4,8 +4,6 @@
 
 namespace tasm {
 
-std::unique_ptr<CatalogConfiguration> CatalogConfiguration::instance_ = nullptr;
-
 void TiledEntry::incrementTileVersion() {
     std::ofstream output(TileFiles::tileVersionFilename(path_));
 

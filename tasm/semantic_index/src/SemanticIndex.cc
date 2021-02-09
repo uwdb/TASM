@@ -80,7 +80,7 @@ void SemanticIndexSQLite::addMetadata(
     ASSERT_SQLITE_OK(sqlite3_reset(addMetadataStmt_));
 }
 
-void SemanticIndexSQLite::addBulkMetadata(const std::vector<MetadataInfo> &metadataInfo) {
+void SemanticIndexSQLiteBase::addBulkMetadata(const std::vector<MetadataInfo> &metadataInfo) {
     sqlite3_exec(db_, "BEGIN TRANSACTION;", NULL, NULL, NULL);
     for (const auto &m : metadataInfo)
         addMetadata(m.video, m.label, m.frame, m.x1, m.y1, m.x2, m.y2);
@@ -175,7 +175,7 @@ void SemanticIndexWH::createDatabase(const std::experimental::filesystem::path &
                                 "x int not null, " \
                                 "y int not null, " \
                                 "width int not null, " \
-                                "height int not null"
+                                "height int not null,"
                               "PRIMARY KEY (label, frame, x, y, width, height));";
     char *error = nullptr;
     auto result = sqlite3_exec(db_, createTable, NULL, NULL, &error);

@@ -1,6 +1,7 @@
 #ifndef TASM_WRAPPERS_H
 #define TASM_WRAPPERS_H
 
+#include "EnvironmentConfiguration.h"
 #include "ImageUtilities.h"
 #include "utilities.h"
 #include "Tasm.h"
@@ -53,7 +54,7 @@ public:
         : TASM()
     {}
 
-    PythonTASM(const std::string dbPath, TASM::IndexType indexType)
+    PythonTASM(const std::string dbPath, TASM::IndexType indexType = TASM::IndexType::XY)
         : TASM(dbPath, indexType)
     {}
 
@@ -155,11 +156,16 @@ public:
 };
 
 PythonTASM *tasmFromWH(const std::string &whDBPath) {
-    return new PythonTASM(whDBPath, TASM::IndexType::WH);
+    return new PythonTASM(whDBPath, TASM::IndexType::LegacyWH);
 }
 
-void setCatalogPath(const std::string &resourcesPath) {
-    tasm::CatalogConfiguration::SetCatalogPath(resourcesPath);
+void configureEnvironment(const boost::python::dict &kwargs) {
+    std::unordered_map<std::string, std::string> options;
+    if (kwargs.contains("default_db_path"))
+        options[EnvironmentConfiguration::DefaultLabelsDB] = boost::python::extract<std::string>(kwargs["default_db_path"]);
+    if (kwargs.contains("catalog_path"))
+        options[EnvironmentConfiguration::CatalogPath] = boost::python::extract<std::string>(kwargs["catalog_path"]);
+    EnvironmentConfiguration::instance(EnvironmentConfiguration(options));
 }
 
 } // namespace tasm::python;

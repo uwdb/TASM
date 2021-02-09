@@ -2,6 +2,7 @@
 #define TASM_VIDEO_H
 
 #include "Configuration.h"
+#include "EnvironmentConfiguration.h"
 #include "VideoConfiguration.h"
 #include <experimental/filesystem>
 #include <fstream>
@@ -11,23 +12,7 @@ namespace tasm {
 
 class CatalogConfiguration {
 public:
-    static CatalogConfiguration *instance() {
-        if (!instance_)
-            instance_ = std::unique_ptr<CatalogConfiguration>(new CatalogConfiguration());
-        return instance_.get();
-    }
-
-    static const std::experimental::filesystem::path &CatalogPath() { return instance()->catalogPath(); }
-    static void SetCatalogPath(const std::experimental::filesystem::path &newPath) { instance()->setCatalogPath(newPath); }
-
-    const std::experimental::filesystem::path &catalogPath() const { return catalogPath_; }
-    void setCatalogPath(const std::experimental::filesystem::path &newPath) { catalogPath_ = newPath; }
-
-private:
-    static std::unique_ptr<CatalogConfiguration> instance_;
-    CatalogConfiguration()
-        : catalogPath_("resources") {}
-    std::experimental::filesystem::path catalogPath_;
+    static const std::experimental::filesystem::path &CatalogPath() { return EnvironmentConfiguration::instance().catalogPath(); }
 };
 
 namespace files {

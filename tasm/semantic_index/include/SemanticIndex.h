@@ -1,6 +1,7 @@
 #ifndef TASM_SEMANTICINDEX_H
 #define TASM_SEMANTICINDEX_H
 
+#include "EnvironmentConfiguration.h"
 #include "Rectangle.h"
 #include "SemanticSelection.h"
 #include "TemporalSelection.h"
@@ -58,9 +59,27 @@ public:
     virtual ~SemanticIndex() {}
 };
 
-class SemanticIndexSQLite : public SemanticIndex {
+class SemanticIndexSQLiteBase : public SemanticIndex {
 public:
-    SemanticIndexSQLite(std::experimental::filesystem::path dbPath = "labels.db") {
+    void addBulkMetadata(const std::vector<MetadataInfo>&) override;
+
+protected:
+    virtual std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0) = 0;
+    virtual void openDatabase(const std::experimental::filesystem::path &dbPath) = 0;
+    virtual void createDatabase(const std::experimental::filesystem::path &dbPath) = 0;
+    virtual void closeDatabase() = 0;
+    virtual void initializeStatements() = 0;
+    virtual void destroyStatements() = 0;
+
+    sqlite3 *db_;
+
+    // Statements.
+    sqlite3_stmt *addMetadataStmt_;
+};
+
+class SemanticIndexSQLite : public SemanticIndexSQLiteBase {
+public:
+    SemanticIndexSQLite(const std::experimental::filesystem::path &dbPath = EnvironmentConfiguration::instance().defaultLabelsDatabasePath()) {
         openDatabase(dbPath);
         initializeStatements();
     }
@@ -72,8 +91,6 @@ public:
                      unsigned int y1,
                      unsigned int x2,
                      unsigned int y2) override;
-
-    void addBulkMetadata(const std::vector<MetadataInfo>&) override;
 
     std::unique_ptr<std::vector<int>> orderedFramesForSelection(
             const std::string &video,
@@ -90,13 +107,13 @@ public:
 
 protected:
     // Finalizes the statement.
-    virtual std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0);
+    std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0) override;
 
-    virtual void openDatabase(const std::experimental::filesystem::path &dbPath);
-    virtual void createDatabase(const std::experimental::filesystem::path &dbPath);
-    virtual void closeDatabase();
-    virtual void initializeStatements();
-    virtual void destroyStatements();
+    void openDatabase(const std::experimental::filesystem::path &dbPath) override;
+    void createDatabase(const std::experimental::filesystem::path &dbPath) override;
+    void closeDatabase() override;
+    void initializeStatements() override;
+    void destroyStatements() override;
 
     sqlite3 *db_;
 
@@ -104,7 +121,7 @@ protected:
     sqlite3_stmt *addMetadataStmt_;
 };
 
-class SemanticIndexWH : public SemanticIndexSQLite {
+class SemanticIndexWH : public SemanticIndexSQLiteBase {
 public:
     SemanticIndexWH(std::experimental::filesystem::path dbPath) {
         openDatabase(dbPath);
@@ -126,6 +143,11 @@ public:
 
     std::unique_ptr<std::list<Rectangle>> rectanglesForFrame(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int frame, unsigned int maxWidth = 0, unsigned int maxHeight = 0) override;
     std::unique_ptr<std::list<Rectangle>> rectanglesForFrames(const std::string &video, std::shared_ptr<MetadataSelection> metadataSelection, int firstFrameInclusive, int lastFrameExclusive) override;
+
+    ~SemanticIndexWH() {
+        destroyStatements();
+        closeDatabase();
+    }
 
 protected:
     // Finalizes the statement.

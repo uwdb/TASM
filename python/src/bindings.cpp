@@ -50,12 +50,18 @@ BOOST_PYTHON_MODULE(_tasm) {
             .def_readonly("x2", &tasm::MetadataInfo::x2)
             .def_readonly("y2", &tasm::MetadataInfo::y2);
 
+    enum_<tasm::TASM::IndexType>("IndexType")
+            .value("XY", tasm::TASM::IndexType::XY);
+
     class_<tasm::TASM, boost::noncopyable>("BaseTASM", no_init);
 
+    // Warning: The WH-type of index does not have a "video" column for legacy reasons.
     def("tasm_from_db", &tasm::python::tasmFromWH, return_value_policy<manage_new_object>());
-    def("set_resources_path", &tasm::python::setCatalogPath);
+    def("configure_environment", &tasm::python::configureEnvironment);
 
     class_<tasm::python::PythonTASM, std::shared_ptr<tasm::python::PythonTASM>, bases<tasm::TASM>, boost::noncopyable>("TASM")
+        .def(init<>())
+        .def(init<std::string, optional<tasm::TASM::IndexType>>())
         .def("add_metadata", &tasm::python::PythonTASM::addMetadata)
         .def("add_bulk_metadata", &tasm::python::PythonTASM::addBulkMetadataFromList)
         .def("store", &tasm::python::PythonTASM::store)

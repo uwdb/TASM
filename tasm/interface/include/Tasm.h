@@ -15,7 +15,7 @@ class TASM {
 public:
     enum class IndexType {
         XY,
-        WH,
+        LegacyWH,
     };
 
     TASM()
@@ -27,7 +27,9 @@ public:
     {}
 
     TASM(std::experimental::filesystem::path dbPath, IndexType indexType)
-        : semanticIndex_(indexType == IndexType::WH ? new SemanticIndexWH(dbPath) : new SemanticIndexSQLite(dbPath))
+        : semanticIndex_(indexType == IndexType::LegacyWH
+                                ? reinterpret_cast<SemanticIndex*>(new SemanticIndexWH(dbPath))
+                                : reinterpret_cast<SemanticIndex*>(new SemanticIndexSQLite(dbPath)))
     {}
 
     TASM(const TASM&) = delete;

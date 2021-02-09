@@ -36,6 +36,8 @@ void SemanticIndexSQLite::createDatabase(const std::experimental::filesystem::pa
         sqlite3_free(error);
     }
 
+    ASSERT_SQLITE_OK(sqlite3_exec(db_, "PRAGMA journal_mode=WAL;", 0, 0, 0));
+
     // Create index on video, label, frame.
     const char *createIndex = "CREATE INDEX video_index ON labels (video, label, frame)";
     result = sqlite3_exec(db_, createIndex, NULL, NULL, &error);

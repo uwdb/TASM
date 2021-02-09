@@ -114,11 +114,6 @@ protected:
     void closeDatabase() override;
     void initializeStatements() override;
     void destroyStatements() override;
-
-    sqlite3 *db_;
-
-    // Statements.
-    sqlite3_stmt *addMetadataStmt_;
 };
 
 class SemanticIndexWH : public SemanticIndexSQLiteBase {

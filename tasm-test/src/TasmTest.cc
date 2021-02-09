@@ -47,22 +47,19 @@ TEST_F(TasmTestFixture, testAddMetadata) {
 }
 
 TEST_F(TasmTestFixture, testScan) {
-    tasm::TASM tasm(true);
+    tasm::TASM tasm(SemanticIndex::IndexType::InMemory);
     tasm.addMetadata("red10", "red", 0, 0, 0, 100, 100);
-
-//    tasm.storeWithUniformLayout("/home/maureen/red102k.mp4", "red10-2x2", 2, 2);
-
 }
 
 TEST_F(TasmTestFixture, testSelectDifferentPath) {
-    tasm::TASM tasm(true);
+    tasm::TASM tasm(SemanticIndex::IndexType::InMemory);
     tasm.addMetadata("red10", "red", 0, 0, 0, 100, 100);
 
     tasm.select("red10-2x2", "red", "red10");
 }
 
 TEST_F(TasmTestFixture, testTileBird) {
-    tasm::TASM tasm(true);
+    tasm::TASM tasm(SemanticIndex::IndexType::InMemory);
     std::string video("birdsincage");
     std::string label("bird");
     for (int i = 0; i < 10; ++i)
@@ -76,12 +73,12 @@ TEST_F(TasmTestFixture, testTileBird) {
 }
 
 TEST_F(TasmTestFixture, testTileElFuente1) {
-    tasm::TASM tasm(true);
+    tasm::TASM tasm(SemanticIndex::IndexType::InMemory);
     tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/ElFuente1_hevc.mp4", "elfuente1-not-forced", "elfuente1", "person", false);
 }
 
 TEST_F(TasmTestFixture, testSelectBird) {
-    tasm::TASM tasm(true);
+    tasm::TASM tasm(SemanticIndex::IndexType::InMemory);
     auto selection = tasm.select("birdsincage-bird", "bird", "birdsincage");
     ImagePtr next;
     auto count = 0u;
@@ -92,7 +89,7 @@ TEST_F(TasmTestFixture, testSelectBird) {
 }
 
 TEST_F(TasmTestFixture, testScanBirdsFullFrame) {
-    tasm::TASM tasm("/home/maureen/home_videos/birds_tasm.db", TASM::IndexType::XY);
+    tasm::TASM tasm(SemanticIndex::IndexType::XY, "/home/maureen/home_videos/birds_tasm.db");
     auto selection = tasm.selectFrames("birds-birds", "bird", 0, 5, "birds");
     auto count = 0u;
     ImagePtr next;

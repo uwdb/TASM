@@ -54,8 +54,8 @@ public:
         : TASM()
     {}
 
-    PythonTASM(const std::string dbPath, TASM::IndexType indexType = TASM::IndexType::XY)
-        : TASM(dbPath, indexType)
+    PythonTASM(SemanticIndex::IndexType indexType, const std::string &dbPath=EnvironmentConfiguration::instance().defaultLabelsDatabasePath())
+        : TASM(indexType, dbPath)
     {}
 
     void addBulkMetadataFromList(boost::python::list metadataInfo) {
@@ -156,7 +156,7 @@ public:
 };
 
 PythonTASM *tasmFromWH(const std::string &whDBPath) {
-    return new PythonTASM(whDBPath, TASM::IndexType::LegacyWH);
+    return new PythonTASM(SemanticIndex::IndexType::LegacyWH, whDBPath);
 }
 
 void configureEnvironment(const boost::python::dict &kwargs) {

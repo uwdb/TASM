@@ -29,7 +29,7 @@ TEST_F(VideoManagerTestFixture, testScan) {
 }
 
 TEST_F(VideoManagerTestFixture, testSelect) {
-    auto semanticIndex = std::make_shared<SemanticIndexSQLiteInMemory>();
+    auto semanticIndex = SemanticIndexFactory::createInMemory();
 
     std::string video("red10-2x2");
     std::string label("fish");
@@ -45,7 +45,7 @@ TEST_F(VideoManagerTestFixture, testSelect) {
 }
 
 TEST_F(VideoManagerTestFixture, testAccumulateRegret) {
-    auto semanticIndex = std::make_shared<SemanticIndexSQLiteInMemory>();
+    auto semanticIndex = SemanticIndexFactory::createInMemory();
 
     std::string video("birdsincage-regret");
     std::string metadataIdentifier("birdsincage");

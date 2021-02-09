@@ -28,6 +28,12 @@ struct MetadataInfo {
 
 class SemanticIndex {
 public:
+    enum class IndexType {
+        XY,
+        LegacyWH,
+        InMemory,
+    };
+
     virtual void addMetadata(const std::string &video,
             const std::string &label,
             unsigned int frame,
@@ -62,8 +68,16 @@ public:
 class SemanticIndexSQLiteBase : public SemanticIndex {
 public:
     void addBulkMetadata(const std::vector<MetadataInfo>&) override;
+    virtual void setup() {
+        openDatabase(dbPath_);
+        initializeStatements();
+    }
 
 protected:
+    SemanticIndexSQLiteBase(const std::experimental::filesystem::path &dbPath)
+            : dbPath_(dbPath)
+    { }
+
     virtual std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0) = 0;
     virtual void openDatabase(const std::experimental::filesystem::path &dbPath) = 0;
     virtual void createTable() = 0;
@@ -75,15 +89,13 @@ protected:
 
     // Statements.
     sqlite3_stmt *addMetadataStmt_;
+
+    const std::experimental::filesystem::path dbPath_;
 };
 
 class SemanticIndexSQLite : public SemanticIndexSQLiteBase {
+    friend class SemanticIndexFactory;
 public:
-    SemanticIndexSQLite(const std::experimental::filesystem::path &dbPath = EnvironmentConfiguration::instance().defaultLabelsDatabasePath()) {
-        openDatabase(dbPath);
-        initializeStatements();
-    }
-
     void addMetadata(const std::string &video,
                      const std::string &label,
                      unsigned int frame,
@@ -106,6 +118,10 @@ public:
     }
 
 protected:
+    SemanticIndexSQLite(const std::experimental::filesystem::path &dbPath)
+            : SemanticIndexSQLiteBase(dbPath)
+    {}
+
     // Finalizes the statement.
     std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0) override;
 
@@ -117,23 +133,16 @@ protected:
 };
 
 class SemanticIndexSQLiteInMemory : public SemanticIndexSQLite {
-public:
-    SemanticIndexSQLiteInMemory() {
-        openDatabase("");
-        initializeStatements();
-    }
-
+    friend class SemanticIndexFactory;
 protected:
-    void openDatabase(const std::experimental::filesystem::path &dbPath) override;
+    SemanticIndexSQLiteInMemory()
+            : SemanticIndexSQLite(":memory:")
+    { }
 };
 
 class SemanticIndexWH : public SemanticIndexSQLiteBase {
+    friend class SemanticIndexFactory;
 public:
-    SemanticIndexWH(std::experimental::filesystem::path dbPath) {
-        openDatabase(dbPath);
-        initializeStatements();
-    }
-
     void addMetadata(const std::string &video,
                      const std::string &label,
                      unsigned int frame,
@@ -156,6 +165,10 @@ public:
     }
 
 protected:
+    SemanticIndexWH(const std::experimental::filesystem::path &dbPath)
+            : SemanticIndexSQLiteBase(dbPath)
+    { }
+
     // Finalizes the statement.
     std::unique_ptr<std::list<Rectangle>> rectanglesForQuery(sqlite3_stmt *stmt, unsigned int maxWidth = 0, unsigned int maxHeight = 0) override;
 
@@ -164,6 +177,33 @@ protected:
     void closeDatabase() override;
     void initializeStatements() override;
     void destroyStatements() override;
+};
+
+class SemanticIndexFactory {
+public:
+    static std::shared_ptr<SemanticIndex> create(SemanticIndex::IndexType indexType, const std::experimental::filesystem::path &path) {
+        std::shared_ptr<SemanticIndexSQLiteBase> index;
+        switch (indexType) {
+            case SemanticIndex::IndexType::XY:
+                index = std::shared_ptr<SemanticIndexSQLite>(new SemanticIndexSQLite(path));
+                break;
+            case SemanticIndex::IndexType::LegacyWH:
+                index = std::shared_ptr<SemanticIndexWH>(new SemanticIndexWH(path));
+                break;
+            case SemanticIndex::IndexType::InMemory:
+                index = std::shared_ptr<SemanticIndexSQLiteInMemory>(new SemanticIndexSQLiteInMemory());
+                break;
+            default:
+                std::cerr << "Unrecognized index type: " << static_cast<std::underlying_type<SemanticIndex::IndexType>::type>(indexType) << std::endl;
+                assert(false);
+        }
+        index->setup();
+        return index;
+    }
+
+    static std::shared_ptr<SemanticIndex> createInMemory() {
+        return create(SemanticIndex::IndexType::InMemory, "");
+    }
 };
 
 } // namespace tasm

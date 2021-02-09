@@ -13,23 +13,12 @@ namespace tasm {
 
 class TASM {
 public:
-    enum class IndexType {
-        XY,
-        LegacyWH,
-    };
-
-    TASM(bool inMemory = false)
-        : semanticIndex_(inMemory ? new SemanticIndexSQLiteInMemory() : new SemanticIndexSQLite())
+    TASM(const std::experimental::filesystem::path &dbPath = EnvironmentConfiguration::instance().defaultLabelsDatabasePath())
+        : TASM(SemanticIndex::IndexType::XY, dbPath)
     {}
 
-    TASM(std::experimental::filesystem::path dbPath)
-        : semanticIndex_(new SemanticIndexSQLite(dbPath))
-    {}
-
-    TASM(std::experimental::filesystem::path dbPath, IndexType indexType)
-        : semanticIndex_(indexType == IndexType::LegacyWH
-                                ? reinterpret_cast<SemanticIndex*>(new SemanticIndexWH(dbPath))
-                                : reinterpret_cast<SemanticIndex*>(new SemanticIndexSQLite(dbPath)))
+    TASM(SemanticIndex::IndexType indexType, const std::experimental::filesystem::path &dbPath = EnvironmentConfiguration::instance().defaultLabelsDatabasePath())
+        : semanticIndex_(SemanticIndexFactory::create(indexType, dbPath))
     {}
 
     TASM(const TASM&) = delete;

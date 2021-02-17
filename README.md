@@ -2,6 +2,11 @@
 
 Prototype implementation of TASM, which is a tile-based storage manager video analytics. See the [paper](https://arxiv.org/abs/2006.02958) for more details.
 
+# Cloning
+`git clone`  
+`git submodule init`  
+`git submodule update`  
+
 # Building Docker container
 `docker build -t tasm/environment -f docker/Dockerfile.environment  .`  
 `docker build -t tasm/tasm -f docker/Dockerfile .`  
@@ -20,8 +25,13 @@ On the machine where you want to interact with the notebook
 1. `ssh -X -L 8890:127.0.0.1:8890 <user>@<host>`
 2. Paste the link from the `jupyter notebook` command into a web browser
 
-
 # Example usage
+
+### The key parameters to TASM's API are:
+- `video`: The name of the stored video (e.g., "birds-untiled" or "birds-2x2" or "birds-birds")
+- `label`: The label associated with a bounding box in the semantic index (e.g., "bird")
+- `metadata_id`: The metadata identifier associated with the labels and bounding boxes in the semantic index (e.g., "birds"). Multiple stored videos can use the same `metadata_id` (e.g., all of "birds-untiled", "birds-2x2", and "birds-birds" can use the same `metadata_id = "birds"` if the semantic content of all of these videos is the same).
+
 `python3`  
 
 ```
@@ -30,7 +40,7 @@ import tasm
 t = tasm.TASM()
 
 # Add metadata for a video.
-t.add_metadata(video, label, frame, x1, y1, x2, y2)
+t.add_metadata(metadata_id, label, frame, x1, y1, x2, y2)
 
 # Store a video without tiling.
 t.store("path/to/video.mp4", "stored-name")
@@ -41,11 +51,11 @@ t.store_with_uniform_layout("path/to/video", "stored-name", num_rows, num_cols)
 # Store a video with a non-uniform tile layout based on a metadata label.
 # This leads to fine-grained tiles being created around the bounding boxes associated with the specified label.
 # A new layout is created for each GOP. 
-t.store_with_nonuniform_layout("path/to/video", "stored-name", "metadata identifier, "metadata label")
+t.store_with_nonuniform_layout("path/to/video", "stored-name", "metadata identifier", "metadata label")
 
 # Store with a non-uniform tile layout, but do not tile GOPs where the layout is not expected to improve query times.
 # This estimation is based on the number of pixels that have to be decoded to retrieve the specified metadata label.
-t.store_with_nonuniform_layout("path/to/video", "stored-name", "metadata identifier, "metadata label", False)
+t.store_with_nonuniform_layout("path/to/video", "stored-name", "metadata identifier", "metadata label", False)
 
 # Retrieve pixels associated with labels.
 selection = t.select("video", "metadata identifier", "label", first_frame_inclusive, last_frame_exclusive)
@@ -53,13 +63,23 @@ selection = t.select("video", "metadata identifier", "label", first_frame_inclus
 # The metadata identifier does not have to be specified when it matches the name of the stored video.
 selection = t.select("video", "label", first_frame_inclusive, last_frame_exclusive)
 
+# Specify a single frame to select from.
 selection = t.select("video", "label", frame)
 selection = t.select("video", "metadata identifier", "label", frame)
 
-# To select all instances of the object.
+# Select all instances of the object on all frames.
 selection = t.select("video", "metadata identifier", "label")
 
+# Select entire tiles that contain objects.
+selection = t.select_tiles("video", "metadata identifier", "label")  
+or selection = t.select_tiles("video", "metadata_identifier", "label", first_frame_inclusive, last_frame_exclusive)
+
+# Select entire frames.
+selection = t.select_frames("video", "metadata identifier", "label")  
+or selection = t.select_frames("video", "metadata identifier", "label", first_frame_inclusive, last_frame_exclusive)
+
 # Inspect the instances. They are not guaranteed to be returned in ascending frame order.
+# If is_empty() is True, then there are no more instances/tiles/frames.
 while True:
     instance = selection.next()
     if instance.is_empty():

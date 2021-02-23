@@ -5,6 +5,7 @@
 #include "TileLayout.h"
 #include "Video.h"
 #include <mutex>
+#include "LayoutDatabase.h"
 
 class Transaction;
 class OutputStream {

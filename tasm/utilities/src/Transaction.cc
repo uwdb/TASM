@@ -34,6 +34,8 @@ void TileCrackingTransaction::commit() {
 }
 
 void TileCrackingTransaction::writeTileMetadata() {
-    auto metadataFilename = tasm::TileFiles::tileMetadataFilename(*entry_, firstFrame_, lastFrame_);
-    tasm::gpac::write_tile_configuration(metadataFilename, tileLayout_);
+    std::shared_ptr<tasm::TileLayout> layout = std::make_shared<tasm::TileLayout>(tileLayout_);
+    tasm::LayoutDatabase::instance()->addTileLayout(entry_->name(), entry_->tile_version(), (unsigned int)firstFrame_, (unsigned int)lastFrame_, layout);
+    //auto metadataFilename = tasm::TileFiles::tileMetadataFilename(*entry_, firstFrame_, lastFrame_);
+    //tasm::gpac::write_tile_configuration(metadataFilename, tileLayout_);
 }

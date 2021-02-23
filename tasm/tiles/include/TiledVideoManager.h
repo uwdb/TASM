@@ -5,12 +5,14 @@
 #include "TileLayout.h"
 #include "Video.h"
 #include <mutex>
+#include "LayoutDatabase.h"
 
 namespace tasm {
 class TiledVideoManager {
 public:
     TiledVideoManager(std::shared_ptr<TiledEntry> entry)
             : entry_(entry),
+              layouts_(LayoutDatabase::instance()),
               totalWidth_(0),
               totalHeight_(0),
               largestWidth_(0),
@@ -21,7 +23,7 @@ public:
 
     std::shared_ptr<TiledEntry> entry() const { return entry_; }
     std::vector<int> tileLayoutIdsForFrame(unsigned int frameNumber) const;
-    std::shared_ptr<TileLayout> tileLayoutForId(int id) const { return directoryIdToTileLayout_.at(id); }
+    std::shared_ptr<TileLayout> tileLayoutForId(int id) const;
     std::experimental::filesystem::path locationOfTileForId(unsigned int tileNumber, int id) const;
 
     unsigned int totalWidth() const { return totalWidth_; }
@@ -33,15 +35,7 @@ public:
 private:
     void loadAllTileConfigurations();
     std::shared_ptr<TiledEntry> entry_;
-    IntervalTree<unsigned int> intervalTree_;
-
-public: // For sake of measuring.
-    std::unordered_map<int, std::experimental::filesystem::path> directoryIdToTileDirectory_;
-    std::unordered_map<int, std::shared_ptr<TileLayout>> directoryIdToTileLayout_;
-    std::unordered_map <TileLayout, std::shared_ptr<TileLayout>> tileLayoutReferences_;
-
-private:
-    mutable std::mutex mutex_;
+    std::shared_ptr<LayoutDatabase> layouts_;
 
     unsigned int totalWidth_;
     unsigned int totalHeight_;

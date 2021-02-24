@@ -93,12 +93,12 @@ void LayoutDatabase::createHeightsTable() {
 }
 
 std::vector<int> LayoutDatabase::tileLayoutIdsForFrame(const std::string &video, unsigned int frameNumber) const {
-    std::string selectLayoutIds = "SELECT id FROM layouts WHERE video = " + video +\
-                            " AND " + std::to_string(frameNumber) + " BETWEEN"\
-                            " first_frame AND last_frame";
+    std::string selectLayoutIds = "SELECT id FROM layouts WHERE video = ? AND ? BETWEEN first_frame AND last_frame";
 
     sqlite3_stmt *select;
     ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, selectLayoutIds.c_str(), selectLayoutIds.length(), &select, nullptr));
+    ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, frameNumber));
 
     int result;
     std::vector<int> layoutIds;
@@ -115,9 +115,11 @@ std::vector<int> LayoutDatabase::tileLayoutIdsForFrame(const std::string &video,
 
 std::shared_ptr<TileLayout> LayoutDatabase::tileLayoutForId(const std::string &video, int id) const {
     // select number of rows and cols
-    std::string query = "SELECT num_rows, num_cols FROM layouts WHERE video = " + video + " AND id = " + std::to_string(id);
+    std::string query = "SELECT num_rows, num_cols FROM layouts WHERE video = ? AND id = ?";
     sqlite3_stmt *select;
     ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
+    ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, id));
 
     int result;
     unsigned int numberOfRows = 0;
@@ -195,7 +197,7 @@ std::experimental::filesystem::path LayoutDatabase::locationOfTileForId(const st
     ASSERT_SQLITE_DONE(sqlite3_step(select));
     ASSERT_SQLITE_OK(sqlite3_finalize(select));
 
-    std::experimental::filesystem::path directory = TileFiles::directoryForTilesInFrames(*entry, firstFrame, lastFrame);
+    std::experimental::filesystem::path directory = TileFiles::directoryForTilesInFrames(entry->path(), id, firstFrame, lastFrame);
 
     return TileFiles::tileFilename(directory, tileNumber);
 }

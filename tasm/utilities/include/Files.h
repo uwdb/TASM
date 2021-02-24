@@ -13,7 +13,13 @@ public:
 
     static std::experimental::filesystem::path directoryForTilesInFrames(const TiledEntry &entry, unsigned int firstFrame,
                                                            unsigned int lastFrame) {
-        return entry.path()  / (std::to_string(firstFrame) + separating_string_ + std::to_string(lastFrame) + separating_string_ + std::to_string(entry.tile_version()));
+        return directoryForTilesInFrames(entry.path(), entry.tile_version(), firstFrame, lastFrame);
+    }
+
+    static std::experimental::filesystem::path directoryForTilesInFrames(const std::experimental::filesystem::path &path,
+                                                                         unsigned int version, unsigned int firstFrame,
+                                                                         unsigned int lastFrame) {
+        return path  / (std::to_string(firstFrame) + separating_string_ + std::to_string(lastFrame) + separating_string_ + std::to_string(version));
     }
 
     static std::experimental::filesystem::path temporaryTileFilename(const TiledEntry &entry, unsigned int tileNumber,

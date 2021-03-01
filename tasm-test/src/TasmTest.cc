@@ -2,6 +2,7 @@
 #include "Video.h"
 #include <gtest/gtest.h>
 #include "sqlite3.h"
+#include "LayoutDatabase.h"
 
 using namespace tasm;
 
@@ -54,6 +55,7 @@ TEST_F(TasmTestFixture, testScan) {
 TEST_F(TasmTestFixture, testSelectDifferentPath) {
     tasm::TASM tasm(SemanticIndex::IndexType::InMemory);
     tasm.addMetadata("red10", "red", 0, 0, 0, 100, 100);
+    tasm.storeWithUniformLayout("/home/maureen/red102k.mp4", "red10-2x2", 2, 2);
 
     tasm.select("red10-2x2", "red", "red10");
 }
@@ -79,6 +81,8 @@ TEST_F(TasmTestFixture, testTileElFuente1) {
 
 TEST_F(TasmTestFixture, testSelectBird) {
     tasm::TASM tasm(SemanticIndex::IndexType::InMemory);
+    tasm.storeWithUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-bird", 2, 2);
+
     auto selection = tasm.select("birdsincage-bird", "bird", "birdsincage");
     ImagePtr next;
     auto count = 0u;
@@ -90,6 +94,7 @@ TEST_F(TasmTestFixture, testSelectBird) {
 
 TEST_F(TasmTestFixture, testScanBirdsFullFrame) {
     tasm::TASM tasm(SemanticIndex::IndexType::XY, "/home/maureen/home_videos/birds_tasm.db");
+    tasm.storeWithUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birds-birds", 2, 2);
     auto selection = tasm.selectFrames("birds-birds", "bird", 0, 5, "birds");
     auto count = 0u;
     ImagePtr next;

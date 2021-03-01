@@ -92,7 +92,7 @@ std::unordered_set<std::string> InspectSchema(const std::experimental::filesyste
 }
 
 TEST_F(SemanticIndexTestFixture, testCreateIndexTypes) {
-    /*std::experimental::filesystem::path dbPath = "semantic_index_test.db";
+    std::experimental::filesystem::path dbPath = "semantic_index_test.db";
     EnvironmentConfiguration::instance(EnvironmentConfiguration({
         {EnvironmentConfiguration::DefaultLabelsDB, dbPath},
     }));
@@ -120,5 +120,5 @@ TEST_F(SemanticIndexTestFixture, testCreateIndexTypes) {
     expectedSchema = {"label", "frame", "x", "y", "width", "height"};
     seenSchema = InspectSchema(dbPath);
     assert(expectedSchema == seenSchema);
-    std::experimental::filesystem::remove(dbPath);*/
+    std::experimental::filesystem::remove(dbPath);
 }

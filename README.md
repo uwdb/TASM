@@ -16,7 +16,7 @@ Prototype implementation of TASM, which is a tile-based storage manager video an
 By default, the Docker container opens to the `python/Examples` directory which comes with a notebook that walks through
 the basics of interacting with TASM. 
 
-On the machine with a GPU:   
+On the machine with an encode-capable GPU (https://developer.nvidia.com/video-encode-and-decode-gpu-support-matrix-new):   
 1. `docker run --rm -it --runtime=nvidia -p 8890:8890 --name tasm tasm/tasm:latest /bin/bash`  
 2. `jupyter notebook --ip 0.0.0.0 --port 8890 --allow-root &` (in the Docker environment)
  

@@ -13,14 +13,14 @@ namespace tasm {
             LayoutDatabase::instance()->open();
         }
         void TearDown() {
-            std::experimental::filesystem::remove(LayoutDbConfiguration::LayoutDbPath());
+            std::experimental::filesystem::remove(EnvironmentConfiguration::instance().defaultLayoutDatabasePath());
         }
     };
 
     TEST_F(DatabaseTestFixture, testOpenDb) {
         std::shared_ptr<LayoutDatabase> layoutDatabase = LayoutDatabase::instance();
 
-        std::experimental::filesystem::path layouts = LayoutDbConfiguration::LayoutDbPath();
+        std::experimental::filesystem::path layouts = EnvironmentConfiguration::instance().defaultLayoutDatabasePath();
         assert(std::experimental::filesystem::exists(layouts));
         std::experimental::filesystem::remove(layouts);
 
@@ -74,30 +74,6 @@ namespace tasm {
         std::sort(layoutIds.begin(), layoutIds.end());
         std::sort(foundLayoutIds.begin(), foundLayoutIds.end());
         assert(layoutIds == foundLayoutIds);
-    }
-
-    TEST_F(DatabaseTestFixture, testTileLocation) {
-        std::shared_ptr<LayoutDatabase> layoutDatabase = LayoutDatabase::instance();
-
-        std::string name = "name";
-
-        int tileNumber = 4;
-        unsigned int id = 2;
-        unsigned int firstFrame = 40;
-        unsigned int lastFrame = 59;
-        std::vector<unsigned int> heights{1, 2};
-        std::vector<unsigned int> widths{1, 2};
-        unsigned int numColumns = 2;
-        unsigned int numRows = 2;
-        std::shared_ptr<TileLayout> tileLayout = std::make_shared<TileLayout>(numColumns, numRows, widths, heights);
-
-        layoutDatabase->addTileLayout(name, id, firstFrame, lastFrame, tileLayout);
-
-        auto entry = std::make_shared<TiledEntry>(name);
-
-        std::experimental::filesystem::path expectedLocation = "";
-
-        std::experimental::filesystem::path tileLocation = layoutDatabase->locationOfTileForId(entry, tileNumber, id);
     }
 
     TEST_F(DatabaseTestFixture, testTotalWidthHeight) {

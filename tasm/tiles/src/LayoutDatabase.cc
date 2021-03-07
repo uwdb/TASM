@@ -8,7 +8,7 @@ namespace tasm {
 std::shared_ptr<LayoutDatabase> LayoutDatabase::instance_ = nullptr;
 
 void LayoutDatabase::open() {
-    std::experimental::filesystem::path dbPath = LayoutDbConfiguration::LayoutDbPath();
+    std::experimental::filesystem::path dbPath = EnvironmentConfiguration::instance().defaultLayoutDatabasePath();
     if (!std::experimental::filesystem::exists(dbPath)) {
         ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL));
         createTables();

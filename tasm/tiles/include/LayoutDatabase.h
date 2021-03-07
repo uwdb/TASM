@@ -11,13 +11,6 @@
 
 namespace tasm {
 
-class LayoutDbConfiguration {
-public:
-    static const std::experimental::filesystem::path &LayoutDbPath() {
-        return EnvironmentConfiguration::instance().defaultLayoutDatabasePath();
-    }
-};
-
 class LayoutDatabase {
 public:
     static std::shared_ptr<LayoutDatabase> &instance() {
@@ -38,11 +31,9 @@ public:
     unsigned int largestWidth(const std::string &video) const;
     unsigned int largestHeight(const std::string &video) const;
     unsigned int maximumFrame(const std::string &video) const;
+    void open();
 private:
     LayoutDatabase() {}
-    friend class DatabaseTestFixture;
-    FRIEND_TEST(DatabaseTestFixture, testOpenDb);
-    void open();
     void createTables();
     void createLayoutTable();
     void createWidthsTable();

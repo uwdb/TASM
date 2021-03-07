@@ -11,11 +11,11 @@ class EnvironmentConfiguration {
 public:
     static constexpr auto DefaultLabelsDB = "default_db_path";
     static constexpr auto CatalogPath = "catalog_path";
-    static constexpr auto DefaultLayoutDb = "default_layout_db_path";
+    static constexpr auto DefaultLayoutsDB = "default_layout_db_path";
     EnvironmentConfiguration(const std::unordered_map<std::string, std::string> &configOptions = {})
         : labelsDatabasePath_(configOptions.count(DefaultLabelsDB) ? configOptions.at(DefaultLabelsDB) : defaultDBPath),
         catalogPath_(configOptions.count(CatalogPath) ? configOptions.at(CatalogPath) : defaultCatalogPath),
-        layoutDatabasePath_(configOptions.count(DefaultLayoutDb) ? configOptions.at(DefaultLayoutDb) : defaultLayoutDBPath)
+        layoutDatabasePath_(configOptions.count(DefaultLayoutsDB) ? configOptions.at(DefaultLayoutsDB) : defaultLayoutDBPath)
     { }
 
     const std::experimental::filesystem::path &defaultLabelsDatabasePath() const { return labelsDatabasePath_; };

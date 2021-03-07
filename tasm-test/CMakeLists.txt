@@ -21,5 +21,7 @@ target_link_libraries(
 )
 add_test(tasm_test tasm_test)
 
+file(COPY test-inputs DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 
 

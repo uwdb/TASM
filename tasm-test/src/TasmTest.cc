@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include "sqlite3.h"
 #include "LayoutDatabase.h"
+#include "EnvironmentConfiguration.h"
 
 using namespace tasm;
 
@@ -21,7 +22,52 @@ void countEntriesInDB(const std::experimental::filesystem::path &dbPath, int (*c
 class TasmTestFixture : public testing::Test {
 public:
     TasmTestFixture() {}
+
+protected:
+    void SetUp() {
+        // set test configuration
+        std::unordered_map<std::string, std::string> options {
+                {EnvironmentConfiguration::DefaultLayoutsDB, "test-layout.db"},
+                {EnvironmentConfiguration::CatalogPath, "test-resources"},
+                {EnvironmentConfiguration::DefaultLabelsDB, "test-labels.db"}
+        };
+        auto config = EnvironmentConfiguration::instance(EnvironmentConfiguration(options));
+        std::experimental::filesystem::remove_all(config.defaultLayoutDatabasePath());
+        std::experimental::filesystem::remove_all(config.catalogPath());
+        std::experimental::filesystem::remove_all(config.defaultLabelsDatabasePath());
+
+        // copy resources from tasm-manager-test-resources
+        std::experimental::filesystem::copy("test-inputs/tasm-test-resources/test-layout.db", config.defaultLayoutDatabasePath());
+        std::experimental::filesystem::copy("test-inputs/tasm-test-resources/test-labels.db", config.defaultLabelsDatabasePath());
+        std::experimental::filesystem::copy("test-inputs/tasm-test-resources/test-resources", config.catalogPath(), std::experimental::filesystem::copy_options::recursive);
+
+        LayoutDatabase::instance()->open();
+    }
+    void TearDown() {
+        // remove test resources
+        auto config = EnvironmentConfiguration::instance();
+        std::experimental::filesystem::remove_all(config.defaultLayoutDatabasePath());
+        std::experimental::filesystem::remove_all(config.catalogPath());
+        std::experimental::filesystem::remove_all(config.defaultLabelsDatabasePath());
+    }
 };
+
+TEST_F(TasmTestFixture, DISABLED_createResources) {
+    // For reference purposes, not use; SetUp and TearDown need to be commented out for resources to persist
+    std::unordered_map<std::string, std::string> options {
+            {EnvironmentConfiguration::DefaultLayoutsDB, "test-inputs/tasm-test-resources/test-layout.db"},
+            {EnvironmentConfiguration::CatalogPath, "test-inputs/tasm-test-resources/test-resources"},
+            {EnvironmentConfiguration::DefaultLabelsDB, "test-inputs/tasm-test-resources/test-labels.db"}
+    };
+    auto config = EnvironmentConfiguration::instance(EnvironmentConfiguration(options));
+    std::experimental::filesystem::remove(config.defaultLayoutDatabasePath());
+    std::experimental::filesystem::remove_all(config.catalogPath());
+    std::experimental::filesystem::remove(config.defaultLabelsDatabasePath());
+
+    tasm::TASM tasm;
+    tasm.storeWithUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-2x2", 2, 2);
+    tasm.storeWithUniformLayout("/home/maureen/red102k.mp4", "red10-2x2", 2, 2);
+}
 
 TEST_F(TasmTestFixture, testAddMetadata) {
     std::experimental::filesystem::path path("testLabels.db");
@@ -55,8 +101,6 @@ TEST_F(TasmTestFixture, testScan) {
 TEST_F(TasmTestFixture, testSelectDifferentPath) {
     tasm::TASM tasm(SemanticIndex::IndexType::InMemory);
     tasm.addMetadata("red10", "red", 0, 0, 0, 100, 100);
-    tasm.storeWithUniformLayout("/home/maureen/red102k.mp4", "red10-2x2", 2, 2);
-
     tasm.select("red10-2x2", "red", "red10");
 }
 
@@ -81,9 +125,8 @@ TEST_F(TasmTestFixture, testTileElFuente1) {
 
 TEST_F(TasmTestFixture, testSelectBird) {
     tasm::TASM tasm(SemanticIndex::IndexType::InMemory);
-    tasm.storeWithUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-bird", 2, 2);
 
-    auto selection = tasm.select("birdsincage-bird", "bird", "birdsincage");
+    auto selection = tasm.select("birdsincage-2x2", "bird", "birdsincage");
     ImagePtr next;
     auto count = 0u;
     while ((next = selection->next())) {
@@ -94,8 +137,7 @@ TEST_F(TasmTestFixture, testSelectBird) {
 
 TEST_F(TasmTestFixture, testScanBirdsFullFrame) {
     tasm::TASM tasm(SemanticIndex::IndexType::XY, "/home/maureen/home_videos/birds_tasm.db");
-    tasm.storeWithUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birds-birds", 2, 2);
-    auto selection = tasm.selectFrames("birds-birds", "bird", 0, 5, "birds");
+    auto selection = tasm.selectFrames("birdsincage-2x2", "bird", 0, 5, "birds");
     auto count = 0u;
     ImagePtr next;
     while ((next = selection->next()))

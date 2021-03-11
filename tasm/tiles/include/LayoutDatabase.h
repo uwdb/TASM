@@ -13,10 +13,11 @@ namespace tasm {
 
 class LayoutDatabase {
 public:
-    static std::shared_ptr<LayoutDatabase> &instance() {
-        if (instance_ == nullptr) {
-            instance_ = std::make_shared<LayoutDatabase>(LayoutDatabase());
-            instance_->open();
+    static std::shared_ptr<LayoutDatabase> instance() {
+        if (!instance_) {
+            LayoutDatabase database = LayoutDatabase();
+            database.open();
+            instance_ = std::make_shared<LayoutDatabase>(database);
         }
         return instance_;
     }
@@ -32,6 +33,12 @@ public:
     unsigned int largestHeight(const std::string &video) const;
     unsigned int maximumFrame(const std::string &video) const;
     void open();
+
+    ~LayoutDatabase() {
+        destroyStatements();
+        closeDatabase();
+    }
+
 private:
     LayoutDatabase() {}
     void createTables();
@@ -44,8 +51,21 @@ private:
     std::vector<unsigned int> widthsForId(const std::string &video, unsigned int id) const;
     std::vector<unsigned int> heightsForId(const std::string &video, unsigned int id) const;
 
+    void initializeStatements();
+    void destroyStatements();
+    void closeDatabase();
+
     sqlite3 *db_;
     static std::shared_ptr<LayoutDatabase> instance_;
+
+    // Statements
+    sqlite3_stmt *selectLayoutIdsStmt_;
+    sqlite3_stmt *selectLayoutsStmt_;
+    sqlite3_stmt *selectWidthsStmt_;
+    sqlite3_stmt *selectHeightsStmt_;
+    sqlite3_stmt *insertLayoutsStmt_;
+    sqlite3_stmt *insertWidthsStmt_;
+    sqlite3_stmt *insertHeightsStmt_;
 };
 
 } // namespace tasm

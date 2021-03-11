@@ -15,6 +15,11 @@ void LayoutDatabase::open() {
     } else {
         ASSERT_SQLITE_OK(sqlite3_open_v2(dbPath.c_str(), &db_, SQLITE_OPEN_READWRITE, NULL));
     }
+    initializeStatements();
+}
+
+void LayoutDatabase::closeDatabase() {
+    ASSERT_SQLITE_OK(sqlite3_close(db_));
 }
 
 void LayoutDatabase::createTables() {
@@ -92,22 +97,58 @@ void LayoutDatabase::createHeightsTable() {
     }
 }
 
-std::vector<int> LayoutDatabase::tileLayoutIdsForFrame(const std::string &video, unsigned int frameNumber) const {
-    std::string selectLayoutIds = "SELECT id FROM layouts WHERE video = ? AND ? BETWEEN first_frame AND last_frame";
+void LayoutDatabase::initializeStatements() {
+    // selectLayoutIdsStmt_
+    std::string query = "SELECT id FROM layouts WHERE video = ? AND ? BETWEEN first_frame AND last_frame";
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &selectLayoutIdsStmt_, nullptr));
 
-    sqlite3_stmt *select;
-    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, selectLayoutIds.c_str(), selectLayoutIds.length(), &select, nullptr));
-    ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
-    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, frameNumber));
+    // selectLayoutsStmt
+    query = "SELECT num_rows, num_cols FROM layouts WHERE video = ? AND id = ?";
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &selectLayoutsStmt_, nullptr));
+
+    // selectWidthsStmt
+    query = "SELECT width FROM widths WHERE video = ? AND id = ? ORDER BY position ASC";
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &selectWidthsStmt_, nullptr));
+
+    // selectHeightsStmt
+    query = "SELECT height FROM heights WHERE video = ? AND id = ? ORDER BY position ASC";
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &selectHeightsStmt_, nullptr));
+
+    // insertLayoutsStmt_
+    query = "INSERT INTO layouts (video, id, first_frame, last_frame, num_rows, num_cols) VALUES (?, ?, ?, ?, ?, ?)";
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &insertLayoutsStmt_, nullptr));
+
+    // insertWidthsStmt_
+    query = "INSERT INTO widths (video, id, width, position) VALUES ( ?, ?, ?, ?)";
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &insertWidthsStmt_, nullptr));
+
+    // insertHeightsStmt_
+    query = "INSERT INTO heights (video, id, height, position) VALUES (?, ?, ?, ?)";
+    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &insertHeightsStmt_, nullptr));
+}
+
+void LayoutDatabase::destroyStatements() {
+    ASSERT_SQLITE_OK(sqlite3_finalize(selectLayoutIdsStmt_));
+    ASSERT_SQLITE_OK(sqlite3_finalize(selectLayoutsStmt_));
+    ASSERT_SQLITE_OK(sqlite3_finalize(selectWidthsStmt_));
+    ASSERT_SQLITE_OK(sqlite3_finalize(selectHeightsStmt_));
+    ASSERT_SQLITE_OK(sqlite3_finalize(insertLayoutsStmt_));
+    ASSERT_SQLITE_OK(sqlite3_finalize(insertWidthsStmt_));
+    ASSERT_SQLITE_OK(sqlite3_finalize(insertHeightsStmt_));
+}
+
+std::vector<int> LayoutDatabase::tileLayoutIdsForFrame(const std::string &video, unsigned int frameNumber) const {
+    ASSERT_SQLITE_OK(sqlite3_bind_text(selectLayoutIdsStmt_, 1, video.c_str(), -1, SQLITE_STATIC));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(selectLayoutIdsStmt_, 2, frameNumber));
 
     int result;
     std::vector<int> layoutIds;
-    while ((result = sqlite3_step(select)) == SQLITE_ROW) {
-        layoutIds.push_back(sqlite3_column_int(select, 0));
+    while ((result = sqlite3_step(selectLayoutIdsStmt_)) == SQLITE_ROW) {
+        layoutIds.push_back(sqlite3_column_int(selectLayoutIdsStmt_, 0));
     }
 
     ASSERT_SQLITE_DONE(result);
-    ASSERT_SQLITE_OK(sqlite3_finalize(select));
+    ASSERT_SQLITE_OK(sqlite3_reset(selectLayoutIdsStmt_));
 
     assert(!layoutIds.empty());
     return layoutIds;
@@ -115,66 +156,51 @@ std::vector<int> LayoutDatabase::tileLayoutIdsForFrame(const std::string &video,
 
 std::shared_ptr<TileLayout> LayoutDatabase::tileLayoutForId(const std::string &video, int id) const {
     // select number of rows and cols
-    std::string query = "SELECT num_rows, num_cols FROM layouts WHERE video = ? AND id = ?";
-    sqlite3_stmt *select;
-    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
-    ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
-    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, id));
+    ASSERT_SQLITE_OK(sqlite3_bind_text(selectLayoutsStmt_, 1, video.c_str(), -1, SQLITE_STATIC));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(selectLayoutsStmt_, 2, id));
 
     int result;
     unsigned int numberOfRows = 0;
     unsigned int numberOfCols = 0;
-    if ((result = sqlite3_step(select)) == SQLITE_ROW) {
-        numberOfRows = sqlite3_column_int(select, 0);
-        numberOfCols = sqlite3_column_int(select, 1);
+    if ((result = sqlite3_step(selectLayoutsStmt_)) == SQLITE_ROW) {
+        numberOfRows = sqlite3_column_int(selectLayoutsStmt_, 0);
+        numberOfCols = sqlite3_column_int(selectLayoutsStmt_, 1);
     }
 
-    ASSERT_SQLITE_DONE(sqlite3_step(select));
-    ASSERT_SQLITE_OK(sqlite3_finalize(select));
+    ASSERT_SQLITE_DONE(sqlite3_step(selectLayoutsStmt_));
+    ASSERT_SQLITE_OK(sqlite3_reset(selectLayoutsStmt_));
 
-    std::vector<unsigned int> heightsOfRows = heightsForId(video, id);
-
-    std::vector<unsigned int> widthsOfColumns = widthsForId(video, id);
-
-    return std::make_shared<TileLayout>(TileLayout(numberOfCols, numberOfRows, widthsOfColumns, heightsOfRows));
+    return std::make_shared<TileLayout>(TileLayout(numberOfCols, numberOfRows, widthsForId(video, id), heightsForId(video, id)));
 }
 
 std::vector<unsigned int> LayoutDatabase::widthsForId(const std::string &video, unsigned int id) const {
-    // select widths
-    std::string query = "SELECT width FROM widths WHERE video = ? AND id = ? ORDER BY position ASC";
-    sqlite3_stmt *select;
-    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
-    ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
-    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, id));
+    ASSERT_SQLITE_OK(sqlite3_bind_text(selectWidthsStmt_, 1, video.c_str(), -1, SQLITE_STATIC));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(selectWidthsStmt_, 2, id));
 
     int result;
     std::vector<unsigned int> widthsOfColumns;
-    while ((result = sqlite3_step(select)) == SQLITE_ROW) {
-        widthsOfColumns.push_back(sqlite3_column_int(select, 0));
+    while ((result = sqlite3_step(selectWidthsStmt_)) == SQLITE_ROW) {
+        widthsOfColumns.push_back(sqlite3_column_int(selectWidthsStmt_, 0));
     }
 
     ASSERT_SQLITE_DONE(result);
-    ASSERT_SQLITE_OK(sqlite3_finalize(select));
+    ASSERT_SQLITE_OK(sqlite3_reset(selectWidthsStmt_));
 
     return widthsOfColumns;
 }
 
 std::vector<unsigned int> LayoutDatabase::heightsForId(const std::string &video, unsigned int id) const {
-    // select heights
-    std::string query = "SELECT height FROM heights WHERE video = ? AND id = ? ORDER BY position ASC";
-    sqlite3_stmt *select;
-    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
-    ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
-    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, id));
+    ASSERT_SQLITE_OK(sqlite3_bind_text(selectHeightsStmt_, 1, video.c_str(), -1, SQLITE_STATIC));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(selectHeightsStmt_, 2, id));
 
     int result;
     std::vector<unsigned int> heightsOfRows;
-    while ((result = sqlite3_step(select)) == SQLITE_ROW) {
-        heightsOfRows.push_back(sqlite3_column_int(select, 0));
+    while ((result = sqlite3_step(selectHeightsStmt_)) == SQLITE_ROW) {
+        heightsOfRows.push_back(sqlite3_column_int(selectHeightsStmt_, 0));
     }
 
     ASSERT_SQLITE_DONE(result);
-    ASSERT_SQLITE_OK(sqlite3_finalize(select));
+    ASSERT_SQLITE_OK(sqlite3_reset(selectHeightsStmt_));
 
     return heightsOfRows;
 }
@@ -209,63 +235,42 @@ void LayoutDatabase::addTileLayout(const std::string &video, unsigned int id, un
 }
 
 void LayoutDatabase::addTileBasicLayout(const std::string &video, unsigned int id, unsigned int firstFrame, unsigned int lastFrame, unsigned int numCols, unsigned int numRows) {
-    std::string query = "INSERT INTO layouts (video, id, first_frame, last_frame, num_rows, num_cols)"\
-                    "VALUES (?, ?, ?, ?, ?, ?)";
+    ASSERT_SQLITE_OK(sqlite3_bind_text(insertLayoutsStmt_, 1, video.c_str(), -1, SQLITE_STATIC));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(insertLayoutsStmt_, 2, id));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(insertLayoutsStmt_, 3, firstFrame));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(insertLayoutsStmt_, 4, lastFrame));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(insertLayoutsStmt_, 5, numRows));
+    ASSERT_SQLITE_OK(sqlite3_bind_int(insertLayoutsStmt_, 6, numCols));
 
-    sqlite3_stmt *select;
-    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
-    ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
-    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, id));
-    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 3, firstFrame));
-    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 4, lastFrame));
-    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 5, numRows));
-    ASSERT_SQLITE_OK(sqlite3_bind_int(select, 6, numCols));
-
-    int result = sqlite3_step(select);
+    int result = sqlite3_step(insertLayoutsStmt_);
     ASSERT_SQLITE_DONE(result);
-    ASSERT_SQLITE_OK(sqlite3_finalize(select));
+    ASSERT_SQLITE_OK(sqlite3_reset(insertLayoutsStmt_));
 }
 
 void LayoutDatabase::addTileLayoutWidths(const std::string &video, unsigned int id, const std::vector<unsigned int> &widths) {
-    std::string query = "INSERT INTO widths (video, id, width, position) "\
-                    "VALUES ( ?, ?, ?, ?)";
-
-    sqlite3_stmt *select;
-    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
-
     int position = 0;
     for (const auto& width : widths) {
-        ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
-        ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, id));
-        ASSERT_SQLITE_OK(sqlite3_bind_int(select, 3, width));
-        ASSERT_SQLITE_OK(sqlite3_bind_int(select, 4, position));
-        ASSERT_SQLITE_DONE(sqlite3_step(select));
-        ASSERT_SQLITE_OK(sqlite3_reset(select));
+        ASSERT_SQLITE_OK(sqlite3_bind_text(insertWidthsStmt_, 1, video.c_str(), -1, SQLITE_STATIC));
+        ASSERT_SQLITE_OK(sqlite3_bind_int(insertWidthsStmt_, 2, id));
+        ASSERT_SQLITE_OK(sqlite3_bind_int(insertWidthsStmt_, 3, width));
+        ASSERT_SQLITE_OK(sqlite3_bind_int(insertWidthsStmt_, 4, position));
+        ASSERT_SQLITE_DONE(sqlite3_step(insertWidthsStmt_));
+        ASSERT_SQLITE_OK(sqlite3_reset(insertWidthsStmt_));
         ++position;
     }
-
-    ASSERT_SQLITE_OK(sqlite3_finalize(select));
 }
 
 void LayoutDatabase::addTileLayoutHeights(const std::string &video, unsigned int id, const std::vector<unsigned int> &heights) {
-    std::string query = "INSERT INTO heights (video, id, height, position)"\
-                    "VALUES (?, ?, ?, ?)";
-
-    sqlite3_stmt *select;
-    ASSERT_SQLITE_OK(sqlite3_prepare_v2(db_, query.c_str(), query.length(), &select, nullptr));
-
     int position = 0;
     for (const auto& height : heights) {
-        ASSERT_SQLITE_OK(sqlite3_bind_text(select, 1, video.c_str(), -1, SQLITE_STATIC));
-        ASSERT_SQLITE_OK(sqlite3_bind_int(select, 2, id));
-        ASSERT_SQLITE_OK(sqlite3_bind_int(select, 3, height));
-        ASSERT_SQLITE_OK(sqlite3_bind_int(select, 4, position));
-        ASSERT_SQLITE_DONE(sqlite3_step(select));
-        ASSERT_SQLITE_OK(sqlite3_reset(select));
+        ASSERT_SQLITE_OK(sqlite3_bind_text(insertHeightsStmt_, 1, video.c_str(), -1, SQLITE_STATIC));
+        ASSERT_SQLITE_OK(sqlite3_bind_int(insertHeightsStmt_, 2, id));
+        ASSERT_SQLITE_OK(sqlite3_bind_int(insertHeightsStmt_, 3, height));
+        ASSERT_SQLITE_OK(sqlite3_bind_int(insertHeightsStmt_, 4, position));
+        ASSERT_SQLITE_DONE(sqlite3_step(insertHeightsStmt_));
+        ASSERT_SQLITE_OK(sqlite3_reset(insertHeightsStmt_));
         ++position;
     }
-
-    ASSERT_SQLITE_OK(sqlite3_finalize(select));
 }
 
 unsigned int LayoutDatabase::totalHeight(const std::string &video) const {

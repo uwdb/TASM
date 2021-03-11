@@ -12,7 +12,7 @@ class TiledVideoManager {
 public:
     TiledVideoManager(std::shared_ptr<TiledEntry> entry)
             : entry_(entry),
-              layouts_(LayoutDatabase::instance()),
+              layoutDB_(LayoutDatabase::instance()),
               totalWidth_(0),
               totalHeight_(0),
               largestWidth_(0),
@@ -35,7 +35,7 @@ public:
 private:
     void loadAllTileConfigurations();
     std::shared_ptr<TiledEntry> entry_;
-    std::shared_ptr<LayoutDatabase> layouts_;
+    std::shared_ptr<LayoutDatabase> layoutDB_;
 
     unsigned int totalWidth_;
     unsigned int totalHeight_;

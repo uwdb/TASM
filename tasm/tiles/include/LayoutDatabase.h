@@ -15,9 +15,8 @@ class LayoutDatabase {
 public:
     static std::shared_ptr<LayoutDatabase> instance() {
         if (!instance_) {
-            LayoutDatabase database = LayoutDatabase();
-            database.open();
-            instance_ = std::make_shared<LayoutDatabase>(database);
+            instance_ = std::shared_ptr<LayoutDatabase>(new LayoutDatabase());
+            instance_->open();
         }
         return instance_;
     }
@@ -35,12 +34,14 @@ public:
     void open();
 
     ~LayoutDatabase() {
-        destroyStatements();
-        closeDatabase();
+        if (db_) {
+            destroyStatements();
+            closeDatabase();
+        }
     }
 
 private:
-    LayoutDatabase() {}
+    LayoutDatabase() : db_(nullptr) {}
     void createTables();
     void createLayoutTable();
     void createWidthsTable();
@@ -66,6 +67,13 @@ private:
     sqlite3_stmt *insertLayoutsStmt_;
     sqlite3_stmt *insertWidthsStmt_;
     sqlite3_stmt *insertHeightsStmt_;
+    sqlite3_stmt *selectFirstLastFrameStmt_;
+    sqlite3_stmt *selectIdStmt_;
+    sqlite3_stmt *selectTotalWidthStmt_;
+    sqlite3_stmt *selectTotalHeightStmt_;
+    sqlite3_stmt *selectMaxWidthStmt_;
+    sqlite3_stmt *selectMaxHeightStmt_;
+    sqlite3_stmt *selectMaxFrameStmt_;
 };
 
 } // namespace tasm

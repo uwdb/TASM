@@ -14,6 +14,20 @@ using namespace tasm;
 class SemanticIndexTestFixture : public testing::Test {
 public:
     SemanticIndexTestFixture() {}
+
+protected:
+    void SetUp() {
+        // set test configuration
+        std::unordered_map<std::string, std::string> options {
+                {EnvironmentConfiguration::DefaultLabelsDB, "test-labels.db"}
+        };
+        auto config = EnvironmentConfiguration::instance(EnvironmentConfiguration(options));
+        std::experimental::filesystem::remove_all(config.defaultLabelsDatabasePath());
+    }
+    void TearDown() {
+        // remove test resources
+        std::experimental::filesystem::remove_all(EnvironmentConfiguration::instance().defaultLabelsDatabasePath());
+    }
 };
 
 TEST_F(SemanticIndexTestFixture, testCreateDB) {

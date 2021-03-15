@@ -10,6 +10,12 @@ namespace tasm {
 
     protected:
         void SetUp() {
+            // set test configuration
+            std::unordered_map<std::string, std::string> options {
+                    {EnvironmentConfiguration::DefaultLayoutsDB, "test-layout.db"},
+            };
+            auto config = EnvironmentConfiguration::instance(EnvironmentConfiguration(options));
+            std::experimental::filesystem::remove(config.defaultLayoutDatabasePath());
             LayoutDatabase::instance()->open();
         }
         void TearDown() {
@@ -97,7 +103,6 @@ namespace tasm {
             totalWidth += i;
         }
 
-        int tileNumber = 4;
         unsigned int id = 2;
         unsigned int firstFrame = 40;
         unsigned int lastFrame = 59;

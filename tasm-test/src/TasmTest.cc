@@ -65,7 +65,7 @@ TEST_F(TasmTestFixture, DISABLED_createResources) {
     std::experimental::filesystem::remove(config.defaultLabelsDatabasePath());
 
     tasm::TASM tasm;
-    tasm.storeWithUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-2x2", 2, 2);
+    tasm.storeWithUniformLayout("/home/maureen/red_6sec_2k.mp4", "birdsincage-2x2", 2, 2);
     tasm.storeWithUniformLayout("/home/maureen/red102k.mp4", "red10-2x2", 2, 2);
 }
 
@@ -111,16 +111,11 @@ TEST_F(TasmTestFixture, testTileBird) {
     for (int i = 0; i < 10; ++i)
         tasm.addMetadata(video, label, i, 0, 0, 100, 100);
 
-    tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-not-forced", video, label, false);
-    tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/BirdsInCage_hevc.mp4", "birdsincage-forced", video, label, true);
+    tasm.storeWithNonUniformLayout("test-inputs/tasm-test-resources/red_6sec_2k.mp4", "birdsincage-not-forced", video, label, false);
+    tasm.storeWithNonUniformLayout("test-inputs/tasm-test-resources/red_6sec_2k.mp4", "birdsincage-forced", video, label, true);
 
     std::experimental::filesystem::remove_all(tasm::files::PathForVideo("birdsincage-not-forced"));
     std::experimental::filesystem::remove_all(tasm::files::PathForVideo("birdsincage-forced"));
-}
-
-TEST_F(TasmTestFixture, testTileElFuente1) {
-    tasm::TASM tasm(SemanticIndex::IndexType::InMemory);
-    tasm.storeWithNonUniformLayout("/home/maureen/NFLX_dataset/ElFuente1_hevc.mp4", "elfuente1-not-forced", "elfuente1", "person", false);
 }
 
 TEST_F(TasmTestFixture, testSelectBird) {

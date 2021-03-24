@@ -53,11 +53,11 @@ TEST_F(VideoManagerTestFixture, DISABLED_createResources) {
     std::experimental::filesystem::remove(config.defaultLabelsDatabasePath());
 
     VideoManager manager;
-    manager.store("/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/birdsincage/1-0-stream.mp4", "birdsincage-regret");
+    manager.store("/home/maureen/red_6sec_2k.mp4", "birdsincage-regret");
 }
 
 TEST_F(VideoManagerTestFixture, testLoadVideoConfiguration) {
-    Video vid("/home/maureen/lightdb-wip/cmake-build-debug-remote/test/resources/red10/1-0-stream.mp4");
+    Video vid("test-inputs/video-manager-test-resources/1-0-stream.mp4");
 
     assert(vid.configuration().displayWidth == 320);
     assert(vid.configuration().displayHeight == 240);
@@ -106,7 +106,7 @@ TEST_F(VideoManagerTestFixture, testSelect) {
     std::shared_ptr<TemporalSelection> temporalSelection;
 
     VideoManager manager;
-    manager.storeWithUniformLayout("/home/maureen/red102k.mp4", "red10-2x2", 2, 2);
+    manager.storeWithUniformLayout("test-inputs/video-manager-test-resources/red102k.mp4", "red10-2x2", 2, 2);
     manager.select(video, video, metadataSelection, temporalSelection, semanticIndex);
 }
 

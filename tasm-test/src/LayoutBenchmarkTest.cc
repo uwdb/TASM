@@ -10,22 +10,25 @@
 
 using namespace tasm;
 
-#define VIDEO_PATHS {"/home/maureen/red_videos/red_6sec_2k.mp4", "/home/maureen/red_videos/red_900sec_2k.mp4"}
-#define LABEL_PATHS {"/home/maureen/NFLX_dataset/detections/labels/birdsincage.db", "/home/maureen/visualroad_tiling/labels_yolo/traffic-2k-001_yolo.db"}
-#define VIDEO_LABELS {"bird", "car"}
-#define VIDEO_NAMES {"birdsincage", "traffic-2k-001_yolo"}
-#define NUM_FRAMES {180, 27000}
-#define IDS {197, 8476}
-#define NUM_VIDEOS 2
-#define NUM_ITERATIONS 3
-#define FUNCTION_REPETITIONS 50 // for functions that are too fast to measure without repetition
-#define SEP ","
-#define IMPLEMENTATION "layout database"
-#define OUTFILE_NAME "layout_database_benchmark.csv"
+const int NUM_VIDEOS = 2;
+const std::string VIDEO_PATHS[NUM_VIDEOS] {"/home/maureen/red_videos/red_6sec_2k.mp4", "/home/maureen/red_videos/red_900sec_2k.mp4"};
+const std::string LABEL_PATHS[NUM_VIDEOS] {"/home/maureen/NFLX_dataset/detections/labels/birdsincage.db", "/home/maureen/visualroad_tiling/labels_yolo/traffic-2k-001_yolo.db"};
+const std::string VIDEO_LABELS[NUM_VIDEOS] {"bird", "car"};
+const std::string VIDEO_NAMES[NUM_VIDEOS] {"birdsincage", "traffic-2k-001_yolo"};
+const int NUM_FRAMES[NUM_VIDEOS] {180, 27000};
+const int IDS[NUM_VIDEOS] {197, 8476}; // from tileLayoutIdsForFrame
+
+const int NUM_ITERATIONS = 3;
+const int FUNCTION_REPETITIONS = 50; // for functions that are too fast to measure without repetition
+const std::string SEP = ",";
+const std::string IMPLEMENTATION = "layout database";
+const std::string OUTFILE_NAME = "layout_database_benchmark.csv";
 
 void printStat(std::ofstream &file, std::string experiment, std::string step, std::string video, int frame,
-               int iteration, long time) {
-    file << IMPLEMENTATION << SEP << experiment << SEP << step << SEP << video << SEP << frame << SEP << iteration << SEP << time << "\n";
+               int iteration, long time, int repetitions) {
+    file << IMPLEMENTATION << SEP << experiment << SEP << step << SEP << video << SEP << frame << SEP << iteration <<
+        SEP << time << SEP << repetitions << "\n";
+    file.flush();
 }
 
 void runBenchmark(std::string videoName, std::shared_ptr<TiledEntry> entry, int iteration, std::ofstream &outputFile,
@@ -50,9 +53,9 @@ void runBenchmark(std::string videoName, std::shared_ptr<TiledEntry> entry, int 
     auto functionDuration = std::chrono::duration_cast<std::chrono::microseconds>(functionEnd - functionStart).count();
 
     // output data to csv file
-    printStat(outputFile, experiment, "total", videoName, frameNumber, iteration, totalDuration);
-    printStat(outputFile, experiment, "constructor", videoName, frameNumber, iteration, constructorDuration);
-    printStat(outputFile, experiment, videoName, "processing", frameNumber, iteration, functionDuration);
+    printStat(outputFile, experiment, "total", videoName, frameNumber, iteration, totalDuration, FUNCTION_REPETITIONS);
+    printStat(outputFile, experiment, "constructor", videoName, frameNumber, iteration, constructorDuration, FUNCTION_REPETITIONS);
+    printStat(outputFile, experiment, "processing", videoName, frameNumber, iteration, functionDuration, FUNCTION_REPETITIONS);
 }
 
 void storeVideos(std::string videoName, std::string videoPath, std::string label, int iteration, std::ofstream &outputFile) {
@@ -66,7 +69,7 @@ void storeVideos(std::string videoName, std::string videoPath, std::string label
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
     // output data to csv file
-    printStat(outputFile, "storeVideos", "processing", videoName, -1, iteration, duration);
+    printStat(outputFile, "storeVideos", "processing", videoName, -1, iteration, duration, 1);
 }
 
 void testConstructor(std::string videoName, std::shared_ptr<TiledEntry> entry, int iteration, std::ofstream &outputFile) {
@@ -78,7 +81,7 @@ void testConstructor(std::string videoName, std::shared_ptr<TiledEntry> entry, i
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
     // output data to csv file
-    printStat(outputFile, "testConstructor", "constructor", videoName, -1, iteration, duration);
+    printStat(outputFile, "testConstructor", "constructor", videoName, -1, iteration, duration, 1);
 }
 
 void testTileLayoutIdsForFrame (std::string videoName, std::shared_ptr<TiledEntry> entry, int frames, int iteration, std::ofstream &outputFile) {
@@ -148,28 +151,20 @@ TEST_F(LayoutBenchmarkTestFixture, runBenchmarks) {
     };
     auto config = EnvironmentConfiguration::instance(EnvironmentConfiguration(options));
 
-    // initialize video info
-    std::string labelPaths[NUM_VIDEOS] LABEL_PATHS;
-    std::string videoPaths[NUM_VIDEOS] VIDEO_PATHS;
-    std::string labels[NUM_VIDEOS] VIDEO_LABELS;
-    std::string names[NUM_VIDEOS] VIDEO_NAMES;
-    int numFrames[NUM_VIDEOS] NUM_FRAMES;
-    int ids[NUM_VIDEOS] IDS;
-
     // open output file and add header
     std::ofstream outputFile;
     outputFile.open(OUTFILE_NAME, std::ios::out);
     outputFile << "implementation" << SEP << "experiment" << SEP << "step" << SEP << "video" << SEP << "frame"\
-        << SEP << "iteration" << SEP << "time\n";
+        << SEP << "iteration" << SEP << "time" << SEP << "repetitions\n";
 
     // run experiments for each video
     for (int i = 0; i < NUM_VIDEOS; i++) {
-        std::string labelPath = labelPaths[i];
-        std::string videoPath = videoPaths[i];
-        std::string label = labels[i];
-        std::string name = names[i];
-        int frames = numFrames[i];
-        int id = ids[i];
+        std::string labelPath = LABEL_PATHS[i];
+        std::string videoPath = VIDEO_PATHS[i];
+        std::string label = VIDEO_LABELS[i];
+        std::string name = VIDEO_NAMES[i];
+        int frames = NUM_FRAMES[i];
+        int id = IDS[i];
 
         std::experimental::filesystem::remove(config.defaultLayoutDatabasePath());
         LayoutDatabase::instance()->open();

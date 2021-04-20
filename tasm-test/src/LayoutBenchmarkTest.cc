@@ -181,7 +181,7 @@ TEST_F(LayoutBenchmarkTestFixture, runBenchmarks) {
             testConstructor(name, entry, j, outputFile);
             testTileLayoutIdsForFrame(name, entry, frames, j, outputFile);
             testTileLayoutForId(name, entry, id, j, outputFile);
-            testLocationOfTileForId(name, entry, id, frames, j, outputFile);
+            testLocationOfTileForId(name, entry, frames, id, j, outputFile);
             testTotalWidth(name, entry, j, outputFile);
             testTotalHeight(name, entry, j, outputFile);
             testLargestWidth(name, entry, j, outputFile);

@@ -28,43 +28,4 @@ void mux_media(const std::experimental::filesystem::path &source, const std::exp
         throw std::runtime_error("Error deleting source file");
 }
 
-static void write_tile_configuration(const std::experimental::filesystem::path &metadata_filename,
-                                     const lightdb::serialization::TileConfiguration &tileConfiguration) {
-    std::fstream output(metadata_filename, std::ios::out | std::ios::trunc | std::ios::binary);
-    if (!tileConfiguration.SerializeToOstream(&output))
-        throw std::runtime_error("Failed to write tile configuration to file");
-}
-
-void write_tile_configuration(const std::experimental::filesystem::path &metadata_filename,
-                              const TileLayout &tileLayout) {
-    lightdb::serialization::TileConfiguration tileConfiguration;
-    tileConfiguration.set_version(TILE_CONFIGURATION_VERSION);
-
-    auto numberOfColumns = tileLayout.numberOfColumns();
-    auto numberOfRows = tileLayout.numberOfRows();
-
-    tileConfiguration.set_numberofcolumns(numberOfColumns);
-    tileConfiguration.set_numberofrows(numberOfRows);
-
-    for (auto &width : tileLayout.widthsOfColumns())
-        tileConfiguration.add_widthsofcolumns(width);
-
-    for (auto &height : tileLayout.heightsOfRows())
-        tileConfiguration.add_heightsofrows(height);
-
-    write_tile_configuration(metadata_filename, tileConfiguration);
-}
-
-TileLayout load_tile_configuration(const std::experimental::filesystem::path &metadataFilename) {
-    lightdb::serialization::TileConfiguration tileConfiguration;
-    std::fstream input(metadataFilename, std::ios::in | std::ios::binary);
-    if (!tileConfiguration.ParseFromIstream(&input))
-        throw std::runtime_error("Failed to read tile configuration from input stream");
-
-    // Construct tile layout object.
-    std::vector<unsigned int> widthsOfColumns(tileConfiguration.widthsofcolumns().begin(), tileConfiguration.widthsofcolumns().end());
-    std::vector<unsigned int> heightsOfRows(tileConfiguration.heightsofrows().begin(), tileConfiguration.heightsofrows().end());
-    return TileLayout(tileConfiguration.numberofcolumns(), tileConfiguration.numberofrows(), widthsOfColumns, heightsOfRows);
-}
-
 } // namespace tasm::gpac

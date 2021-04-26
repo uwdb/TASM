@@ -11,13 +11,15 @@ public:
         return path / tile_version_filename_;
     }
 
-    static std::experimental::filesystem::path tileMetadataFilename(const std::experimental::filesystem::path &path) {
-        return path / tile_metadata_filename_;
-    }
-
     static std::experimental::filesystem::path directoryForTilesInFrames(const TiledEntry &entry, unsigned int firstFrame,
                                                            unsigned int lastFrame) {
-        return entry.path()  / (std::to_string(firstFrame) + separating_string_ + std::to_string(lastFrame) + separating_string_ + std::to_string(entry.tile_version()));
+        return directoryForTilesInFrames(entry.path(), entry.tile_version(), firstFrame, lastFrame);
+    }
+
+    static std::experimental::filesystem::path directoryForTilesInFrames(const std::experimental::filesystem::path &path,
+                                                                         unsigned int version, unsigned int firstFrame,
+                                                                         unsigned int lastFrame) {
+        return path  / (std::to_string(firstFrame) + separating_string_ + std::to_string(lastFrame) + separating_string_ + std::to_string(version));
     }
 
     static std::experimental::filesystem::path temporaryTileFilename(const TiledEntry &entry, unsigned int tileNumber,
@@ -34,10 +36,6 @@ public:
 
     static std::string muxedFilenameExtension() {
         return ".mp4";
-    }
-
-    static std::experimental::filesystem::path tileMetadataFilename(const TiledEntry &entry, unsigned int firstFrame, unsigned lastFrame) {
-        return directoryForTilesInFrames(entry, firstFrame, lastFrame) / tile_metadata_filename_;
     }
 
     static std::pair<unsigned int, unsigned int> firstAndLastFramesFromPath(const std::experimental::filesystem::path &directoryPath) {
@@ -73,7 +71,6 @@ private:
     }
 
     static constexpr auto tile_version_filename_ = "tile-version";
-    static constexpr auto tile_metadata_filename_ = "tile-metadata.bin";
     static constexpr auto separating_string_ = "-";
 };
 

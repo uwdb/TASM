@@ -997,17 +997,18 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
         }
     }
 
-    if (pEncCfg->flags.enableReferenceFrameInvalidation)
-    {
-        if (pEncCfg->codec == NV_ENC_HEVC)
-        {
-            m_stEncodeConfig.encodeCodecConfig.hevcConfig.maxNumRefFramesInDPB = 16;
-        }
-        else
-        {
-            m_stEncodeConfig.encodeCodecConfig.h264Config.maxNumRefFrames = 16;
-        }
-    }
+    m_stEncodeConfig.encodeCodecConfig.hevcConfig.maxNumRefFramesInDPB = 1;
+    // if (pEncCfg->flags.enableReferenceFrameInvalidation)
+    // {
+    //     if (pEncCfg->codec == NV_ENC_HEVC)
+    //     {
+    //         m_stEncodeConfig.encodeCodecConfig.hevcConfig.maxNumRefFramesInDPB = 1;
+    //     }
+    //     else
+    //     {
+    //         m_stEncodeConfig.encodeCodecConfig.h264Config.maxNumRefFrames = 16;
+    //     }
+    // }
 
     if (!pEncCfg->quantization.deltaMapFilename.empty())
     {
@@ -1026,10 +1027,12 @@ NVENCSTATUS EncodeAPI::CreateEncoder(const EncodeConfiguration *pEncCfg)
     if (pEncCfg->codec == NV_ENC_HEVC)
     {
         m_stEncodeConfig.encodeCodecConfig.hevcConfig.repeatSPSPPS = 1;
+        m_stEncodeConfig.encodeCodecConfig.hevcConfig.enableLTR = 0;
     }
     else
     {
         m_stEncodeConfig.encodeCodecConfig.h264Config.repeatSPSPPS = 1;
+        m_stEncodeConfig.encodeCodecConfig.h264Config.enableLTR = 0;
     }
 
     NV_ENC_CAPS_PARAM stCapsParam;
